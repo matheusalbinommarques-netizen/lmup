@@ -1,10 +1,5 @@
-/* 1. Importa as variáveis de design (tokens).
-  Isso DEVE ser a primeira linha.
-*/
 @import './styles/tokens.css';
 
-/* 2. Reseta o básico e aplica os tokens globais.
-*/
 *,
 *::before,
 *::after {
@@ -20,6 +15,9 @@ body {
   line-height: 1.6;
 }
 
+/* Removemos a margem global de h1-h6
+   para dar mais controle aos componentes
+*/
 h1,
 h2,
 h3,
@@ -27,5 +25,4 @@ h4,
 h5,
 h6 {
   font-weight: 600;
-  margin-bottom: var(--espacamento-md);
 }
