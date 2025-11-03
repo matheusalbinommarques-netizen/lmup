@@ -1,0 +1,11 @@
+{
+  "pluginSearchDirs": ["."],
+  "plugins": ["prettier-plugin-svelte"],
+  "svelteSortOrder": "options-scripts-markup-styles",
+  "svelteStrictMode": false,
+  "svelteIndentScriptAndStyle": true,
+  "printWidth": 80,
+  "tabWidth": 2,
+  "semi": true,
+  "singleQuote": true
+}
