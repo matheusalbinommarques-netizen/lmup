@@ -1,0 +1,36 @@
+/* Este arquivo armazena todas as suas variáveis de design (tokens).
+  Isso facilita a manutenção das cores e fontes do app.
+*/
+:root {
+  /* Cores */
+  --cor-fundo: #f8f9fa;
+  --cor-fundo-card: #ffffff;
+  --cor-texto-primario: #212529;
+  --cor-texto-secundario: #6c757d;
+  --cor-borda: #dee2e6;
+
+  --cor-marca-primaria: #0d6efd;
+  --cor-marca-secundaria: #6c757d;
+  --cor-sucesso: #198754;
+  --cor-perigo: #dc3545;
+  --cor-aviso: #ffc107;
+
+  /* Tipografia */
+  --fonte-sistema:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+    sans-serif;
+
+  /* Espaçamento */
+  --espacamento-xs: 0.25rem;
+  --espacamento-sm: 0.5rem;
+  --espacamento-md: 1rem;
+  --espacamento-lg: 1.5rem;
+  --espacamento-xl: 2rem;
+
+  /* Bordas */
+  --raio-borda-sm: 0.25rem;
+  --raio-borda-md: 0.5rem;
+
+  /* Sombras */
+  --sombra-card: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
