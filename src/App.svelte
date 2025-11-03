@@ -1,52 +1,36 @@
 <script>
-  // Importando os novos componentes base
-  import BaseCard from './lib/BaseCard.svelte';
-  import BaseButton from './lib/BaseButton.svelte';
+  // 1. Removemos os imports e lógica de teste (BaseCard, BaseButton, count)
+  // 2. Importamos nosso novo componente
+  import AreaManager from './lib/AreaManager.svelte';
 
-  // Importando o Dexie (Banco de Dados)
-  import { db } from './services/db.js';
-
-  // Estado reativo (Rune do Svelte 5)
+  // (Nenhum import de $state é necessário, ele é global)
   let appName = $state('Level Me Up!');
-  let count = $state(0);
-
-  function increment() {
-    count += 1;
-  }
 </script>
 
 <main>
-  <BaseCard>
-    <h1>Bem-vindo ao {appName}</h1>
+  <header class="app-header">
+    <h1>{appName}</h1>
+  </header>
 
-    <p>O Design System básico está implementado.</p>
-
-    <p>Estes são os nossos novos componentes reutilizáveis em ação.</p>
-
-    <!-- 
-      A CORREÇÃO ESTÁ AQUI:
-      'onClick' (Svelte 4) mudou para 'onclick' (Svelte 5)
-    -->
-    <BaseButton onclick={increment} variant="primary">
-      Contador: {count}
-    </BaseButton>
-  </BaseCard>
+  <!-- 3. Renderizamos o gerenciador de áreas -->
+  <AreaManager />
 </main>
 
 <style>
-  main {
-    padding: var(--espacamento-lg);
-    max-width: 800px;
-    margin-inline: auto;
+  .app-header {
     text-align: center;
+    padding: var(--espacamento-md) 0;
+    margin-bottom: var(--espacamento-lg);
   }
 
   h1 {
     color: var(--cor-marca-primaria);
+    font-size: 2.5rem;
   }
 
-  p {
-    margin-bottom: var(--espacamento-md);
-    color: var(--cor-texto-secundario);
+  main {
+    padding: var(--espacamento-lg);
+    max-width: 800px;
+    margin-inline: auto;
   }
 </style>
