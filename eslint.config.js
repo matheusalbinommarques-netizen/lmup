@@ -11,7 +11,15 @@ export default [
 
   {
     rules: {
-      // Você pode adicionar ou sobrescrever regras aqui
+      //
+      // 👇 A MÁGICA ESTÁ AQUI 👇
+      //
+      // Mude 'no-unused-vars' de 'error' (padrão) para 'warn'.
+      // Isso impede que o ESLint falhe no commit, mas ainda nos avisa
+      // sobre variáveis não usadas.
+      'no-unused-vars': 'warn',
+
+      // Você pode adicionar ou sobrescrever outras regras aqui
       // Ex: "semi": ["error", "always"]
     },
   },

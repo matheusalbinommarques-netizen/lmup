@@ -1,12 +1,17 @@
 <script>
+  // A LINHA DE IMPORT FOI REMOVIDA.
+
   // Importando seu CSS global
   import './app.css';
+  // Importando o Dexie (Passo 2)
+  import { db } from './services/db.js';
 
-  // Importando o Dexie (nosso DB offline) - Conforme Step 2 da Fase 2
-  // import { db } from './services/db';
+  // Use $state para criar estado reativo (isto agora vai funcionar)
+  let appName = $state('Level Me Up!');
 
-  // Aqui é onde sua lógica principal do Svelte (state, etc.) vai começar.
-  let appName = 'Level Me Up!';
+  // NOTA: O aviso "db is declared but its value is never read"
+  // (db foi declarado mas nunca usado) é NORMAL.
+  // Ele vai desaparecer assim que você usar 'db' para salvar algo.
 </script>
 
 <main>
@@ -15,13 +20,6 @@
   <p>
     A Fase 1 (Setup) está completa. Agora estamos na Fase 2: Core Development!
   </p>
-
-  <!-- 
-    Seu plano (Step 1 da Fase 2) começa aqui:
-    1. Implementar o Design System (tokens.css, BaseButton.svelte, etc.)
-    2. Configurar a Camada de Dados (Dexie)
-    3. Construir a UI (CRUD de Áreas, etc.)
-  -->
 </main>
 
 <style>
