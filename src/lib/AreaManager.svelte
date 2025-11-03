@@ -3,20 +3,15 @@
   import { liveQuery } from 'dexie';
   import BaseCard from './BaseCard.svelte';
   import BaseButton from './BaseButton.svelte';
-
-  // 1. Importamos o novo componente
   import ItemManager from './ItemManager.svelte';
 
   // --- ESTADO ---
 
   let newAreaName = $state('');
   let areas = $state([]);
-
-  // 2. Adicionamos um estado para 'selecionar' uma área
-  //    Começa como 'null' (mostrando a lista de áreas)
   let selectedArea = $state(null);
 
-  // O $effect (que já funcionava)
+  // O $effect (sem alteração)
   $effect(() => {
     const observable = liveQuery(() => db['areas'].toArray());
 
@@ -29,7 +24,7 @@
     };
   });
 
-  // --- AÇÕES (CREATE / DELETE / NAVEGAÇÃO) ---
+  // --- AÇÕES (Sem alteração) ---
 
   async function handleAddArea(event) {
     event.preventDefault();
@@ -62,7 +57,7 @@
 </script>
 
 {#if selectedArea}
-  <!-- TELA DE ITENS (Sem mudança) -->
+  <!-- TELA DE ITENS (Sem alteração) -->
   <div class="header-nav">
     <BaseButton onclick={handleGoBack} variant="secondary">
       ← Voltar para Áreas
@@ -70,7 +65,7 @@
   </div>
   <ItemManager area={selectedArea} />
 {:else}
-  <!-- TELA DE ÁREAS (Sem mudança no HTML) -->
+  <!-- TELA DE ÁREAS (Sem alteração no HTML) -->
   <BaseCard>
     <h2>Minhas Áreas de Foco</h2>
 
@@ -115,40 +110,41 @@
 {/if}
 
 <style>
-  /* --- Estilos Adicionados (Para o novo botão) --- */
+  /* --- Botão de Navegação (Texto da Área) --- */
   .area-name-button {
-    /* Reseta o estilo do botão para parecer texto */
     background: none;
     border: none;
     padding: 0;
     margin: 0;
-    font: inherit; /* Usa a fonte do elemento pai */
-    color: inherit; /* Usa a cor do elemento pai */
+    font: inherit;
     cursor: pointer;
-    text-align: left; /* Alinha o texto à esquerda */
-    flex-grow: 1; /* Faz ele ocupar o espaço */
+    text-align: left;
+    flex-grow: 1;
 
-    /* Estilização específica do item */
     font-size: 1.1rem;
     font-weight: 500;
+
+    /* * CORREÇÃO DE COR:
+     * O botão (texto) deve ser PRETO (--cor-texto-primario)
+     */
+    color: var(--cor-texto-primario);
   }
 
   .area-name-button:hover {
-    text-decoration: underline; /* Efeito hover para mostrar que é clicável */
+    text-decoration: underline;
   }
 
-  /* --- Estilos Antigos (AGORA CORRIGIDOS) --- */
   .header-nav {
     margin-bottom: var(--espacamento-md);
   }
 
-  /* OS SELETORES EM BRANCO E COMENTADOS FORAM REMOVIDOS.
-    Isso corrige os 4 erros de CSS.
-  */
-
+  /* * CORREÇÃO DE COR:
+   * Título ("Minhas Áreas de Foco") deve ser BRANCO
+   * para contrastar com o BaseCard azul.
+   */
   h2 {
     text-align: center;
-    color: var(--cor-texto-secundario);
+    color: white; /* Estava var(--cor-texto-primario) */
     margin-bottom: var(--espacamento-lg);
   }
 
@@ -172,23 +168,28 @@
     gap: var(--espacamento-md);
   }
 
+  /* * CORREÇÃO DE COR:
+   * O item da lista (Área) deve ter o fundo BRANCO
+   * para contrastar com o BaseCard azul.
+   */
   .area-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: var(--espacamento-md);
-    background-color: var(--cor-fundo);
+
+    background-color: var(--cor-fundo-card); /* Era --cor-fundo */
     border-radius: var(--raio-borda-sm);
     border: 1px solid var(--cor-borda);
   }
 
-  /* O SELETOR .area-item span FOI REMOVIDO,
-    pois o estilo dele agora está em .area-name-button.
-  */
-
+  /* * CORREÇÃO DE COR:
+   * Mensagem de "vazio" deve ser BRANCA
+   * para contrastar com o BaseCard azul.
+   */
   .empty-message {
     text-align: center;
-    color: var(--cor-texto-secundario);
+    color: white; /* Estava var(--cor-texto-primario) */
     padding: var(--espacamento-lg);
   }
 

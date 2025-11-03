@@ -1,9 +1,9 @@
 <script>
-  // 1. Removemos os imports e lógica de teste (BaseCard, BaseButton, count)
-  // 2. Importamos nosso novo componente
   import AreaManager from './lib/AreaManager.svelte';
 
-  // (Nenhum import de $state é necessário, ele é global)
+  // 1. Importamos o novo StatsManager
+  import StatsManager from './lib/StatsManager.svelte';
+
   let appName = $state('Level Me Up!');
 </script>
 
@@ -12,7 +12,10 @@
     <h1>{appName}</h1>
   </header>
 
-  <!-- 3. Renderizamos o gerenciador de áreas -->
+  <!-- 2. Adicionamos o StatsManager aqui -->
+  <StatsManager />
+
+  <!-- 3. O AreaManager continua abaixo -->
   <AreaManager />
 </main>
 
@@ -20,7 +23,7 @@
   .app-header {
     text-align: center;
     padding: var(--espacamento-md) 0;
-    margin-bottom: var(--espacamento-lg);
+    /* Removemos a margem inferior para grudar no StatsManager */
   }
 
   h1 {

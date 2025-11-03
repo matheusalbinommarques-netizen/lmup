@@ -3,12 +3,20 @@ import Dexie from 'dexie';
 // Cria a instância do banco de dados
 export const db = new Dexie('levelMeUpDB');
 
-// Define o Schema (Versão 1)
-// Conforme o plano: Áreas e Itens (para XP, revisões, etc.)
+//
+// ATUALIZAÇÃO: Incrementamos a versão para 2
+// e adicionamos a tabela 'meta'.
+// 'key' será nossa chave primária (ex: 'totalXp', 'streak')
+//
 db.version(1).stores({
-  areas: '++id, nome', // '++id' é chave primária auto-incremento, 'nome' é indexado
-  itens: '++id, areaId, nome, tipo', // 'areaId' será usado para relacionar com a área
-  // Você pode adicionar mais tabelas (ex: 'reviews', 'streaks') aqui
+  areas: '++id, nome',
+  itens: '++id, areaId, nome, tipo',
+});
+
+db.version(2).stores({
+  areas: '++id, nome',
+  itens: '++id, areaId, nome, tipo',
+  meta: 'key', // Nova tabela para guardar XP, Streaks, etc.
 });
 
 // Abre o banco de dados para testar a conexão

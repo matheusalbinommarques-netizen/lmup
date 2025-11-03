@@ -1,50 +1,34 @@
 <script>
-  // Palavras-chave globais (NÃO PRECISA IMPORTAR)
-  // $state, $effect
-
   import { db } from '../services/db.js';
   import { liveQuery } from 'dexie';
   import BaseCard from './BaseCard.svelte';
   import BaseButton from './BaseButton.svelte';
 
-  // --- PROPRIEDADES ---
+  // 1. Importamos 'addXp' e a nova função 'updateStreak'
+  import { addXp, updateStreak } from '../services/xpService.js';
 
-  // Recebemos a 'area' selecionada como uma prop
   let { area } = $props();
-
-  // --- ESTADO ---
-
   let newItemName = $state('');
-
-  // 1. Declaramos 'items' como um array vazio
   let items = $state([]);
 
-  // 2. Usamos '$effect' para assinar o liveQuery
   $effect(() => {
-    // 3. Criamos o "Observable" do Dexie,
-    //    mas desta vez filtrando por 'areaId'
-    const observable = liveQuery(
-      () =>
-        db['itens']
-          .where('areaId') // Onde 'areaId'
-          .equals(area.id) // for igual ao ID da área que recebemos
-          .toArray(), // E converte para array
+    if (!area) {
+      items = [];
+      return;
+    }
+
+    const observable = liveQuery(() =>
+      db['itens'].where('areaId').equals(area.id).toArray(),
     );
 
-    // 4. Nós nos "inscrevemos" (subscribe) nele
     const subscription = observable.subscribe((newItemsFromDB) => {
-      // 5. Quando o banco de dados mudar, atualizamos nosso $state
       items = newItemsFromDB;
     });
 
-    // 6. Limpeza (cleanup) quando o componente for destruído
-    //    ou quando a prop 'area' mudar
     return () => {
       subscription.unsubscribe();
     };
   });
-
-  // --- AÇÕES (CREATE / DELETE) ---
 
   async function handleAddItem(event) {
     event.preventDefault();
@@ -52,11 +36,10 @@
     if (!name) return;
 
     try {
-      // Adicionamos o 'areaId' e um 'xp' padrão
       await db['itens'].add({
         nome: name,
         areaId: area.id,
-        xp: 10, // <- AQUI ESTÁ A LÓGICA DE XP
+        xp: 10,
         tipo: 'task',
       });
       newItemName = '';
@@ -65,19 +48,28 @@
     }
   }
 
-  async function handleDeleteItem(id) {
+  // 2. AÇÃO ATUALIZADA:
+  async function handleCompleteItem(item) {
     try {
-      await db['itens'].delete(id);
+      // A transação agora inclui 3 ações:
+      await db.transaction('rw', db['itens'], db['meta'], async () => {
+        // Ação 1: Adicionar o XP
+        await addXp(item.xp);
+
+        // Ação 2: Atualizar a Streak
+        await updateStreak();
+
+        // Ação 3: Deletar o item
+        await db['itens'].delete(item.id);
+      });
     } catch (e) {
-      console.error('Falha ao deletar item:', e);
+      console.error('Falha ao completar item:', e);
     }
   }
 </script>
 
-<!-- 
-  Este BaseCard mostra os itens para a área específica
-  que foi passada via $props()
--->
+<!-- O HTML e o CSS não mudam -->
+
 <BaseCard>
   <h3>Itens em: {area.nome}</h3>
 
@@ -96,11 +88,11 @@
         <div class="item">
           <span>{item.nome} (+{item.xp} XP)</span>
           <BaseButton
-            onclick={() => handleDeleteItem(item.id)}
-            variant="danger"
-            class="btn-delete"
+            onclick={() => handleCompleteItem(item)}
+            variant="success"
+            class="btn-complete"
           >
-            Excluir
+            Completar
           </BaseButton>
         </div>
       {/each}
@@ -111,18 +103,20 @@
 </BaseCard>
 
 <style>
-  h3 {
-    text-align: center;
-    color: var(--cor-texto-secundario);
-    margin-bottom: var(--espacamento-lg);
+  :global(.btn-complete) {
+    padding: var(--espacamento-xs) var(--espacamento-sm);
   }
 
+  h3 {
+    text-align: center;
+    color: white;
+    margin-bottom: var(--espacamento-lg);
+  }
   .add-form {
     display: flex;
     gap: var(--espacamento-sm);
     margin-bottom: var(--espacamento-lg);
   }
-
   .add-form input {
     flex-grow: 1;
     padding: var(--espacamento-sm) var(--espacamento-md);
@@ -130,7 +124,6 @@
     border: 1px solid var(--cor-borda);
     border-radius: var(--raio-borda-sm);
   }
-
   .item-list {
     display: flex;
     flex-direction: column;
@@ -142,7 +135,7 @@
     justify-content: space-between;
     align-items: center;
     padding: var(--espacamento-md);
-    background-color: var(--cor-fundo);
+    background-color: var(--cor-fundo-card);
     border-radius: var(--raio-borda-sm);
     border: 1px solid var(--cor-borda);
   }
@@ -150,15 +143,15 @@
   .item span {
     font-size: 1.1rem;
     font-weight: 500;
+    color: var(--cor-texto-primario);
   }
 
   .empty-message {
     text-align: center;
-    color: var(--cor-texto-secundario);
+    color: white;
     padding: var(--espacamento-lg);
   }
 
-  /* O seletor :global que corrigimos antes */
   :global(.btn-delete) {
     padding: var(--espacamento-xs) var(--espacamento-sm);
   }

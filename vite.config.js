@@ -5,44 +5,42 @@ import { VitePWA } from 'vite-plugin-pwa';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    svelte(), // <-- DE VOLTA AO SIMPLES. Ele vai ler o svelte.config.js
+    svelte(),
     VitePWA({
-      // Configuração básica do seu plano
       registerType: 'autoUpdate',
 
-      // CORRIGIDO: Incluindo os arquivos que realmente existem na pasta 'public'
+      //
+      // CORREÇÃO: Removemos o 'apple-touch-icon' daqui
+      // para o plugin parar de tentar processá-lo.
+      //
       includeAssets: [
         'favicon-shield.ico',
-        'apple-touch-icon-180-transparent.png',
+        // 'apple-touch-icon-180-transparent.png', <-- REMOVIDO
         'pwa-192x192.png',
         'pwa-512x512.png',
         'pwa-512x512-maskable.png',
       ],
 
-      // Configuração do Manifesto
+      // O Manifesto PWA (Este está correto e limpo)
       manifest: {
         name: 'Level Me Up LMU',
         short_name: 'LMU',
         description: 'Um PWA para gamificar o aprendizado e o desenvolvimento.',
         theme_color: '#ffffff',
-        display: 'standalone', // Faz o app abrir como uma janela separada
-
-        // CORRIGIDO: Usando os nomes exatos dos arquivos da pasta 'public'
+        display: 'standalone',
+        'mobile-web-app-capable': 'yes',
         icons: [
-          {
-            src: 'apple-touch-icon-180-transparent.png',
-            sizes: '180x180',
-            type: 'image/png',
-          },
           {
             src: 'pwa-192x192.png',
             sizes: '192x192',
             type: 'image/png',
+            purpose: 'any',
           },
           {
             src: 'pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png',
+            purpose: 'any',
           },
           {
             src: 'pwa-512x512-maskable.png',
@@ -51,9 +49,6 @@ export default defineConfig({
             purpose: 'maskable',
           },
         ],
-        // REMOVIDO: A seção 'screenshots' foi removida porque os
-        // arquivos 'screenshot-desktop.png' e 'screenshot-mobile.png'
-        // não existem na pasta 'public', o que causaria falha no PWA.
       },
     }),
   ],
