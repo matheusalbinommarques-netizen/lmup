@@ -4,19 +4,25 @@
   import BaseCard from './BaseCard.svelte';
   import BaseButton from './BaseButton.svelte';
 
-  // 1. Importamos 'addXp' e a nova função 'updateStreak'
-  import { addXp, updateStreak } from '../services/xpService.js';
+  // 1. ADICIONADO: Importamos o 'browser' para evitar o hydration mismatch
+  import { browser } from '$app/environment';
+
+  // 2. CORRIGIDO: Importamos 'checkStreak' em vez de 'updateStreak'
+  import { addXp, checkStreak } from '../services/xpService.js';
 
   let { area } = $props();
   let newItemName = $state('');
   let items = $state([]);
 
+  // 3. CORRIGIDO: O $effect agora verifica se está no 'browser'
   $effect(() => {
-    if (!area) {
+    // Se não tiver 'area' OU se estiver no servidor, não faz nada.
+    if (!area || !browser) {
       items = [];
       return;
     }
 
+    // Este código agora só roda no navegador, evitando o mismatch
     const observable = liveQuery(() =>
       db['itens'].where('areaId').equals(area.id).toArray(),
     );
@@ -33,13 +39,13 @@
   async function handleAddItem(event) {
     event.preventDefault();
     const name = newItemName.trim();
-    if (!name) return;
-
+    // Proteção extra para garantir que o db existe (só no browser)
+    if (!name || !db) return;
     try {
       await db['itens'].add({
         nome: name,
         areaId: area.id,
-        xp: 10,
+        xp: 10, // Como no seu original
         tipo: 'task',
       });
       newItemName = '';
@@ -48,16 +54,17 @@
     }
   }
 
-  // 2. AÇÃO ATUALIZADA:
+  // 4. CORRIGIDO: A função chamada agora é 'checkStreak'
   async function handleCompleteItem(item) {
+    // Proteção extra
+    if (!db) return;
     try {
-      // A transação agora inclui 3 ações:
       await db.transaction('rw', db['itens'], db['meta'], async () => {
         // Ação 1: Adicionar o XP
         await addXp(item.xp);
 
-        // Ação 2: Atualizar a Streak
-        await updateStreak();
+        // Ação 2: Atualizar a Streak (NOME CORRIGIDO)
+        await checkStreak();
 
         // Ação 3: Deletar o item
         await db['itens'].delete(item.id);
@@ -67,8 +74,6 @@
     }
   }
 </script>
-
-<!-- O HTML e o CSS não mudam -->
 
 <BaseCard>
   <h3>Itens em: {area.nome}</h3>

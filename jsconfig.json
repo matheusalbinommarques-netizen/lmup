@@ -1,10 +1,10 @@
 {
   "compilerOptions": {
-    "checkJs": true,
-    "target": "ESNext",
-    "module": "ESNext",
-    "types": ["svelte", "vite/client", "vitest/globals"]
+    "baseUrl": ".",
+    "paths": {
+      "$lib": ["src/lib"],
+      "$lib/*": ["src/lib/*"]
+    }
   },
-  "include": ["src/**/*", "vite.config.js", "vitest.config.js"],
   "exclude": ["node_modules", "dist"]
 }

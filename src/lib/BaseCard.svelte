@@ -1,52 +1,40 @@
 <script>
-  let {
-    children,
-    variant = 'primary',
-    class: extraClass = '',
-    ...rest
-  } = $props();
+  // Função helper para lidar com o clique do teclado
+  function handleKeydown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      // Impede o espaço de rolar a página
+      event.preventDefault();
+      // Dispara o evento de clique no próprio elemento
+      event.currentTarget.click();
+    }
+  }
 </script>
 
-<button class="btn {variant} {extraClass}" {...rest}>
-  {@render children()}
-</button>
+<div
+  class="base-card"
+  role="button"
+  tabindex="0"
+  on:click
+  on:keydown={handleKeydown}
+>
+  <slot />
+</div>
 
 <style>
-  .btn {
-    font-family: var(--fonte-sistema);
-    font-weight: 600;
-    font-size: 1rem;
-    padding: var(--espacamento-sm) var(--espacamento-md);
-    border: none;
-    border-radius: var(--raio-borda-sm);
-    cursor: pointer;
-    transition: all 0.2s ease;
+  .base-card {
+    /* Estilos que você provavelmente tinha no BaseCard */
+    background-color: var(--cor-fundo-card, #2a2a2a);
+    border-radius: var(--raio-borda-md, 8px);
+    border: 1px solid var(--cor-borda, #444);
+    padding: var(--espacamento-md, 16px);
+    box-shadow: var(--sombra-card, 0 4px 6px rgba(0, 0, 0, 0.1));
+
+    /* Adiciona um feedback visual para foco (bom para acessibilidade) */
+    transition: outline 0.1s ease-out;
   }
 
-  .btn:hover {
-    opacity: 0.85;
-  }
-
-  /* Variantes de Cor */
-  .primary {
-    background-color: var(--cor-marca-primaria);
-    color: white;
-  }
-
-  .secondary {
-    background-color: var(--cor-texto-secundario);
-    color: white;
-  }
-
-  .danger {
-    background-color: var(--cor-perigo);
-    color: white;
-  }
-
-  /* NOVA VARIANTE ADICIONADA:
-  */
-  .success {
-    background-color: var(--cor-sucesso);
-    color: white;
+  .base-card:focus-visible {
+    outline: 2px solid var(--cor-marca-primaria, #4f46e5);
+    outline-offset: 2px;
   }
 </style>

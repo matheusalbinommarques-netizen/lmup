@@ -1,28 +1,22 @@
 import { defineConfig } from 'vite';
-import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { sveltekit } from '@sveltejs/kit/vite'; // <--- IMPORTADO AQUI
 import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    svelte(),
+    sveltekit(), // <--- SUBSTITUÍDO AQUI
     VitePWA({
       registerType: 'autoUpdate',
-
-      //
-      // CORREÇÃO: Removemos o 'apple-touch-icon' daqui
-      // para o plugin parar de tentar processá-lo.
-      //
       includeAssets: [
+        // ... (o resto da sua config PWA permanece igual) ...
         'favicon-shield.ico',
-        // 'apple-touch-icon-180-transparent.png', <-- REMOVIDO
         'pwa-192x192.png',
         'pwa-512x512.png',
         'pwa-512x512-maskable.png',
       ],
-
-      // O Manifesto PWA (Este está correto e limpo)
       manifest: {
+        // ... (seu manifesto permanece igual) ...
         name: 'Level Me Up LMU',
         short_name: 'LMU',
         description: 'Um PWA para gamificar o aprendizado e o desenvolvimento.',

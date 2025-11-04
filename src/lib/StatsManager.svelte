@@ -1,5 +1,8 @@
 <script>
-  // 1. Importamos as funções de XP e a nova função de Streak
+  // 1. IMPORTAMOS O 'onMount'
+  import { onMount } from 'svelte';
+
+  // 2. Importamos as funções de XP (como no seu original)
   import {
     getTotalXpObservable,
     getStreakObservable,
@@ -8,29 +11,33 @@
 
   // --- ESTADO ---
 
-  // 2. Criamos um $state para o XP e outro para a Streak
+  // 3. Os estados permanecem iguais. Eles definirão os valores padrão (0)
+  //    que o servidor irá renderizar.
   let totalXp = $state(0);
   let streak = $state({ count: 0 }); // Começa com um objeto
 
-  // 3. Assinamos o Observable de XP
-  $effect(() => {
+  // 4. SUBSTITUIÇÃO: Trocamos o '$effect' por 'onMount'
+  // 'onMount' SÓ é executado no navegador (cliente)
+  onMount(() => {
+    // 5. Toda a lógica de assinatura agora vive aqui.
+    //    Isso não será executado no servidor, evitando o mismatch.
     const xpSub = getTotalXpObservable().subscribe((newXp) => {
       totalXp = newXp;
     });
 
-    // 4. Assinamos o Observable de Streak
     const streakSub = getStreakObservable().subscribe((newStreak) => {
       streak = newStreak;
     });
 
-    // 5. Retornamos a limpeza para ambas as assinaturas
+    // 6. Retornamos a limpeza (ela será chamada quando o componente
+    //    for destruído, assim como no $effect)
     return () => {
       xpSub.unsubscribe();
       streakSub.unsubscribe();
     };
   });
 
-  // 'stats' continua sendo derivado apenas do 'totalXp'
+  // 7. O 'stats' derivado funciona perfeitamente (como no seu original)
   let stats = $derived(calcularNivel(totalXp));
 </script>
 
@@ -50,10 +57,6 @@
     </span>
   </div>
 
-  <!-- 
-    6. UI ATUALIZADA:
-    Agora o valor da streak vem do nosso estado 'streak.count'
-  -->
   <div class="stat-item">
     <span class="label">STREAK</span>
     <span class="value streak">🔥 {streak.count}</span>
