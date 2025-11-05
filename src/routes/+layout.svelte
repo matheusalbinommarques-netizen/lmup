@@ -1,7 +1,7 @@
 <script lang="ts">
   import '../app.css';
+  import { page } from '$app/stores';
 
-  import { page } from '$app/state';
   interface Props {
     children?: import('svelte').Snippet;
   }
@@ -21,15 +21,15 @@
       href="/"
       class="text-lg font-semibold py-2 px-4 text-text-secondary border-b-2 border-transparent -mb-0.5 transition-colors duration-150
         hover:text-text
-        {page.url.pathname === '/' ? 'text-primary border-primary' : ''}"
+        {$page.url.pathname === '/' ? 'text-primary border-primary' : ''}"
     >
       Progresso
     </a>
     <a
       href="/config"
-      class="text-lg font-semibold py-2 px-4 text-text-secondary border-b-2 border-transparent -mb-0.5 transition-colors duration-150
+      class="text-lg font-semibold py-2 px-4 text-text-secondary border-b-2 border-transparent -mb-0.5 transition-colors duração-150
         hover:text-text
-        {page.url.pathname === '/config' ? 'text-primary border-primary' : ''}"
+        {$page.url.pathname === '/config' ? 'text-primary border-primary' : ''}"
     >
       Configurações
     </a>

@@ -5,8 +5,13 @@
   import BaseButton from './BaseButton.svelte';
   import ItemManager from './ItemManager.svelte';
 
+  interface Area {
+    id: number;
+    nome: string;
+  }
+
   let newAreaName = $state('');
-  let areas = $state([]);
+  let areas = $state<Area[]>([]);
 
   $effect(() => {
     if (!browser) {
@@ -45,9 +50,7 @@
       class="flex-grow bg-background border border-border text-text rounded-md p-2 focus:ring-2 focus:ring-primary focus:outline-none"
     />
 
-    <BaseButton type="submit" variant="primary">
-      Adicionar Área
-    </BaseButton>
+    <BaseButton type="submit" variant="primary">Adicionar Área</BaseButton>
   </form>
 
   <div class="area-list flex flex-col gap-6">

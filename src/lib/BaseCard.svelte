@@ -1,8 +1,16 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import type { KeyboardEventHandler, MouseEventHandler } from 'svelte/elements';
+  import type {
+    KeyboardEventHandler,
+    MouseEventHandler,
+  } from 'svelte/elements';
 
-  let { children, onclick = () => {}, onkeydown = () => {}, ...rest } = $props<{
+  let {
+    children,
+    onclick = () => {},
+    onkeydown = () => {},
+    ...rest
+  } = $props<{
     children?: Snippet;
     onclick?: MouseEventHandler<HTMLDivElement>;
     onkeydown?: KeyboardEventHandler<HTMLDivElement>;
@@ -25,7 +33,7 @@
   role="button"
   tabindex="0"
   {...rest}
-  onclick={onclick}
+  {onclick}
   onkeydown={handleKeydown || onkeydown}
 >
   {@render children?.()}
