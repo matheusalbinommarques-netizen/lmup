@@ -1,5 +1,5 @@
 <script>
-  // 1. Importamos as funções de XP e a nova função de Streak
+  import { onMount } from 'svelte';
   import {
     getTotalXpObservable,
     getStreakObservable,
@@ -7,125 +7,60 @@
   } from '../services/xpService.js';
 
   // --- ESTADO ---
-
-  // 2. Criamos um $state para o XP e outro para a Streak
   let totalXp = $state(0);
-  let streak = $state({ count: 0 }); // Começa com um objeto
+  let streak = $state({ count: 0 });
 
-  // 3. Assinamos o Observable de XP
-  $effect(() => {
+  // 'onMount' SÓ é executado no navegador (cliente)
+  onMount(() => {
     const xpSub = getTotalXpObservable().subscribe((newXp) => {
       totalXp = newXp;
     });
 
-    // 4. Assinamos o Observable de Streak
     const streakSub = getStreakObservable().subscribe((newStreak) => {
       streak = newStreak;
     });
 
-    // 5. Retornamos a limpeza para ambas as assinaturas
     return () => {
       xpSub.unsubscribe();
       streakSub.unsubscribe();
     };
   });
 
-  // 'stats' continua sendo derivado apenas do 'totalXp'
+  // O 'stats' derivado funciona perfeitamente
   let stats = $derived(calcularNivel(totalXp));
 </script>
 
-<div class="stats-manager">
-  <div class="stat-item">
-    <span class="label">NÍVEL</span>
-    <span class="value level">{stats.nivel}</span>
+<div
+  class="stats-manager bg-card border border-border rounded-lg p-4 md:p-6 shadow-lg mb-6 flex flex-col md:flex-row justify-between items-center gap-4"
+>
+  <div class="stat-item flex flex-col items-center min-w-[80px]">
+    <span class="label text-xs font-semibold text-text-secondary uppercase mb-1"
+      >NÍVEL</span
+    >
+    <span class="value text-3xl font-bold text-primary">{stats.nivel}</span>
   </div>
 
-  <div class="stat-item xp-bar-container">
-    <span class="label">XP TOTAL: {totalXp}</span>
-    <div class="xp-bar">
-      <div class="xp-progress" style="width: {stats.progresso}%;"></div>
+  <div class="xp-bar-container w-full flex-grow flex flex-col items-center">
+    <span class="label text-xs font-semibold text-text-secondary uppercase mb-1"
+      >XP TOTAL: {totalXp}</span
+    >
+    <div
+      class="xp-bar w-full h-3 bg-background border border-border rounded-full overflow-hidden mb-1"
+    >
+      <div
+        class="xp-progress h-full bg-success transition-all duration-300 ease-out"
+        style="width: {stats.progresso}%;"
+      ></div>
     </div>
-    <span class="progress-label">
+    <span class="progress-label text-xs text-text-secondary font-medium">
       {stats.xpAtualNesteNivel} / {stats.xpParaProximoNivel} XP
     </span>
   </div>
 
-  <!-- 
-    6. UI ATUALIZADA:
-    Agora o valor da streak vem do nosso estado 'streak.count'
-  -->
-  <div class="stat-item">
-    <span class="label">STREAK</span>
-    <span class="value streak">🔥 {streak.count}</span>
+  <div class="stat-item flex flex-col items-center min-w-[80px]">
+    <span class="label text-xs font-semibold text-text-secondary uppercase mb-1"
+      >STREAK</span
+    >
+    <span class="value text-3xl font-bold text-danger">🔥 {streak.count}</span>
   </div>
 </div>
-
-<style>
-  .stats-manager {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: var(--cor-fundo-card);
-    border: 1px solid var(--cor-borda);
-    border-radius: var(--raio-borda-md);
-    padding: var(--espacamento-md) var(--espacamento-lg);
-    box-shadow: var(--sombra-card);
-    margin-bottom: var(--espacamento-lg);
-    gap: var(--espacamento-lg);
-  }
-
-  .stat-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-width: 80px;
-  }
-
-  .label {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--cor-texto-secundario);
-    text-transform: uppercase;
-    margin-bottom: var(--espacamento-xs);
-  }
-
-  .value {
-    font-size: 1.75rem;
-    font-weight: 700;
-  }
-  .level {
-    color: var(--cor-marca-primaria);
-  }
-  .streak {
-    color: var(--cor-perigo);
-  }
-
-  .xp-bar-container {
-    flex-grow: 1;
-    align-items: stretch;
-    text-align: center;
-  }
-
-  .xp-bar {
-    width: 100%;
-    height: 12px;
-    background-color: var(--cor-fundo);
-    border: 1px solid var(--cor-borda);
-    border-radius: 6px;
-    overflow: hidden;
-    margin-bottom: var(--espacamento-xs);
-  }
-
-  .xp-progress {
-    height: 100%;
-    background-color: var(--cor-sucesso);
-    width: 0%;
-    transition: width 0.3s ease-out;
-  }
-
-  .progress-label {
-    font-size: 0.75rem;
-    color: var(--cor-texto-secundario);
-    font-weight: 500;
-  }
-</style>

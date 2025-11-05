@@ -1,52 +1,37 @@
 <script>
   let {
-    children,
     variant = 'primary',
-    class: extraClass = '',
+    class: userClass = '',
+    type = 'button',
+
+    // --- CORREÇÃO (ERRO 3) ---
+    // A <slot> agora é passada como a prop 'children'
+    children,
+
+    // --- CORREÇÃO (ERRO 2) ---
+    // 'on:click' está depreciado, recebemos 'onclick' como uma prop
+    onclick = () => {},
+
     ...rest
   } = $props();
+
+  const variants = {
+    primary:
+      'bg-primary text-white hover:bg-primary-light focus-visible:ring-primary',
+    success:
+      'bg-success text-white hover:bg-success/80 focus-visible:ring-success',
+    danger: 'bg-danger text-white hover:bg-danger/80 focus-visible:ring-danger',
+  };
+
+  let baseClasses =
+    'px-4 py-2 rounded-md font-semibold text-sm shadow-md transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50';
 </script>
 
-<button class="btn {variant} {extraClass}" {...rest}>
-  {@render children()}
+<button
+  {type}
+  {...rest}
+  class="{baseClasses} {variants[variant]} {userClass}"
+  {onclick}
+>
+  {@render children?.()}
 </button>
-
-<style>
-  .btn {
-    font-family: var(--fonte-sistema);
-    font-weight: 600;
-    font-size: 1rem;
-    padding: var(--espacamento-sm) var(--espacamento-md);
-    border: none;
-    border-radius: var(--raio-borda-sm);
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .btn:hover {
-    opacity: 0.85;
-  }
-
-  /* Variantes de Cor */
-  .primary {
-    background-color: var(--cor-marca-primaria);
-    color: white;
-  }
-
-  .secondary {
-    background-color: var(--cor-texto-secundario);
-    color: white;
-  }
-
-  .danger {
-    background-color: var(--cor-perigo);
-    color: white;
-  }
-
-  /* NOVA VARIANTE ADICIONADA:
-  */
-  .success {
-    background-color: var(--cor-sucesso);
-    color: white;
-  }
-</style>

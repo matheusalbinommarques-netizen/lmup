@@ -1,157 +1,114 @@
+import { browser } from '$app/environment';
 import { db } from './db.js';
 import { liveQuery } from 'dexie';
 
-// --- Constantes de Gamificação ---
-const BASE_XP_POR_NIVEL = 100;
+// CORREÇÃO AQUI: Removemos o 'of', pois não está sendo usado.
+import { BehaviorSubject } from 'rxjs';
 
-// --- FUNÇÕES DE XP (sem alteração) ---
+// --- Constantes ---
+const XP_POR_NIVEL_BASE = 100;
+const FATOR_CRESCIMENTO = 1.5;
+
+// --- Subjects ---
+const totalXpSubject = new BehaviorSubject(0);
+const streakSubject = new BehaviorSubject({ count: 0, lastCheckin: null });
+
+// --- CÓDIGO PROTEGIDO ---
+if (browser) {
+  async function initDB() {
+    try {
+      await db.meta.bulkPut([
+        { key: 'totalXp', value: (await db.meta.get('totalXp'))?.value || 0 },
+        {
+          key: 'streak',
+          value: (await db.meta.get('streak'))?.value || {
+            count: 0,
+            lastCheckin: null,
+          },
+        },
+      ]);
+    } catch (error) {
+      console.error('Falha ao inicializar a store meta:', error);
+    }
+  }
+
+  // Live query para XP Total
+  liveQuery(() => db.meta.get('totalXp')).subscribe((meta) => {
+    totalXpSubject.next(meta?.value || 0);
+  });
+
+  // Live query para Streak
+  liveQuery(() => db.meta.get('streak')).subscribe((meta) => {
+    streakSubject.next(meta?.value || { count: 0, lastCheckin: null });
+  });
+
+  initDB().catch(console.error);
+}
+
+// --- Funções Exportadas (O resto do arquivo está igual) ---
 
 export function getTotalXpObservable() {
-  return liveQuery(async () => {
-    const xpItem = await db['meta'].get('totalXp');
-    return xpItem ? xpItem.value : 0;
-  });
+  return totalXpSubject.asObservable();
+}
+
+export function getStreakObservable() {
+  return streakSubject.asObservable();
 }
 
 export async function addXp(amount) {
+  if (!browser) return;
   try {
-    // Adicionamos 'db.meta' à transação, embora já estivesse implícito
-    await db.transaction('rw', db['meta'], async () => {
-      const currentXpItem = await db['meta'].get('totalXp');
-      const currentXp = currentXpItem ? currentXpItem.value : 0;
-
-      const newXp = currentXp + amount;
-
-      await db['meta'].put({
-        key: 'totalXp',
-        value: newXp,
-      });
-    });
-  } catch (e) {
-    console.error('Falha ao adicionar XP:', e);
+    await db.meta.put({ key: 'totalXp', value: totalXpSubject.value + amount });
+    await checkStreak(true);
+  } catch (error) {
+    console.error('Falha ao adicionar XP:', error);
   }
 }
 
-export function calcularNivel(totalXp) {
-  let nivel = 1;
-  let xpNecessarioParaNivelAtual = 0;
-  let xpParaProximoNivel = BASE_XP_POR_NIVEL;
+export async function checkStreak(forceCheckin = false) {
+  if (!browser) return;
 
-  while (totalXp >= xpParaProximoNivel) {
-    nivel++;
-    xpNecessarioParaNivelAtual = xpParaProximoNivel;
-    xpParaProximoNivel += nivel * BASE_XP_POR_NIVEL;
+  const hoje = new Date().toDateString();
+  const { count, lastCheckin } = streakSubject.value;
+
+  if (lastCheckin === hoje && !forceCheckin) {
+    return;
   }
 
-  const xpDesdeUltimoNivel = totalXp - xpNecessarioParaNivelAtual;
-  const xpTotalParaEsteNivel = xpParaProximoNivel - xpNecessarioParaNivelAtual;
+  const ontem = new Date(Date.now() - 86400000).toDateString();
+  let newStreak = { count: 1, lastCheckin: hoje };
 
-  // O progresso pode dar NaN se xpTotalParaEsteNivel for 0 (no nível 1)
-  const progresso =
-    xpTotalParaEsteNivel > 0
-      ? (xpDesdeUltimoNivel / xpTotalParaEsteNivel) * 100
-      : 0;
+  if (lastCheckin === hoje && forceCheckin) {
+    newStreak = { count, lastCheckin };
+  } else if (lastCheckin === ontem) {
+    newStreak = { count: count + 1, lastCheckin: hoje };
+  }
+
+  try {
+    await db.meta.put({ key: 'streak', value: newStreak });
+  } catch (error) {
+    console.error('Falha ao atualizar o streak:', error);
+  }
+}
+
+export function calcularNivel(xp) {
+  let nivel = 0;
+  let xpParaProximoNivel = XP_POR_NIVEL_BASE;
+  let xpAcumulado = 0;
+
+  while (xp >= xpAcumulado + xpParaProximoNivel) {
+    xpAcumulado += xpParaProximoNivel;
+    nivel++;
+    xpParaProximoNivel = Math.floor(xpParaProximoNivel * FATOR_CRESCIMENTO);
+  }
+
+  const xpAtualNesteNivel = xp - xpAcumulado;
+  const progresso = (xpAtualNesteNivel / xpParaProximoNivel) * 100;
 
   return {
     nivel,
-    xpParaProximoNivel: xpTotalParaEsteNivel,
-    xpAtualNesteNivel: xpDesdeUltimoNivel,
-    progresso: Math.floor(progresso),
+    progresso,
+    xpAtualNesteNivel,
+    xpParaProximoNivel,
   };
-}
-
-//
-// --- LÓGICA DE STREAK (NOVO) ---
-//
-
-/**
- * Retorna um Observable que emite a streak atual.
- */
-export function getStreakObservable() {
-  return liveQuery(async () => {
-    const streakItem = await db['meta'].get('streakData');
-    // Se não houver dados, a streak é 0
-    if (!streakItem) return { count: 0, lastUpdate: null };
-
-    // Checa se a streak foi perdida (mais de 1 dia de diferença)
-    if (!isYesterdayOrToday(new Date(streakItem.lastUpdate))) {
-      return { count: 0, lastUpdate: streakItem.lastUpdate };
-    }
-
-    // Se não, retorna a streak atual
-    return streakItem;
-  });
-}
-
-/**
- * Atualiza a streak do usuário.
- * Chamado toda vez que um item é completado.
- */
-export async function updateStreak() {
-  try {
-    await db.transaction('rw', db['meta'], async () => {
-      const today = new Date();
-      const streakItem = await db['meta'].get('streakData');
-
-      if (!streakItem) {
-        // Primeira vez completando um item
-        await db['meta'].put({
-          key: 'streakData',
-          count: 1,
-          lastUpdate: today.toISOString(),
-        });
-      } else {
-        const lastUpdate = new Date(streakItem.lastUpdate);
-
-        if (isToday(lastUpdate)) {
-          // Já completou um item hoje. Não faz nada.
-          return;
-        }
-
-        if (isYesterday(lastUpdate)) {
-          // Continua a streak
-          await db['meta'].put({
-            key: 'streakData',
-            count: streakItem.count + 1,
-            lastUpdate: today.toISOString(),
-          });
-        } else {
-          // Perdeu a streak (completou há 2+ dias)
-          await db['meta'].put({
-            key: 'streakData',
-            count: 1, // Reseta para 1
-            lastUpdate: today.toISOString(),
-          });
-        }
-      }
-    });
-  } catch (e) {
-    console.error('Falha ao atualizar streak:', e);
-  }
-}
-
-// --- Funções Utilitárias de Data ---
-
-function isToday(someDate) {
-  const today = new Date();
-  return (
-    someDate.getDate() === today.getDate() &&
-    someDate.getMonth() === today.getMonth() &&
-    someDate.getFullYear() === today.getFullYear()
-  );
-}
-
-function isYesterday(someDate) {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-
-  return (
-    someDate.getDate() === yesterday.getDate() &&
-    someDate.getMonth() === yesterday.getMonth() &&
-    someDate.getFullYear() === yesterday.getFullYear()
-  );
-}
-
-function isYesterdayOrToday(someDate) {
-  return isToday(someDate) || isYesterday(someDate);
 }
