@@ -26,6 +26,7 @@
 declare module '$env/static/private' {
   export const ALLUSERSPROFILE: string;
   export const APPDATA: string;
+  export const BUNDLED_DEBUGPY_PATH: string;
   export const ChocolateyInstall: string;
   export const ChocolateyLastPathUpdate: string;
   export const CHROME_CRASHPAD_PIPE_NAME: string;
@@ -86,6 +87,9 @@ declare module '$env/static/private' {
   export const PROMPT: string;
   export const PSModulePath: string;
   export const PUBLIC: string;
+  export const PYDEVD_DISABLE_FILE_VALIDATION: string;
+  export const PYTHONSTARTUP: string;
+  export const PYTHON_BASIC_REPL: string;
   export const SESSIONNAME: string;
   export const SystemDrive: string;
   export const SystemRoot: string;
@@ -97,6 +101,7 @@ declare module '$env/static/private' {
   export const USERDOMAIN_ROAMINGPROFILE: string;
   export const USERNAME: string;
   export const USERPROFILE: string;
+  export const VSCODE_DEBUGPY_ADAPTER_ENDPOINTS: string;
   export const VSCODE_GIT_ASKPASS_EXTRA_ARGS: string;
   export const VSCODE_GIT_ASKPASS_MAIN: string;
   export const VSCODE_GIT_ASKPASS_NODE: string;
@@ -134,6 +139,7 @@ declare module '$env/dynamic/private' {
   export const env: {
     ALLUSERSPROFILE: string;
     APPDATA: string;
+    BUNDLED_DEBUGPY_PATH: string;
     ChocolateyInstall: string;
     ChocolateyLastPathUpdate: string;
     CHROME_CRASHPAD_PIPE_NAME: string;
@@ -194,6 +200,9 @@ declare module '$env/dynamic/private' {
     PROMPT: string;
     PSModulePath: string;
     PUBLIC: string;
+    PYDEVD_DISABLE_FILE_VALIDATION: string;
+    PYTHONSTARTUP: string;
+    PYTHON_BASIC_REPL: string;
     SESSIONNAME: string;
     SystemDrive: string;
     SystemRoot: string;
@@ -205,6 +214,7 @@ declare module '$env/dynamic/private' {
     USERDOMAIN_ROAMINGPROFILE: string;
     USERNAME: string;
     USERPROFILE: string;
+    VSCODE_DEBUGPY_ADAPTER_ENDPOINTS: string;
     VSCODE_GIT_ASKPASS_EXTRA_ARGS: string;
     VSCODE_GIT_ASKPASS_MAIN: string;
     VSCODE_GIT_ASKPASS_NODE: string;

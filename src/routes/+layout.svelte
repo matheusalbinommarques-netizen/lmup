@@ -1,70 +1,34 @@
 <script>
-  import { page } from '$app/stores'; // Store nativa do SvelteKit
-  import '../app.css'; // Importando estilos globais
-  import '../styles/tokens.css'; // Importando estilos globais
+  import { page } from '$app/stores';
+  import '../app.css'; // Importando os estilos globais (que agora incluem o Tailwind)
+  // O 'tokens.css' não é mais necessário aqui, pois o Tailwind o gerencia.
 
   let appName = 'Level Me Up!';
 </script>
 
-<main>
-  <header class="app-header">
-    <h1>{appName}</h1>
+<main class="max-w-3xl mx-auto p-4 md:p-6">
+  <header class="text-center py-6">
+    <h1 class="text-primary text-4xl font-bold">{appName}</h1>
   </header>
 
-  <nav class="tabs">
-    <a href="/" class:active={$page.url.pathname === '/'}> Progresso </a>
-    <a href="/config" class:active={$page.url.pathname === '/config'}>
+  <nav class="flex mb-6 border-b-2 border-border">
+    <a
+      href="/"
+      class="text-lg font-semibold py-2 px-4 text-text-secondary border-b-2 border-transparent -mb-0.5 transition-colors duration-150
+        hover:text-text
+        {$page.url.pathname === '/' ? 'text-primary border-primary' : ''}"
+    >
+      Progresso
+    </a>
+    <a
+      href="/config"
+      class="text-lg font-semibold py-2 px-4 text-text-secondary border-b-2 border-transparent -mb-0.5 transition-colors duration-150
+        hover:text-text
+        {$page.url.pathname === '/config' ? 'text-primary border-primary' : ''}"
+    >
       Configurações
     </a>
   </nav>
 
   <slot />
 </main>
-
-<style>
-  .app-header {
-    text-align: center;
-    padding: var(--espacamento-md) 0;
-  }
-
-  h1 {
-    color: var(--cor-marca-primaria);
-    font-size: 2.5rem;
-  }
-
-  main {
-    padding: var(--espacamento-lg);
-    max-width: 800px;
-    margin-inline: auto;
-  }
-
-  .tabs {
-    display: flex;
-    margin-bottom: var(--espacamento-lg);
-    border-bottom: 2px solid var(--cor-borda);
-  }
-
-  /* Ajustamos o seletor de 'button' para 'a' */
-  .tabs a {
-    background: none;
-    border: none;
-    font-family: var(--fonte-sistema);
-    font-size: 1.1rem;
-    font-weight: 600;
-    padding: var(--espacamento-sm) var(--espacamento-md);
-    cursor: pointer;
-    color: var(--cor-texto-secundario);
-    border-bottom: 2px solid transparent;
-    margin-bottom: -2px;
-    text-decoration: none; /* Remove sublinhado do link */
-  }
-
-  .tabs a:hover {
-    color: var(--cor-texto-primario);
-  }
-
-  .tabs a.active {
-    color: var(--cor-marca-primaria);
-    border-bottom-color: var(--cor-marca-primaria);
-  }
-</style>
