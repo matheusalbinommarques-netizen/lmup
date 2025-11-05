@@ -53,7 +53,6 @@ import {
 } from './equality.js';
 import 'clsx';
 import { s as setContext } from './context.js';
-import './server.js';
 let public_env = {};
 function set_private_env(environment) {}
 function set_public_env(environment) {
@@ -2840,7 +2839,7 @@ const options = {
       message +
       '</h1>\n			</div>\n		</div>\n	</body>\n</html>\n',
   },
-  version_hash: 'gmo5ee',
+  version_hash: '18tkhw3',
 };
 async function get_hooks() {
   let handle;

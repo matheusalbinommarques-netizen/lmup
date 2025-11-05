@@ -1,17 +1,14 @@
 import 'clsx';
 import {
+  w as attr_style,
   x as attr,
-  w as ensure_array_like,
-  F as attr_style,
+  y as ensure_array_like,
 } from '../../chunks/index.js';
+import { BehaviorSubject } from 'rxjs';
+import { e as escape_html } from '../../chunks/context.js';
 import '../../chunks/db.js';
 import 'dexie';
-import { BehaviorSubject } from 'rxjs';
-import { a as ssr_context, e as escape_html } from '../../chunks/context.js';
-function onDestroy(fn) {
-  /** @type {SSRContext} */
-  ssr_context.r.on_destroy(fn);
-}
+import { B as BottomNav } from '../../chunks/BottomNav.js';
 const STORAGE_KEYS = {
   totalXp: 'lmup:totalXp',
   streak: 'lmup:streak',
@@ -43,26 +40,17 @@ function initFromStorage() {
 if (typeof window !== 'undefined') {
   initFromStorage();
 }
-function getTotalXpObservable() {
-  return totalXp$.asObservable();
-}
-function getStreakObservable() {
-  return streak$.asObservable();
-}
-function calcularNivel(totalXp) {
-  let level = 1;
-  let remainingXp = totalXp;
-  let xpNextLevel = 100;
-  while (remainingXp >= xpNextLevel) {
-    remainingXp -= xpNextLevel;
-    level += 1;
-    xpNextLevel = 100 + (level - 1) * 50;
-  }
-  return {
-    level,
-    currentLevelXp: remainingXp,
-    xpToNextLevel: xpNextLevel,
-  };
+function StatsManager($$renderer, $$props) {
+  $$renderer.component(($$renderer2) => {
+    let totalXp = 0;
+    let level = 1;
+    let currentLevelXp = 0;
+    let xpToNextLevel = 100;
+    let streak = 0;
+    const xpProgress = Math.min(100, (currentLevelXp / xpToNextLevel) * 100);
+    $$renderer2.push(`<section class="w-full mb-8"><div class="mx-auto max-w-3xl overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-b from-slate-950 via-slate-900 to-black shadow-2xl"><div class="relative px-6 pt-6 pb-7 md:px-8 md:pt-8 md:pb-8"><div class="pointer-events-none absolute inset-0 opacity-40" aria-hidden="true"><div class="h-full w-full bg-[radial-gradient(circle_at_top,_#3b82f6_0,_transparent_55%)]"></div></div> <div class="relative flex flex-col items-center gap-3 text-center"><p class="text-[0.65rem] uppercase tracking-[0.25em] text-primary/70">Reino do aprendizado</p> <h1 class="text-3xl font-extrabold text-primary drop-shadow">Level Me Up!</h1> <p class="max-w-md text-xs text-text-secondary">Complete missões todos os dias para evoluir de nível e manter sua
+          chama de foco acesa.</p></div> <div class="relative mt-6 flex flex-col items-center gap-4"><div class="flex h-24 w-24 items-center justify-center rounded-full border-4 border-amber-400 bg-slate-950/90 shadow-[0_0_40px_rgba(251,191,36,0.7)]"><span class="text-3xl">🛡️</span></div> <div class="inline-flex items-baseline gap-2 rounded-full border border-white/10 bg-black/40 px-4 py-1"><span class="text-[0.65rem] uppercase tracking-widest text-text-secondary">Nível</span> <span class="text-2xl font-bold text-white">${escape_html(level)}</span></div> <div class="text-xs text-text-secondary">XP total: <span class="font-semibold text-primary">${escape_html(totalXp)}</span></div></div> <div class="relative mt-6 w-full space-y-2"><div class="flex items-center justify-between text-[0.7rem] text-text-secondary"><span>Progresso até o próximo nível</span> <span>${escape_html(currentLevelXp)} / ${escape_html(xpToNextLevel)} XP</span></div> <div class="h-3 w-full overflow-hidden rounded-full border border-slate-800 bg-slate-900"><div class="h-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-lime-400 transition-[width] duration-500 ease-out"${attr_style(`width: ${xpProgress}%;`)}></div></div></div> <div class="relative mt-6 flex flex-col gap-3 border-t border-white/5 pt-4 text-xs text-text-secondary md:flex-row md:items-center md:justify-between"><div class="flex items-center gap-2"><span class="text-xl">🔥</span> <div><div class="font-semibold text-text">Streak de dias</div> <div class="text-[0.7rem]">Faça pelo menos uma missão por dia para manter a chama acesa.</div></div></div> <div class="flex items-baseline justify-end gap-1"><span class="text-3xl font-bold text-primary">${escape_html(streak)}</span> <span class="text-[0.7rem] uppercase tracking-[0.2em] text-text-secondary">dias</span></div></div></div></div></section>`);
+  });
 }
 function ItemManager($$renderer, $$props) {
   $$renderer.component(($$renderer2) => {
@@ -145,44 +133,15 @@ function AreaManager($$renderer, $$props) {
     $$renderer2.push(`<!--]--></section>`);
   });
 }
-function StatsManager($$renderer, $$props) {
-  $$renderer.component(($$renderer2) => {
-    let totalXp = 0;
-    let level = 1;
-    let currentLevelXp = 0;
-    let xpToNextLevel = 100;
-    let streak = 0;
-    let unsubscribeFns = [];
-    if (typeof window !== 'undefined') {
-      const sub1 = getTotalXpObservable().subscribe((xp) => {
-        totalXp = xp;
-        const info = calcularNivel(xp);
-        level = info.level;
-        currentLevelXp = info.currentLevelXp;
-        xpToNextLevel = info.xpToNextLevel;
-      });
-      const sub2 = getStreakObservable().subscribe(({ count }) => {
-        streak = count;
-      });
-      unsubscribeFns = [() => sub1.unsubscribe(), () => sub2.unsubscribe()];
-    }
-    onDestroy(() => {
-      for (const fn of unsubscribeFns) {
-        fn();
-      }
-    });
-    const xpProgress =
-      xpToNextLevel > 0
-        ? Math.min(100, (currentLevelXp / xpToNextLevel) * 100)
-        : 0;
-    $$renderer2.push(`<section class="w-full mb-8"><div class="mx-auto max-w-3xl overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-b from-slate-950 via-slate-900 to-black shadow-2xl"><div class="relative px-6 pt-6 pb-7 md:px-8 md:pt-8 md:pb-8"><div class="pointer-events-none absolute inset-0 opacity-40" aria-hidden="true"><div class="h-full w-full bg-[radial-gradient(circle_at_top,_#3b82f6_0,_transparent_55%)]"></div></div> <div class="relative flex flex-col items-center gap-3 text-center"><p class="text-[0.65rem] uppercase tracking-[0.25em] text-primary/70">Reino do aprendizado</p> <h1 class="text-3xl font-extrabold text-primary drop-shadow">Level Me Up!</h1> <p class="max-w-md text-xs text-text-secondary">Complete missões todos os dias para evoluir de nível e manter sua
-          chama de foco acesa.</p></div> <div class="relative mt-6 flex flex-col items-center gap-4"><div class="flex h-24 w-24 items-center justify-center rounded-full border-4 border-amber-400 bg-slate-950/90 shadow-[0_0_40px_rgba(251,191,36,0.7)]"><span class="text-3xl">🛡️</span></div> <div class="inline-flex items-baseline gap-2 rounded-full border border-white/10 bg-black/40 px-4 py-1"><span class="text-[0.65rem] uppercase tracking-widest text-text-secondary">Nível</span> <span class="text-2xl font-bold text-white">${escape_html(level)}</span></div> <div class="text-xs text-text-secondary">XP total: <span class="font-semibold text-primary">${escape_html(totalXp)}</span></div></div> <div class="relative mt-6 w-full space-y-2"><div class="flex items-center justify-between text-[0.7rem] text-text-secondary"><span>Progresso até o próximo nível</span> <span>${escape_html(currentLevelXp)} / ${escape_html(xpToNextLevel)} XP</span></div> <div class="h-3 w-full overflow-hidden rounded-full border border-slate-800 bg-slate-900"><div class="h-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-lime-400 transition-[width] duration-500 ease-out"${attr_style(`width: ${xpProgress}%;`)}></div></div></div> <div class="relative mt-6 flex flex-col gap-3 border-t border-white/5 pt-4 text-xs text-text-secondary md:flex-row md:items-center md:justify-between"><div class="flex items-center gap-2"><span class="text-xl">🔥</span> <div><div class="font-semibold text-text">Streak de dias</div> <div class="text-[0.7rem]">Faça pelo menos uma missão por dia para manter a chama acesa.</div></div></div> <div class="flex items-baseline justify-end gap-1"><span class="text-3xl font-bold text-primary">${escape_html(streak)}</span> <span class="text-[0.7rem] uppercase tracking-[0.2em] text-text-secondary">dias</span></div></div></div></div></section>`);
-  });
-}
 function _page($$renderer) {
+  $$renderer.push(`<section class="section pt-10 pb-6">`);
   StatsManager($$renderer);
-  $$renderer.push(`<!----> `);
+  $$renderer.push(
+    `<!----></section> <section class="section space-y-6 pb-28"><div class="parchment p-5 sm:p-6"><h2 class="h-title text-lg sm:text-xl mb-1">Missões ativas</h2> <p class="text-sm text-zinc-700 mb-4">Crie áreas de foco (ex: “Programação”, “Finanças”) e adicione missões rápidas.</p> <div class="mt-2">`,
+  );
   AreaManager($$renderer);
+  $$renderer.push(`<!----></div></div></section> `);
+  BottomNav($$renderer);
   $$renderer.push(`<!---->`);
 }
 export { _page as default };

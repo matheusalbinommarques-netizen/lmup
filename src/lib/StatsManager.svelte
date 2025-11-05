@@ -1,22 +1,28 @@
 <!-- src/lib/StatsManager.svelte -->
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import {
     getTotalXpObservable,
     getStreakObservable,
     calcularNivel,
   } from '../services/xpService';
 
-  // Estados reativos com runes
+  // Estados reativos (runes)
   let totalXp = $state(0);
   let level = $state(1);
   let currentLevelXp = $state(0);
   let xpToNextLevel = $state(100);
   let streak = $state(0);
 
-  let unsubscribeFns: (() => void)[] = [];
+  // Progresso da barra (derivado)
+  const xpProgress = $derived(
+    xpToNextLevel > 0
+      ? Math.min(100, (currentLevelXp / xpToNextLevel) * 100)
+      : 0,
+  );
 
-  if (typeof window !== 'undefined') {
+  // Inscrições nos observables (somente no client)
+  onMount(() => {
     const sub1 = getTotalXpObservable().subscribe((xp) => {
       totalXp = xp;
 
@@ -30,20 +36,12 @@
       streak = count;
     });
 
-    unsubscribeFns = [() => sub1.unsubscribe(), () => sub2.unsubscribe()];
-  }
-
-  onDestroy(() => {
-    for (const fn of unsubscribeFns) {
-      fn();
-    }
+    // cleanup ao destruir o componente
+    return () => {
+      sub1.unsubscribe();
+      sub2.unsubscribe();
+    };
   });
-
-  const xpProgress = $derived(
-    xpToNextLevel > 0
-      ? Math.min(100, (currentLevelXp / xpToNextLevel) * 100)
-      : 0,
-  );
 </script>
 
 <section class="w-full mb-8">
