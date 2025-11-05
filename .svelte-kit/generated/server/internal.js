@@ -34,11 +34,11 @@ export const options = {
   service_worker_options: undefined,
   templates: {
     app: ({ head, body, assets, nonce, env }) =>
-      '<!doctype html>\r\n<html lang="pt-br">\r\n  <head>\r\n    <meta charset="utf-8" />\r\n    \r\n    <link rel="icon" href="/favicon.ico" />\r\n\r\n    <meta name="viewport" content="width=device-width, initial-scale=1" />\r\n    ' +
+      '<!doctype html>\r\n<html lang="pt-br">\r\n  <head>\r\n    <meta charset="utf-8" />\r\n    <link rel="icon" href="/favicon.ico" />\r\n    <meta name="viewport" content="width=device-width, initial-scale=1" />\r\n    ' +
       head +
-      '\r\n  </head>\r\n  <body data-sveltekit-preload-data="hover" class="bg-background text-text">\r\n    <div style="display: contents">' +
+      '\r\n  </head>\r\n  <body data-sveltekit-preload-data="hover" class="bg-background text-text">\r\n    <div style="display: contents">\r\n      ' +
       body +
-      '</div>\r\n  </body>\r\n</html>',
+      '\r\n    </div>\r\n  </body>\r\n</html>',
     error: ({ status, message }) =>
       '<!doctype html>\n<html lang="en">\n\t<head>\n\t\t<meta charset="utf-8" />\n\t\t<title>' +
       message +
@@ -48,7 +48,7 @@ export const options = {
       message +
       '</h1>\n\t\t\t</div>\n\t\t</div>\n\t</body>\n</html>\n',
   },
-  version_hash: '1vdjysf',
+  version_hash: 'eqkkdu',
 };
 
 export async function get_hooks() {

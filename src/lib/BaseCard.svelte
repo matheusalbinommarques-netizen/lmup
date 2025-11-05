@@ -1,37 +1,29 @@
 <script>
-  let {
-    variant = 'primary',
-    class: userClass = '',
-    type = 'button',
+  // Capturamos 'children' (para o slot) e '...rest' (para eventos como 'onclick')
+  let { children, ...rest } = $props();
 
-    // --- CORREÇÃO (ERRO 3) ---
-    // A <slot> agora é passada como a prop 'children'
-    children,
+  // --- CORREÇÃO AQUI ---
+  // A lógica '.self' (para não capturar cliques de input)
+  // é tratada manualmente, como você sugeriu.
+  function handleKeydown(event) {
+    // Se o evento não for no próprio card, ignore.
+    if (event.target !== event.currentTarget) {
+      return;
+    }
 
-    // --- CORREÇÃO (ERRO 2) ---
-    // 'on:click' está depreciado, recebemos 'onclick' como uma prop
-    onclick = () => {},
-
-    ...rest
-  } = $props();
-
-  const variants = {
-    primary:
-      'bg-primary text-white hover:bg-primary-light focus-visible:ring-primary',
-    success:
-      'bg-success text-white hover:bg-success/80 focus-visible:ring-success',
-    danger: 'bg-danger text-white hover:bg-danger/80 focus-visible:ring-danger',
-  };
-
-  let baseClasses =
-    'px-4 py-2 rounded-md font-semibold text-sm shadow-md transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50';
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      event.currentTarget.click();
+    }
+  }
 </script>
 
-<button
-  {type}
+<div
+  class="base-card bg-card border border-border rounded-md p-4 shadow-lg focus-visible:outline-primary focus-visible:outline-offset-2"
+  role="button"
+  tabindex="0"
   {...rest}
-  class="{baseClasses} {variants[variant]} {userClass}"
-  {onclick}
+  onkeydown={handleKeydown}
 >
   {@render children?.()}
-</button>
+</div>

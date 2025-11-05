@@ -1,77 +1,70 @@
 import { db } from './db.js';
+import { saveAs } from 'file-saver';
 
-/**
- * Exporta todos os dados do Dexie para uma string JSON.
- * @returns {Promise<string>} String JSON contendo todas as tabelas.
- */
-export async function exportData() {
+// --- CORREÇÃO AQUI ---
+export async function exportarDados() {
   try {
-    // Nomes de todas as tabelas que queremos exportar
-    // (areas, itens, meta)
-    const tables = ['areas', 'itens', 'meta'];
+    const allData = {};
 
-    const exportObject = {};
+    // Obter todas as tabelas (stores) do Dexie
+    for (const table of db.tables) {
+      allData[table.name] = await table.toArray();
+    }
 
-    // Usa Promise.all para carregar todas as tabelas em paralelo
-    await Promise.all(
-      tables.map(async (tableName) => {
-        // Pega todos os itens da tabela
-        const data = await db[tableName].toArray();
-        exportObject[tableName] = data;
-      }),
-    );
+    const json = JSON.stringify(allData, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
 
-    // Retorna o objeto completo como uma string JSON formatada
-    return JSON.stringify(exportObject, null, 2);
-  } catch (e) {
-    console.error('Falha ao exportar dados:', e);
-    // Lança o erro para o componente de UI tratar
-    throw new Error('Falha na exportação de dados.');
+    saveAs(blob, 'level-me-up-backup.json');
+
+    console.log('Dados exportados com sucesso!');
+  } catch (error) {
+    console.error('Erro ao exportar dados:', error);
+    alert('Erro ao exportar dados. Verifique o console.');
   }
 }
 
-/**
- * Importa dados de uma string JSON, substituindo o conteúdo atual do DB.
- * @param {string} jsonString - String JSON contendo os dados das tabelas.
- * @returns {Promise<void>}
- */
-export async function importData(jsonString) {
+// --- CORREÇÃO AQUI ---
+export async function importarDados() {
   try {
-    const importObject = JSON.parse(jsonString);
-    const tables = Object.keys(importObject);
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json';
 
-    // Usa uma transação 'rw' (read-write) para garantir que todas
-    // as operações (limpar e adicionar) sejam atômicas.
-    await db.transaction('rw', db.tables, async () => {
-      // 1. Limpa todas as tabelas
-      await Promise.all(
-        tables.map(async (tableName) => {
-          // Apenas limpa tabelas que existem no schema atual
-          if (db[tableName]) {
-            await db[tableName].clear();
-          }
-        }),
-      );
+    input.onchange = async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
 
-      // 2. Adiciona os novos dados
-      await Promise.all(
-        tables.map(async (tableName) => {
-          if (
-            db[tableName] &&
-            importObject[tableName] &&
-            importObject[tableName].length > 0
-          ) {
-            // Usa 'bulkPut' para inserção rápida de múltiplos itens
-            await db[tableName].bulkPut(importObject[tableName]);
-          }
-        }),
-      );
-    });
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const json = e.target.result;
+          const dados = JSON.parse(json);
 
-    // Sucesso
-  } catch (e) {
-    console.error('Falha ao importar dados:', e);
-    // Lança o erro para o componente de UI tratar
-    throw new Error('Falha na importação de dados. O arquivo JSON é inválido?');
+          // Limpar e importar dados para cada tabela
+          await db.transaction('rw', db.tables, async () => {
+            for (const tableName in dados) {
+              if (db[tableName]) {
+                await db[tableName].clear();
+                await db[tableName].bulkAdd(dados[tableName]);
+              }
+            }
+          });
+
+          console.log('Dados importados com sucesso!');
+          alert('Dados importados com sucesso! A página será recarregada.');
+          window.location.reload();
+        } catch (readError) {
+          console.error('Erro ao ler ou importar o arquivo:', readError);
+          alert(
+            'Erro ao importar dados. O arquivo pode estar corrompido. Verifique o console.',
+          );
+        }
+      };
+      reader.readAsText(file);
+    };
+
+    input.click();
+  } catch (error) {
+    console.error('Erro ao iniciar a importação:', error);
   }
 }
