@@ -1,22 +1,28 @@
 <!-- src/lib/StatsManager.svelte -->
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import {
     getTotalXpObservable,
     getStreakObservable,
     calcularNivel,
   } from '../services/xpService';
 
-  // Estados reativos com runes (sempre let)
+  // Estados reativos (runes)
   let totalXp = $state(0);
   let level = $state(1);
   let currentLevelXp = $state(0);
   let xpToNextLevel = $state(100);
   let streak = $state(0);
 
-  let unsubscribeFns: (() => void)[] = [];
+  // Progresso da barra (derivado)
+  const xpProgress = $derived(
+    xpToNextLevel > 0
+      ? Math.min(100, (currentLevelXp / xpToNextLevel) * 100)
+      : 0,
+  );
 
-  if (typeof window !== 'undefined') {
+  // Inscrições nos observables (somente no client)
+  onMount(() => {
     const sub1 = getTotalXpObservable().subscribe((xp) => {
       totalXp = xp;
 
@@ -30,66 +36,106 @@
       streak = count;
     });
 
-    unsubscribeFns = [() => sub1.unsubscribe(), () => sub2.unsubscribe()];
-  }
-
-  onDestroy(() => {
-    for (const fn of unsubscribeFns) fn();
+    // cleanup ao destruir o componente
+    return () => {
+      sub1.unsubscribe();
+      sub2.unsubscribe();
+    };
   });
-
-  const xpProgress = $derived(
-    xpToNextLevel > 0
-      ? Math.min(100, (currentLevelXp / xpToNextLevel) * 100)
-      : 0,
-  );
 </script>
 
-<section class="w-full">
+<section class="w-full mb-8">
   <div
-    class="mx-auto max-w-3xl rounded-xl bg-surface shadow-md p-6 flex flex-col gap-4 border border-border"
+    class="mx-auto max-w-3xl overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-b from-slate-950 via-slate-900 to-black shadow-2xl"
   >
-    <header class="flex items-center justify-between">
-      <div>
-        <h1 class="text-2xl font-bold text-primary">Level Me Up!</h1>
-        <p class="text-sm text-text-secondary">Seu progresso geral</p>
-      </div>
-
-      <div class="text-right">
-        <div class="text-xs uppercase tracking-wide text-text-secondary">
-          STREAK
-        </div>
-        <div class="mt-1 flex items-center justify-end gap-1">
-          <span class="text-2xl">🔥</span>
-          <span class="text-xl font-semibold">{streak}</span>
-        </div>
-      </div>
-    </header>
-
-    <div class="grid gap-4 md:grid-cols-[auto,1fr] items-center">
-      <div class="flex flex-col gap-1">
-        <span class="text-xs uppercase tracking-wide text-text-secondary"
-          >Nível</span
-        >
-        <span class="text-4xl font-bold text-accent">{level}</span>
-        <span class="text-xs text-text-secondary">
-          XP total:
-          <span class="font-semibold">{totalXp}</span>
-        </span>
-      </div>
-
-      <div class="flex flex-col gap-2">
+    <div class="relative px-6 pt-6 pb-7 md:px-8 md:pt-8 md:pb-8">
+      <!-- brilho / mapa de fundo -->
+      <div
+        class="pointer-events-none absolute inset-0 opacity-40"
+        aria-hidden="true"
+      >
         <div
-          class="flex items-center justify-between text-xs text-text-secondary"
+          class="h-full w-full bg-[radial-gradient(circle_at_top,_#3b82f6_0,_transparent_55%)]"
+        ></div>
+      </div>
+
+      <!-- Título -->
+      <div class="relative flex flex-col items-center gap-3 text-center">
+        <p class="text-[0.65rem] uppercase tracking-[0.25em] text-primary/70">
+          Reino do aprendizado
+        </p>
+        <h1 class="text-3xl font-extrabold text-primary drop-shadow">
+          Level Me Up!
+        </h1>
+        <p class="max-w-md text-xs text-text-secondary">
+          Complete missões todos os dias para evoluir de nível e manter sua
+          chama de foco acesa.
+        </p>
+      </div>
+
+      <!-- Avatar / nível -->
+      <div class="relative mt-6 flex flex-col items-center gap-4">
+        <div
+          class="flex h-24 w-24 items-center justify-center rounded-full border-4 border-amber-400 bg-slate-950/90 shadow-[0_0_40px_rgba(251,191,36,0.7)]"
         >
-          <span>Progresso do nível</span>
+          <span class="text-3xl">🛡️</span>
+        </div>
+
+        <div
+          class="inline-flex items-baseline gap-2 rounded-full border border-white/10 bg-black/40 px-4 py-1"
+        >
+          <span
+            class="text-[0.65rem] uppercase tracking-widest text-text-secondary"
+            >Nível</span
+          >
+          <span class="text-2xl font-bold text-white">{level}</span>
+        </div>
+
+        <div class="text-xs text-text-secondary">
+          XP total:
+          <span class="font-semibold text-primary">{totalXp}</span>
+        </div>
+      </div>
+
+      <!-- Barra de progresso -->
+      <div class="relative mt-6 w-full space-y-2">
+        <div
+          class="flex items-center justify-between text-[0.7rem] text-text-secondary"
+        >
+          <span>Progresso até o próximo nível</span>
           <span>{currentLevelXp} / {xpToNextLevel} XP</span>
         </div>
 
-        <div class="h-2 rounded-full bg-surface-elevated overflow-hidden">
+        <div
+          class="h-3 w-full overflow-hidden rounded-full border border-slate-800 bg-slate-900"
+        >
           <div
-            class="h-full bg-green-500 transition-[width] duration-300 ease-out"
+            class="h-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-lime-400 transition-[width] duration-500 ease-out"
             style={`width: ${xpProgress}%;`}
           ></div>
+        </div>
+      </div>
+
+      <!-- Streak -->
+      <div
+        class="relative mt-6 flex flex-col gap-3 border-t border-white/5 pt-4 text-xs text-text-secondary md:flex-row md:items-center md:justify-between"
+      >
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🔥</span>
+          <div>
+            <div class="font-semibold text-text">Streak de dias</div>
+            <div class="text-[0.7rem]">
+              Faça pelo menos uma missão por dia para manter a chama acesa.
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-baseline justify-end gap-1">
+          <span class="text-3xl font-bold text-primary">{streak}</span>
+          <span
+            class="text-[0.7rem] uppercase tracking-[0.2em] text-text-secondary"
+            >dias</span
+          >
         </div>
       </div>
     </div>
