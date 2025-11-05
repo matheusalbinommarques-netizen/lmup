@@ -4,6 +4,7 @@ import globals from 'globals';
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import svelte from 'eslint-plugin-svelte';
+import svelteParser from 'svelte-eslint-parser';
 
 export default [
   // 1) Arquivos ignorados
@@ -38,10 +39,11 @@ export default [
   // 5) Regras recomendadas de Svelte
   ...svelte.configs['flat/recommended'],
 
-  // 6) Dizer ao plugin Svelte que o <script lang="ts"> usa o parser do TS
+  // 6) Dizer explicitamente que .svelte usa o parser do Svelte + TS
   {
     files: ['**/*.svelte'],
     languageOptions: {
+      parser: svelteParser,
       parserOptions: {
         parser: tseslint.parser,
         svelteFeatures: {

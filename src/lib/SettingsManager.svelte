@@ -10,9 +10,7 @@
   </h2>
 
   <div class="space-y-6">
-    <div
-      class="setting-item p-4 bg-background border border-border rounded-lg"
-    >
+    <div class="setting-item p-4 bg-background border border-border rounded-lg">
       <div class="text-lg font-semibold text-text-secondary">
         Backup e Restauração
       </div>

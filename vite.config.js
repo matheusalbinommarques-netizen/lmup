@@ -1,3 +1,4 @@
+// vite.config.js
 import { defineConfig } from 'vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -17,8 +18,12 @@ export default defineConfig({
         name: 'Level Me Up LMU',
         short_name: 'LMU',
         description: 'Um PWA para gamificar o aprendizado e o desenvolvimento.',
-        theme_color: '#ffffff',
+        // alinhado com tailwind.config.js
+        background_color: '#1a1a1a', // mesma cor de background
+        theme_color: '#3b82f6', // mesma cor primary
         display: 'standalone',
+        start_url: '/',
+        scope: '/',
         icons: [
           {
             src: 'pwa-192x192.png',
