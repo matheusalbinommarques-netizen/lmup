@@ -4,9 +4,9 @@ import adapter from '@sveltejs/adapter-auto';
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
   // --- CORREÇÃO AQUI ---
-  // De volta ao nível raiz, onde ele pertence.
+  // De volta ao nível raiz.
   compilerOptions: {
-    runes: true, // Ativa o modo Svelte 5
+    runes: true,
   },
   // --------------------
 
