@@ -1,35 +1,31 @@
-<script>
+<script lang="ts">
   import { db } from '../services/db.js';
   import { liveQuery } from 'dexie';
   import { browser } from '$app/environment';
-  // import BaseCard from './BaseCard.svelte'; // <-- CORREÇÃO: Linha removida
   import BaseButton from './BaseButton.svelte';
   import ItemManager from './ItemManager.svelte';
 
   let newAreaName = $state('');
   let areas = $state([]);
 
-  // ... (o resto do script está correto) ...
   $effect(() => {
     if (!browser) {
       areas = [];
       return;
     }
-    const observable = liveQuery(() => db['areas'].toArray());
+    const observable = liveQuery(() => db.areas.toArray());
     const subscription = observable.subscribe((newAreas) => {
       areas = newAreas;
     });
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   });
 
-  async function handleAddArea(event) {
+  async function handleAddArea(event: Event) {
     event.preventDefault();
     const name = newAreaName.trim();
     if (!name || !db) return;
     try {
-      await db['areas'].add({ nome: name });
+      await db.areas.add({ nome: name });
       newAreaName = '';
     } catch (e) {
       console.error('Falha ao adicionar área:', e);
@@ -50,9 +46,7 @@
     />
 
     <BaseButton type="submit" variant="primary">
-      {#snippet children()}
-        Adicionar Área
-      {/snippet}
+      Adicionar Área
     </BaseButton>
   </form>
 

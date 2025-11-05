@@ -1,21 +1,17 @@
-import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 import adapter from '@sveltejs/adapter-auto';
+import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
-  // --- CORREÇÃO AQUI ---
-  // De volta ao nível raiz.
-  compilerOptions: {
-    runes: true,
-  },
-  // --------------------
+  preprocess: vitePreprocess({ script: true }),
 
-  preprocess: [vitePreprocess()],
+  compilerOptions: {
+    runes: true
+  },
 
   kit: {
-    adapter: adapter(),
-    // Removemos o compilerOptions daqui de dentro
-  },
+    adapter: adapter()
+  }
 };
 
 export default config;

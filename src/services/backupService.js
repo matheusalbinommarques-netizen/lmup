@@ -1,12 +1,10 @@
 import { db } from './db.js';
 import { saveAs } from 'file-saver';
 
-// --- CORREÇÃO AQUI ---
 export async function exportarDados() {
   try {
     const allData = {};
 
-    // Obter todas as tabelas (stores) do Dexie
     for (const table of db.tables) {
       allData[table.name] = await table.toArray();
     }
@@ -23,7 +21,6 @@ export async function exportarDados() {
   }
 }
 
-// --- CORREÇÃO AQUI ---
 export async function importarDados() {
   try {
     const input = document.createElement('input');
@@ -31,16 +28,20 @@ export async function importarDados() {
     input.accept = 'application/json';
 
     input.onchange = async (event) => {
-      const file = event.target.files[0];
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) return;
+      const file = target.files?.[0];
       if (!file) return;
 
       const reader = new FileReader();
       reader.onload = async (e) => {
         try {
-          const json = e.target.result;
-          const dados = JSON.parse(json);
+          const result = e.target?.result;
+          if (typeof result !== 'string') {
+            throw new Error('Resultado do leitor não é uma string');
+          }
+          const dados = JSON.parse(result);
 
-          // Limpar e importar dados para cada tabela
           await db.transaction('rw', db.tables, async () => {
             for (const tableName in dados) {
               if (db[tableName]) {
