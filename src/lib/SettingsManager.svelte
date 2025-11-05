@@ -2,32 +2,55 @@
   import { exportarDados, importarDados } from '../services/backupService.js';
   import BaseCard from './BaseCard.svelte';
   import BaseButton from './BaseButton.svelte';
+
+  let fileInput: HTMLInputElement | null = null;
+
+  async function handleExportClick() {
+    await exportarDados();
+  }
+
+  function handleImportClick() {
+    fileInput?.click();
+  }
+
+  async function handleFileChange(event: Event) {
+    const target = event.currentTarget as HTMLInputElement;
+    const file = target.files?.[0];
+
+    if (!file) return;
+
+    await importarDados(file);
+
+    // permite escolher o mesmo arquivo de novo, se quiser
+    target.value = '';
+  }
 </script>
 
-<BaseCard>
-  <h2 class="text-2xl font-semibold text-center text-text mb-6">
-    Configurações
-  </h2>
-
+<BaseCard title="Configurações & Backup">
   <div class="space-y-6">
-    <div class="setting-item p-4 bg-background border border-border rounded-lg">
-      <div class="text-lg font-semibold text-text-secondary">
-        Backup e Restauração
-      </div>
-      <p class="text-sm text-text-secondary mt-1 mb-4">
-        Exporte seus dados (áreas, itens, XP) como um arquivo JSON. Você pode
-        importá-lo de volta mais tarde ou em outro dispositivo.
+    <section class="space-y-2">
+      <h3 class="text-lg font-semibold text-text">Backup de dados</h3>
+      <p class="text-sm text-text-secondary">
+        Exporte seus dados para um arquivo JSON ou importe um backup existente.
       </p>
 
-      <div class="actions flex flex-col md:flex-row gap-4">
-        <BaseButton onclick={exportarDados} variant="primary">
-          Exportar Dados (JSON)
+      <div class="flex flex-wrap gap-3">
+        <BaseButton variant="secondary" onclick={handleExportClick}>
+          Exportar dados
         </BaseButton>
 
-        <BaseButton onclick={importarDados} variant="danger">
-          Importar Dados (JSON)
+        <BaseButton variant="secondary" onclick={handleImportClick}>
+          Importar backup
         </BaseButton>
+
+        <input
+          bind:this={fileInput}
+          type="file"
+          accept="application/json"
+          class="hidden"
+          onchange={handleFileChange}
+        />
       </div>
-    </div>
+    </section>
   </div>
 </BaseCard>

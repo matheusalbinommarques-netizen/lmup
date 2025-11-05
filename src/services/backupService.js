@@ -1,68 +1,82 @@
-import { db } from './db.js';
+// src/services/backupService.js
 import { browser } from '$app/environment';
+import { db } from './db';
 
+/**
+ * Exporta os dados do app (áreas e itens) para um arquivo JSON
+ * e dispara o download no navegador.
+ */
 export async function exportarDados() {
-  if (!browser) return;
+  if (!browser) {
+    // Em SSR / build estático não faz nada
+    return;
+  }
 
-  const [areas, itens, meta] = await Promise.all([
-    db.areas?.toArray?.() ?? [],
-    db.itens?.toArray?.() ?? [],
-    db.meta?.toArray?.() ?? [],
+  // Busca tudo do IndexedDB
+  const [areas, items] = await Promise.all([
+    db.areas.toArray(),
+    db.items.toArray(),
   ]);
 
-  const payload = { areas, itens, meta };
+  const backupPayload = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    areas,
+    items,
+  };
 
-  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+  const blob = new Blob([JSON.stringify(backupPayload, null, 2)], {
     type: 'application/json;charset=utf-8',
   });
 
-  const { default: fileSaver } = await import('file-saver');
-  const { saveAs } = fileSaver;
+  // import dinâmico para evitar problemas com CommonJS + SSR
+  const mod = await import('file-saver');
+  const saveAs = mod.saveAs || (mod.default && mod.default.saveAs);
 
-  const hoje = new Date().toISOString().slice(0, 10);
-  saveAs(blob, `lmup-backup-${hoje}.json`);
+  if (!saveAs) {
+    console.error('Não foi possível carregar saveAs de file-saver');
+    return;
+  }
+
+  saveAs(blob, 'lmup-backup.json');
 }
 
-export async function importarDados() {
-  if (!browser) return;
+/**
+ * Importa um arquivo JSON de backup e substitui os dados atuais.
+ * @param {File} file
+ */
+export async function importarDados(file) {
+  if (!browser) {
+    return;
+  }
 
-  return new Promise((resolve, reject) => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'application/json';
+  const text = await file.text();
+  let data;
 
-    input.onchange = async () => {
-      const file = input.files?.[0];
-      if (!file) return;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    console.error('Erro ao parsear backup:', e);
+    throw new Error('Arquivo de backup inválido');
+  }
 
-      try {
-        const text = await file.text();
-        const data = JSON.parse(text ?? '{}');
+  if (!data || typeof data !== 'object') {
+    throw new Error('Arquivo de backup inválido');
+  }
 
-        await db.transaction('rw', db.areas, db.itens, db.meta, async () => {
-          if (Array.isArray(data.areas)) {
-            await db.areas.clear();
-            await db.areas.bulkAdd(data.areas);
-          }
+  const areas = Array.isArray(data.areas) ? data.areas : [];
+  const items = Array.isArray(data.items) ? data.items : [];
 
-          if (Array.isArray(data.itens)) {
-            await db.itens.clear();
-            await db.itens.bulkAdd(data.itens);
-          }
+  // Limpa e repovoa o banco
+  await db.transaction('rw', db.areas, db.items, async () => {
+    await Promise.all([db.areas.clear(), db.items.clear()]);
 
-          if (Array.isArray(data.meta)) {
-            await db.meta.clear();
-            await db.meta.bulkAdd(data.meta);
-          }
-        });
+    if (areas.length) {
+      await db.areas.bulkAdd(areas);
+    }
 
-        resolve();
-      } catch (err) {
-        console.error('Erro ao importar dados', err);
-        reject(err);
-      }
-    };
-
-    input.click();
+    if (items.length) {
+      await db.items.bulkAdd(items);
+    }
   });
 }

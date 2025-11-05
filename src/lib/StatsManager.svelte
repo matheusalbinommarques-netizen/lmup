@@ -1,66 +1,97 @@
-<script>
-  import { onMount } from 'svelte';
+<!-- src/lib/StatsManager.svelte -->
+<script lang="ts">
+  import { onDestroy } from 'svelte';
   import {
     getTotalXpObservable,
     getStreakObservable,
     calcularNivel,
-  } from '../services/xpService.js';
+  } from '../services/xpService';
 
-  // --- ESTADO ---
+  // Estados reativos com runes (sempre let)
   let totalXp = $state(0);
-  let streak = $state({ count: 0 });
+  let level = $state(1);
+  let currentLevelXp = $state(0);
+  let xpToNextLevel = $state(100);
+  let streak = $state(0);
 
-  // 'onMount' SÓ é executado no navegador (cliente)
-  onMount(() => {
-    const xpSub = getTotalXpObservable().subscribe((newXp) => {
-      totalXp = newXp;
+  let unsubscribeFns: (() => void)[] = [];
+
+  if (typeof window !== 'undefined') {
+    const sub1 = getTotalXpObservable().subscribe((xp) => {
+      totalXp = xp;
+
+      const info = calcularNivel(xp);
+      level = info.level;
+      currentLevelXp = info.currentLevelXp;
+      xpToNextLevel = info.xpToNextLevel;
     });
 
-    const streakSub = getStreakObservable().subscribe((newStreak) => {
-      streak = newStreak;
+    const sub2 = getStreakObservable().subscribe(({ count }) => {
+      streak = count;
     });
 
-    return () => {
-      xpSub.unsubscribe();
-      streakSub.unsubscribe();
-    };
+    unsubscribeFns = [() => sub1.unsubscribe(), () => sub2.unsubscribe()];
+  }
+
+  onDestroy(() => {
+    for (const fn of unsubscribeFns) fn();
   });
 
-  // O 'stats' derivado funciona perfeitamente
-  let stats = $derived(calcularNivel(totalXp));
+  const xpProgress = $derived(
+    xpToNextLevel > 0
+      ? Math.min(100, (currentLevelXp / xpToNextLevel) * 100)
+      : 0,
+  );
 </script>
 
-<div
-  class="stats-manager bg-card border border-border rounded-lg p-4 md:p-6 shadow-lg mb-6 flex flex-col md:flex-row justify-between items-center gap-4"
->
-  <div class="stat-item flex flex-col items-center min-w-[80px]">
-    <span class="label text-xs font-semibold text-text-secondary uppercase mb-1"
-      >NÍVEL</span
-    >
-    <span class="value text-3xl font-bold text-primary">{stats.nivel}</span>
-  </div>
+<section class="w-full">
+  <div
+    class="mx-auto max-w-3xl rounded-xl bg-surface shadow-md p-6 flex flex-col gap-4 border border-border"
+  >
+    <header class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-primary">Level Me Up!</h1>
+        <p class="text-sm text-text-secondary">Seu progresso geral</p>
+      </div>
 
-  <div class="xp-bar-container w-full flex-grow flex flex-col items-center">
-    <span class="label text-xs font-semibold text-text-secondary uppercase mb-1"
-      >XP TOTAL: {totalXp}</span
-    >
-    <div
-      class="xp-bar w-full h-3 bg-background border border-border rounded-full overflow-hidden mb-1"
-    >
-      <div
-        class="xp-progress h-full bg-success transition-all duration-300 ease-out"
-        style="width: {stats.progresso}%;"
-      ></div>
+      <div class="text-right">
+        <div class="text-xs uppercase tracking-wide text-text-secondary">
+          STREAK
+        </div>
+        <div class="mt-1 flex items-center justify-end gap-1">
+          <span class="text-2xl">🔥</span>
+          <span class="text-xl font-semibold">{streak}</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="grid gap-4 md:grid-cols-[auto,1fr] items-center">
+      <div class="flex flex-col gap-1">
+        <span class="text-xs uppercase tracking-wide text-text-secondary"
+          >Nível</span
+        >
+        <span class="text-4xl font-bold text-accent">{level}</span>
+        <span class="text-xs text-text-secondary">
+          XP total:
+          <span class="font-semibold">{totalXp}</span>
+        </span>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <div
+          class="flex items-center justify-between text-xs text-text-secondary"
+        >
+          <span>Progresso do nível</span>
+          <span>{currentLevelXp} / {xpToNextLevel} XP</span>
+        </div>
+
+        <div class="h-2 rounded-full bg-surface-elevated overflow-hidden">
+          <div
+            class="h-full bg-green-500 transition-[width] duration-300 ease-out"
+            style={`width: ${xpProgress}%;`}
+          ></div>
+        </div>
+      </div>
     </div>
-    <span class="progress-label text-xs text-text-secondary font-medium">
-      {stats.xpAtualNesteNivel} / {stats.xpParaProximoNivel} XP
-    </span>
   </div>
-
-  <div class="stat-item flex flex-col items-center min-w-[80px]">
-    <span class="label text-xs font-semibold text-text-secondary uppercase mb-1"
-      >STREAK</span
-    >
-    <span class="value text-3xl font-bold text-danger">🔥 {streak.count}</span>
-  </div>
-</div>
+</section>

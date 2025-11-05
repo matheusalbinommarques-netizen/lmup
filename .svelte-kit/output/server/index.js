@@ -1,4 +1,4 @@
-import { B as BROWSER } from './chunks/false.js';
+import { B as BROWSER } from './chunks/environment.js';
 import { json, text, error } from '@sveltejs/kit';
 import {
   HttpError,
@@ -18,7 +18,7 @@ import {
   r as relative,
   o as override,
   d as reset,
-} from './chunks/environment.js';
+} from './chunks/server.js';
 import * as devalue from 'devalue';
 import {
   m as make_trackable,

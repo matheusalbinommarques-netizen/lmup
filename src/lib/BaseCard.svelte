@@ -1,40 +1,25 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import type {
-    KeyboardEventHandler,
-    MouseEventHandler,
-  } from 'svelte/elements';
 
-  let {
-    children,
-    onclick = () => {},
-    onkeydown = () => {},
-    ...rest
-  } = $props<{
+  const props = $props<{
+    title?: string;
+    class?: string;
     children?: Snippet;
-    onclick?: MouseEventHandler<HTMLDivElement>;
-    onkeydown?: KeyboardEventHandler<HTMLDivElement>;
   }>();
-
-  function handleKeydown(event: KeyboardEvent) {
-    if (event.target !== event.currentTarget) {
-      return;
-    }
-
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      (event.currentTarget as HTMLElement).click();
-    }
-  }
 </script>
 
-<div
-  class="base-card bg-card border border-border rounded-md p-4 shadow-lg focus-visible:outline-primary focus-visible:outline-offset-2"
-  role="button"
-  tabindex="0"
-  {...rest}
-  {onclick}
-  onkeydown={handleKeydown || onkeydown}
+<section
+  class={`bg-surface rounded-xl shadow-lg border border-border/60 p-6 md:p-8 space-y-4 ${props.class ?? ''}`}
 >
-  {@render children?.()}
-</div>
+  {#if props.title}
+    <header class="flex items-center justify-between">
+      <h2 class="text-xl font-semibold text-text">
+        {props.title}
+      </h2>
+    </header>
+  {/if}
+
+  <div>
+    {@render props.children?.()}
+  </div>
+</section>

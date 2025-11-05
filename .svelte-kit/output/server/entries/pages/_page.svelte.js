@@ -1,118 +1,32 @@
 import 'clsx';
 import {
-  Y as attr,
-  Z as ensure_array_like,
-  _ as attr_style,
-  V as stringify,
+  x as attr,
+  w as ensure_array_like,
+  F as attr_style,
 } from '../../chunks/index2.js';
+import '../../chunks/db.js';
 import 'dexie';
-import { B as BaseCard, a as BaseButton } from '../../chunks/BaseCard.js';
+import { a as ssr_context, e as escape_html } from '../../chunks/context.js';
 import { BehaviorSubject } from 'rxjs';
-import { e as escape_html } from '../../chunks/context.js';
-const XP_POR_NIVEL_BASE = 100;
-const FATOR_CRESCIMENTO = 1.5;
-new BehaviorSubject(0);
-new BehaviorSubject({ count: 0, lastCheckin: null });
-function calcularNivel(xp) {
-  let nivel = 0;
-  let xpParaProximoNivel = XP_POR_NIVEL_BASE;
-  let xpAcumulado = 0;
-  while (xp >= xpAcumulado + xpParaProximoNivel) {
-    xpAcumulado += xpParaProximoNivel;
-    nivel++;
-    xpParaProximoNivel = Math.floor(xpParaProximoNivel * FATOR_CRESCIMENTO);
-  }
-  const xpAtualNesteNivel = xp - xpAcumulado;
-  const progresso = (xpAtualNesteNivel / xpParaProximoNivel) * 100;
-  return {
-    nivel,
-    progresso,
-    xpAtualNesteNivel,
-    xpParaProximoNivel,
-  };
-}
-function ItemManager($$renderer, $$props) {
-  $$renderer.component(($$renderer2) => {
-    let { area } = $$props;
-    let newItemName = '';
-    let items = [];
-    async function handleCompleteItem(item) {
-      return;
-    }
-    BaseCard($$renderer2, {
-      children: ($$renderer3) => {
-        $$renderer3.push(
-          `<h3 class="text-xl font-semibold text-center text-text mb-4">${escape_html(area.nome)}</h3> <form class="flex gap-2 mb-4"><input type="text" placeholder="Nome do novo item (ex: Estudar Svelte 5)"${attr('value', newItemName)} class="flex-grow bg-background border border-border text-text rounded-md p-2 focus:ring-2 focus:ring-primary focus:outline-none"/> `,
-        );
-        BaseButton($$renderer3, {
-          type: 'submit',
-          variant: 'primary',
-          children: ($$renderer4) => {
-            $$renderer4.push(`<!---->Adicionar Item`);
-          },
-          $$slots: { default: true },
-        });
-        $$renderer3.push(
-          `<!----></form> <div class="item-list flex flex-col gap-3">`,
-        );
-        if (items.length > 0) {
-          $$renderer3.push('<!--[-->');
-          $$renderer3.push(`<!--[-->`);
-          const each_array = ensure_array_like(items);
-          for (
-            let $$index = 0, $$length = each_array.length;
-            $$index < $$length;
-            $$index++
-          ) {
-            let item = each_array[$$index];
-            $$renderer3.push(
-              `<div class="item flex justify-between items-center p-3 bg-background rounded-md border border-border"><span class="text-text">${escape_html(item.nome)} <span class="text-sm text-text-secondary ml-2">(+${escape_html(item.xp)} XP)</span></span> `,
-            );
-            BaseButton($$renderer3, {
-              onclick: () => handleCompleteItem(),
-              variant: 'success',
-              class: 'py-1 px-3 text-sm',
-              children: ($$renderer4) => {
-                $$renderer4.push(`<!---->Completar`);
-              },
-              $$slots: { default: true },
-            });
-            $$renderer3.push(`<!----></div>`);
-          }
-          $$renderer3.push(`<!--]-->`);
-        } else {
-          $$renderer3.push('<!--[!-->');
-          $$renderer3.push(
-            `<p class="empty-message text-center text-text-secondary p-4">Nenhum item cadastrado para esta área.</p>`,
-          );
-        }
-        $$renderer3.push(`<!--]--></div>`);
-      },
-      $$slots: { default: true },
-    });
-  });
+function onDestroy(fn) {
+  /** @type {SSRContext} */
+  ssr_context.r.on_destroy(fn);
 }
 function AreaManager($$renderer, $$props) {
   $$renderer.component(($$renderer2) => {
-    let newAreaName = '';
     let areas = [];
+    let novaArea = '';
     $$renderer2.push(
-      `<div class="area-manager"><form class="add-form flex gap-2 mb-6 p-4 bg-card border border-border rounded-lg shadow"><input type="text" placeholder="Nome da nova área (ex: SvelteKit, Finanças)"${attr('value', newAreaName)} class="flex-grow bg-background border border-border text-text rounded-md p-2 focus:ring-2 focus:ring-primary focus:outline-none"/> `,
+      `<section class="space-y-4"><div class="flex gap-2"><input class="w-full rounded-md border bg-transparent px-3 py-2" placeholder="Nome da nova área (ex: SvelteKit, Finanças)"${attr('value', novaArea)}/> <button class="px-4 py-2 rounded-md bg-blue-600 text-white">Adicionar Área</button></div> `,
     );
-    BaseButton($$renderer2, {
-      type: 'submit',
-      variant: 'primary',
-      children: ($$renderer3) => {
-        $$renderer3.push(`<!---->Adicionar Área`);
-      },
-      $$slots: { default: true },
-    });
-    $$renderer2.push(
-      `<!----></form> <div class="area-list flex flex-col gap-6">`,
-    );
-    if (areas.length > 0) {
+    if (areas.length === 0) {
       $$renderer2.push('<!--[-->');
-      $$renderer2.push(`<!--[-->`);
+      $$renderer2.push(
+        `<p class="text-sm opacity-70">Nenhuma área cadastrada ainda.</p>`,
+      );
+    } else {
+      $$renderer2.push('<!--[!-->');
+      $$renderer2.push(`<ul class="space-y-2"><!--[-->`);
       const each_array = ensure_array_like(areas);
       for (
         let $$index = 0, $$length = each_array.length;
@@ -120,25 +34,97 @@ function AreaManager($$renderer, $$props) {
         $$index++
       ) {
         let area = each_array[$$index];
-        ItemManager($$renderer2, { area });
+        $$renderer2.push(
+          `<li class="rounded-md border p-3 flex items-center justify-between"><span class="font-medium">${escape_html(area.nome)}</span> <button class="text-sm text-red-500">remover</button></li>`,
+        );
       }
-      $$renderer2.push(`<!--]-->`);
-    } else {
-      $$renderer2.push('<!--[!-->');
-      $$renderer2.push(
-        `<p class="empty-message text-center text-text-secondary p-6">Nenhuma área de foco cadastrada. Crie uma acima para começar!</p>`,
-      );
+      $$renderer2.push(`<!--]--></ul>`);
     }
-    $$renderer2.push(`<!--]--></div></div>`);
+    $$renderer2.push(`<!--]--></section>`);
   });
+}
+const STORAGE_KEYS = {
+  totalXp: 'lmup:totalXp',
+  streak: 'lmup:streak',
+  lastCheckin: 'lmup:lastCheckin',
+};
+const totalXp$ = new BehaviorSubject(0);
+const streak$ = new BehaviorSubject({
+  count: 0,
+  lastCheckin: null,
+});
+function safeGetItem(key) {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function initFromStorage() {
+  const storedXp = Number(safeGetItem(STORAGE_KEYS.totalXp) ?? '0');
+  const storedStreak = Number(safeGetItem(STORAGE_KEYS.streak) ?? '0');
+  const storedLastCheckin = safeGetItem(STORAGE_KEYS.lastCheckin);
+  totalXp$.next(Number.isFinite(storedXp) ? storedXp : 0);
+  streak$.next({
+    count: Number.isFinite(storedStreak) ? storedStreak : 0,
+    lastCheckin: storedLastCheckin,
+  });
+}
+if (typeof window !== 'undefined') {
+  initFromStorage();
+}
+function getTotalXpObservable() {
+  return totalXp$.asObservable();
+}
+function getStreakObservable() {
+  return streak$.asObservable();
+}
+function calcularNivel(totalXp) {
+  let level = 1;
+  let remainingXp = totalXp;
+  let xpNextLevel = 100;
+  while (remainingXp >= xpNextLevel) {
+    remainingXp -= xpNextLevel;
+    level += 1;
+    xpNextLevel = 100 + (level - 1) * 50;
+  }
+  return {
+    level,
+    currentLevelXp: remainingXp,
+    xpToNextLevel: xpNextLevel,
+  };
 }
 function StatsManager($$renderer, $$props) {
   $$renderer.component(($$renderer2) => {
     let totalXp = 0;
-    let streak = { count: 0 };
-    let stats = calcularNivel(totalXp);
+    let level = 1;
+    let currentLevelXp = 0;
+    let xpToNextLevel = 100;
+    let streak = 0;
+    let unsubscribeFns = [];
+    if (typeof window !== 'undefined') {
+      const sub1 = getTotalXpObservable().subscribe((xp) => {
+        totalXp = xp;
+        const info = calcularNivel(xp);
+        level = info.level;
+        currentLevelXp = info.currentLevelXp;
+        xpToNextLevel = info.xpToNextLevel;
+      });
+      const sub2 = getStreakObservable().subscribe(({ count }) => {
+        streak = count;
+      });
+      unsubscribeFns = [() => sub1.unsubscribe(), () => sub2.unsubscribe()];
+    }
+    onDestroy(() => {
+      for (const fn of unsubscribeFns) fn();
+    });
+    const xpProgress =
+      xpToNextLevel > 0
+        ? Math.min(100, (currentLevelXp / xpToNextLevel) * 100)
+        : 0;
     $$renderer2.push(
-      `<div class="stats-manager bg-card border border-border rounded-lg p-4 md:p-6 shadow-lg mb-6 flex flex-col md:flex-row justify-between items-center gap-4"><div class="stat-item flex flex-col items-center min-w-[80px]"><span class="label text-xs font-semibold text-text-secondary uppercase mb-1">NÍVEL</span> <span class="value text-3xl font-bold text-primary">${escape_html(stats.nivel)}</span></div> <div class="xp-bar-container w-full flex-grow flex flex-col items-center"><span class="label text-xs font-semibold text-text-secondary uppercase mb-1">XP TOTAL: ${escape_html(totalXp)}</span> <div class="xp-bar w-full h-3 bg-background border border-border rounded-full overflow-hidden mb-1"><div class="xp-progress h-full bg-success transition-all duration-300 ease-out"${attr_style(`width: ${stringify(stats.progresso)}%;`)}></div></div> <span class="progress-label text-xs text-text-secondary font-medium">${escape_html(stats.xpAtualNesteNivel)} / ${escape_html(stats.xpParaProximoNivel)} XP</span></div> <div class="stat-item flex flex-col items-center min-w-[80px]"><span class="label text-xs font-semibold text-text-secondary uppercase mb-1">STREAK</span> <span class="value text-3xl font-bold text-danger">🔥 ${escape_html(streak.count)}</span></div></div>`,
+      `<section class="w-full"><div class="mx-auto max-w-3xl rounded-xl bg-surface shadow-md p-6 flex flex-col gap-4 border border-border"><header class="flex items-center justify-between"><div><h1 class="text-2xl font-bold text-primary">Level Me Up!</h1> <p class="text-sm text-text-secondary">Seu progresso geral</p></div> <div class="text-right"><div class="text-xs uppercase tracking-wide text-text-secondary">STREAK</div> <div class="mt-1 flex items-center justify-end gap-1"><span class="text-2xl">🔥</span> <span class="text-xl font-semibold">${escape_html(streak)}</span></div></div></header> <div class="grid gap-4 md:grid-cols-[auto,1fr] items-center"><div class="flex flex-col gap-1"><span class="text-xs uppercase tracking-wide text-text-secondary">Nível</span> <span class="text-4xl font-bold text-accent">${escape_html(level)}</span> <span class="text-xs text-text-secondary">XP total: <span class="font-semibold">${escape_html(totalXp)}</span></span></div> <div class="flex flex-col gap-2"><div class="flex items-center justify-between text-xs text-text-secondary"><span>Progresso do nível</span> <span>${escape_html(currentLevelXp)} / ${escape_html(xpToNextLevel)} XP</span></div> <div class="h-2 rounded-full bg-surface-elevated overflow-hidden"><div class="h-full bg-green-500 transition-[width] duration-300 ease-out"${attr_style(`width: ${xpProgress}%;`)}></div></div></div></div></div></section>`,
     );
   });
 }
