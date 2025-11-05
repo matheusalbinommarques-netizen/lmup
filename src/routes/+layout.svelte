@@ -1,9 +1,12 @@
 <script>
   import { page } from '$app/stores';
-  import '../app.css'; // Importando os estilos globais (que agora incluem o Tailwind)
-  // O 'tokens.css' não é mais necessário aqui, pois o Tailwind o gerencia.
+  import '../app.css';
 
   let appName = 'Level Me Up!';
+
+  // --- CORREÇÃO AQUI ---
+  // Capturamos o 'children' (o conteúdo da página)
+  let { children } = $props();
 </script>
 
 <main class="max-w-3xl mx-auto p-4 md:p-6">
@@ -30,5 +33,5 @@
     </a>
   </nav>
 
-  <slot />
+  {@render children?.()}
 </main>
