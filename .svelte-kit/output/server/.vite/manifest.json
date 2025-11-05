@@ -24,15 +24,11 @@
   },
   "_exports.js": {
     "file": "chunks/exports.js",
-    "name": "exports"
+    "name": "exports",
+    "imports": ["_equality.js"]
   },
   "_index.js": {
     "file": "chunks/index.js",
-    "name": "index",
-    "imports": ["_utils2.js", "_equality.js"]
-  },
-  "_index2.js": {
-    "file": "chunks/index2.js",
     "name": "index",
     "imports": ["_context.js"]
   },
@@ -40,9 +36,8 @@
     "file": "chunks/internal.js",
     "name": "internal",
     "imports": [
-      "_index2.js",
+      "_index.js",
       "_environment.js",
-      "_utils2.js",
       "_equality.js",
       "_context.js",
       "_server.js"
@@ -57,17 +52,8 @@
     "name": "shared",
     "imports": ["_utils.js"]
   },
-  "_state.svelte.js": {
-    "file": "chunks/state.svelte.js",
-    "name": "state.svelte",
-    "imports": ["_utils2.js"]
-  },
   "_utils.js": {
     "file": "chunks/utils.js",
-    "name": "utils"
-  },
-  "_utils2.js": {
-    "file": "chunks/utils2.js",
     "name": "utils"
   },
   "node_modules/@sveltejs/kit/src/runtime/app/server/remote/index.js": {
@@ -82,13 +68,7 @@
     "name": "entries/fallbacks/error.svelte",
     "src": "node_modules/@sveltejs/kit/src/runtime/components/svelte-5/error.svelte",
     "isEntry": true,
-    "imports": [
-      "_context.js",
-      "_state.svelte.js",
-      "_exports.js",
-      "_utils.js",
-      "_index.js"
-    ]
+    "imports": ["_context.js", "_equality.js", "_exports.js", "_utils.js"]
   },
   "node_modules/@sveltejs/kit/src/runtime/server/index.js": {
     "file": "index.js",
@@ -100,7 +80,6 @@
       "_server.js",
       "_exports.js",
       "_utils.js",
-      "_index.js",
       "_internal.js",
       "_shared.js"
     ]
@@ -110,15 +89,8 @@
     "name": "entries/pages/_layout.svelte",
     "src": "src/routes/+layout.svelte",
     "isEntry": true,
-    "imports": [
-      "_index2.js",
-      "_server.js",
-      "_context.js",
-      "_exports.js",
-      "_utils.js",
-      "_state.svelte.js"
-    ],
-    "css": ["_app/immutable/assets/_layout.CKDjWct-.css"]
+    "imports": ["_index.js", "_server.js", "_context.js"],
+    "css": ["_app/immutable/assets/_layout.06rEHnXv.css"]
   },
   "src/routes/+layout.ts": {
     "file": "entries/pages/_layout.ts.js",
@@ -131,13 +103,13 @@
     "name": "entries/pages/_page.svelte",
     "src": "src/routes/+page.svelte",
     "isEntry": true,
-    "imports": ["_index2.js", "_db.js", "_context.js"]
+    "imports": ["_index.js", "_db.js", "_context.js"]
   },
   "src/routes/config/+page.svelte": {
     "file": "entries/pages/config/_page.svelte.js",
     "name": "entries/pages/config/_page.svelte",
     "src": "src/routes/config/+page.svelte",
     "isEntry": true,
-    "imports": ["_db.js", "_index2.js", "_context.js"]
+    "imports": ["_db.js", "_index.js", "_context.js"]
   }
 }

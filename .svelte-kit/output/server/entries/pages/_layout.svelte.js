@@ -1,16 +1,13 @@
+import 'clsx';
 import {
   w as ensure_array_like,
   x as attr,
   y as attr_class,
   z as stringify,
-} from '../../chunks/index2.js';
+} from '../../chunks/index.js';
 import { b as base } from '../../chunks/server.js';
 import '@sveltejs/kit/internal/server';
 import { e as escape_html } from '../../chunks/context.js';
-import '@sveltejs/kit/internal';
-import '../../chunks/exports.js';
-import '../../chunks/utils.js';
-import '../../chunks/state.svelte.js';
 function BottomNav($$renderer, $$props) {
   let { currentPath = '/' } = $$props;
   const items = [
@@ -39,24 +36,13 @@ function BottomNav($$renderer, $$props) {
   $$renderer.push(`<!--]--></ul></nav>`);
 }
 function _layout($$renderer, $$props) {
-  $$renderer.component(($$renderer2) => {
-    let { children } = $$props;
-    let currentPath = '/';
-    $$renderer2.push(
-      `<main class="max-w-3xl mx-auto p-4 md:p-6 pb-24"><header class="text-center py-6"><h1 class="text-primary text-4xl font-bold">Level Me Up!</h1></header> <nav class="flex gap-6 mb-6 border-b-2 border-border"><a${attr(
-        'href',
-        // mantém currentPath sincronizado com o store `page`
-        `${base}/`,
-      )}${attr_class(
-        `py-2 text-lg font-semibold ${stringify(
-          'text-primary border-b-2 border-primary -mb-0.5',
-        )}`,
-      )}>Progresso</a> <a${attr('href', `${base}/config`)}${attr_class(`py-2 text-lg font-semibold ${stringify('text-text-secondary')}`)}>Configurações</a></nav> `,
-    );
-    children?.($$renderer2);
-    $$renderer2.push(`<!----></main> `);
-    BottomNav($$renderer2, { currentPath });
-    $$renderer2.push(`<!---->`);
-  });
+  let { children } = $$props;
+  $$renderer.push(
+    `<div class="min-h-screen flex flex-col bg-background text-text"><main class="flex-1 px-4 pt-8 pb-24 max-w-3xl mx-auto w-full">`,
+  );
+  children($$renderer);
+  $$renderer.push(`<!----></main> `);
+  BottomNav($$renderer, {});
+  $$renderer.push(`<!----></div>`);
 }
 export { _layout as default };

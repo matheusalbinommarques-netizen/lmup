@@ -9,7 +9,7 @@
 </script>
 
 <section
-  class={`bg-surface rounded-xl shadow-lg border border-border/60 p-6 md:p-8 space-y-4 ${props.class ?? ''}`}
+  class={`bg-card rounded-xl shadow-lg border border-border/60 p-6 md:p-8 space-y-4 ${props.class ?? ''}`}
 >
   {#if props.title}
     <header class="flex items-center justify-between">

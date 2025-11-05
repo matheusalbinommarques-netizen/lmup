@@ -34,22 +34,23 @@ import {
   u as is_passive_event,
   L as LEGACY_PROPS,
   v as render,
-} from './index2.js';
+} from './index.js';
 import { B as BROWSER } from './environment.js';
 import {
   r as run_all,
   d as deferred,
+  s as safe_equals,
+  e as equals,
   o as object_prototype,
   a as array_prototype,
   g as get_descriptor,
   b as get_prototype_of,
   i as is_array,
   c as is_extensible,
-  e as index_of,
-  f as define_property,
-  h as array_from,
-} from './utils2.js';
-import { s as safe_equals, e as equals } from './equality.js';
+  f as index_of,
+  h as define_property,
+  j as array_from,
+} from './equality.js';
 import 'clsx';
 import { s as setContext } from './context.js';
 import './server.js';
@@ -2839,7 +2840,7 @@ const options = {
       message +
       '</h1>\n			</div>\n		</div>\n	</body>\n</html>\n',
   },
-  version_hash: '1lzh0t4',
+  version_hash: 'gmo5ee',
 };
 async function get_hooks() {
   let handle;

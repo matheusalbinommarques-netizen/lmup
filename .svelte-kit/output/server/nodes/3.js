@@ -4,15 +4,15 @@ export const component = async () =>
   (component_cache ??= (await import('../entries/pages/config/_page.svelte.js'))
     .default);
 export const imports = [
-  '_app/immutable/nodes/3.Cdz5sLsJ.js',
-  '_app/immutable/chunks/BuOzf4wU.js',
-  '_app/immutable/chunks/nNZc3isi.js',
-  '_app/immutable/chunks/_anJIlvJ.js',
+  '_app/immutable/nodes/3.CSpNr_ws.js',
+  '_app/immutable/chunks/nF9ceomb.js',
+  '_app/immutable/chunks/Csv_Bl-6.js',
+  '_app/immutable/chunks/CoYf8t8d.js',
   '_app/immutable/chunks/BwBkY9_K.js',
-  '_app/immutable/chunks/B68RJgVf.js',
-  '_app/immutable/chunks/Av5441iL.js',
-  '_app/immutable/chunks/CV21HSfW.js',
-  '_app/immutable/chunks/DMVQG7PD.js',
+  '_app/immutable/chunks/CwhHgKCB.js',
+  '_app/immutable/chunks/BSRLHI0b.js',
+  '_app/immutable/chunks/DQS66_so.js',
+  '_app/immutable/chunks/CSEja_gF.js',
 ];
 export const stylesheets = [];
 export const fonts = [];

@@ -14,7 +14,7 @@
 
   const variants: Record<Variant, string> = {
     primary: 'bg-primary hover:bg-primary/90 text-white',
-    secondary: 'bg-surface hover:bg-surface/80 text-text',
+    secondary: 'bg-card hover:bg-card/80 text-text',
     success: 'bg-green-600 hover:bg-green-700 text-white',
     danger: 'bg-red-600 hover:bg-red-700 text-white',
   };
@@ -22,7 +22,7 @@
   const baseClasses =
     'px-4 py-2 rounded-md font-semibold text-sm shadow-md transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50';
 
-  // Versão “runes-friendly” do que antes era `$: currentVariant = ...`
+  // rune reativa pro variant atual
   const currentVariant = $derived((props.variant ?? 'primary') as Variant);
 </script>
 

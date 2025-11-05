@@ -1,6 +1,6 @@
 import 'clsx';
 import '../../../chunks/db.js';
-import { y as attr_class, x as attr } from '../../../chunks/index2.js';
+import { y as attr_class, x as attr } from '../../../chunks/index.js';
 import { e as escape_html } from '../../../chunks/context.js';
 async function exportarDados() {
   {
@@ -11,7 +11,7 @@ function BaseCard($$renderer, $$props) {
   $$renderer.component(($$renderer2) => {
     const { $$slots, $$events, ...props } = $$props;
     $$renderer2.push(
-      `<section${attr_class(`bg-surface rounded-xl shadow-lg border border-border/60 p-6 md:p-8 space-y-4 ${props.class ?? ''}`)}>`,
+      `<section${attr_class(`bg-card rounded-xl shadow-lg border border-border/60 p-6 md:p-8 space-y-4 ${props.class ?? ''}`)}>`,
     );
     if (props.title) {
       $$renderer2.push('<!--[-->');
@@ -31,7 +31,7 @@ function BaseButton($$renderer, $$props) {
     const { $$slots, $$events, ...props } = $$props;
     const variants = {
       primary: 'bg-primary hover:bg-primary/90 text-white',
-      secondary: 'bg-surface hover:bg-surface/80 text-text',
+      secondary: 'bg-card hover:bg-card/80 text-text',
       success: 'bg-green-600 hover:bg-green-700 text-white',
       danger: 'bg-red-600 hover:bg-red-700 text-white',
     };
