@@ -1,47 +1,82 @@
 // src/services/backupService.js
+import { browser } from '$app/environment';
 import { db } from './db';
-import { saveAs } from 'file-saver';
 
 /**
- * Exporta as áreas e itens em um JSON.
+ * Exporta os dados do app (áreas e itens) para um arquivo JSON
+ * e dispara o download no navegador.
  */
-export async function exportBackup() {
+export async function exportarDados() {
+  if (!browser) {
+    // Em SSR / build estático não faz nada
+    return;
+  }
+
+  // Busca tudo do IndexedDB
   const [areas, items] = await Promise.all([
     db.areas.toArray(),
     db.items.toArray(),
   ]);
 
-  const backup = {
+  const backupPayload = {
     version: 1,
-    createdAt: new Date().toISOString(),
+    exportedAt: new Date().toISOString(),
     areas,
     items,
   };
 
-  const blob = new Blob([JSON.stringify(backup, null, 2)], {
+  const blob = new Blob([JSON.stringify(backupPayload, null, 2)], {
     type: 'application/json;charset=utf-8',
   });
+
+  // import dinâmico para evitar problemas com CommonJS + SSR
+  const mod = await import('file-saver');
+  const saveAs = mod.saveAs || (mod.default && mod.default.saveAs);
+
+  if (!saveAs) {
+    console.error('Não foi possível carregar saveAs de file-saver');
+    return;
+  }
 
   saveAs(blob, 'lmup-backup.json');
 }
 
 /**
- * Importa um JSON de backup e sobrescreve o banco atual.
+ * Importa um arquivo JSON de backup e substitui os dados atuais.
  * @param {File} file
  */
-export async function importBackup(file) {
-  const text = await file.text();
-  /** @type {{ version?: number; areas?: any[]; items?: any[] }} */
-  const data = JSON.parse(text);
+export async function importarDados(file) {
+  if (!browser) {
+    return;
+  }
 
-  if (!Array.isArray(data.areas) || !Array.isArray(data.items)) {
+  const text = await file.text();
+  let data;
+
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    console.error('Erro ao parsear backup:', e);
     throw new Error('Arquivo de backup inválido');
   }
 
+  if (!data || typeof data !== 'object') {
+    throw new Error('Arquivo de backup inválido');
+  }
+
+  const areas = Array.isArray(data.areas) ? data.areas : [];
+  const items = Array.isArray(data.items) ? data.items : [];
+
+  // Limpa e repovoa o banco
   await db.transaction('rw', db.areas, db.items, async () => {
-    await db.areas.clear();
-    await db.items.clear();
-    await db.areas.bulkAdd(data.areas);
-    await db.items.bulkAdd(data.items);
+    await Promise.all([db.areas.clear(), db.items.clear()]);
+
+    if (areas.length) {
+      await db.areas.bulkAdd(areas);
+    }
+
+    if (items.length) {
+      await db.items.bulkAdd(items);
+    }
   });
 }

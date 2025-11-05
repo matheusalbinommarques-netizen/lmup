@@ -1,30 +1,36 @@
 <script lang="ts">
-  type Variant = 'primary' | 'success' | 'danger';
+  import type { Snippet } from 'svelte';
+
+  // Variantes aceitas
+  export type Variant = 'primary' | 'secondary' | 'success' | 'danger';
 
   const props = $props<{
-    children?: () => unknown;
     variant?: Variant;
     disabled?: boolean;
     type?: 'button' | 'submit' | 'reset';
     onclick?: (event: MouseEvent) => void;
+    children?: Snippet;
   }>();
 
-  // pega só o que a gente precisa do objeto de props
-  let { children, onclick } = props;
-  let disabled = props.disabled ?? false;
-  let variant: Variant = props.variant ?? 'primary';
-  let type: 'button' | 'submit' | 'reset' = props.type ?? 'button';
-
   const variants: Record<Variant, string> = {
-    primary: 'bg-blue-600 hover:bg-blue-500 text-white',
-    success: 'bg-green-600 hover:bg-green-500 text-white',
-    danger: 'bg-red-600 hover:bg-red-500 text-white',
+    primary: 'bg-primary hover:bg-primary/90 text-white',
+    secondary: 'bg-surface hover:bg-surface/80 text-text',
+    success: 'bg-green-600 hover:bg-green-700 text-white',
+    danger: 'bg-red-600 hover:bg-red-700 text-white',
   };
 
-  const base =
+  const baseClasses =
     'px-4 py-2 rounded-md font-semibold text-sm shadow-md transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50';
+
+  // Versão “runes-friendly” do que antes era `$: currentVariant = ...`
+  const currentVariant = $derived((props.variant ?? 'primary') as Variant);
 </script>
 
-<button {type} {disabled} class={`${base} ${variants[variant]}`} {onclick}>
-  {@render children?.()}
+<button
+  type={props.type ?? 'button'}
+  class={`${baseClasses} ${variants[currentVariant]}`}
+  disabled={props.disabled}
+  onclick={props.onclick}
+>
+  {@render props.children?.()}
 </button>

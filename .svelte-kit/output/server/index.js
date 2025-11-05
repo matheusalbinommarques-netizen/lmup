@@ -1,4 +1,4 @@
-import { B as BROWSER } from './chunks/false.js';
+import { B as BROWSER } from './chunks/environment.js';
 import { json, text, error } from '@sveltejs/kit';
 import {
   HttpError,
