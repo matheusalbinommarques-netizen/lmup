@@ -53,6 +53,7 @@ import {
 } from './context.js';
 import 'clsx';
 import './environment.js';
+import './server.js';
 let public_env = {};
 function set_private_env(environment) {}
 function set_public_env(environment) {
@@ -1051,7 +1052,7 @@ const options = {
       message +
       '</h1>\n			</div>\n		</div>\n	</body>\n</html>\n',
   },
-  version_hash: 'ximlx1',
+  version_hash: 'jvae0p',
 };
 async function get_hooks() {
   let handle;

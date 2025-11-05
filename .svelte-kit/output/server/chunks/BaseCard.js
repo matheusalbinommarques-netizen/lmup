@@ -1,4 +1,4 @@
-import { $ as attributes, V as stringify } from './index2.js';
+import { $ as attributes, _ as stringify } from './index2.js';
 function BaseButton($$renderer, $$props) {
   let {
     variant = 'primary',
