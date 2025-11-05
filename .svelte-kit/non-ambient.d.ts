@@ -40,8 +40,9 @@ declare module '$app/types' {
     Pathname(): '/' | '/config' | '/config/';
     ResolvedPathname(): `${'' | `/${string}`}${ReturnType<AppTypes['Pathname']>}`;
     Asset():
+      | '/.well-known/appspecific/com.chrome.devtools.json'
       | '/apple-touch-icon-180-transparent.png.png'
-      | '/favicon.ico'
+      | '/favicon-shield.ico'
       | '/pwa-192x192.png'
       | '/pwa-512x512-maskable.png'
       | '/pwa-512x512.png'

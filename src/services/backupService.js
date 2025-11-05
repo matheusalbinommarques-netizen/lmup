@@ -1,70 +1,68 @@
 import { db } from './db.js';
-import { saveAs } from 'file-saver';
+import { browser } from '$app/environment';
 
-// --- CORREÇÃO AQUI ---
 export async function exportarDados() {
-  try {
-    const allData = {};
+  if (!browser) return;
 
-    // Obter todas as tabelas (stores) do Dexie
-    for (const table of db.tables) {
-      allData[table.name] = await table.toArray();
-    }
+  const [areas, itens, meta] = await Promise.all([
+    db.areas?.toArray?.() ?? [],
+    db.itens?.toArray?.() ?? [],
+    db.meta?.toArray?.() ?? [],
+  ]);
 
-    const json = JSON.stringify(allData, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
+  const payload = { areas, itens, meta };
 
-    saveAs(blob, 'level-me-up-backup.json');
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: 'application/json;charset=utf-8',
+  });
 
-    console.log('Dados exportados com sucesso!');
-  } catch (error) {
-    console.error('Erro ao exportar dados:', error);
-    alert('Erro ao exportar dados. Verifique o console.');
-  }
+  const { default: fileSaver } = await import('file-saver');
+  const { saveAs } = fileSaver;
+
+  const hoje = new Date().toISOString().slice(0, 10);
+  saveAs(blob, `lmup-backup-${hoje}.json`);
 }
 
-// --- CORREÇÃO AQUI ---
 export async function importarDados() {
-  try {
+  if (!browser) return;
+
+  return new Promise((resolve, reject) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'application/json';
 
-    input.onchange = async (event) => {
-      const file = event.target.files[0];
+    input.onchange = async () => {
+      const file = input.files?.[0];
       if (!file) return;
 
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const json = e.target.result;
-          const dados = JSON.parse(json);
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text ?? '{}');
 
-          // Limpar e importar dados para cada tabela
-          await db.transaction('rw', db.tables, async () => {
-            for (const tableName in dados) {
-              if (db[tableName]) {
-                await db[tableName].clear();
-                await db[tableName].bulkAdd(dados[tableName]);
-              }
-            }
-          });
+        await db.transaction('rw', db.areas, db.itens, db.meta, async () => {
+          if (Array.isArray(data.areas)) {
+            await db.areas.clear();
+            await db.areas.bulkAdd(data.areas);
+          }
 
-          console.log('Dados importados com sucesso!');
-          alert('Dados importados com sucesso! A página será recarregada.');
-          window.location.reload();
-        } catch (readError) {
-          console.error('Erro ao ler ou importar o arquivo:', readError);
-          alert(
-            'Erro ao importar dados. O arquivo pode estar corrompido. Verifique o console.',
-          );
-        }
-      };
-      reader.readAsText(file);
+          if (Array.isArray(data.itens)) {
+            await db.itens.clear();
+            await db.itens.bulkAdd(data.itens);
+          }
+
+          if (Array.isArray(data.meta)) {
+            await db.meta.clear();
+            await db.meta.bulkAdd(data.meta);
+          }
+        });
+
+        resolve();
+      } catch (err) {
+        console.error('Erro ao importar dados', err);
+        reject(err);
+      }
     };
 
     input.click();
-  } catch (error) {
-    console.error('Erro ao iniciar a importação:', error);
-  }
+  });
 }

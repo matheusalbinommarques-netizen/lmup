@@ -1,20 +1,21 @@
+// svelte.config.js
+import adapter from '@sveltejs/adapter-static';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
-import adapter from '@sveltejs/adapter-auto';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
-  // --- CORREÇÃO AQUI ---
-  // De volta ao nível raiz.
+  preprocess: vitePreprocess(),
+
   compilerOptions: {
     runes: true,
   },
-  // --------------------
-
-  preprocess: [vitePreprocess()],
 
   kit: {
     adapter: adapter(),
-    // Removemos o compilerOptions daqui de dentro
+    prerender: {
+      // isso diz "tenta prerender tudo"
+      entries: ['*'],
+    },
   },
 };
 

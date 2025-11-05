@@ -1,0 +1,39 @@
+import { f as i, a as h } from '../chunks/DzhFJs4K.js';
+import {
+  W as g,
+  X as v,
+  Y as _,
+  Z as d,
+  _ as a,
+  $ as s,
+  a0 as l,
+} from '../chunks/dJOEbL3k.js';
+import { s as o } from '../chunks/CyGDRoYz.js';
+import { s as x, p } from '../chunks/BKBiTo-U.js';
+const $ = {
+  get error() {
+    return p.error;
+  },
+  get status() {
+    return p.status;
+  },
+};
+x.updated.check;
+const m = $;
+var k = i('<h1> </h1> <p> </p>', 1);
+function Y(c, f) {
+  g(f, !0);
+  var t = k(),
+    r = v(t),
+    n = a(r, !0);
+  s(r);
+  var e = l(r, 2),
+    u = a(e, !0);
+  (s(e),
+    _(() => {
+      (o(n, m.status), o(u, m.error?.message));
+    }),
+    h(c, t),
+    d());
+}
+export { Y as component };

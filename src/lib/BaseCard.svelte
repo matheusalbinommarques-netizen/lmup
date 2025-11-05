@@ -1,19 +1,29 @@
-<script>
-  // Capturamos 'children' (para o slot) e '...rest' (para eventos como 'onclick')
-  let { children, ...rest } = $props();
+<script lang="ts">
+  import type { Snippet } from 'svelte';
+  import type {
+    KeyboardEventHandler,
+    MouseEventHandler,
+  } from 'svelte/elements';
 
-  // --- CORREÇÃO AQUI ---
-  // A lógica '.self' (para não capturar cliques de input)
-  // é tratada manualmente, como você sugeriu.
-  function handleKeydown(event) {
-    // Se o evento não for no próprio card, ignore.
+  let {
+    children,
+    onclick = () => {},
+    onkeydown = () => {},
+    ...rest
+  } = $props<{
+    children?: Snippet;
+    onclick?: MouseEventHandler<HTMLDivElement>;
+    onkeydown?: KeyboardEventHandler<HTMLDivElement>;
+  }>();
+
+  function handleKeydown(event: KeyboardEvent) {
     if (event.target !== event.currentTarget) {
       return;
     }
 
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      event.currentTarget.click();
+      (event.currentTarget as HTMLElement).click();
     }
   }
 </script>
@@ -23,7 +33,8 @@
   role="button"
   tabindex="0"
   {...rest}
-  onkeydown={handleKeydown}
+  {onclick}
+  onkeydown={handleKeydown || onkeydown}
 >
   {@render children?.()}
 </div>

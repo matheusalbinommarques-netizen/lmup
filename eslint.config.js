@@ -1,25 +1,26 @@
-import js from '@eslint/js';
-import svelte from 'eslint-plugin-svelte';
+// eslint.config.js – Flat config para ESLint 9 + TypeScript + Svelte
+
 import globals from 'globals';
+import js from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import svelte from 'eslint-plugin-svelte';
+import svelteParser from 'svelte-eslint-parser';
 
 export default [
-  js.configs.recommended,
-  ...svelte.configs['flat/recommended'],
-
+  // 1) Arquivos ignorados
   {
-    rules: {
-      // Já tínhamos desligado isto (correto)
-      'svelte/no-navigation-without-resolve': 'off',
-
-      // --- CORREÇÃO AQUI ---
-      // Desliga a regra que está a causar os 3 erros de commit.
-      // Esta regra está errada para o Svelte 5 (Runes).
-      'svelte/no-useless-children-snippet': 'off',
-
-      // Mantemos a sua regra original
-      'no-unused-vars': 'warn',
-    },
+    ignores: [
+      '.svelte-kit/**',
+      'node_modules/**',
+      'dist/**',
+      'build/**',
+      '.vite/**',
+      'coverage/**',
+      'eslint.config.js',
+    ],
   },
+
+  // 2) Globals de browser + node (SvelteKit)
   {
     languageOptions: {
       globals: {
@@ -28,7 +29,38 @@ export default [
       },
     },
   },
+
+  // 3) Regras base de JS
+  js.configs.recommended,
+
+  // 4) Regras recomendadas de TypeScript
+  ...tseslint.configs.recommended,
+
+  // 5) Regras recomendadas de Svelte
+  ...svelte.configs['flat/recommended'],
+
+  // 6) Dizer explicitamente que .svelte usa o parser do Svelte + TS
   {
-    ignores: ['build/', '.svelte-kit/', 'dist/', 'node_modules/'],
+    files: ['**/*.svelte'],
+    languageOptions: {
+      parser: svelteParser,
+      parserOptions: {
+        parser: tseslint.parser,
+        svelteFeatures: {
+          experimental: {
+            runes: true,
+          },
+        },
+      },
+    },
+  },
+
+  // 7) Ajuste de regras pra não te travar
+  {
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      'no-undef': 'off',
+      'svelte/no-navigation-without-resolve': 'off',
+    },
   },
 ];

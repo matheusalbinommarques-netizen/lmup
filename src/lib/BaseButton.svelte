@@ -1,21 +1,22 @@
-<script>
+<script lang="ts">
+  import type { Snippet } from 'svelte';
+  import type { MouseEventHandler } from 'svelte/elements';
+
   let {
     variant = 'primary',
     class: userClass = '',
-    type = 'button',
-
-    // --- CORREÇÃO (ERRO 3) ---
-    // A <slot> agora é passada como a prop 'children'
+    type = 'button' as const,
     children,
-
-    // --- CORREÇÃO (ERRO 2) ---
-    // 'on:click' está depreciado, recebemos 'onclick' como uma prop
     onclick = () => {},
-
     ...rest
-  } = $props();
+  } = $props<{
+    variant?: string;
+    class?: string;
+    type?: 'button' | 'reset' | 'submit';
+    children?: Snippet;
+    onclick?: MouseEventHandler<HTMLButtonElement>;
+  }>();
 
-  // Mapeia nossas variantes do tema (Isto estava correto)
   const variants = {
     primary:
       'bg-primary text-white hover:bg-primary-light focus-visible:ring-primary',
@@ -24,15 +25,15 @@
     danger: 'bg-danger text-white hover:bg-danger/80 focus-visible:ring-danger',
   };
 
-  // Classes base (Isto estava correto)
   let baseClasses =
-    'px-4 py-2 rounded-md font-semibold text-sm shadow-md transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50';
+    'px-4 py-2 rounded-md font-semibold text-sm shadow-md transition-colors duração-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50';
+  let selectedVariant = variants[variant] || variants.primary;
 </script>
 
 <button
   {type}
   {...rest}
-  class="{baseClasses} {variants[variant]} {userClass}"
+  class="{baseClasses} {selectedVariant} {userClass}"
   {onclick}
 >
   {@render children?.()}

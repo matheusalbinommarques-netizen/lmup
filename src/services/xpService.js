@@ -2,20 +2,16 @@ import { browser } from '$app/environment';
 import { db } from './db.js';
 import { liveQuery } from 'dexie';
 
-// CORREÇÃO AQUI: Removemos o 'of', pois não está sendo usado.
 import { BehaviorSubject } from 'rxjs';
 
-// --- Constantes ---
 const XP_POR_NIVEL_BASE = 100;
 const FATOR_CRESCIMENTO = 1.5;
 
-// --- Subjects ---
 const totalXpSubject = new BehaviorSubject(0);
 const streakSubject = new BehaviorSubject({ count: 0, lastCheckin: null });
 
-// --- CÓDIGO PROTEGIDO ---
 if (browser) {
-  async function initDB() {
+  const initDB = async () => {
     try {
       await db.meta.bulkPut([
         { key: 'totalXp', value: (await db.meta.get('totalXp'))?.value || 0 },
@@ -30,22 +26,18 @@ if (browser) {
     } catch (error) {
       console.error('Falha ao inicializar a store meta:', error);
     }
-  }
+  };
 
-  // Live query para XP Total
   liveQuery(() => db.meta.get('totalXp')).subscribe((meta) => {
     totalXpSubject.next(meta?.value || 0);
   });
 
-  // Live query para Streak
   liveQuery(() => db.meta.get('streak')).subscribe((meta) => {
     streakSubject.next(meta?.value || { count: 0, lastCheckin: null });
   });
 
   initDB().catch(console.error);
 }
-
-// --- Funções Exportadas (O resto do arquivo está igual) ---
 
 export function getTotalXpObservable() {
   return totalXpSubject.asObservable();

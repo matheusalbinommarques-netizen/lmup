@@ -1,5 +1,4 @@
-<script>
-  // O <script> inteiro já estava 100% correto.
+<script lang="ts">
   import { db } from '../services/db.js';
   import { liveQuery } from 'dexie';
   import BaseCard from './BaseCard.svelte';
@@ -7,7 +6,7 @@
   import { browser } from '$app/environment';
   import { addXp, checkStreak } from '../services/xpService.js';
 
-  let { area } = $props();
+  let { area } = $props<{ area: any }>();
   let newItemName = $state('');
   let items = $state([]);
 
@@ -17,22 +16,20 @@
       return;
     }
     const observable = liveQuery(() =>
-      db['itens'].where('areaId').equals(area.id).toArray(),
+      db.itens.where('areaId').equals(area.id).toArray(),
     );
     const subscription = observable.subscribe((newItemsFromDB) => {
       items = newItemsFromDB;
     });
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   });
 
-  async function handleAddItem(event) {
+  async function handleAddItem(event: Event) {
     event.preventDefault();
     const name = newItemName.trim();
     if (!name || !db) return;
     try {
-      await db['itens'].add({
+      await db.itens.add({
         nome: name,
         areaId: area.id,
         xp: 10,
@@ -44,13 +41,13 @@
     }
   }
 
-  async function handleCompleteItem(item) {
+  async function handleCompleteItem(item: any) {
     if (!db) return;
     try {
-      await db.transaction('rw', db['itens'], db['meta'], async () => {
+      await db.transaction('rw', db.itens, db.meta, async () => {
         await addXp(item.xp);
         await checkStreak();
-        await db['itens'].delete(item.id);
+        await db.itens.delete(item.id);
       });
     } catch (e) {
       console.error('Falha ao completar item:', e);

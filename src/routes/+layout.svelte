@@ -1,12 +1,14 @@
-<script>
-  import { page } from '$app/state';
+<script lang="ts">
   import '../app.css';
+  import { page } from '$app/stores';
+
+  interface Props {
+    children?: import('svelte').Snippet;
+  }
+
+  let { children }: Props = $props();
 
   let appName = 'Level Me Up!';
-
-  // --- CORREÇÃO AQUI ---
-  // Capturamos o 'children' (o conteúdo da página)
-  let { children } = $props();
 </script>
 
 <main class="max-w-3xl mx-auto p-4 md:p-6">
@@ -19,15 +21,15 @@
       href="/"
       class="text-lg font-semibold py-2 px-4 text-text-secondary border-b-2 border-transparent -mb-0.5 transition-colors duration-150
         hover:text-text
-        {page.url.pathname === '/' ? 'text-primary border-primary' : ''}"
+        {$page.url.pathname === '/' ? 'text-primary border-primary' : ''}"
     >
       Progresso
     </a>
     <a
       href="/config"
-      class="text-lg font-semibold py-2 px-4 text-text-secondary border-b-2 border-transparent -mb-0.5 transition-colors duration-150
+      class="text-lg font-semibold py-2 px-4 text-text-secondary border-b-2 border-transparent -mb-0.5 transition-colors duração-150
         hover:text-text
-        {page.url.pathname === '/config' ? 'text-primary border-primary' : ''}"
+        {$page.url.pathname === '/config' ? 'text-primary border-primary' : ''}"
     >
       Configurações
     </a>

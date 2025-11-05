@@ -34,7 +34,7 @@ export const options = {
   service_worker_options: undefined,
   templates: {
     app: ({ head, body, assets, nonce, env }) =>
-      '<!doctype html>\r\n<html lang="pt-br">\r\n  <head>\r\n    <meta charset="utf-8" />\r\n    <link rel="icon" href="/favicon.ico" />\r\n    <meta name="viewport" content="width=device-width, initial-scale=1" />\r\n    ' +
+      '<!doctype html>\r\n<html lang="pt-br">\r\n  <head>\r\n    <meta charset="utf-8" />\r\n    <link rel="icon" href="/favicon-shield.ico" />\r\n    <meta name="viewport" content="width=device-width, initial-scale=1" />\r\n    ' +
       head +
       '\r\n  </head>\r\n  <body data-sveltekit-preload-data="hover" class="bg-background text-text">\r\n    <div style="display: contents">\r\n      ' +
       body +
@@ -48,7 +48,7 @@ export const options = {
       message +
       '</h1>\n\t\t\t</div>\n\t\t</div>\n\t</body>\n</html>\n',
   },
-  version_hash: '1htykus',
+  version_hash: 'ximlx1',
 };
 
 export async function get_hooks() {
