@@ -1,68 +1,47 @@
-import { db } from './db.js';
-import { browser } from '$app/environment';
+// src/services/backupService.js
+import { db } from './db';
+import { saveAs } from 'file-saver';
 
-export async function exportarDados() {
-  if (!browser) return;
-
-  const [areas, itens, meta] = await Promise.all([
-    db.areas?.toArray?.() ?? [],
-    db.itens?.toArray?.() ?? [],
-    db.meta?.toArray?.() ?? [],
+/**
+ * Exporta as áreas e itens em um JSON.
+ */
+export async function exportBackup() {
+  const [areas, items] = await Promise.all([
+    db.areas.toArray(),
+    db.items.toArray(),
   ]);
 
-  const payload = { areas, itens, meta };
+  const backup = {
+    version: 1,
+    createdAt: new Date().toISOString(),
+    areas,
+    items,
+  };
 
-  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {
     type: 'application/json;charset=utf-8',
   });
 
-  const { default: fileSaver } = await import('file-saver');
-  const { saveAs } = fileSaver;
-
-  const hoje = new Date().toISOString().slice(0, 10);
-  saveAs(blob, `lmup-backup-${hoje}.json`);
+  saveAs(blob, 'lmup-backup.json');
 }
 
-export async function importarDados() {
-  if (!browser) return;
+/**
+ * Importa um JSON de backup e sobrescreve o banco atual.
+ * @param {File} file
+ */
+export async function importBackup(file) {
+  const text = await file.text();
+  /** @type {{ version?: number; areas?: any[]; items?: any[] }} */
+  const data = JSON.parse(text);
 
-  return new Promise((resolve, reject) => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'application/json';
+  if (!Array.isArray(data.areas) || !Array.isArray(data.items)) {
+    throw new Error('Arquivo de backup inválido');
+  }
 
-    input.onchange = async () => {
-      const file = input.files?.[0];
-      if (!file) return;
-
-      try {
-        const text = await file.text();
-        const data = JSON.parse(text ?? '{}');
-
-        await db.transaction('rw', db.areas, db.itens, db.meta, async () => {
-          if (Array.isArray(data.areas)) {
-            await db.areas.clear();
-            await db.areas.bulkAdd(data.areas);
-          }
-
-          if (Array.isArray(data.itens)) {
-            await db.itens.clear();
-            await db.itens.bulkAdd(data.itens);
-          }
-
-          if (Array.isArray(data.meta)) {
-            await db.meta.clear();
-            await db.meta.bulkAdd(data.meta);
-          }
-        });
-
-        resolve();
-      } catch (err) {
-        console.error('Erro ao importar dados', err);
-        reject(err);
-      }
-    };
-
-    input.click();
+  await db.transaction('rw', db.areas, db.items, async () => {
+    await db.areas.clear();
+    await db.items.clear();
+    await db.areas.bulkAdd(data.areas);
+    await db.items.bulkAdd(data.items);
   });
 }
