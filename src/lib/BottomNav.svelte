@@ -2,53 +2,60 @@
 <script lang="ts">
   import { page } from '$app/state';
 
-  type NavItem = {
+  type NavLink = {
     href: string;
     label: string;
-    icon: 'home' | 'settings';
+    icon: string;
   };
 
-  const navItems: NavItem[] = [
-    { href: '/', label: 'Progresso', icon: 'home' },
-    { href: '/config', label: 'Configurações', icon: 'settings' },
+  const links: NavLink[] = [
+    {
+      href: '/',
+      label: 'Progresso',
+      icon: '🏠',
+    },
+    {
+      href: '/config',
+      label: 'Configurações',
+      icon: '⚙️',
+    },
   ];
 
-  const activePath = $derived(page.url.pathname);
+  const currentPath = $derived(page.url.pathname);
+
+  const linkClasses = (href: string) => {
+    const active = currentPath === href;
+
+    return {
+      root:
+        'flex flex-col items-center gap-1 text-[0.7rem] transition-colors duration-150 ' +
+        (active ? 'text-primary' : 'text-text-secondary'),
+      icon:
+        'flex h-8 w-8 items-center justify-center rounded-full border text-base ' +
+        (active
+          ? 'border-primary bg-primary/10'
+          : 'border-slate-700 bg-slate-900/80'),
+    };
+  };
 </script>
 
 <nav
-  class="fixed inset-x-0 bottom-0 z-40 border-t border-slate-800 bg-background/95 backdrop-blur"
+  class="bottom-nav z-50 border-t border-slate-800/80 bg-slate-950/95 backdrop-blur-md"
+  style="position: fixed; left: 0; right: 0; bottom: 0;"
 >
   <div
-    class="mx-auto flex max-w-5xl items-center justify-center gap-16 px-6 py-2.5 text-xs text-text-secondary"
+    class="mx-auto flex max-w-3xl items-center justify-around gap-4 px-6 py-2"
   >
-    {#each navItems as item (item.href)}
-      {#if item.href === activePath}
-        <a
-          href={item.href}
-          aria-current="page"
-          class="flex flex-col items-center gap-1 text-primary"
-        >
-          <span class="text-xl">
-            {#if item.icon === 'home'}🏠{:else if item.icon === 'settings'}⚙️{/if}
-          </span>
-          <span class="text-[0.7rem] font-medium tracking-wide">
-            {item.label}
-          </span>
-        </a>
-      {:else}
-        <a
-          href={item.href}
-          class="flex flex-col items-center gap-1 text-text-secondary transition-colors hover:text-primary"
-        >
-          <span class="text-xl">
-            {#if item.icon === 'home'}🏠{:else if item.icon === 'settings'}⚙️{/if}
-          </span>
-          <span class="text-[0.7rem] tracking-wide">
-            {item.label}
-          </span>
-        </a>
-      {/if}
+    {#each links as link (link.href)}
+      {@const cls = linkClasses(link.href)}
+      <a
+        href={link.href}
+        class={cls.root}
+        aria-current={currentPath === link.href ? 'page' : undefined}
+      >
+        <span class={cls.icon}>{link.icon}</span>
+        <span>{link.label}</span>
+      </a>
     {/each}
   </div>
 </nav>

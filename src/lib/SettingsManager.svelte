@@ -1,229 +1,443 @@
 <!-- src/lib/SettingsManager.svelte -->
 <script lang="ts">
+  import { onMount } from 'svelte';
+  import { browser } from '$app/environment';
   import { exportarDados, importarDados } from '../services/backupService.js';
-  import BaseButton from './BaseButton.svelte';
+
+  type NeuroPrefs = {
+    focusMode: boolean;
+    largeText: boolean;
+    lowStimulus: boolean;
+  };
+
+  const NEURO_KEY = 'lmup:neuro-prefs';
+
+  // estados locais (runes)
+  let isExporting = $state(false);
+  let isImporting = $state(false);
+
+  // Encantamento sombrio – por enquanto só visual (não mexe em CSS global)
+  let darkEnchantment = $state(false);
+
+  // Modos de neurodiversidade
+  let focusMode = $state(false);
+  let largeText = $state(false);
+  let lowStimulus = $state(false);
 
   let fileInput: HTMLInputElement | null = null;
 
-  // ações de backup
-  async function handleExportClick() {
-    await exportarDados();
+  // ---------- helpers de neurodiversidade ----------
+
+  function getNeuroPrefs(): NeuroPrefs {
+    return {
+      focusMode,
+      largeText,
+      lowStimulus,
+    };
   }
 
-  function handleImportClick() {
-    fileInput?.click();
+  function applyNeuroPrefs(prefs: NeuroPrefs) {
+    if (!browser) return;
+    const root = document.documentElement;
+
+    root.dataset.neuroFocus = prefs.focusMode ? 'true' : 'false';
+    root.dataset.neuroLargeText = prefs.largeText ? 'true' : 'false';
+    root.dataset.neuroLowStimulus = prefs.lowStimulus ? 'true' : 'false';
   }
 
-  async function handleFileChange(event: Event) {
-    const target = event.currentTarget as HTMLInputElement;
-    const file = target.files?.[0];
-
-    if (!file) return;
-
-    await importarDados(file);
-
-    // permite escolher o mesmo arquivo de novo
-    target.value = '';
+  function saveNeuroPrefs(prefs: NeuroPrefs) {
+    if (!browser) return;
+    localStorage.setItem(NEURO_KEY, JSON.stringify(prefs));
   }
 
-  // “Encantamento sombrio” – por enquanto só visual
-  let darkEnchant = $state(true);
+  onMount(() => {
+    if (!browser) return;
 
-  function toggleDarkEnchant() {
-    darkEnchant = !darkEnchant;
+    const raw = localStorage.getItem(NEURO_KEY);
+    if (raw) {
+      try {
+        const stored = JSON.parse(raw) as Partial<NeuroPrefs>;
+        focusMode = !!stored.focusMode;
+        largeText = !!stored.largeText;
+        lowStimulus = !!stored.lowStimulus;
+      } catch {
+        // se der ruim no parse, ignora e usa defaults
+      }
+    }
+
+    applyNeuroPrefs(getNeuroPrefs());
+  });
+
+  function toggleFocusMode() {
+    focusMode = !focusMode;
+    const prefs = getNeuroPrefs();
+    applyNeuroPrefs(prefs);
+    saveNeuroPrefs(prefs);
+  }
+
+  function toggleLargeText() {
+    largeText = !largeText;
+    const prefs = getNeuroPrefs();
+    applyNeuroPrefs(prefs);
+    saveNeuroPrefs(prefs);
+  }
+
+  function toggleLowStimulus() {
+    lowStimulus = !lowStimulus;
+    const prefs = getNeuroPrefs();
+    applyNeuroPrefs(prefs);
+    saveNeuroPrefs(prefs);
+  }
+
+  // ---------- backup / restore ----------
+
+  async function handleExport() {
+    if (isExporting) return;
+    isExporting = true;
+    try {
+      // exportarDados já cuida de gerar o arquivo .json
+      await exportarDados();
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao exportar dados. Tente novamente.');
+    } finally {
+      isExporting = false;
+    }
+  }
+
+  function openImportDialog() {
+    if (isImporting || !browser) return;
+    if (fileInput) {
+      fileInput.value = '';
+      fileInput.click();
+    }
+  }
+
+  async function handleFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    const file = input.files[0];
+    isImporting = true;
+
+    try {
+      // importarDados espera um File, então passamos o File direto
+      await importarDados(file);
+      input.value = '';
+      alert(
+        'Backup importado com sucesso! Recarregue a página para ver as mudanças.',
+      );
+    } catch (err) {
+      console.error(err);
+      alert(
+        'Erro ao importar backup. Verifique o arquivo .json e tente novamente.',
+      );
+    } finally {
+      isImporting = false;
+    }
+  }
+
+  // switch genérico para reuso
+  function switchClasses(enabled: boolean) {
+    return enabled
+      ? 'inline-flex h-7 w-12 items-center rounded-full bg-emerald-400/90 px-1 transition-colors'
+      : 'inline-flex h-7 w-12 items-center rounded-full bg-slate-700/80 px-1 transition-colors';
+  }
+
+  function knobClasses(enabled: boolean) {
+    return enabled
+      ? 'h-5 w-5 translate-x-5 rounded-full bg-slate-950 shadow transition-transform'
+      : 'h-5 w-5 translate-x-0 rounded-full bg-slate-300 shadow transition-transform';
   }
 </script>
 
-<section class="w-full py-8">
-  <div class="mx-auto max-w-3xl px-4 pb-24">
+<section class="w-full mb-8">
+  <div class="config-card mx-auto max-w-3xl overflow-hidden relative">
+    <!-- brilho roxo externo -->
     <div
-      class={`relative overflow-hidden rounded-3xl border
-        ${
-          darkEnchant
-            ? 'border-violet-600/70 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 shadow-[0_0_70px_rgba(129,140,248,0.7)]'
-            : 'border-amber-400/70 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 shadow-[0_0_70px_rgba(251,191,36,0.6)]'
-        }`}
-    >
-      <!-- brilhos / moldura interna -->
+      class="pointer-events-none absolute -inset-px bg-[radial-gradient(circle_at_top,_rgba(168,85,247,0.35),_transparent_60%)] opacity-70"
+      aria-hidden="true"
+    ></div>
+
+    <div class="relative px-6 pt-6 pb-7 md:px-8 md:pt-8 md:pb-8">
+      <!-- Cabeçalho das configurações dentro de card azul (estilo Sincronia) -->
+      <header class="mb-6">
+        <div
+          class="settings-subcard rounded-2xl border border-sky-500/60 bg-gradient-to-r from-sky-950 via-slate-900 to-slate-950 px-4 py-4 text-center shadow-[0_0_40px_rgba(56,189,248,0.55)]"
+        >
+          <h2 class="text-2xl md:text-3xl font-extrabold text-sky-50">
+            Configurações &amp; Backup
+          </h2>
+          <p class="mx-auto mt-2 max-w-xl text-xs text-slate-200/85">
+            Guarde seu progresso em segurança, restaure seus dados quando
+            precisar e ative encantamentos para deixar a experiência mais
+            confortável.
+          </p>
+        </div>
+      </header>
+
+      <!-- Encantamento sombrio -->
       <div
-        class="pointer-events-none absolute inset-0 opacity-50"
-        aria-hidden="true"
+        class="settings-subcard mb-6 flex flex-col gap-3 rounded-2xl border border-violet-500/60 bg-gradient-to-r from-violet-950 via-slate-900 to-slate-950 px-4 py-3 shadow-[0_0_40px_rgba(168,85,247,0.55)] md:flex-row md:items-center md:justify-between"
       >
-        <div
-          class="absolute inset-[-40%] bg-[radial-gradient(circle_at_top,_rgba(129,140,248,0.85),_transparent_55%)]"
-        ></div>
-        <div
-          class="absolute inset-[-40%] bg-[radial-gradient(circle_at_bottom,_rgba(236,72,153,0.35),_transparent_60%)]"
-        ></div>
-        <div
-          class="absolute inset-[10px] rounded-3xl border border-violet-500/35"
-        ></div>
+        <div class="flex items-start gap-3">
+          <div
+            class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-violet-500/25 text-violet-100"
+          >
+            🕯️
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <p class="text-sm font-semibold text-white">
+                Encantamento sombrio
+              </p>
+              <span
+                class="rounded-full border border-violet-300/70 bg-violet-500/15 px-2 py-[1px] text-[0.6rem] font-semibold uppercase tracking-widest text-violet-100"
+              >
+                Em breve
+              </span>
+            </div>
+            <p class="text-xs text-slate-300/80 max-w-md">
+              Encanta o seu reino com as trevas ou com a luz. Use com cuidado.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          class={switchClasses(darkEnchantment)}
+          role="switch"
+          aria-checked={darkEnchantment}
+          aria-label="Ativar ou desativar encantamento sombrio"
+          onclick={() => (darkEnchantment = !darkEnchantment)}
+        >
+          <span class={knobClasses(darkEnchantment)}></span>
+        </button>
       </div>
 
-      <div class="relative px-6 py-6 md:px-8 md:py-8 space-y-7">
-        <!-- título / header -->
-        <header class="space-y-2 text-center md:text-left">
-          <p
-            class="text-[0.7rem] font-medium uppercase tracking-[0.3em] text-violet-300/80"
-          >
-            Cofre arcano
-          </p>
-          <h1
-            class="text-2xl md:text-3xl font-extrabold text-slate-50 drop-shadow"
-          >
-            Configurações &amp; Backup
-          </h1>
-          <p class="mx-auto max-w-xl text-xs md:text-sm text-violet-100/85">
-            Guarde seu progresso em segurança, restaure seus dados quando
-            precisar e prepare-se para futuras melhorias mágicas.
-          </p>
-        </header>
-
-        <!-- Encantamento sombrio (toggle visual) -->
+      <!-- Linha 1: Grimório de backup -->
+      <div class="space-y-3">
         <div
-          class="flex flex-col items-center justify-between gap-3 rounded-2xl border border-violet-500/30 bg-black/30 px-4 py-3 sm:flex-row"
+          class="settings-subcard flex flex-col gap-3 rounded-2xl border border-violet-500/60 bg-gradient-to-r from-violet-950 via-slate-900 to-slate-950 px-4 py-4 shadow-[0_0_40px_rgba(168,85,247,0.55)] md:flex-row md:items-center md:justify-between"
         >
-          <div class="text-center sm:text-left">
+          <div class="flex items-start gap-3">
             <div
-              class="text-[0.75rem] font-semibold uppercase tracking-[0.25em] text-violet-200"
+              class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-violet-500/20 text-violet-200"
             >
-              Encantamento sombrio
+              📜
             </div>
-            <p class="mt-1 text-xs text-violet-100/80 max-w-xs">
-              Ajusta o brilho arcano deste cofre. (Somente visual por enquanto)
+            <div>
+              <div class="flex items-center gap-2">
+                <p class="text-sm font-semibold text-white">
+                  Grimório de backup
+                </p>
+                <span
+                  class="rounded-full border border-violet-400/60 bg-violet-500/10 px-2 py-[1px] text-[0.6rem] font-semibold uppercase tracking-widest text-violet-200"
+                >
+                  Raro
+                </span>
+              </div>
+              <p class="text-xs text-slate-300/80 max-w-md">
+                Aprisiona as memórias do seu reino num grimório em <code
+                  >.json</code
+                >, para que possa levar e restaurar em qualquer lugar.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="rounded-full bg-violet-500 px-4 py-2 text-xs font-semibold text-white shadow-md hover:bg-violet-400 disabled:opacity-60"
+            onclick={handleExport}
+            disabled={isExporting}
+          >
+            {isExporting ? 'Gerando...' : 'Exportar dados'}
+          </button>
+        </div>
+
+        <!-- Linha 2: Ritual de restauração -->
+        <div
+          class="settings-subcard flex flex-col gap-3 rounded-2xl border border-emerald-500/60 bg-gradient-to-r from-emerald-900 via-emerald-800 to-slate-950 px-4 py-4 shadow-[0_0_40px_rgba(16,185,129,0.55)] md:flex-row md:items-center md:justify-between"
+        >
+          <div class="flex items-start gap-3">
+            <div
+              class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-200"
+            >
+              🧪
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <p class="text-sm font-semibold text-white">
+                  Ritual de restauração
+                </p>
+                <span
+                  class="rounded-full border border-emerald-400/60 bg-emerald-500/10 px-2 py-[1px] text-[0.6rem] font-semibold uppercase tracking-widest text-emerald-200"
+                >
+                  Épico
+                </span>
+              </div>
+              <p class="text-xs text-slate-300/80 max-w-md">
+                Importe um grimório em <code>.json</code> criado por um herói, para
+                trazer de volta as memórias de seu reino, com suas áreas, missões
+                e XP.
+              </p>
+              <p class="mt-1 text-[0.65rem] text-amber-200/80">
+                Atenção: este ritual substituirá o reino atual pelo do grimório
+                utilizado. E este será jogado em trevas sombrias e ranger de
+                dentes!.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="rounded-full bg-emerald-500 px-4 py-2 text-xs font-semibold text-slate-950 shadow-md hover:bg-emerald-400 disabled:opacity-60"
+            onclick={openImportDialog}
+            disabled={isImporting}
+          >
+            {isImporting ? 'Importando...' : 'Importar backup'}
+          </button>
+
+          <input
+            bind:this={fileInput}
+            type="file"
+            accept="application/json"
+            class="hidden"
+            onchange={handleFileSelected}
+          />
+        </div>
+
+        <!-- Linha 3: Sincronia estelar (placeholder + botão Sincronizar) -->
+        <div
+          class="settings-subcard flex flex-col gap-3 rounded-2xl border border-sky-500/60 bg-gradient-to-r from-sky-950 via-slate-900 to-slate-950 px-4 py-4 shadow-[0_0_40px_rgba(56,189,248,0.55)] md:flex-row md:items-center md:justify-between"
+        >
+          <div class="flex items-start gap-3">
+            <div
+              class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-sky-500/25 text-sky-200"
+            >
+              ☁️
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center gap-2">
+                <p class="text-sm font-semibold text-white">
+                  Sincronia estelar
+                </p>
+                <span
+                  class="rounded-full border border-sky-400/60 bg-sky-500/15 px-2 py-[1px] text-[0.6rem] font-semibold uppercase tracking-widest text-sky-200"
+                >
+                  Em breve
+                </span>
+              </div>
+              <p class="text-xs text-slate-200/85 max-w-md">
+                Futuramente você poderá sincronizar seu reino com as estrelas e
+                o cosmos, para nunca perder o seu reino e legado de aprendizado
+                e desenvolvimento.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="rounded-full bg-sky-500 px-4 py-2 text-xs font-semibold text-slate-950 shadow-md hover:bg-sky-400 disabled:opacity-60"
+            disabled
+            title="Sincronização com a nuvem será habilitada em breve"
+          >
+            Sincronizar
+          </button>
+        </div>
+      </div>
+
+      <!-- Divider entre Configurações e Neurodiversidade -->
+      <div
+        class="my-6 h-px bg-gradient-to-r from-transparent via-slate-600/60 to-transparent"
+      ></div>
+
+      <!-- Neurodiversidade -->
+      <div class="space-y-4">
+        <!-- Card verde do título Neurodiversidade -->
+        <div
+          class="rounded-2xl border border-emerald-500/70 bg-gradient-to-r from-emerald-950 via-slate-950 to-emerald-900 px-4 py-4 text-center shadow-[0_0_45px_rgba(16,185,129,0.85)]"
+        >
+          <h2 class="text-2xl md:text-3xl font-extrabold text-emerald-100">
+            Neurodiversidade
+          </h2>
+          <p class="mx-auto mt-2 max-w-xl text-xs text-emerald-50/80">
+            Ajustes suaves para foco, legibilidade e redução de estímulos
+            visuais. Pense nisso como encantamentos opcionais para o seu
+            cérebro.
+          </p>
+        </div>
+
+        <!-- Card 1: Modo foco -->
+        <div
+          class="neuro-card flex items-center justify-between rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-slate-950/95 via-slate-900/95 to-slate-950/95 px-4 py-3"
+        >
+          <div>
+            <p class="text-sm font-semibold text-white">Modo foco</p>
+            <p class="text-xs text-slate-300/80 max-w-md">
+              Reduz brilhos e sombras intensas para diminuir distrações visuais.
             </p>
           </div>
 
           <button
             type="button"
-            class={`relative inline-flex h-8 w-14 items-center rounded-full border px-1 transition-all duration-300 ease-out
-              ${
-                darkEnchant
-                  ? 'border-violet-300 bg-black/70 shadow-[0_0_18px_rgba(167,139,250,0.8)]'
-                  : 'border-amber-200 bg-slate-800/70 shadow-[0_0_14px_rgba(251,191,36,0.6)]'
-              }`}
+            class={switchClasses(focusMode)}
             role="switch"
-            aria-checked={darkEnchant ? 'true' : 'false'}
-            aria-label={darkEnchant
-              ? 'Desativar encantamento sombrio'
-              : 'Ativar encantamento sombrio'}
-            onclick={toggleDarkEnchant}
+            aria-checked={focusMode}
+            aria-label="Ativar ou desativar modo foco"
+            onclick={toggleFocusMode}
           >
-            <span
-              class={`h-6 w-6 rounded-full bg-gradient-to-br from-amber-300 to-amber-500 shadow-[0_0_14px_rgba(251,191,36,0.9)] transition-transform duration-300 ease-out
-                ${darkEnchant ? 'translate-x-6' : 'translate-x-0'}`}
-            ></span>
+            <span class={knobClasses(focusMode)}></span>
           </button>
         </div>
 
-        <!-- “slots” de itens / cartas -->
-        <div class="space-y-4 pt-1">
-          <!-- Grimório de backup (exportar) -->
-          <div
-            class="relative flex items-center gap-4 overflow-hidden rounded-2xl border border-violet-500/40 bg-gradient-to-r from-slate-950/90 via-slate-900/95 to-slate-950/90 px-4 py-4"
-          >
-            <div
-              class="flex h-11 w-11 items-center justify-center rounded-full bg-slate-950/90 ring-2 ring-violet-400/70 shadow-[0_0_20px_rgba(129,140,248,0.9)]"
-            >
-              <span class="text-lg">📜</span>
-            </div>
-
-            <div class="min-w-0 flex-1">
-              <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                <h2 class="text-sm font-semibold text-slate-50">
-                  Grimório de backup
-                </h2>
-                <span
-                  class="rounded-full bg-violet-500/20 px-2 py-[1px] text-[0.65rem] font-medium uppercase tracking-[0.18em] text-violet-200"
-                  >Raro</span
-                >
-              </div>
-              <p class="mt-1 text-xs text-violet-100/85">
-                Gera um arquivo <code>.json</code> com todas as suas áreas de foco,
-                missões e progresso de XP.
-              </p>
-            </div>
-
-            <BaseButton
-              variant="primary"
-              type="button"
-              onclick={handleExportClick}
-            >
-              Exportar dados
-            </BaseButton>
+        <!-- Card 2: Texto maior -->
+        <div
+          class="neuro-card flex items-center justify-between rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-slate-950/95 via-slate-900/95 to-slate-950/95 px-4 py-3"
+        >
+          <div>
+            <p class="text-sm font-semibold text-white">Texto maior</p>
+            <p class="text-xs text-slate-300/80 max-w-md">
+              Aumenta levemente o tamanho base das fontes para leitura mais
+              confortável.
+            </p>
           </div>
 
-          <!-- Ritual de restauração (importar) -->
-          <div
-            class="relative flex items-center gap-4 overflow-hidden rounded-2xl border border-emerald-500/35 bg-gradient-to-r from-slate-950/95 via-slate-900 to-slate-950/90 px-4 py-4"
+          <button
+            type="button"
+            class={switchClasses(largeText)}
+            role="switch"
+            aria-checked={largeText}
+            aria-label="Ativar ou desativar texto maior"
+            onclick={toggleLargeText}
           >
-            <div
-              class="flex h-11 w-11 items-center justify-center rounded-full bg-slate-950/90 ring-2 ring-emerald-400/70 shadow-[0_0_18px_rgba(52,211,153,0.9)]"
-            >
-              <span class="text-lg">🕯️</span>
-            </div>
-
-            <div class="min-w-0 flex-1">
-              <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                <h2 class="text-sm font-semibold text-slate-50">
-                  Ritual de restauração
-                </h2>
-                <span
-                  class="rounded-full bg-emerald-500/20 px-2 py-[1px] text-[0.65rem] font-medium uppercase tracking-[0.18em] text-emerald-200"
-                  >Épico</span
-                >
-              </div>
-              <p class="mt-1 text-xs text-emerald-100/85">
-                Importe um arquivo <code>.json</code> criado pelo backup para trazer
-                de volta suas áreas, missões e XP.
-              </p>
-            </div>
-
-            <BaseButton
-              variant="success"
-              type="button"
-              onclick={handleImportClick}
-            >
-              Importar backup
-            </BaseButton>
-          </div>
-
-          <!-- Sincronia estelar (placeholder “em breve”) -->
-          <div
-            class="relative flex items-center gap-4 overflow-hidden rounded-2xl border border-slate-600/60 bg-gradient-to-r from-slate-900 via-slate-900/95 to-slate-950 px-4 py-4 opacity-60"
-          >
-            <div
-              class="flex h-11 w-11 items-center justify-center rounded-full bg-slate-950/90 ring-2 ring-slate-500/80"
-            >
-              <span class="text-lg">☁️</span>
-            </div>
-
-            <div class="min-w-0 flex-1">
-              <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                <h2 class="text-sm font-semibold text-slate-200">
-                  Sincronia estelar
-                </h2>
-                <span
-                  class="rounded-full bg-slate-600/40 px-2 py-[1px] text-[0.65rem] font-medium uppercase tracking-[0.18em] text-slate-200"
-                  >Em breve</span
-                >
-              </div>
-              <p class="mt-1 text-xs text-slate-300/80">
-                Futuramente você poderá sincronizar seu progresso com a nuvem
-                para nunca perder o seu reino de aprendizado.
-              </p>
-            </div>
-          </div>
+            <span class={knobClasses(largeText)}></span>
+          </button>
         </div>
 
-        <!-- input de arquivo escondido (usado pelo importar) -->
-        <input
-          class="hidden"
-          type="file"
-          accept="application/json"
-          bind:this={fileInput}
-          onchange={handleFileChange}
-        />
+        <!-- Card 3: Estímulos suaves -->
+        <div
+          class="neuro-card flex items-center justify-between rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-slate-950/95 via-slate-900/95 to-slate-950/95 px-4 py-3"
+        >
+          <div>
+            <p class="text-sm font-semibold text-white">Estímulos suaves</p>
+            <p class="text-xs text-slate-300/80 max-w-md">
+              Encurta animações e transições para que nada fique piscando por
+              muito tempo na tela.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class={switchClasses(lowStimulus)}
+            role="switch"
+            aria-checked={lowStimulus}
+            aria-label="Ativar ou desativar estímulos suaves"
+            onclick={toggleLowStimulus}
+          >
+            <span class={knobClasses(lowStimulus)}></span>
+          </button>
+        </div>
       </div>
     </div>
   </div>

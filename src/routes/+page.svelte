@@ -2,18 +2,29 @@
 <script lang="ts">
   import StatsManager from '$lib/StatsManager.svelte';
   import AreaManager from '$lib/AreaManager.svelte';
+  import AvatarAchievementsPanel from '$lib/AvatarAchievementsPanel.svelte';
+  import EcoGamificationPanel from '$lib/EcoGamificationPanel.svelte';
+  import XpByAreaPanel from '$lib/XpByAreaPanel.svelte';
 </script>
 
-<svelte:head>
-  <title>Level Me Up!</title>
-</svelte:head>
+<main class="mx-auto max-w-5xl px-4 pb-28 pt-8">
+  <!-- Hero / card principal de progresso -->
+  <StatsManager />
 
-<main class="min-h-screen bg-background text-text">
-  <div class="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pt-10 pb-8">
-    <!-- Card épico de nível / XP / streak -->
-    <StatsManager />
+  <!-- Seção de painéis acima das missões -->
+  <div class="mt-6 space-y-6">
+    <!-- Avatar + medalhas -->
+    <AvatarAchievementsPanel />
 
-    <!-- Missões ativas (áreas + itens) -->
+    <!-- Eco-gamificação / jardim -->
+    <EcoGamificationPanel />
+
+    <!-- Novo painel: gráficos de XP por área -->
+    <XpByAreaPanel />
+  </div>
+
+  <!-- Missões ativas (áreas + itens) -->
+  <div class="mt-8">
     <AreaManager />
   </div>
 </main>
