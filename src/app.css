@@ -3,35 +3,127 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Faz o app ocupar a tela toda */
+/* ---------- Layout base ---------- */
+
 html,
 body {
   height: 100%;
 }
 
-/* Estilo global do corpo */
 body {
-  margin: 0;
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    sans-serif;
-  background-color: #020617; /* bg-slate-950 */
-  color: #e5e7eb; /* text-slate-200 */
+  @apply bg-slate-950 text-slate-100 antialiased;
 }
 
-/* Container principal do SvelteKit */
+/* root do Svelte */
 #svelte {
-  min-height: 100%;
+  @apply min-h-screen flex flex-col;
 }
 
-/* Exemplo de componente Tailwind com @apply (tudo ok!) */
-.card-elevated {
-  @apply rounded-3xl border border-slate-800/70 bg-slate-900/80 shadow-2xl;
+/* main com espaço para a bottom nav */
+.page-with-bottom-nav {
+  min-height: 100vh;
+  padding-bottom: 4.5rem; /* altura da bottom-nav + safe-area */
 }
 
-.card-section {
-  @apply border-t border-white/5 pt-4;
+/* ---------- Bottom navigation ---------- */
+
+.bottom-nav {
+  @apply fixed inset-x-0 bottom-0 z-40 border-t border-slate-800
+    bg-slate-950/95 backdrop-blur flex items-center justify-center;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* container interno da bottom-nav (ícones e labels) */
+.bottom-nav-inner {
+  @apply mx-auto flex max-w-md flex-1 items-center justify-around gap-8 px-4 py-3;
+}
+
+/* ---------- Cartões/painéis temáticos globais ---------- */
+
+.realm-card,
+.config-card,
+.achievements-card,
+.eco-card,
+.neuro-card {
+  @apply rounded-3xl border border-slate-800/70
+    bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950
+    shadow-2xl;
+}
+
+/* Glow moderado nas opções de neuro (padrão) */
+.neuro-card {
+  box-shadow:
+    0 0 26px rgba(16, 185, 129, 0.45),
+    0 18px 40px rgba(15, 23, 42, 0.95);
+}
+
+/* Subcards de configurações (encantamento, grimório, ritual, sincronia) */
+.settings-subcard {
+  border-radius: 1rem; /* aproxima do rounded-2xl */
+}
+
+/* ---------- Neurodiversidade ---------- */
+
+/* Variáveis base controladas por data-attributes */
+:root {
+  --lmup-base-font-size: 16px;
+}
+
+/* Base de fonte para o app inteiro */
+html {
+  font-size: var(--lmup-base-font-size); /* controla rem/Tailwind */
+  scroll-behavior: smooth;
+}
+
+body {
+  font-size: 1rem; /* 1rem baseado na var do html */
+}
+
+/* TEXTO MAIOR – aumenta font-size base (afeta tudo que usa rem) */
+:root[data-neuro-large-text='true'] {
+  --lmup-base-font-size: 18.5px;
+}
+
+/* ESTÍMULOS SUAVES – global
+   Reduz brilho e deixa transições mais secas, mas sem cortar tudo */
+:root[data-neuro-low-stimulus='true'] {
+  scroll-behavior: auto;
+}
+
+/* Suaviza sombras de QUALQUER elemento com classe shadow-* */
+:root[data-neuro-low-stimulus='true'] [class*='shadow-'] {
+  box-shadow: 0 6px 22px rgba(15, 23, 42, 0.85) !important;
+}
+
+/* overlays de brilho ficam mais discretos, mas ainda visíveis */
+:root[data-neuro-low-stimulus='true'] [aria-hidden='true'] {
+  opacity: 0.55 !important;
+}
+
+/* animações/transições bem curtas em estímulos suaves */
+:root[data-neuro-low-stimulus='true'] * {
+  animation-duration: 120ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 80ms !important;
+}
+
+/* MODO FOCO – global
+   Corta glows e sombras fortes no app inteiro (sem véu) */
+:root[data-neuro-focus='true'] [class*='shadow-'] {
+  box-shadow: none !important;
+}
+
+/* Cartões principais ficam com borda mais “seca” no modo foco */
+:root[data-neuro-focus='true'] .realm-card,
+:root[data-neuro-focus='true'] .config-card,
+:root[data-neuro-focus='true'] .achievements-card,
+:root[data-neuro-focus='true'] .eco-card,
+:root[data-neuro-focus='true'] .neuro-card,
+:root[data-neuro-focus='true'] .settings-subcard {
+  border-color: rgba(15, 23, 42, 0.9) !important;
+}
+
+/* overlays de brilho desligados totalmente no modo foco */
+:root[data-neuro-focus='true'] [aria-hidden='true'] {
+  opacity: 0 !important;
 }
