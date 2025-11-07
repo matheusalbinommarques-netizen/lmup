@@ -4,16 +4,12 @@ export const component = async () =>
   (component_cache ??= (await import('../entries/pages/_page.svelte.js'))
     .default);
 export const imports = [
-  '_app/immutable/nodes/2.ChznuR9a.js',
-  '_app/immutable/chunks/C1kyYzkI.js',
-  '_app/immutable/chunks/BOOFhtRP.js',
-  '_app/immutable/chunks/DXa1qAe1.js',
-  '_app/immutable/chunks/5aiaHk4R.js',
-  '_app/immutable/chunks/Dt4_cxAB.js',
-  '_app/immutable/chunks/B0aBMHRA.js',
-  '_app/immutable/chunks/DG4W8TUH.js',
-  '_app/immutable/chunks/CUIkxFFA.js',
-  '_app/immutable/chunks/BwBkY9_K.js',
+  '_app/immutable/nodes/2.Bysll3dT.js',
+  '_app/immutable/chunks/CTOClj_W.js',
+  '_app/immutable/chunks/B9t7ERLA.js',
+  '_app/immutable/chunks/v1vEHNqM.js',
+  '_app/immutable/chunks/CmYDCv5e.js',
+  '_app/immutable/chunks/DYDdMpkw.js',
 ];
-export const stylesheets = ['_app/immutable/assets/BottomNav.tn0RQdqM.css'];
+export const stylesheets = ['_app/immutable/assets/2.rdC8a2QM.css'];
 export const fonts = [];

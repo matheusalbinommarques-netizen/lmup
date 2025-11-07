@@ -1,61 +1,71 @@
-<!-- src/lib/BottomNav.svelte -->
 <script lang="ts">
-  import { page } from '$app/state';
+  import { page } from '$app/stores';
 
-  type NavLink = {
-    href: string;
-    label: string;
-    icon: string;
-  };
-
-  const links: NavLink[] = [
-    {
-      href: '/',
-      label: 'Progresso',
-      icon: '🏠',
-    },
-    {
-      href: '/config',
-      label: 'Configurações',
-      icon: '⚙️',
-    },
-  ];
-
-  const currentPath = $derived(page.url.pathname);
-
-  const linkClasses = (href: string) => {
-    const active = currentPath === href;
-
-    return {
-      root:
-        'flex flex-col items-center gap-1 text-[0.7rem] transition-colors duration-150 ' +
-        (active ? 'text-primary' : 'text-text-secondary'),
-      icon:
-        'flex h-8 w-8 items-center justify-center rounded-full border text-base ' +
-        (active
-          ? 'border-primary bg-primary/10'
-          : 'border-slate-700 bg-slate-900/80'),
-    };
-  };
+  function isActive(path: string): boolean {
+    return ($page.url.pathname as string) === path;
+  }
 </script>
 
+<!-- 
+    - h-[80px]: Uma altura fixa menor.
+    - bg-cover: Faz a imagem cobrir a área sem distorcer (pode cortar um pouco, o que é melhor).
+    - bg-bottom: Garante que a parte de baixo (curvada) da madeira apareça.
+    - items-center: Centraliza os ícones verticalmente na div.
+-->
 <nav
-  class="bottom-nav z-50 border-t border-slate-800/80 bg-slate-950/95 backdrop-blur-md"
-  style="position: fixed; left: 0; right: 0; bottom: 0;"
+  class="relative w-full h-[80x] bg-[url('/art/nav-wood-bar.png')] bg-cover bg-bottom bg-no-repeat
+               flex justify-evenly items-center px-4 z-30 shrink-0"
 >
-  <div
-    class="mx-auto flex max-w-3xl items-center justify-around gap-4 px-6 py-2"
+  <!-- Início -->
+  <a
+    href="/"
+    class="flex flex-col items-center justify-center group"
+    aria-label="Início"
   >
-    {#each links as link (link.href)}
-      {@const cls = linkClasses(link.href)}
-      <a
-        href={link.href}
-        class={cls.root}
-        aria-current={currentPath === link.href ? 'page' : undefined}
-      >
-        <span class={cls.icon}>{link.icon}</span>
-        <span>{link.label}</span>
-      </a>
-    {/each}
-  </div>
+    <div
+      class="transition-all duration-200 {isActive('/')
+        ? 'scale-110 filter drop-shadow-[0_0_8px_rgba(255,215,0,0.6)]'
+        : 'opacity-90 hover:scale-105'}"
+    >
+      <img
+        src="/art/icones/icon-taverna.png"
+        alt="Início"
+        class="w-[60px] h-[60px]"
+      />
+    </div>
+  </a>
+
+  <!-- Missões -->
+  <a
+    href="/missoes"
+    class="flex flex-col items-center justify-center group"
+    aria-label="Missões"
+  >
+    <div
+      class="transition-all duration-200 {isActive('/missoes')
+        ? 'scale-110 filter drop-shadow-[0_0_8px_rgba(255,215,0,0.6)]'
+        : 'opacity-90 hover:scale-105'}"
+    >
+      <img
+        src="/art/icones/icon-missoes.png"
+        alt="Missões"
+        class="w-[60px] h-[60px]"
+      />
+    </div>
+  </a>
+
+  <!-- Clã -->
+  <a
+    href="/cla"
+    class="flex flex-col items-center justify-center group"
+    aria-label="Clã"
+  >
+    <div
+      class="transition-all duration-200 {isActive('/cla')
+        ? 'scale-110 filter drop-shadow-[0_0_8px_rgba(255,215,0,0.6)]'
+        : 'opacity-90 hover:scale-105'}"
+    >
+      <img src="/art/icones/icon-cla.png" alt="Clã" class="w-[60px] h-[60px]" />
+    </div>
+  </a>
 </nav>

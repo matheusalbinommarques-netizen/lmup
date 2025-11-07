@@ -6,36 +6,21 @@
     "isEntry": true,
     "imports": ["_internal.js", "_environment.js"]
   },
-  "_BottomNav.js": {
-    "file": "chunks/BottomNav.js",
-    "name": "BottomNav",
-    "imports": ["_index.js", "_index2.js", "_context.js"],
-    "css": ["_app/immutable/assets/BottomNav.tn0RQdqM.css"]
-  },
-  "_BottomNav.tn0RQdqM.css": {
-    "file": "_app/immutable/assets/BottomNav.tn0RQdqM.css",
-    "src": "_BottomNav.tn0RQdqM.css"
-  },
   "_context.js": {
     "file": "chunks/context.js",
     "name": "context"
-  },
-  "_db.js": {
-    "file": "chunks/db.js",
-    "name": "db"
   },
   "_environment.js": {
     "file": "chunks/environment.js",
     "name": "environment"
   },
-  "_equality.js": {
-    "file": "chunks/equality.js",
-    "name": "equality"
-  },
   "_exports.js": {
     "file": "chunks/exports.js",
-    "name": "exports",
-    "imports": ["_equality.js"]
+    "name": "exports"
+  },
+  "_false.js": {
+    "file": "chunks/false.js",
+    "name": "false"
   },
   "_index.js": {
     "file": "chunks/index.js",
@@ -45,17 +30,22 @@
   "_index2.js": {
     "file": "chunks/index2.js",
     "name": "index",
-    "imports": ["_equality.js", "_exports.js", "_utils.js", "_context.js"]
+    "imports": ["_context.js", "_false.js"]
   },
   "_internal.js": {
     "file": "chunks/internal.js",
     "name": "internal",
-    "imports": ["_index.js", "_environment.js", "_equality.js", "_context.js"]
+    "imports": ["_index2.js", "_context.js", "_environment.js"]
   },
   "_shared.js": {
     "file": "chunks/shared.js",
     "name": "shared",
     "imports": ["_utils.js"]
+  },
+  "_state.svelte.js": {
+    "file": "chunks/state.svelte.js",
+    "name": "state.svelte",
+    "imports": ["_context.js"]
   },
   "_utils.js": {
     "file": "chunks/utils.js",
@@ -66,14 +56,20 @@
     "name": "remote-entry",
     "src": "node_modules/@sveltejs/kit/src/runtime/app/server/remote/index.js",
     "isEntry": true,
-    "imports": ["_shared.js", "_environment.js"]
+    "imports": ["_shared.js", "_false.js", "_environment.js"]
   },
   "node_modules/@sveltejs/kit/src/runtime/components/svelte-5/error.svelte": {
     "file": "entries/fallbacks/error.svelte.js",
     "name": "entries/fallbacks/error.svelte",
     "src": "node_modules/@sveltejs/kit/src/runtime/components/svelte-5/error.svelte",
     "isEntry": true,
-    "imports": ["_context.js", "_index2.js"]
+    "imports": [
+      "_context.js",
+      "_state.svelte.js",
+      "_exports.js",
+      "_utils.js",
+      "_index.js"
+    ]
   },
   "node_modules/@sveltejs/kit/src/runtime/server/index.js": {
     "file": "index.js",
@@ -81,9 +77,11 @@
     "src": "node_modules/@sveltejs/kit/src/runtime/server/index.js",
     "isEntry": true,
     "imports": [
+      "_false.js",
       "_environment.js",
       "_exports.js",
       "_utils.js",
+      "_index.js",
       "_internal.js",
       "_shared.js"
     ]
@@ -93,8 +91,14 @@
     "name": "entries/pages/_layout.svelte",
     "src": "src/routes/+layout.svelte",
     "isEntry": true,
-    "imports": ["_BottomNav.js"],
-    "css": ["_app/immutable/assets/_layout.Ca4sUYCK.css"]
+    "imports": [
+      "_index2.js",
+      "_context.js",
+      "_exports.js",
+      "_utils.js",
+      "_state.svelte.js"
+    ],
+    "css": ["_app/immutable/assets/_layout.HsWbFz3-.css"]
   },
   "src/routes/+layout.ts": {
     "file": "entries/pages/_layout.ts.js",
@@ -107,13 +111,14 @@
     "name": "entries/pages/_page.svelte",
     "src": "src/routes/+page.svelte",
     "isEntry": true,
-    "imports": ["_index.js", "_context.js", "_db.js", "_BottomNav.js"]
+    "imports": ["_index2.js", "_context.js"],
+    "css": ["_app/immutable/assets/_page.rdC8a2QM.css"]
   },
   "src/routes/config/+page.svelte": {
     "file": "entries/pages/config/_page.svelte.js",
     "name": "entries/pages/config/_page.svelte",
     "src": "src/routes/config/+page.svelte",
     "isEntry": true,
-    "imports": ["_db.js", "_index.js", "_context.js"]
+    "imports": ["_index2.js", "_context.js"]
   }
 }

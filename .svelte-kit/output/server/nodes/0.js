@@ -8,19 +8,15 @@ export const component = async () =>
 export { universal };
 export const universal_id = 'src/routes/+layout.ts';
 export const imports = [
-  '_app/immutable/nodes/0.zmJcXg7n.js',
-  '_app/immutable/chunks/C1kyYzkI.js',
-  '_app/immutable/chunks/BOOFhtRP.js',
-  '_app/immutable/chunks/B0kYkVBN.js',
-  '_app/immutable/chunks/Dt4_cxAB.js',
-  '_app/immutable/chunks/B0aBMHRA.js',
-  '_app/immutable/chunks/5aiaHk4R.js',
-  '_app/immutable/chunks/DG4W8TUH.js',
-  '_app/immutable/chunks/CUIkxFFA.js',
-  '_app/immutable/chunks/DXa1qAe1.js',
+  '_app/immutable/nodes/0.BIzLJ6Uh.js',
+  '_app/immutable/chunks/CTOClj_W.js',
+  '_app/immutable/chunks/B9t7ERLA.js',
+  '_app/immutable/chunks/bGr8mffb.js',
+  '_app/immutable/chunks/B0vhlS2c.js',
+  '_app/immutable/chunks/E1N5lFGC.js',
+  '_app/immutable/chunks/DYDdMpkw.js',
+  '_app/immutable/chunks/CKhwVIJ_.js',
+  '_app/immutable/chunks/CFHu8sXB.js',
 ];
-export const stylesheets = [
-  '_app/immutable/assets/BottomNav.tn0RQdqM.css',
-  '_app/immutable/assets/0.Ca4sUYCK.css',
-];
+export const stylesheets = ['_app/immutable/assets/0.Bj5vy2FL.css'];
 export const fonts = [];

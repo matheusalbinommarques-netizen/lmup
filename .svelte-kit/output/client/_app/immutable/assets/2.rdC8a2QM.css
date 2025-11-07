@@ -1,0 +1,23 @@
+.no-scrollbar.svelte-1uha8ag::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar.svelte-1uha8ag {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.mask-fade-sides.svelte-1uha8ag {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 5%,
+    black 95%,
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 5%,
+    black 95%,
+    transparent
+  );
+}
