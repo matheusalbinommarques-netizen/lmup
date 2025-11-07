@@ -11,7 +11,7 @@
 >
   <!-- container do frame 1024x1024 -->
   <div
-    class="relative h-[95vh] max-h-[900px] aspect-square max-w-[500px] filter drop-shadow-2xl"
+    class="relative h-[95vh] max-h-[1200px] aspect-square max-w-[1200px] filter drop-shadow-2xl"
   >
     <!-- frame -->
     <img
@@ -23,7 +23,7 @@
     <!-- tela interna (467x830 dentro de 1024x1024) -->
     <div
       class="absolute z-10 bg-black overflow-hidden flex flex-col rounded-[35px]"
-      style="top: 15%; bottom: 15%; left: 27.2%; right: 27.2%;"
+      style="top: 8%; bottom: 8%; left: 27.2%; right: 27.2%;"
     >
       <div class="absolute inset-0">
         <img
