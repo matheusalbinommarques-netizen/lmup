@@ -1,0 +1,6 @@
+{
+  "/": ["src/routes/+layout.ts", "src/routes/+layout.ts"],
+  "/cla": ["src/routes/+layout.ts"],
+  "/config": ["src/routes/+layout.ts"],
+  "/missoes": ["src/routes/+layout.ts"]
+}

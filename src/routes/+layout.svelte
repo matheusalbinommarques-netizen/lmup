@@ -1,19 +1,26 @@
-<!-- src/routes/+layout.svelte -->
 <script lang="ts">
   import '../app.css';
   import BottomNav from '$lib/BottomNav.svelte';
+  import DesktopNav from '$lib/DesktopNav.svelte';
   import type { Snippet } from 'svelte';
 
-  // Em runes mode, pegamos as props com $props()
-  const { children } = $props<{ children: Snippet }>();
+  let { children } = $props<{ children: Snippet }>();
 </script>
 
-<div class="min-h-screen bg-slate-950 text-text flex flex-col">
-  <!-- Conteúdo da página com espaço pro bottom nav -->
-  <main class="flex-1 page-with-bottom-nav">
-    {@render children()}
-  </main>
+<div class="min-h-screen bg-slate-950 text-slate-200 flex flex-col md:flex-row">
+  <DesktopNav />
 
-  <!-- Navegação fixa no rodapé -->
-  <BottomNav />
+  <div class="flex-1 flex flex-col min-w-0 relative">
+    <main
+      class="flex-1 p-4 md:p-8 overflow-y-auto scroll-smooth pb-[100px] md:pb-8"
+    >
+      <div class="mx-auto max-w-5xl w-full">
+        {@render children()}
+      </div>
+    </main>
+  </div>
+
+  <div class="md:hidden fixed bottom-0 left-0 right-0 z-50">
+    <BottomNav />
+  </div>
 </div>

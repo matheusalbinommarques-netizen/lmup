@@ -1,154 +1,81 @@
 // src/services/xpService.ts
-import { BehaviorSubject, type Observable } from 'rxjs';
+import { db } from './db';
 
-type StreakSnapshot = {
-  count: number;
-  lastCheckin: string | null;
+const getXpForNextLevel = (level: number): number => {
+  // Ex: Lvl 1->100, Lvl 2->220, Lvl 3->360, Lvl 4->520...
+  return Math.floor(level * 80 + Math.pow(level, 2) * 20);
 };
 
-const STORAGE_KEYS = {
-  totalXp: 'lmup:totalXp',
-  streak: 'lmup:streak',
-  lastCheckin: 'lmup:lastCheckin',
-} as const;
+export const xpService = {
+  /**
+   * Adiciona XP ao perfil do usuário e checa por level up.
+   */
+  async addXp(amount: number) {
+    if (amount <= 0) return;
 
-// Observables internos
-const totalXp$ = new BehaviorSubject<number>(0);
-const streak$ = new BehaviorSubject<StreakSnapshot>({
-  count: 0,
-  lastCheckin: null,
-});
+    await db.transaction('rw', db.profile, async () => {
+      const profile = await db.profile.get(1);
+      if (!profile) return;
 
-// ----------------------
-// Helpers de localStorage
-// ----------------------
+      let { xpCurrent, xpNext, level, title } = profile;
+      xpCurrent += amount;
 
-function safeGetItem(key: string): string | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
+      let leveledUp = false;
+      while (xpCurrent >= xpNext) {
+        leveledUp = true;
+        xpCurrent -= xpNext; // Zera o XP (mantendo o excesso)
+        level += 1; // Aumenta o Nível
+        xpNext = getXpForNextLevel(level); // Calcula o novo teto de XP
+      }
 
-function safeSetItem(key: string, value: string): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(key, value);
-  } catch {
-    // se der erro (quota, privacidade etc.), só ignoramos
-  }
-}
+      if (leveledUp) {
+        title = `Nobre Aventureiro Nv. ${level}`;
+      }
 
-// ----------------------
-// Inicialização
-// ----------------------
+      await db.profile.update(1, {
+        xpCurrent,
+        xpNext,
+        level,
+        title,
+      });
+    });
+  },
 
-function initFromStorage(): void {
-  const storedXp = Number(safeGetItem(STORAGE_KEYS.totalXp) ?? '0');
-  const storedStreak = Number(safeGetItem(STORAGE_KEYS.streak) ?? '0');
-  const storedLastCheckin = safeGetItem(STORAGE_KEYS.lastCheckin);
+  /**
+   * Remove XP do perfil do usuário (ex: ao desmarcar uma missão).
+   */
+  async removeXp(amount: number) {
+    if (amount <= 0) return;
 
-  totalXp$.next(Number.isFinite(storedXp) ? storedXp : 0);
-  streak$.next({
-    count: Number.isFinite(storedStreak) ? storedStreak : 0,
-    lastCheckin: storedLastCheckin,
-  });
-}
+    await db.transaction('rw', db.profile, async () => {
+      const profile = await db.profile.get(1);
+      if (!profile) return;
 
-if (typeof window !== 'undefined') {
-  initFromStorage();
-}
+      let { xpCurrent, xpNext, level, title } = profile;
+      xpCurrent -= amount;
 
-// ----------------------
-// API pública
-// ----------------------
+      // Loop de "De-Level"
+      let deleveled = false;
+      while (xpCurrent < 0 && level > 1) {
+        deleveled = true;
+        level -= 1;
+        xpNext = getXpForNextLevel(level);
+        xpCurrent += xpNext; // "Devolve" o XP do nível anterior
+      }
 
-/**
- * Soma XP total do usuário.
- * Chamado em ItemManager quando o usuário conclui um item.
- */
-export async function addXp(amount: number): Promise<void> {
-  if (typeof window === 'undefined') return;
+      if (level < 1) level = 1;
+      if (xpCurrent < 0) xpCurrent = 0; // Trava o XP em 0
 
-  const current = totalXp$.getValue();
-  const updated = current + amount;
+      if (deleveled) {
+        title = `Aventureiro Nv. ${level}`;
+      }
 
-  totalXp$.next(updated);
-  safeSetItem(STORAGE_KEYS.totalXp, String(updated));
-}
-
-/**
- * Verifica / atualiza a streak diária.
- * Chama isso quando o usuário completa pelo menos uma tarefa no dia.
- */
-export async function checkStreak(): Promise<void> {
-  if (typeof window === 'undefined') return;
-
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-  const snapshot = streak$.getValue();
-  const lastCheckin = snapshot.lastCheckin;
-
-  let newCount = snapshot.count;
-
-  if (!lastCheckin) {
-    // primeira vez
-    newCount = 1;
-  } else {
-    const lastDate = new Date(lastCheckin);
-    const diffMs = new Date(today).getTime() - lastDate.getTime();
-    const diffDays = Math.floor(diffMs / 86_400_000); // 1000*60*60*24
-
-    if (diffDays === 0) {
-      // já contou hoje, não muda
-      return;
-    } else if (diffDays === 1) {
-      // dia seguinte -> continua streak
-      newCount += 1;
-    } else {
-      // perdeu streak
-      newCount = 1;
-    }
-  }
-
-  streak$.next({ count: newCount, lastCheckin: today });
-
-  safeSetItem(STORAGE_KEYS.streak, String(newCount));
-  safeSetItem(STORAGE_KEYS.lastCheckin, today);
-}
-
-// Observables usados pelo StatsManager.svelte
-export function getTotalXpObservable(): Observable<number> {
-  return totalXp$.asObservable();
-}
-
-export function getStreakObservable(): Observable<StreakSnapshot> {
-  return streak$.asObservable();
-}
-
-// ----------------------
-// Cálculo de nível
-// ----------------------
-// Regra simples: base 100 XP, e cada nível seguinte custa +50 XP a mais que o anterior.
-export function calcularNivel(totalXp: number): {
-  level: number;
-  currentLevelXp: number;
-  xpToNextLevel: number;
-} {
-  let level = 1;
-  let remainingXp = totalXp;
-  let xpNextLevel = 100;
-
-  while (remainingXp >= xpNextLevel) {
-    remainingXp -= xpNextLevel;
-    level += 1;
-    xpNextLevel = 100 + (level - 1) * 50;
-  }
-
-  return {
-    level,
-    currentLevelXp: remainingXp,
-    xpToNextLevel: xpNextLevel,
-  };
-}
+      await db.profile.update(1, {
+        xpCurrent,
+        xpNext,
+        level,
+        title,
+      });
+    });
+  },
+};
