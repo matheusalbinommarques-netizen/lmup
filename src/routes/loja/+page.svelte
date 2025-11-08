@@ -109,9 +109,9 @@
 </script>
 
 <div class="flex flex-col gap-6 pb-8">
-  <header class="text-center">
+  <header class="mb-4 text-center">
     <h1 class="text-3xl font-bold text-[#ffb74d] drop-shadow-sm font-serif">
-      Loja
+      Loja da Taverna
     </h1>
     <p class="text-slate-400">
       Troque seu progresso por estilos, melhorias e pequenos encantos

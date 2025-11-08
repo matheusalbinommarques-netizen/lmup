@@ -3,7 +3,6 @@
   import { liveQuery } from 'dexie';
   import { onMount } from 'svelte';
   import EditProfileModal from '$lib/EditProfileModal.svelte';
-  // *** CORREÇÃO: Removido o 'lib' extra do caminho ***
   import CompanionSelectModal from '$lib/CompanionSelectModal.svelte';
 
   // --- Estado do Herói (Fallback) ---
@@ -30,13 +29,11 @@
 
   onMount(() => {
     const heroSub = heroQuery.subscribe((profileData) => {
-      // Atualiza as propriedades do objeto $state, não o substitui.
       const data = profileData || fallbackProfile;
       Object.assign(hero, data);
     });
 
     const compSub = allCompanionsQuery.subscribe((companionData) => {
-      // O mesmo para arrays: usar .splice para manter a reatividade.
       allCompanions.splice(0, allCompanions.length, ...(companionData || []));
     });
 
@@ -45,14 +42,20 @@
       compSub.unsubscribe();
     };
   });
-  // --- Fim da Correção ---
 
   // --- Estado dos Modais ---
   let isCompanionModalOpen = $state(false);
   let isProfileModalOpen = $state(false);
 
   // --- Dados Derivados ---
-  let xpPercentage = $derived((hero.xpCurrent / hero.xpNext) * 100);
+  let xpPercentage = $derived(
+    hero.xpNext > 0 ? (hero.xpCurrent / hero.xpNext) * 100 : 0,
+  );
+
+  // corrigindo typo: usar hero.xpNext
+  $effect(() => {
+    xpPercentage = hero.xpNext > 0 ? (hero.xpCurrent / hero.xpNext) * 100 : 0;
+  });
 
   let activePet = $derived(
     (() => {
@@ -80,7 +83,7 @@
 {/if}
 
 <div class="flex flex-col gap-6">
-  <header class="mb-2">
+  <header class="mb-2 text-center">
     <h1 class="text-3xl font-bold text-[#ffb74d] drop-shadow-sm font-serif">
       Taverna do Herói
     </h1>
@@ -90,6 +93,7 @@
   </header>
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Painel do Herói -->
     <section
       class="col-span-1 lg:col-span-2 bg-slate-900/50 border border-slate-800 rounded-2xl p-6 flex flex-col sm:flex-row items-center gap-6 shadow-lg relative overflow-hidden"
     >
@@ -126,10 +130,11 @@
         </div>
       </div>
 
-      <div class="flex-1 w-full text-center sm:text-left mt-4 sm:mt-0">
+      <div class="flex-1 w-full text-center sm:text-left mt-4 sm:mt-0 relative">
         <div class="flex items-center justify-center sm:justify-start gap-3">
           <h2 class="text-2xl font-bold text-slate-100">{hero.name}</h2>
           <button
+            type="button"
             onclick={() => (isProfileModalOpen = true)}
             class="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-primary hover:bg-slate-800 transition-colors"
             title="Editar Perfil"
@@ -150,12 +155,13 @@
         >
           <div
             class="h-full bg-gradient-to-r from-blue-600 to-cyan-400 transition-all duration-500"
-            style="width: {xpPercentage}%"
+            style={`width: ${xpPercentage}%;`}
           ></div>
         </div>
       </div>
     </section>
 
+    <!-- Companheiro -->
     <section
       class="col-span-1 bg-slate-900/50 border border-slate-800 rounded-2xl p-6 flex flex-col items-center text-center shadow-lg relative overflow-hidden"
     >
@@ -173,6 +179,7 @@
       <p class="text-sm text-slate-500">{activePet.type}</p>
 
       <button
+        type="button"
         onclick={() => (isCompanionModalOpen = true)}
         class="mt-4 w-full py-2 text-sm text-slate-400 hover:text-primary hover:bg-slate-800 rounded-lg transition-colors"
       >
@@ -181,38 +188,69 @@
     </section>
   </div>
 
-  <h3 class="text-xl font-bold text-slate-200 mt-4 font-serif">
+  <!-- Serviços da Taverna -->
+  <h3
+    class="text-xl font-bold text-slate-200 mt-4 font-serif text-center md:text-left"
+  >
     Serviços da Taverna
   </h3>
+
   <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-    <button
+    <!-- Loja -->
+    <a
+      href="/loja"
       class="p-4 bg-slate-900/50 border border-slate-800 hover:border-primary/50 hover:bg-slate-800/80 rounded-xl flex flex-col items-center gap-3 transition-all group"
+      role="button"
     >
-      <span class="text-3xl group-hover:scale-110 transition-transform">🛒</span
-      >
-      <span class="font-medium text-slate-300">Loja & Inventário</span>
-    </button>
-    <button
+      <img
+        src="/art/icones/shop-icon.png"
+        alt="Loja"
+        class="w-10 h-10 group-hover:scale-110 transition-transform"
+      />
+      <span class="font-medium text-slate-300">Loja</span>
+    </a>
+
+    <!-- Sala de Troféus -->
+    <a
+      href="/trofeus"
       class="p-4 bg-slate-900/50 border border-slate-800 hover:border-primary/50 hover:bg-slate-800/80 rounded-xl flex flex-col items-center gap-3 transition-all group"
+      role="button"
     >
-      <span class="text-3xl group-hover:scale-110 transition-transform">🏆</span
-      >
+      <img
+        src="/art/icones/trophy-icon.png"
+        alt="Sala de Troféus"
+        class="w-10 h-10 group-hover:scale-110 transition-transform"
+      />
       <span class="font-medium text-slate-300">Sala de Troféus</span>
-    </button>
-    <button
+    </a>
+
+    <!-- Inventário -->
+    <a
+      href="/inventario"
       class="p-4 bg-slate-900/50 border border-slate-800 hover:border-primary/50 hover:bg-slate-800/80 rounded-xl flex flex-col items-center gap-3 transition-all group"
+      role="button"
     >
-      <span class="text-3xl group-hover:scale-110 transition-transform">🧥</span
-      >
-      <span class="font-medium text-slate-300">Guarda-Roupa</span>
-    </button>
-    <button
+      <img
+        src="/art/icones/bag-icon.png"
+        alt="Inventário"
+        class="w-10 h-10 group-hover:scale-110 transition-transform"
+      />
+      <span class="font-medium text-slate-300">Inventário</span>
+    </a>
+
+    <!-- Bestiário -->
+    <a
+      href="/bestiario"
       class="p-4 bg-slate-900/50 border border-slate-800 hover:border-primary/50 hover:bg-slate-800/80 rounded-xl flex flex-col items-center gap-3 transition-all group"
+      role="button"
     >
-      <span class="text-3xl group-hover:scale-110 transition-transform">📖</span
-      >
+      <img
+        src="/art/icones/book-icon.png"
+        alt="Bestiário"
+        class="w-10 h-10 group-hover:scale-110 transition-transform"
+      />
       <span class="font-medium text-slate-300">Bestiário</span>
-    </button>
+    </a>
   </div>
 </div>
 

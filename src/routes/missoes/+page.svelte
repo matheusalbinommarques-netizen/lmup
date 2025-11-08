@@ -108,7 +108,7 @@
 {/if}
 
 <div class="flex flex-col gap-6">
-  <header class="flex items-center justify-between mb-2">
+  <header class="mb-4 flex flex-col items-center gap-3 text-center">
     <div>
       <h1 class="text-3xl font-bold text-[#ffb74d] drop-shadow-sm font-serif">
         Quadro de Missões

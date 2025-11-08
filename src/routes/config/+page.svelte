@@ -61,7 +61,7 @@
 </script>
 
 <div class="flex flex-col gap-8 pb-8">
-  <header>
+  <header class="text-center mb-4">
     <h1 class="text-3xl font-bold text-[#ffb74d] drop-shadow-sm font-serif">
       Cofre Arcano
     </h1>

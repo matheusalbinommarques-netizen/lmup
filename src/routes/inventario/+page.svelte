@@ -112,7 +112,7 @@
 </script>
 
 <div class="flex flex-col gap-6 pb-8">
-  <header class="text-center">
+  <header class="mb-4 text-center">
     <h1 class="text-3xl font-bold text-[#ffb74d] drop-shadow-sm font-serif">
       Inventário
     </h1>
