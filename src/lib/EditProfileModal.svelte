@@ -1,9 +1,7 @@
 <script lang="ts">
   import { db, type Profile } from '$services/db';
-
   // --- Props ---
   let { profile, close } = $props<{ profile: Profile; close: () => void }>();
-
   // --- Estado do Formulário ---
   let heroName = $state(profile.name);
   let heroAvatarB64 = $state(profile.avatarUrl || '');
@@ -61,21 +59,24 @@
 
   <form class="flex flex-col gap-4" onsubmit={handleSubmit}>
     <div class="flex justify-center mb-2">
-      <div class="relative w-32 h-32">
+      <div class="grid w-32 h-32 place-items-center">
+        <img
+          src="/art/hero-avatar-default.png"
+          alt="Moldura"
+          class="col-start-1 row-start-1 w-full h-full pointer-events-none"
+        />
+
         {#if heroAvatarB64}
           <img
             src={heroAvatarB64}
             alt="Avatar Preview"
-            class="w-full h-full object-cover rounded-full"
+            class="col-start-1 row-start-1 w-28 h-28 object-cover rounded-full"
           />
         {:else}
-          <div class="w-full h-full rounded-full bg-slate-700"></div>
+          <div
+            class="col-start-1 row-start-1 w-28 h-28 rounded-full bg-slate-700"
+          ></div>
         {/if}
-        <img
-          src="/art/hero-avatar-default.png"
-          alt="Moldura"
-          class="absolute inset-0 avatar-frame pointer-events-none"
-        />
       </div>
     </div>
 
@@ -132,13 +133,3 @@
     </div>
   </form>
 </div>
-
-<style>
-  /* CSS para ajustar a moldura do avatar (aumenta 7% para cobrir a imagem do usuário) */
-  .avatar-frame {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    transform: scale(1.07);
-  }
-</style>

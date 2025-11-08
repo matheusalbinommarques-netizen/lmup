@@ -80,7 +80,7 @@
             src="/art/hero-avatar-default.png"
             alt="Moldura do Avatar"
             class="absolute inset-0 w-full h-full pointer-events-none"
-            style="transform: scale(1.07);"
+            style="transform: scale(1.40);"
           />
         </div>
 

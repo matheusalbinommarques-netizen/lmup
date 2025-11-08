@@ -197,7 +197,7 @@
                       <img
                         src="/art/hero-avatar-default.png"
                         alt="Seu Avatar"
-                        class="w-full h-full object-cover"
+                        class="w-full h-full object-cover scale-[1.50]"
                       />
                     {:else}
                       <span>{player.name[0]}</span>
