@@ -1,135 +1,167 @@
 <script lang="ts">
   import { db, type Profile } from '$services/db';
-  // --- Props ---
-  let { profile, close } = $props<{ profile: Profile; close: () => void }>();
-  // --- Estado do Formulário ---
-  let heroName = $state(profile.name);
-  let heroAvatarB64 = $state(profile.avatarUrl || '');
+  // CORREÇÃO: 'onDestroy' removido (não utilizado)
+  import { onMount } from 'svelte';
 
-  // --- Funções ---
-  async function handleSubmit(event: SubmitEvent) {
-    event.preventDefault();
-    const name = heroName.trim();
-    if (!name) {
-      alert('O nome não pode ficar vazio.');
-      return;
+  // Props
+  let { profile, close }: { profile: Profile; close: () => void } = $props();
+
+  // --- Estado local para o formulário ---
+  let localName = $state(profile.name);
+  let localAvatarUrl = $state(profile.avatarUrl || '');
+  let isSaving = $state(false);
+
+  /**
+   * Sincroniza o estado local quando o 'profile' (vindo da Taverna)
+   * é carregado.
+   */
+  $effect(() => {
+    // Apenas atualiza se o profile.name for real (não "Carregando...")
+    if (profile.name !== 'Carregando...') {
+      localName = profile.name;
+      localAvatarUrl = profile.avatarUrl || '';
     }
+  });
 
-    try {
-      await db.profile.update(1, {
-        name: name,
-        avatarUrl: heroAvatarB64,
-      });
+  // --- Handlers de Acessibilidade (Escape key) ---
+  onMount(() => {
+    const handleKeydown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        close();
+      }
+    };
+    window.addEventListener('keydown', handleKeydown);
+    return () => {
+      window.removeEventListener('keydown', handleKeydown);
+    };
+  });
+
+  // --- Handlers de Acessibilidade (Overlay click) ---
+  function handleOverlayClick(event: MouseEvent) {
+    if (event.currentTarget === event.target) {
       close();
-    } catch (error) {
-      console.error('Erro ao salvar perfil:', error);
-      alert('Falha ao salvar o perfil.');
     }
   }
 
-  function handleFileSelect(e: Event) {
+  function handleOverlayKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      close();
+    }
+  }
+
+  // --- Lógica do Componente ---
+
+  // Converte a imagem para um Data URL (Base64)
+  function handleFileChange(e: Event) {
     const target = e.target as HTMLInputElement;
     const file = target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
-      heroAvatarB64 = e.target?.result as string;
+    reader.onload = () => {
+      // Atualiza o estado local
+      localAvatarUrl = reader.result as string;
     };
     reader.readAsDataURL(file);
+  }
+
+  // Salva o perfil
+  async function handleSave(e: Event) {
+    e.preventDefault();
+    if (isSaving || !localName) return;
+    isSaving = true;
+
+    try {
+      // Salva o estado local na base de dados
+      await db.profile.update(1, {
+        name: localName,
+        avatarUrl: localAvatarUrl,
+      });
+      close(); // Fecha o modal
+    } catch (err) {
+      console.error('Falha ao salvar perfil', err);
+      alert('Não foi possível salvar o perfil.');
+    } finally {
+      isSaving = false;
+    }
   }
 </script>
 
 <div
-  class="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm"
-  onclick={close}
-  aria-hidden="true"
-></div>
-
-<div
-  class="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2
-           bg-slate-900 border border-slate-800 rounded-2xl shadow-xl p-6"
-  role="dialog"
-  aria-modal="true"
-  aria-labelledby="modal-title"
+  class="fixed inset-0 bg-slate-950/70 z-50 flex items-center justify-center p-4"
+  onclick={handleOverlayClick}
+  onkeydown={handleOverlayKeydown}
+  role="button"
+  tabindex="0"
 >
-  <h2 id="modal-title" class="text-xl font-bold text-[#ffb74d] font-serif mb-6">
-    Editar Perfil
-  </h2>
+  <div
+    class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg w-full max-w-md"
+    role="dialog"
+    aria-modal="true"
+    tabindex="-1"
+    onclick={(e) => e.stopPropagation()}
+    onkeydown={(e) => e.stopPropagation()}
+  >
+    <h2 class="text-xl font-bold text-[#ffb74d] font-serif mb-6">
+      Editar Perfil
+    </h2>
 
-  <form class="flex flex-col gap-4" onsubmit={handleSubmit}>
-    <div class="flex justify-center mb-2">
-      <div class="grid w-32 h-32 place-items-center">
-        <img
-          src="/art/hero-avatar-default.png"
-          alt="Moldura"
-          class="col-start-1 row-start-1 w-full h-full pointer-events-none"
-        />
-
-        {#if heroAvatarB64}
+    <form onsubmit={handleSave} class="flex flex-col gap-4">
+      <label
+        for="avatar-upload"
+        class="block text-sm font-medium text-slate-300">Avatar</label
+      >
+      <div class="flex items-center gap-4">
+        {#if localAvatarUrl}
           <img
-            src={heroAvatarB64}
-            alt="Avatar Preview"
-            class="col-start-1 row-start-1 w-28 h-28 object-cover rounded-full"
+            src={localAvatarUrl}
+            alt="Avatar"
+            class="w-20 h-20 rounded-full object-cover bg-slate-700"
           />
         {:else}
           <div
-            class="col-start-1 row-start-1 w-28 h-28 rounded-full bg-slate-700"
-          ></div>
+            class="w-20 h-20 rounded-full bg-slate-700 flex items-center justify-center"
+          >
+            <span class="text-3xl opacity-50">👤</span>
+          </div>
         {/if}
+
+        <input
+          id="avatar-upload"
+          type="file"
+          accept="image/*"
+          onchange={handleFileChange}
+          class="text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/20 file:text-primary hover:file:bg-primary/30"
+        />
       </div>
-    </div>
 
-    <div>
-      <label
-        for="avatar-upload"
-        class="block text-sm font-medium text-slate-300 mb-2"
+      <label for="profileName" class="block text-sm font-medium text-slate-300"
+        >Nome</label
       >
-        Carregar imagem (PNG ou JPG)
-      </label>
       <input
-        id="avatar-upload"
-        type="file"
-        accept="image/png, image/jpeg"
-        onchange={handleFileSelect}
-        class="text-sm text-slate-400 file:mr-4 file:py-2 file:px-4
-                       file:rounded-full file:border-0 file:text-sm file:font-semibold
-                       file:bg-primary/20 file:text-primary
-                       hover:file:bg-primary/30 file:cursor-pointer w-full"
-      />
-    </div>
-
-    <div>
-      <label
-        for="name"
-        class="block text-sm font-medium text-slate-300 mb-1 mt-4"
-      >
-        Nome do Herói
-      </label>
-      <input
-        id="name"
+        id="profileName"
         type="text"
-        bind:value={heroName}
-        class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200
-                       focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/30"
+        bind:value={localName}
+        class="bg-slate-950 border border-slate-700 rounded-lg p-2 text-slate-100"
         required
       />
-    </div>
 
-    <div class="flex justify-end gap-3 mt-6">
-      <button
-        type="button"
-        onclick={close}
-        class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-sm rounded-lg transition-colors"
-      >
-        Cancelar
-      </button>
-      <button
-        type="submit"
-        class="px-4 py-2 bg-[#ffb74d] hover:bg-[#ffa726] text-slate-950 font-bold text-sm rounded-lg transition-colors"
-      >
-        Salvar Alterações
-      </button>
-    </div>
-  </form>
+      <div class="flex gap-4 mt-6">
+        <button
+          type="button"
+          onclick={close}
+          class="flex-1 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-100 transition-colors"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          disabled={isSaving}
+          class="flex-1 py-2 rounded-lg bg-primary hover:bg-primary-light text-slate-950 font-bold transition-colors disabled:opacity-50"
+        >
+          {isSaving ? 'Salvando...' : 'Salvar'}
+        </button>
+      </div>
+    </form>
+  </div>
 </div>

@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { db, type Profile } from '$services/db';
+  import { db, type Profile, type Companion } from '$services/db';
   import { liveQuery } from 'dexie';
   import { onMount } from 'svelte';
   import EditProfileModal from '$lib/EditProfileModal.svelte';
-  // A importação do EcoPanel foi REMOVIDA daqui
+  // *** CORREÇÃO: Removido o 'lib' extra do caminho ***
+  import CompanionSelectModal from '$lib/CompanionSelectModal.svelte';
 
-  // --- Estado do Herói (lendo do DB) ---
+  // --- Estado do Herói (Fallback) ---
   const fallbackProfile: Profile = {
     id: 1,
     name: 'Carregando...',
@@ -15,36 +16,67 @@
     xpNext: 100,
     avatarUrl: '',
     totalXpEarned: 0,
+    currentStreak: 0,
+    lastCompletionDate: '',
+    activeCompanionId: 1,
   };
-  let hero = $state<Profile>(fallbackProfile);
 
-  const heroQuery = liveQuery(async () => {
-    const profile = await db.profile.get(1);
-    return profile || fallbackProfile;
-  });
+  // --- Padrão Reativo Svelte 5 + Dexie ---
+  let hero = $state<Profile>(fallbackProfile);
+  let allCompanions = $state<Companion[]>([]);
+
+  const heroQuery = liveQuery(() => db.profile.get(1));
+  const allCompanionsQuery = liveQuery(() => db.companions.toArray());
 
   onMount(() => {
-    const subscription = heroQuery.subscribe((profileData) => {
-      // Garante que 'hero' nunca seja undefined
-      hero = profileData || fallbackProfile;
+    const heroSub = heroQuery.subscribe((profileData) => {
+      // Atualiza as propriedades do objeto $state, não o substitui.
+      const data = profileData || fallbackProfile;
+      Object.assign(hero, data);
     });
-    return () => subscription.unsubscribe();
-  });
 
-  // --- Estado do Pet (mockado) ---
-  let activePet = {
-    name: 'Fagulha',
-    type: 'Dragão Jovem',
-    image: '/art/pets/pet-dragon-final.png',
-  };
-  // --- Estado do Modal ---
+    const compSub = allCompanionsQuery.subscribe((companionData) => {
+      // O mesmo para arrays: usar .splice para manter a reatividade.
+      allCompanions.splice(0, allCompanions.length, ...(companionData || []));
+    });
+
+    return () => {
+      heroSub.unsubscribe();
+      compSub.unsubscribe();
+    };
+  });
+  // --- Fim da Correção ---
+
+  // --- Estado dos Modais ---
+  let isCompanionModalOpen = $state(false);
   let isProfileModalOpen = $state(false);
+
   // --- Dados Derivados ---
   let xpPercentage = $derived((hero.xpCurrent / hero.xpNext) * 100);
+
+  let activePet = $derived(
+    (() => {
+      if (allCompanions.length === 0) {
+        return {
+          name: 'Carregando...',
+          type: '...',
+          imagePath: '/art/pets/pet-dragon-final.png',
+        };
+      }
+      return (
+        allCompanions.find((c: Companion) => c.id === hero.activeCompanionId) ||
+        allCompanions[0]
+      );
+    })(),
+  );
 </script>
 
 {#if isProfileModalOpen}
   <EditProfileModal profile={hero} close={() => (isProfileModalOpen = false)} />
+{/if}
+
+{#if isCompanionModalOpen}
+  <CompanionSelectModal close={() => (isCompanionModalOpen = false)} />
 {/if}
 
 <div class="flex flex-col gap-6">
@@ -133,7 +165,7 @@
       </h3>
 
       <img
-        src={activePet.image}
+        src={activePet.imagePath}
         alt={activePet.name}
         class="w-24 h-24 object-contain drop-shadow-xl animate-pulse-slow"
       />
@@ -141,6 +173,7 @@
       <p class="text-sm text-slate-500">{activePet.type}</p>
 
       <button
+        onclick={() => (isCompanionModalOpen = true)}
         class="mt-4 w-full py-2 text-sm text-slate-400 hover:text-primary hover:bg-slate-800 rounded-lg transition-colors"
       >
         Trocar Companheiro

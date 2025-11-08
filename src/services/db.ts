@@ -1,7 +1,8 @@
 // src/services/db.ts
 import Dexie, { type Table } from 'dexie';
 
-// Interface para a nova tabela 'profile' (Taverna)
+// --- INTERFACES DO BANCO DE DADOS ---
+
 export interface Profile {
   id?: number; // Sempre será 1
   name: string;
@@ -10,17 +11,18 @@ export interface Profile {
   xpCurrent: number;
   xpNext: number;
   avatarUrl?: string;
-  totalXpEarned: number;
+  totalXpEarned: number; // Da V3 (Santuário)
+  currentStreak: number; // Da V4 (Streak)
+  lastCompletionDate: string; // Da V4 (Streak)
+  activeCompanionId: number; // Da V5 (Pets)
 }
 
-// Interface 'areas'
 export interface Area {
   id?: number;
   nome: string;
   cor: string;
 }
 
-// Interface 'tasks' (Missões)
 export interface Task {
   id?: number;
   areaId: number;
@@ -31,20 +33,37 @@ export interface Task {
   createdAt: Date;
 }
 
-// <-- 1. ADICIONAR INTERFACE PARA O SCHEMA ANTIGO (V1)
+// Interface para o Schema Antigo (V1)
 interface ItemV1 {
   id: number;
   areaId: number;
   titulo: string;
-  xp?: number; // O XP era opcional na lógica de migração
+  xp?: number;
 }
+
+// CORREÇÃO: Exportar 'Companion'
+export interface Companion {
+  id?: number;
+  name: string;
+  type: string;
+  imagePath: string;
+}
+
+// CORREÇÃO: Exportar 'UnlockedCompanion'
+export interface UnlockedCompanion {
+  id?: number;
+  companionId: number;
+}
+
+// --- CLASSE DO BANCO DE DADOS ---
 
 export class MySubClassedDexie extends Dexie {
   profile!: Table<Profile>;
   areas!: Table<Area>;
   tasks!: Table<Task>;
-  // Define a tabela antiga 'items' para ser usada na migração
-  items!: Table<ItemV1>;
+  items!: Table<ItemV1>; // Tabela antiga da v1
+  companions!: Table<Companion>; // <-- CORREÇÃO: Tabela adicionada
+  unlockedCompanions!: Table<UnlockedCompanion>; // <-- CORREÇÃO: Tabela adicionada
 
   constructor() {
     super('levelMeUpDb');
@@ -68,7 +87,6 @@ export class MySubClassedDexie extends Dexie {
           await tx
             .table('items')
             .toCollection()
-            // <-- 2. APLICAR O TIPO 'ItemV1' AO PARÂMETRO 'item'
             .modify(async (item: ItemV1) => {
               await tx.table('tasks').add({
                 id: item.id,
@@ -88,8 +106,25 @@ export class MySubClassedDexie extends Dexie {
       .stores({
         profile: '++id, totalXpEarned',
       })
+      .upgrade(() => {});
+
+    // Versão 4: Adicionando campos de Streak
+    this.version(4)
+      .stores({
+        profile: '++id, totalXpEarned, currentStreak, lastCompletionDate',
+      })
+      .upgrade(() => {});
+
+    // Versão 5: Adicionando Companheiros (Pets)
+    this.version(5)
+      .stores({
+        profile:
+          '++id, totalXpEarned, currentStreak, lastCompletionDate, activeCompanionId', // Atualiza profile
+        companions: '++id, name', // Nova tabela
+        unlockedCompanions: '++id, companionId', // Nova tabela
+      })
       .upgrade(() => {
-        // Bloco de upgrade Vazio, mas necessário.
+        // Bloco de upgrade Vazio.
       });
   }
 }
