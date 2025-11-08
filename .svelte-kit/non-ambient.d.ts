@@ -31,13 +31,14 @@ export {};
 
 declare module '$app/types' {
   export interface AppTypes {
-    RouteId(): '/' | '/cla' | '/config' | '/missoes';
+    RouteId(): '/' | '/cla' | '/config' | '/missoes' | '/santuario';
     RouteParams(): {};
     LayoutParams(): {
       '/': Record<string, never>;
       '/cla': Record<string, never>;
       '/config': Record<string, never>;
       '/missoes': Record<string, never>;
+      '/santuario': Record<string, never>;
     };
     Pathname():
       | '/'
@@ -46,7 +47,9 @@ declare module '$app/types' {
       | '/config'
       | '/config/'
       | '/missoes'
-      | '/missoes/';
+      | '/missoes/'
+      | '/santuario'
+      | '/santuario/';
     ResolvedPathname(): `${'' | `/${string}`}${ReturnType<AppTypes['Pathname']>}`;
     Asset():
       | '/.well-known/appspecific/com.chrome.devtools.json'

@@ -3,6 +3,7 @@
   import { liveQuery } from 'dexie';
   import { onMount } from 'svelte';
   import EditProfileModal from '$lib/EditProfileModal.svelte';
+  // A importação do EcoPanel foi REMOVIDA daqui
 
   // --- Estado do Herói (lendo do DB) ---
   const fallbackProfile: Profile = {
@@ -13,6 +14,7 @@
     xpCurrent: 0,
     xpNext: 100,
     avatarUrl: '',
+    totalXpEarned: 0,
   };
   let hero = $state<Profile>(fallbackProfile);
 
@@ -23,7 +25,8 @@
 
   onMount(() => {
     const subscription = heroQuery.subscribe((profileData) => {
-      hero = profileData;
+      // Garante que 'hero' nunca seja undefined
+      hero = profileData || fallbackProfile;
     });
     return () => subscription.unsubscribe();
   });
@@ -34,10 +37,8 @@
     type: 'Dragão Jovem',
     image: '/art/pets/pet-dragon-final.png',
   };
-
   // --- Estado do Modal ---
   let isProfileModalOpen = $state(false);
-
   // --- Dados Derivados ---
   let xpPercentage = $derived((hero.xpCurrent / hero.xpNext) * 100);
 </script>

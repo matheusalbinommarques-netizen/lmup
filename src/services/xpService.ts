@@ -17,8 +17,11 @@ export const xpService = {
       const profile = await db.profile.get(1);
       if (!profile) return;
 
-      let { xpCurrent, xpNext, level, title } = profile;
+      // Puxa o totalXpEarned (ou 0 se for undefined, por segurança)
+      let { xpCurrent, xpNext, level, title, totalXpEarned = 0 } = profile;
+
       xpCurrent += amount;
+      totalXpEarned += amount; // <-- LINHA ADICIONADA
 
       let leveledUp = false;
       while (xpCurrent >= xpNext) {
@@ -37,12 +40,14 @@ export const xpService = {
         xpNext,
         level,
         title,
+        totalXpEarned, // <-- CAMPO ADICIONADO
       });
     });
   },
 
   /**
    * Remove XP do perfil do usuário (ex: ao desmarcar uma missão).
+   * (Não mexemos no totalXpEarned aqui, pois representa o progresso histórico)
    */
   async removeXp(amount: number) {
     if (amount <= 0) return;
@@ -75,6 +80,7 @@ export const xpService = {
         xpNext,
         level,
         title,
+        // totalXpEarned não é modificado
       });
     });
   },

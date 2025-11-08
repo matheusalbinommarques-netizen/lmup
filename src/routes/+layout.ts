@@ -16,9 +16,18 @@ export async function load() {
         title: 'Recruta Promissor',
         level: 1,
         xpCurrent: 0,
-        xpNext: 100, // XP necessário para o Nível 2
-        avatarUrl: '', // Novo campo
+        xpNext: 100,
+        avatarUrl: '',
+        totalXpEarned: 0, // <-- CAMPO ADICIONADO
       });
+    } else {
+      // Bloco de migração simples para usuários existentes
+      const profile = await db.profile.get(1);
+      if (profile && profile.totalXpEarned === undefined) {
+        console.log('Migrando perfil: Adicionando totalXpEarned');
+        // Define o XP total inicial como o XP atual para usuários antigos
+        await db.profile.update(1, { totalXpEarned: profile.xpCurrent });
+      }
     }
   }
   return {};
