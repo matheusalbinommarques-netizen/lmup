@@ -1,7 +1,11 @@
 {
   "/": ["src/routes/+layout.ts", "src/routes/+layout.ts"],
+  "/bestiario": ["src/routes/+layout.ts"],
   "/cla": ["src/routes/+layout.ts"],
   "/config": ["src/routes/+layout.ts"],
+  "/inventario": ["src/routes/+layout.ts"],
+  "/loja": ["src/routes/+layout.ts"],
   "/missoes": ["src/routes/+layout.ts"],
-  "/santuario": ["src/routes/+layout.ts"]
+  "/santuario": ["src/routes/+layout.ts"],
+  "/trofeus": ["src/routes/+layout.ts"]
 }

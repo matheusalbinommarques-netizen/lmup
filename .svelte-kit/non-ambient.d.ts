@@ -31,25 +31,46 @@ export {};
 
 declare module '$app/types' {
   export interface AppTypes {
-    RouteId(): '/' | '/cla' | '/config' | '/missoes' | '/santuario';
+    RouteId():
+      | '/'
+      | '/bestiario'
+      | '/cla'
+      | '/config'
+      | '/inventario'
+      | '/loja'
+      | '/missoes'
+      | '/santuario'
+      | '/trofeus';
     RouteParams(): {};
     LayoutParams(): {
       '/': Record<string, never>;
+      '/bestiario': Record<string, never>;
       '/cla': Record<string, never>;
       '/config': Record<string, never>;
+      '/inventario': Record<string, never>;
+      '/loja': Record<string, never>;
       '/missoes': Record<string, never>;
       '/santuario': Record<string, never>;
+      '/trofeus': Record<string, never>;
     };
     Pathname():
       | '/'
+      | '/bestiario'
+      | '/bestiario/'
       | '/cla'
       | '/cla/'
       | '/config'
       | '/config/'
+      | '/inventario'
+      | '/inventario/'
+      | '/loja'
+      | '/loja/'
       | '/missoes'
       | '/missoes/'
       | '/santuario'
-      | '/santuario/';
+      | '/santuario/'
+      | '/trofeus'
+      | '/trofeus/';
     ResolvedPathname(): `${'' | `/${string}`}${ReturnType<AppTypes['Pathname']>}`;
     Asset():
       | '/.well-known/appspecific/com.chrome.devtools.json'

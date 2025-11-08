@@ -58,40 +58,71 @@
     level: 0,
     xpCurrent: 0,
     xpNext: 100,
+    avatarUrl: '',
+    totalXpEarned: 0,
+    currentStreak: 0,
+    lastCompletionDate: '',
+    activeCompanionId: 1,
   };
-  let hero = $state<Profile>(fallbackProfile);
 
-  const heroQuery = liveQuery(async () => {
-    const profile = await db.profile.get(1);
-    return profile || fallbackProfile;
-  });
+  const hero = $state<Profile>(fallbackProfile);
+
+  const heroQuery = liveQuery(() => db.profile.get(1));
 
   onMount(() => {
     const subscription = heroQuery.subscribe((profileData) => {
-      hero = profileData;
+      Object.assign(hero, profileData || fallbackProfile);
     });
     return () => subscription.unsubscribe();
   });
 
-  // --- 3. DADOS DERIVADOS (O Ranking Final) ---
-  let leaderboard = $derived(() => {
-    // Adiciona 'isUser: false' aos jogadores mockados
-    const mockedPlayers = otherPlayers.map((p) => ({
-      ...p,
-      isUser: false,
-    }));
-    // Adiciona 'isUser: true' ao seu herói
-    const userPlayer = { ...hero, isUser: true };
+  // --- 3. TIPOS E LEADERBOARD ---
+  type ClanPlayer = {
+    id: number;
+    name: string;
+    level: number;
+    xpCurrent: number;
+    title: string;
+    isUser: boolean;
+    avatarUrl?: string;
+    rank: number;
+  };
 
-    const allPlayers = [...mockedPlayers, userPlayer];
+  const leaderboard: ClanPlayer[] = $derived(
+    (() => {
+      const mockedPlayers: ClanPlayer[] = otherPlayers.map((p, index) => ({
+        id: p.id,
+        name: p.name,
+        level: p.level,
+        xpCurrent: p.xpCurrent,
+        title: p.title,
+        isUser: false,
+        avatarUrl: undefined,
+        rank: index + 1, // valor inicial, vamos sobrescrever depois
+      }));
 
-    const sorted = allPlayers.sort((a, b) => b.xpCurrent - a.xpCurrent);
+      const userPlayer: ClanPlayer = {
+        id: hero.id ?? 1,
+        name: hero.name,
+        level: hero.level,
+        // XP TOTAL para bater com a coluna "XP Total"
+        xpCurrent: hero.totalXpEarned ?? hero.xpCurrent,
+        title: hero.title,
+        isUser: true,
+        avatarUrl: hero.avatarUrl,
+        rank: 0,
+      };
 
-    return sorted.map((player, index) => ({
-      ...player,
-      rank: index + 1,
-    }));
-  });
+      const allPlayers: ClanPlayer[] = [...mockedPlayers, userPlayer];
+
+      allPlayers.sort((a, b) => b.xpCurrent - a.xpCurrent);
+
+      return allPlayers.map((player, index) => ({
+        ...player,
+        rank: index + 1,
+      }));
+    })(),
+  );
 
   function getRankStyle(rank: number) {
     if (rank === 1) return 'text-yellow-400 font-bold';
@@ -102,7 +133,7 @@
 </script>
 
 <div class="flex flex-col gap-6">
-  <header>
+  <header class="text-center md:text-left">
     <h1 class="text-3xl font-bold text-[#ffb74d] drop-shadow-sm font-serif">
       Salão do Clã
     </h1>
@@ -172,7 +203,7 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-800/50">
-            {#each leaderboard() as player (player.id)}
+            {#each leaderboard as player (player.id)}
               <tr
                 class="transition-colors {player.isUser
                   ? 'bg-primary/10 hover:bg-primary/15'
@@ -191,9 +222,20 @@
                     : 'text-slate-200'}"
                 >
                   <div
-                    class="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs overflow-hidden"
+                    class="relative w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs overflow-hidden"
                   >
-                    {#if player.isUser}
+                    {#if player.isUser && player.avatarUrl}
+                      <img
+                        src={player.avatarUrl}
+                        alt={player.name}
+                        class="w-full h-full object-cover"
+                      />
+                      <img
+                        src="/art/hero-avatar-default.png"
+                        alt="Moldura do Avatar"
+                        class="absolute inset-0 w-full h-full pointer-events-none scale-[1.50]"
+                      />
+                    {:else if player.isUser}
                       <img
                         src="/art/hero-avatar-default.png"
                         alt="Seu Avatar"

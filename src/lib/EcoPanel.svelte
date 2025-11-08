@@ -3,6 +3,12 @@
   import { liveQuery } from 'dexie';
   import { onMount } from 'svelte';
 
+  type EcoStage = {
+    image: string;
+    label: string;
+    next: number | null;
+  };
+
   const fallbackProfile: Profile = {
     id: 1,
     name: '...',
@@ -10,27 +16,28 @@
     level: 0,
     xpCurrent: 0,
     xpNext: 100,
-    totalXpEarned: 0,
     avatarUrl: '',
+    totalXpEarned: 0,
+    currentStreak: 0,
+    lastCompletionDate: '',
+    activeCompanionId: 1,
   };
 
-  let hero = $state<Profile>(fallbackProfile);
+  const hero = $state<Profile>(fallbackProfile);
 
-  const heroQuery = liveQuery(async () => {
-    const profile = await db.profile.get(1);
-    return profile || fallbackProfile;
-  });
+  const heroQuery = liveQuery(() => db.profile.get(1));
 
   onMount(() => {
     const subscription = heroQuery.subscribe((profileData) => {
-      hero = profileData || fallbackProfile;
+      Object.assign(hero, profileData || fallbackProfile);
     });
     return () => subscription.unsubscribe();
   });
 
-  let ecoData = $derived(
+  // estágio ecológico baseado no XP total
+  const ecoData: EcoStage = $derived(
     (() => {
-      const totalXp = hero.totalXpEarned;
+      const totalXp = hero.totalXpEarned ?? 0;
 
       if (totalXp < 500) {
         return {
@@ -61,11 +68,12 @@
     })(),
   );
 
-  let ecoPercentage = $derived(
+  // progresso dentro do estágio atual
+  const ecoPercentage = $derived(
     (() => {
       if (ecoData.next === null) return 100;
 
-      const totalXp = hero.totalXpEarned;
+      const totalXp = hero.totalXpEarned ?? 0;
 
       let startXp = 0;
       if (totalXp >= 3000) startXp = 3000;
@@ -75,6 +83,7 @@
       const currentProgress = totalXp - startXp;
       const goal = ecoData.next - startXp;
 
+      if (goal <= 0) return 100;
       return (currentProgress / goal) * 100;
     })(),
   );
@@ -94,9 +103,9 @@
       {#if ecoData.next}
         <span>{hero.totalXpEarned} / {ecoData.next} XP Total</span>
       {:else}
-        <span class="text-green-400 font-medium"
-          >{hero.totalXpEarned} XP Total (Máx)</span
-        >
+        <span class="text-green-400 font-medium">
+          {hero.totalXpEarned} XP Total (Máx)
+        </span>
       {/if}
     </div>
     <div
@@ -104,7 +113,7 @@
     >
       <div
         class="h-full bg-gradient-to-r from-green-600 to-emerald-400 transition-all duration-500"
-        style="width: {ecoPercentage}%"
+        style={`width: ${ecoPercentage}%;`}
       ></div>
     </div>
   </div>
