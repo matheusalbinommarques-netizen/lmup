@@ -1,28 +1,48 @@
 export { matchers } from './matchers.js';
 
 export const nodes = [
-	() => import('./nodes/0'),
-	() => import('./nodes/1'),
-	() => import('./nodes/2'),
-	() => import('./nodes/3')
+  () => import('./nodes/0'),
+  () => import('./nodes/1'),
+  () => import('./nodes/2'),
+  () => import('./nodes/3'),
+  () => import('./nodes/4'),
+  () => import('./nodes/5'),
+  () => import('./nodes/6'),
+  () => import('./nodes/7'),
+  () => import('./nodes/8'),
+  () => import('./nodes/9'),
+  () => import('./nodes/10'),
 ];
 
 export const server_loads = [];
 
 export const dictionary = {
-		"/": [2],
-		"/config": [3]
-	};
-
-export const hooks = {
-	handleError: (({ error }) => { console.error(error) }),
-	
-	reroute: (() => {}),
-	transport: {}
+  '/': [2],
+  '/bestiario': [3],
+  '/cla': [4],
+  '/config': [5],
+  '/inventario': [6],
+  '/loja': [7],
+  '/missoes': [8],
+  '/santuario': [9],
+  '/trofeus': [10],
 };
 
-export const decoders = Object.fromEntries(Object.entries(hooks.transport).map(([k, v]) => [k, v.decode]));
-export const encoders = Object.fromEntries(Object.entries(hooks.transport).map(([k, v]) => [k, v.encode]));
+export const hooks = {
+  handleError: ({ error }) => {
+    console.error(error);
+  },
+
+  reroute: () => {},
+  transport: {},
+};
+
+export const decoders = Object.fromEntries(
+  Object.entries(hooks.transport).map(([k, v]) => [k, v.decode]),
+);
+export const encoders = Object.fromEntries(
+  Object.entries(hooks.transport).map(([k, v]) => [k, v.encode]),
+);
 
 export const hash = false;
 

@@ -1,47 +1,45 @@
 <!-- src/lib/StatsManager.svelte -->
 <script lang="ts">
   import { onMount } from 'svelte';
-  import {
-    getTotalXpObservable,
-    getStreakObservable,
-    calcularNivel,
-  } from '../services/xpService';
+  import { liveQuery } from 'dexie';
+  import { db, type Profile } from '$services/db';
 
-  // Estados reativos (runes)
-  let totalXp = $state(0);
-  let level = $state(1);
-  let currentLevelXp = $state(0);
-  let xpToNextLevel = $state(100);
-  let streak = $state(0);
+  const fallbackProfile: Profile = {
+    id: 1,
+    name: 'Carregando...',
+    title: '...',
+    level: 1,
+    xpCurrent: 0,
+    xpNext: 100,
+    avatarUrl: '',
+    totalXpEarned: 0,
+    currentStreak: 0,
+    lastCompletionDate: '',
+    activeCompanionId: 1,
+  };
 
-  // Progresso da barra (derivado)
+  const hero = $state<Profile>(fallbackProfile);
+
+  const heroQuery = liveQuery(() => db.profile.get(1));
+
+  onMount(() => {
+    const sub = heroQuery.subscribe((profileData) => {
+      Object.assign(hero, profileData || fallbackProfile);
+    });
+    return () => sub.unsubscribe();
+  });
+
+  const totalXp = $derived(hero.totalXpEarned ?? 0);
+  const level = $derived(hero.level ?? 1);
+  const currentLevelXp = $derived(hero.xpCurrent ?? 0);
+  const xpToNextLevel = $derived(hero.xpNext ?? 100);
+  const streak = $derived(hero.currentStreak ?? 0);
+
   const xpProgress = $derived(
     xpToNextLevel > 0
       ? Math.min(100, (currentLevelXp / xpToNextLevel) * 100)
       : 0,
   );
-
-  // Inscrições nos observables (somente no client)
-  onMount(() => {
-    const sub1 = getTotalXpObservable().subscribe((xp) => {
-      totalXp = xp;
-
-      const info = calcularNivel(xp);
-      level = info.level;
-      currentLevelXp = info.currentLevelXp;
-      xpToNextLevel = info.xpToNextLevel;
-    });
-
-    const sub2 = getStreakObservable().subscribe(({ count }) => {
-      streak = count;
-    });
-
-    // cleanup ao destruir o componente
-    return () => {
-      sub1.unsubscribe();
-      sub2.unsubscribe();
-    };
-  });
 </script>
 
 <section class="w-full mb-8">
@@ -86,8 +84,9 @@
         >
           <span
             class="text-[0.65rem] uppercase tracking-widest text-text-secondary"
-            >Nível</span
           >
+            Nível
+          </span>
           <span class="text-2xl font-bold text-white">{level}</span>
         </div>
 
@@ -134,8 +133,9 @@
           <span class="text-3xl font-bold text-primary">{streak}</span>
           <span
             class="text-[0.7rem] uppercase tracking-[0.2em] text-text-secondary"
-            >dias</span
           >
+            dias
+          </span>
         </div>
       </div>
     </div>

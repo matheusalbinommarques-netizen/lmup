@@ -13,8 +13,12 @@ const config = {
   kit: {
     adapter: adapter(),
     prerender: {
-      // isso diz "tenta prerender tudo"
       entries: ['*'],
+    },
+    // CORREÇÃO: Alias para Services (o jeito SvelteKit)
+    alias: {
+      $services: './src/services',
+      '$services/*': './src/services/*',
     },
   },
 };

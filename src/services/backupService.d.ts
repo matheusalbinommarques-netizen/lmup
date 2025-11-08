@@ -1,3 +1,4 @@
 // src/services/backupService.d.ts
-export function exportarDados(): Promise<void>;
-export function importarDados(file: File): Promise<void>;
+export function exportData(): Promise<void>;
+export function importData(file: File): Promise<void>;
+export function clearAllData(): Promise<void>;

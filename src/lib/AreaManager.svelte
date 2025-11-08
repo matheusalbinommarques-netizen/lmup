@@ -1,99 +1,157 @@
 <script lang="ts">
-  import { db, type Area } from '../services/db';
+  import { db, type Area } from '$services/db';
   import { liveQuery } from 'dexie';
-  import { browser } from '$app/environment';
-  import ItemManager from './ItemManager.svelte';
+  import { onMount } from 'svelte';
 
+  // --- Props ---
+  let { selectedId = $bindable('all') } = $props<{
+    selectedId: 'all' | number;
+  }>();
+
+  // --- Estado Local ---
   let areas = $state<Area[]>([]);
-  let novaArea = $state('');
+  let newAreaName = $state('');
 
-  if (browser) {
-    const sub = liveQuery(() => db.areas.toArray()).subscribe((rows) => {
-      areas = rows;
+  // --- Conexão com DB ---
+  const areasQuery = liveQuery(() => db.areas.orderBy('nome').toArray());
+
+  onMount(() => {
+    const sub = areasQuery.subscribe((dbAreas) => {
+      areas = dbAreas;
     });
+    return () => sub.unsubscribe();
+  });
 
-    $effect(() => () => sub.unsubscribe());
+  // --- Ações ---
+  async function handleAddArea(event: SubmitEvent) {
+    event.preventDefault();
+    const name = newAreaName.trim();
+    if (!name) return;
+
+    try {
+      await db.areas.add({
+        nome: name,
+        cor: '#888888', // Placeholder
+      });
+      newAreaName = '';
+    } catch (error) {
+      console.error('Erro ao adicionar área:', error);
+      alert('Falha ao adicionar área. Já existe uma com esse nome?');
+    }
   }
 
-  async function addArea() {
-    const nome = novaArea.trim();
-    if (!nome) return;
+  async function handleDeleteArea(
+    areaId: number | undefined,
+    areaName: string,
+  ) {
+    if (areaId === undefined) return;
 
-    await db.areas.add({ nome });
-    novaArea = '';
-  }
+    if (
+      !confirm(
+        `Tem certeza que deseja excluir a área "${areaName}"?\n\nTodas as missões desta área serão movidas para "Geral".`,
+      )
+    ) {
+      return;
+    }
 
-  async function removeArea(id: number) {
-    await db.areas.delete(id);
+    try {
+      await db.transaction('rw', db.areas, db.tasks, async () => {
+        // 1. Reatribui missões órfãs para a área "Geral" (ID 0)
+        await db.tasks.where('areaId').equals(areaId).modify({ areaId: 0 });
+        // 2. Exclui a área
+        await db.areas.delete(areaId);
+      });
+
+      if (selectedId === areaId) {
+        selectedId = 'all';
+      }
+    } catch (error) {
+      console.error('Erro ao excluir área:', error);
+      alert('Falha ao excluir a área.');
+    }
   }
 </script>
 
-<section class="w-full space-y-6">
-  <header class="space-y-1">
-    <h2 class="text-xl font-semibold text-primary">Missões ativas</h2>
-    <p class="text-sm text-text-secondary">
-      Crie áreas de foco (como "Programação" ou "Finanças") e depois adicione
-      missões dentro de cada uma.
-    </p>
-  </header>
+<section class="flex flex-col gap-3">
+  <h3 class="text-xl font-bold text-slate-200 font-serif">Áreas de Foco</h3>
 
-  <!-- Criar nova área -->
   <div
-    class="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card/80 p-4 shadow-md md:flex-row md:items-center md:gap-4"
+    class="flex flex-row gap-2 overflow-x-auto no-scrollbar pb-2 -mb-2"
+    role="tablist"
+    aria-label="Filtro de Áreas"
   >
-    <div class="flex-1 space-y-1">
-      <p class="text-sm font-medium text-text">Nova área de foco</p>
-      <input
-        class="mt-1 w-full rounded-lg border border-border bg-background/60 px-3 py-2 text-sm placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/70"
-        placeholder="Nome da nova área (ex: SvelteKit, Finanças)"
-        bind:value={novaArea}
-      />
-    </div>
-
     <button
-      class="mt-2 inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-md transition-colors duration-150 ease-in-out hover:bg-primary/90 md:mt-6"
-      onclick={addArea}
+      onclick={() => (selectedId = 'all')}
+      class="shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors border
+                   {selectedId === 'all'
+        ? 'bg-primary/20 text-primary border-primary/30'
+        : 'text-slate-400 bg-slate-900/50 border-slate-800 hover:bg-slate-800'}"
+      role="tab"
+      aria-selected={selectedId === 'all'}
     >
-      Adicionar área
+      Todas
     </button>
+
+    {#each areas as area (area.id)}
+      <div
+        class="relative shrink-0 group"
+        role="tab"
+        aria-selected={selectedId === area.id}
+      >
+        <button
+          onclick={() => {
+            if (area.id !== undefined) {
+              selectedId = area.id;
+            }
+          }}
+          class="w-full h-full pl-4 pr-3 py-2 rounded-lg text-sm font-medium transition-colors border
+                           {selectedId === area.id
+            ? 'bg-primary/20 text-primary border-primary/30'
+            : 'text-slate-400 bg-slate-900/50 border-slate-800 hover:bg-slate-800'}"
+        >
+          {area.nome}
+        </button>
+
+        <button
+          title="Excluir Área"
+          aria-label="Excluir Área"
+          onclick={() => handleDeleteArea(area.id, area.nome)}
+          class="absolute -top-2 -right-2 z-10 w-5 h-5 rounded-full
+                           bg-slate-700 text-slate-300 text-xs font-bold
+                           flex items-center justify-center border-2 border-slate-900
+                           opacity-0 group-hover:opacity-100 transition-opacity hover:!opacity-100 hover:bg-red-500 hover:text-white"
+        >
+          X
+        </button>
+      </div>
+    {/each}
   </div>
 
-  <!-- Lista de áreas -->
-  {#if areas.length === 0}
-    <p class="text-sm text-text-secondary">
-      Nenhuma área cadastrada ainda. Comece criando uma área acima, como
-      <span class="font-semibold text-primary">"Programação"</span> ou
-      <span class="font-semibold text-primary">"Hábitos"</span>.
-    </p>
-  {:else}
-    <div class="space-y-4">
-      {#each areas as area (area.id)}
-        <article
-          class="rounded-2xl border border-border/70 bg-card/80 p-4 shadow-md"
-        >
-          <div class="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <h3 class="text-lg font-semibold text-text">{area.nome}</h3>
-              <p class="text-xs text-text-secondary">
-                Adicione missões rápidas abaixo para ganhar XP.
-              </p>
-            </div>
-
-            {#if area.id}
-              <button
-                class="text-xs font-medium text-red-400 underline-offset-2 hover:underline"
-                onclick={() => removeArea(area.id!)}
-              >
-                remover área
-              </button>
-            {/if}
-          </div>
-
-          {#if area.id}
-            <ItemManager areaId={area.id} />
-          {/if}
-        </article>
-      {/each}
-    </div>
-  {/if}
+  <form class="flex gap-2" onsubmit={handleAddArea}>
+    <input
+      type="text"
+      bind:value={newAreaName}
+      placeholder="Nova Área (ex: Programação)"
+      class="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200
+                   focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/30"
+    />
+    <button
+      type="submit"
+      class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-sm rounded-lg transition-colors
+                   disabled:opacity-50 disabled:cursor-not-allowed"
+      disabled={!newAreaName.trim()}
+    >
+      Criar Área
+    </button>
+  </form>
 </section>
+
+<style>
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE e Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+</style>

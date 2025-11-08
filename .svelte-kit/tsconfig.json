@@ -1,6 +1,8 @@
 {
   "compilerOptions": {
     "paths": {
+      "$services": ["../src/services"],
+      "$services/*": ["../src/services/*"],
       "$lib": ["../src/lib"],
       "$lib/*": ["../src/lib/*"],
       "$app/types": ["./types/index.d.ts"]
