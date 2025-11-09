@@ -6,8 +6,8 @@
 
   const fallbackProfile: Profile = {
     id: 1,
-    name: 'Carregando...',
-    title: '...',
+    name: 'Seu herói',
+    title: 'Nobre aventureiro',
     level: 1,
     xpCurrent: 0,
     xpNext: 100,
@@ -24,8 +24,9 @@
 
   onMount(() => {
     const sub = heroQuery.subscribe((profileData) => {
-      Object.assign(hero, profileData || fallbackProfile);
+      Object.assign(hero, profileData ?? fallbackProfile);
     });
+
     return () => sub.unsubscribe();
   });
 
@@ -42,100 +43,114 @@
   );
 </script>
 
-<section class="w-full mb-8">
+<section class="w-full">
   <div
-    class="mx-auto max-w-3xl overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-b from-slate-950 via-slate-900 to-black shadow-2xl"
+    class="realm-card relative mx-auto max-w-4xl overflow-hidden px-6 py-5 md:px-8 md:py-6"
   >
-    <div class="relative px-6 pt-6 pb-7 md:px-8 md:pt-8 md:pb-8">
-      <!-- brilho / mapa de fundo -->
+    <!-- brilho suave no fundo -->
+    <div
+      class="pointer-events-none absolute inset-0 opacity-40"
+      aria-hidden="true"
+    >
       <div
-        class="pointer-events-none absolute inset-0 opacity-40"
-        aria-hidden="true"
+        class="h-full w-full bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.45),_transparent_60%)]"
+      ></div>
+    </div>
+
+    <div class="relative flex flex-col gap-4">
+      <!-- Cabeçalho: nome, descrição + streak / xp total -->
+      <div
+        class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
       >
-        <div
-          class="h-full w-full bg-[radial-gradient(circle_at_top,_#3b82f6_0,_transparent_55%)]"
-        ></div>
-      </div>
-
-      <!-- Título -->
-      <div class="relative flex flex-col items-center gap-3 text-center">
-        <p class="text-[0.65rem] uppercase tracking-[0.25em] text-primary/70">
-          Reino do aprendizado
-        </p>
-        <h1 class="text-3xl font-extrabold text-primary drop-shadow">
-          Level Me Up!
-        </h1>
-        <p class="max-w-md text-xs text-text-secondary">
-          Complete missões todos os dias para evoluir de nível e manter sua
-          chama de foco acesa.
-        </p>
-      </div>
-
-      <!-- Avatar / nível -->
-      <div class="relative mt-6 flex flex-col items-center gap-4">
-        <div
-          class="flex h-24 w-24 items-center justify-center rounded-full border-4 border-amber-400 bg-slate-950/90 shadow-[0_0_40px_rgba(251,191,36,0.7)]"
-        >
-          <span class="text-3xl">🛡️</span>
+        <div>
+          <p class="text-[0.65rem] uppercase tracking-[0.25em] text-sky-400/80">
+            Status do herói
+          </p>
+          <h2 class="text-xl md:text-2xl font-bold text-slate-50">
+            {hero.name || 'Seu herói'}
+          </h2>
+          <p class="text-xs text-slate-300/80 max-w-md">
+            Complete pequenas missões todos os dias para subir de nível e manter
+            sua chama de foco acesa.
+          </p>
         </div>
 
-        <div
-          class="inline-flex items-baseline gap-2 rounded-full border border-white/10 bg-black/40 px-4 py-1"
-        >
-          <span
-            class="text-[0.65rem] uppercase tracking-widest text-text-secondary"
-          >
-            Nível
-          </span>
-          <span class="text-2xl font-bold text-white">{level}</span>
-        </div>
-
-        <div class="text-xs text-text-secondary">
-          XP total:
-          <span class="font-semibold text-primary">{totalXp}</span>
-        </div>
-      </div>
-
-      <!-- Barra de progresso -->
-      <div class="relative mt-6 w-full space-y-2">
-        <div
-          class="flex items-center justify-between text-[0.7rem] text-text-secondary"
-        >
-          <span>Progresso até o próximo nível</span>
-          <span>{currentLevelXp} / {xpToNextLevel} XP</span>
-        </div>
-
-        <div
-          class="h-3 w-full overflow-hidden rounded-full border border-slate-800 bg-slate-900"
-        >
+        <div class="flex flex-col items-end gap-2 text-xs">
+          <!-- pill de streak -->
           <div
-            class="h-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-lime-400 transition-[width] duration-500 ease-out"
-            style={`width: ${xpProgress}%;`}
-          ></div>
+            class="inline-flex items-center gap-2 rounded-full border border-amber-400/70 bg-amber-500/10 px-3 py-1 text-amber-100 shadow-md shadow-amber-900/40"
+          >
+            <span class="text-sm">🔥</span>
+
+            {#if streak > 0}
+              <span class="font-semibold">
+                {streak} dia{streak === 1 ? '' : 's'}
+              </span>
+              <span
+                class="text-[0.65rem] uppercase tracking-[0.18em] text-amber-200/80"
+              >
+                sequência
+              </span>
+            {:else}
+              <span class="font-semibold">Comece hoje</span>
+            {/if}
+          </div>
+
+          <p class="text-[0.7rem] text-slate-400">
+            XP total:
+            <span class="font-semibold text-slate-100">
+              {totalXp}
+            </span>
+          </p>
         </div>
       </div>
 
-      <!-- Streak -->
-      <div
-        class="relative mt-6 flex flex-col gap-3 border-t border-white/5 pt-4 text-xs text-text-secondary md:flex-row md:items-center md:justify-between"
-      >
-        <div class="flex items-center gap-2">
-          <span class="text-xl">🔥</span>
-          <div>
-            <div class="font-semibold text-text">Streak de dias</div>
-            <div class="text-[0.7rem]">
-              Faça pelo menos uma missão por dia para manter a chama acesa.
-            </div>
+      <!-- Nível + barra de progresso -->
+      <div class="flex flex-col items-center justify-between gap-4 md:flex-row">
+        <!-- Level badge -->
+        <div class="flex items-center gap-4">
+          <div
+            class="flex h-16 w-16 items-center justify-center rounded-full border border-sky-400/70 bg-slate-950/90 shadow-[0_0_30px_rgba(56,189,248,0.45)]"
+          >
+            <span class="text-2xl font-bold text-sky-100">
+              {level}
+            </span>
+          </div>
+          <div class="space-y-1">
+            <p
+              class="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-sky-300/90"
+            >
+              Nível atual
+            </p>
+            <p class="text-xs text-slate-300/85 max-w-xs">
+              Falta
+              <span class="font-semibold text-sky-100">
+                {Math.max(xpToNextLevel - currentLevelXp, 0)}
+              </span>
+              XP para o próximo nível.
+            </p>
           </div>
         </div>
 
-        <div class="flex items-baseline justify-end gap-1">
-          <span class="text-3xl font-bold text-primary">{streak}</span>
-          <span
-            class="text-[0.7rem] uppercase tracking-[0.2em] text-text-secondary"
+        <!-- Barra de XP -->
+        <div class="w-full space-y-2 md:w-1/2">
+          <div
+            class="flex items-center justify-between text-[0.7rem] text-slate-400"
           >
-            dias
-          </span>
+            <span>Progresso até o próximo nível</span>
+            <span class="font-medium text-slate-200">
+              {currentLevelXp} / {xpToNextLevel} XP
+            </span>
+          </div>
+
+          <div
+            class="h-2.5 w-full overflow-hidden rounded-full border border-slate-800 bg-slate-900"
+          >
+            <div
+              class="h-full rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-lime-400 transition-[width] duration-500 ease-out"
+              style={`width: ${xpProgress}%;`}
+            ></div>
+          </div>
         </div>
       </div>
     </div>
