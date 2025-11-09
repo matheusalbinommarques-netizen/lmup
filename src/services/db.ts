@@ -14,7 +14,8 @@ export interface Profile {
   totalXpEarned: number; // Da V3 (Santuário)
   currentStreak: number; // Da V4 (Streak)
   lastCompletionDate: string; // Da V4 (Streak)
-  activeCompanionId: number; // Da V5 (Pets)
+  activeCompanionId: number;
+  gold?: number; // Da V5 (Pets)
 }
 
 export interface Area {

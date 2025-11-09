@@ -34,7 +34,7 @@
     },
     {
       href: '/config',
-      label: 'Configurações',
+      label: 'Cofre Arcano',
       icon: '/art/icones/icon-config.png',
     },
   ];
@@ -43,12 +43,40 @@
 <aside
   class="hidden w-64 flex-col gap-6 border-r border-slate-800/50 bg-slate-900/80 p-4 md:flex"
 >
-  <!-- Logo -->
-  <a href="/" class="flex items-center gap-3 px-2">
-    <img src="/art/icones/logo lmu.png" alt="Logo LMU" class="h-12 w-12" />
-    <span class="font-serif text-xl font-bold text-slate-200">
-      Level Me Up
-    </span>
+  <!-- Logo + título -->
+  <a href="/" class="flex items-center gap-3 px-2 group">
+    <img
+      src="/art/icones/logo lmu.png"
+      alt="Logo LMU"
+      class="h-12 w-12 drop-shadow-[0_0_18px_rgba(251,191,36,0.45)]"
+    />
+
+    <div class="flex flex-col leading-tight">
+      <span
+        class="relative inline-block font-serif text-lg md:text-xl font-extrabold"
+      >
+        <!-- Glow por trás, bem forte -->
+        <span
+          class="absolute inset-0 text-amber-300 blur opacity-80
+           group-hover:blur-xl group-hover:opacity-100
+           transition-all duration-300"
+          aria-hidden="true"
+        >
+          Level Me Up!
+        </span>
+
+        <!-- Texto principal em gradiente com glow extra -->
+        <span
+          class="relative bg-gradient-to-r from-amber-100 via-amber-200 to-amber-400
+           bg-clip-text text-transparent
+           drop-shadow-[0_0_18px_rgba(251,191,36,0.9)]
+           group-hover:drop-shadow-[0_0_28px_rgba(251,191,36,1)]
+           transition-all duration-300"
+        >
+          Level Me Up!
+        </span>
+      </span>
+    </div>
   </a>
 
   <!-- Navegação -->

@@ -7,6 +7,7 @@
   import AddTaskModal from '$lib/AddTaskModal.svelte';
   import XpByAreaChart from '$lib/XpByAreaChart.svelte';
   import StatsManager from '$lib/StatsManager.svelte';
+  import PageTitleCard from '$lib/PageTitleCard.svelte';
 
   let tasks = $state<Task[]>([]);
   let areas = $state<Area[]>([]);
@@ -103,14 +104,15 @@
     const task = tasks.find((t) => t.id === id);
     if (!task) return;
 
-    const newStatus = !task.completed;
-    await db.tasks.update(id, { completed: newStatus });
+    // Se já está concluída, não faz nada
+    if (task.completed) return;
 
-    if (newStatus === true) {
-      await xpService.addXp(task.xp);
-    } else {
-      await xpService.removeXp(task.xp);
-    }
+    // Marca como concluída
+    await db.tasks.update(id, { completed: true });
+
+    // Dá XP e gold (50% do XP)
+    await xpService.addXp(task.xp);
+    await xpService.addGoldFromXp(task.xp);
   }
 
   function openAddTaskModal() {
@@ -151,16 +153,11 @@
 {/if}
 
 <div class="flex flex-col gap-6">
-  <header class="mb-4 flex flex-col items-center gap-3 text-center">
-    <div>
-      <h1 class="text-3xl font-bold text-[#ffb74d] drop-shadow-sm font-serif">
-        Quadro de Missões
-      </h1>
-      <p class="text-slate-400">
-        Complete tarefas para ganhar XP, manter o streak e evoluir seu herói.
-      </p>
-    </div>
-  </header>
+  <PageTitleCard
+    title="Quadro de Missões"
+    subtitle="Complete tarefas para ganhar XP, manter a chama da consistência acesa e evoluir seu herói!"
+    align="center"
+  />
 
   <!-- Painel principal de status -->
   <StatsManager />
@@ -300,8 +297,28 @@
               </h3>
             </div>
 
-            <div class="shrink-0 flex flex-col items-end">
-              <span class="text-[#eec39a] font-bold">+{task.xp} XP</span>
+            <div class="shrink-0 flex flex-col items-end gap-1 text-xs">
+              <!-- Linha de XP -->
+              <div class="flex items-center gap-1">
+                <img
+                  src="/art/icones/icon-xp.png"
+                  alt="XP"
+                  class="h-6 w-6 object-contain"
+                />
+                <span class="text-[#eec39a] font-bold">+{task.xp} XP</span>
+              </div>
+
+              <!-- Linha de Gold (50% do XP) -->
+              <div class="flex items-center gap-1 text-amber-200">
+                <img
+                  src="/art/icones/gold-icon.png"
+                  alt="Gold"
+                  class="h-6 w-6 object-contain"
+                />
+                <span class="font-semibold">
+                  +{Math.floor(task.xp * 0.5)} Gold
+                </span>
+              </div>
             </div>
 
             <div

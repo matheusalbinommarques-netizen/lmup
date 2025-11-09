@@ -1,4 +1,9 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+  import { liveQuery } from 'dexie';
+  import { db } from '$services/db';
+  import PageTitleCard from '$lib/PageTitleCard.svelte';
+
   type ShopItem = {
     id: number;
     name: string;
@@ -97,35 +102,48 @@
     },
   ];
 
+  // Agora o preço é só o número
   function formatPrice(item: ShopItem): string {
-    if (item.currency === 'xp') return `${item.price} XP`;
-    return `${item.price} Gemas`;
+    return `${item.price}`;
   }
 
+  // Ícone da moeda (por enquanto tudo gold)
   function getCurrencyIcon(item: ShopItem): string {
-    if (item.currency === 'xp') return '✨';
-    return '💎';
+    if (item.currency === 'xp') return 'art/icones/gold-icon.png';
+    // se depois tiver gemas, dá pra trocar aqui
+    return 'art/icones/gold-icon.png';
   }
+
+  // Saldo de gold do jogador
+  const goldQuery = liveQuery(async () => {
+    const profile = await db.profile.get(1);
+    return profile?.gold ?? 0;
+  });
+
+  let gold = $state(0);
+
+  onMount(() => {
+    const sub = goldQuery.subscribe((value) => {
+      gold = value;
+    });
+
+    return () => sub.unsubscribe();
+  });
 </script>
 
 <div class="flex flex-col gap-6 pb-8">
-  <header class="mb-4 text-center">
-    <h1 class="text-3xl font-bold text-[#ffb74d] drop-shadow-sm font-serif">
-      Loja da Taverna
-    </h1>
-    <p class="text-slate-400">
-      Troque seu progresso por estilos, melhorias e pequenos encantos
-      cosméticos.
-    </p>
-  </header>
-
+  <PageTitleCard
+    title="Loja da Taverna"
+    subtitle="Gaste aqui seu precioso e suado ouro conquistado em missões, em recompensas, temas e efeitos exclusivos!"
+    align="center"
+  />
   <section
     class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 md:p-6 flex flex-col md:flex-row items-start md:items-center gap-4"
   >
     <div class="flex-1 text-sm text-slate-300">
       <p>
         Esta loja é totalmente cosmética: nada aqui é <em>pay to win</em>. Tudo
-        é conquistado com esforço, foco e XP das suas próprias missões.
+        é conquistado com esforço, foco e gold das suas próprias missões.
       </p>
       <p class="mt-2 text-xs text-slate-500">
         No futuro, itens daqui podem se integrar com a Taverna, Inventário e
@@ -136,15 +154,24 @@
     <div
       class="flex flex-col items-stretch gap-2 text-xs text-slate-400 min-w-[190px]"
     >
+      <!-- Card: Saldo atual -->
       <div
-        class="px-3 py-2 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between"
+        class="px-3 py-2 rounded-xl bg-slate-950/80 border border-amber-500/60 flex items-center justify-between"
       >
-        <span>Moeda da Loja</span>
-        <span class="font-semibold text-slate-100 flex items-center gap-1">
-          <span>✨</span>
-          XP
+        <span class="text-amber-200/90">Seu saldo</span>
+        <span
+          class="font-semibold text-amber-200 flex items-center gap-1 text-sm"
+        >
+          {gold}
+          <img
+            src="art/icones/gold-icon.png"
+            alt="Gold atual"
+            class="h-4 w-4 object-contain"
+          />
+          Gold
         </span>
       </div>
+
       <div
         class="px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[0.7rem]"
       >
@@ -182,11 +209,17 @@
                   {getRarityLabel(item.rarity)}
                 </p>
               </div>
+
+              <!-- Preço: número + ícone gold -->
               <div
                 class="px-3 py-1 rounded-full bg-slate-950/70 border border-slate-700 text-[0.7rem] text-slate-100 flex items-center gap-1"
               >
-                <span>{getCurrencyIcon(item)}</span>
-                <span>{formatPrice(item)}</span>
+                <span class="font-semibold">{formatPrice(item)}</span>
+                <img
+                  src={getCurrencyIcon(item)}
+                  alt="Moeda da loja"
+                  class="h-4 w-4 object-contain"
+                />
               </div>
             </div>
 
@@ -240,11 +273,17 @@
                   {getRarityLabel(item.rarity)}
                 </p>
               </div>
+
+              <!-- Preço: número + ícone gold -->
               <div
                 class="px-3 py-1 rounded-full bg-slate-950/70 border border-slate-700 text-[0.7rem] text-slate-100 flex items-center gap-1"
               >
-                <span>{getCurrencyIcon(item)}</span>
-                <span>{formatPrice(item)}</span>
+                <span class="font-semibold">{formatPrice(item)}</span>
+                <img
+                  src={getCurrencyIcon(item)}
+                  alt="Moeda da loja"
+                  class="h-4 w-4 object-contain"
+                />
               </div>
             </div>
 

@@ -20,6 +20,9 @@ const getXpForNextLevel = (level: number): number => {
 
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
 
+// 50% do XP vira gold
+const GOLD_RATE = 0.5;
+
 function toDateOnly(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
@@ -52,7 +55,8 @@ function parseDateOnly(dateStr: string | undefined | null): Date | null {
  *  - Nunca teve streak -> vira 1 hoje.
  *  - Mesma data que hoje -> mantém streak.
  *  - Ontem -> streak + 1.
- *  - Mais de 1 dia sem completar -> reseta para 1.
+ *  - 1 dia de furo -> streak amigável (congela o valor).
+ *  - 2+ dias sem completar -> reseta para 1.
  */
 function computeUpdatedStreak(
   currentStreak: number | undefined,
@@ -61,6 +65,7 @@ function computeUpdatedStreak(
   const today = toDateOnly(new Date());
   const todayStr = toDateOnlyString(today);
 
+  // Nunca teve streak
   if (!lastCompletionDate) {
     return { currentStreak: 1, lastCompletionDate: todayStr };
   }
@@ -73,7 +78,7 @@ function computeUpdatedStreak(
   const lastDate = toDateOnly(lastDateParsed);
   const lastStr = toDateOnlyString(lastDate);
 
-  // Já registrou streak hoje
+  // Já registrou streak hoje -> mantém
   if (lastStr === todayStr) {
     return {
       currentStreak: currentStreak ?? 1,
@@ -90,12 +95,18 @@ function computeUpdatedStreak(
     return { currentStreak: nextStreak, lastCompletionDate: todayStr };
   }
 
-  // Passou mais de um dia (ou relógio bagunçado) -> reseta
+  if (diffDays === 2) {
+    // Streak amigável: 1 dia de furo -> não zera, só congela o valor
+    const safeStreak = currentStreak ?? 1;
+    return { currentStreak: safeStreak, lastCompletionDate: todayStr };
+  }
+
+  // 2+ dias sem completar (ou relógio muito bagunçado) -> reseta
   return { currentStreak: 1, lastCompletionDate: todayStr };
 }
 
 // -----------------------------
-// Serviço principal de XP
+// Serviço principal de XP + Gold
 // -----------------------------
 
 export const xpService = {
@@ -123,6 +134,7 @@ export const xpService = {
           currentStreak: 0,
           lastCompletionDate: '',
           activeCompanionId: 1,
+          gold: 0,
         };
         await db.profile.put(profile);
       }
@@ -197,6 +209,7 @@ export const xpService = {
           currentStreak: 0,
           lastCompletionDate: '',
           activeCompanionId: 1,
+          gold: 0,
         };
         await db.profile.put(profile);
       }
@@ -229,10 +242,90 @@ export const xpService = {
       });
     });
   },
+
+  /**
+   * Adiciona gold com base no XP ganho.
+   * Regra: GOLD = floor(XP * 0.5)
+   */
+  async addGoldFromXp(amountXp: number) {
+    if (amountXp <= 0) return;
+
+    const goldDelta = Math.floor(amountXp * GOLD_RATE);
+    if (goldDelta <= 0) return;
+
+    await db.transaction('rw', db.profile, async () => {
+      let profile = await db.profile.get(1);
+
+      if (!profile) {
+        profile = {
+          id: 1,
+          name: 'Seu herói',
+          title: 'Nobre Aventureiro Nv. 1',
+          level: 1,
+          xpCurrent: 0,
+          xpNext: getXpForNextLevel(1),
+          avatarUrl: '',
+          totalXpEarned: 0,
+          currentStreak: 0,
+          lastCompletionDate: '',
+          activeCompanionId: 1,
+          gold: 0,
+        };
+        await db.profile.put(profile);
+      }
+
+      const currentGold = profile.gold ?? 0;
+      const newGold = currentGold + goldDelta;
+
+      await db.profile.update(1, {
+        gold: newGold,
+      });
+    });
+  },
+
+  /**
+   * Remove o gold proporcional ao XP (ex: ao desmarcar missão).
+   */
+  async removeGoldFromXp(amountXp: number) {
+    if (amountXp <= 0) return;
+
+    const goldDelta = Math.floor(amountXp * GOLD_RATE);
+    if (goldDelta <= 0) return;
+
+    await db.transaction('rw', db.profile, async () => {
+      let profile = await db.profile.get(1);
+
+      if (!profile) {
+        profile = {
+          id: 1,
+          name: 'Seu herói',
+          title: 'Aventureiro Nv. 1',
+          level: 1,
+          xpCurrent: 0,
+          xpNext: getXpForNextLevel(1),
+          avatarUrl: '',
+          totalXpEarned: 0,
+          currentStreak: 0,
+          lastCompletionDate: '',
+          activeCompanionId: 1,
+          gold: 0,
+        };
+        await db.profile.put(profile);
+      }
+
+      const currentGold = profile.gold ?? 0;
+      let newGold = currentGold - goldDelta;
+      if (newGold < 0) newGold = 0;
+
+      await db.profile.update(1, {
+        gold: newGold,
+      });
+    });
+  },
 } as const;
 
 // -----------------------------
-// Observables para painéis (XP total + streak)
+// Observables para painéis (XP total + streak + gold)
 // -----------------------------
 
 /**
@@ -256,6 +349,16 @@ export function getStreakObservable() {
       count: profile?.currentStreak ?? 0,
       lastCompletionDate: profile?.lastCompletionDate ?? '',
     };
+  });
+}
+
+/**
+ * Observable com o saldo atual de gold.
+ */
+export function getGoldObservable() {
+  return liveQuery(async () => {
+    const profile = await db.profile.get(1);
+    return profile?.gold ?? 0;
   });
 }
 

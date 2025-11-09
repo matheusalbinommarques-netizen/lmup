@@ -58,7 +58,7 @@
     </div>
 
     <div class="relative flex flex-col gap-4">
-      <!-- Cabeçalho: nome, descrição + streak / xp total -->
+      <!-- Cabeçalho: infos do herói + streak / xp total -->
       <div
         class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
       >
@@ -69,14 +69,17 @@
           <h2 class="text-xl md:text-2xl font-bold text-slate-50">
             {hero.name || 'Seu herói'}
           </h2>
-          <p class="text-xs text-slate-300/80 max-w-md">
+          <p class="text-[0.7rem] text-slate-400">
+            {hero.title || 'Nobre aventureiro'}
+          </p>
+          <p class="mt-1 text-xs text-slate-300/80 max-w-md">
             Complete pequenas missões todos os dias para subir de nível e manter
             sua chama de foco acesa.
           </p>
         </div>
 
+        <!-- Streak + XP total -->
         <div class="flex flex-col items-end gap-2 text-xs">
-          <!-- pill de streak -->
           <div
             class="inline-flex items-center gap-2 rounded-full border border-amber-400/70 bg-amber-500/10 px-3 py-1 text-amber-100 shadow-md shadow-amber-900/40"
           >
@@ -107,26 +110,44 @@
 
       <!-- Nível + barra de progresso -->
       <div class="flex flex-col items-center justify-between gap-4 md:flex-row">
-        <!-- Level badge -->
+        <!-- Badge grande: avatar dentro do círculo + nível sobreposto -->
         <div class="flex items-center gap-4">
           <div
-            class="flex h-32 w-32 items-center justify-center rounded-full border border-amber-400/80 bg-slate-950 shadow-[0_0_20px_rgba(251,191,36,0.7)]"
+            class="relative flex h-32 w-32 items-center justify-center rounded-full border border-amber-400/80 bg-slate-950 shadow-[0_0_20px_rgba(251,191,36,0.7)] overflow-hidden"
           >
-            <img
-              src="/art/heroi.png"
-              alt="Avatar do herói"
-              class="h-36 w-36 object-contain"
-            />
+            {#if hero.avatarUrl}
+              <img
+                src={hero.avatarUrl}
+                alt={`Avatar de ${hero.name || 'herói'}`}
+                class="h-full w-full object-cover"
+              />
+            {:else}
+              <div
+                class="h-full w-full grid place-items-center text-sm text-amber-200/80"
+              >
+                ?
+              </div>
+            {/if}
           </div>
-          <div class="space-y-1">
+
+          <div class="space-y-2">
             <p
-              class="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-sky-300/90"
+              class="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-amber-200/80"
             >
               Nível atual
             </p>
-            <span class="text-2xl font-bold text-green-100">
+
+            <!-- badge / card do nível -->
+            <div
+              class="inline-flex items-center justify-center
+           rounded-md border border-amber-200/80
+           bg-slate-950/90 px-4 py-1
+           text-sm font-semibold text-amber-200/80
+           shadow-[0_0_14px_rgba(56,189,248,0.6)]"
+            >
               {level}
-            </span>
+            </div>
+
             <p class="text-xs text-slate-300/85 max-w-xs">
               Falta
               <span class="font-semibold text-sky-100">
@@ -143,8 +164,16 @@
             class="flex items-center justify-between text-[0.7rem] text-slate-400"
           >
             <span>Progresso até o próximo nível</span>
-            <span class="font-medium text-slate-200">
-              {currentLevelXp} / {xpToNextLevel} XP
+
+            <span
+              class="inline-flex items-center gap-1 font-medium text-slate-200"
+            >
+              <img
+                src="/art/icones/icon-xp.png"
+                alt="XP"
+                class="h-4 w-4 object-contain"
+              />
+              <span>{currentLevelXp} / {xpToNextLevel}</span>
             </span>
           </div>
 

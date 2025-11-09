@@ -2,6 +2,7 @@
   import { db, type Profile } from '$services/db';
   import { liveQuery } from 'dexie';
   import { onMount } from 'svelte';
+  import PageTitleCard from '$lib/PageTitleCard.svelte';
 
   // --- 1. DADOS MOCKADOS (Simulados) ---
   const clanInfo = {
@@ -134,14 +135,11 @@
 
 <div class="min-h-full lmup-bg-cla bg-slate-950/60">
   <div class="flex flex-col gap-6">
-    <header class="mb-4 flex flex-col items-center gap-3 text-center">
-      <h1 class="text-3xl font-bold text-[#ffb74d] drop-shadow-sm font-serif">
-        Salão do Clã
-      </h1>
-      <p class="text-slate-400">
-        Conecte-se com outros heróis e dispute a glória.
-      </p>
-    </header>
+    <PageTitleCard
+      title="Salão do Clã"
+      subtitle="Junte-se aos seus irmãos de batalha e conquistem o mundo juntos!"
+      align="center"
+    />
 
     <section
       class="relative overflow-hidden rounded-2xl bg-slate-900/50 border border-slate-800 p-6 lg:p-8 shadow-xl flex flex-col md:flex-row items-center md:items-start gap-6 text-center md:text-left"

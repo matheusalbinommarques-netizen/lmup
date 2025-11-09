@@ -100,14 +100,30 @@
   <div>
     <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
       <span class="font-medium text-slate-300">Estágio: {ecoData.label}</span>
+
       {#if ecoData.next}
-        <span>{hero.totalXpEarned} / {ecoData.next} XP Total</span>
+        <!-- XP atual / próximo com ícone -->
+        <span class="inline-flex items-center gap-1 font-medium text-slate-200">
+          <img
+            src="art/icones/icon-xp.png"
+            alt="XP"
+            class="h-4 w-4 object-contain"
+          />
+          <span>{hero.totalXpEarned} / {ecoData.next}</span>
+        </span>
       {:else}
-        <span class="text-green-400 font-medium">
-          {hero.totalXpEarned} XP Total (Máx)
+        <!-- Estágio máximo, também com ícone -->
+        <span class="inline-flex items-center gap-1 font-medium text-green-400">
+          <img
+            src="art/icones/icon-xp.png"
+            alt="XP"
+            class="h-4 w-4 object-contain"
+          />
+          <span>{hero.totalXpEarned} (Máx)</span>
         </span>
       {/if}
     </div>
+
     <div
       class="h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800/50"
     >
