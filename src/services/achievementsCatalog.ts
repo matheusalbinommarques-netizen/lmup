@@ -296,7 +296,7 @@ export const ALL_ACHIEVEMENTS: AchievementDef[] = [
     icon: '🌿',
     rarity: 'raro',
     category: 'eco',
-    condition: ({ totalXp }) => totalXp >= 500,
+    condition: ({ totalXp }) => totalXp >= 2500,
   },
   {
     id: 'arvore-da-vida',
@@ -305,7 +305,7 @@ export const ALL_ACHIEVEMENTS: AchievementDef[] = [
     icon: '🌳',
     rarity: 'épico',
     category: 'eco',
-    condition: ({ totalXp }) => totalXp >= 1500,
+    condition: ({ totalXp }) => totalXp >= 7500,
   },
   {
     id: 'guardiao-floresta',
@@ -314,7 +314,7 @@ export const ALL_ACHIEVEMENTS: AchievementDef[] = [
     icon: '🌲',
     rarity: 'lendário',
     category: 'eco',
-    condition: ({ totalXp }) => totalXp >= 3000,
+    condition: ({ totalXp }) => totalXp >= 12000,
   },
 
   // 6. Companheiros (Bestiário)

@@ -8,21 +8,33 @@
     taskToEdit: Task | null;
   }>();
 
+  type Rarity = Task['rarity'];
+
   let title = $state('');
-  let rarity = $state<'common' | 'rare' | 'epic' | 'legendary'>('common');
+  let rarity = $state<Rarity>('common');
   let areaId = $state(0);
   let areas = $state<Area[]>([]);
 
   const isEditMode = $derived(taskToEdit !== null);
 
-  const rarityOptions = {
+  const rarityOptions: Record<Rarity, number> = {
     common: 50,
     rare: 100,
     epic: 250,
     legendary: 500,
   };
 
+  const rarityOrder: Rarity[] = ['common', 'rare', 'epic', 'legendary'];
+
+  const rarityLabels: Record<Rarity, string> = {
+    common: 'Comum',
+    rare: 'Rara',
+    epic: 'Épica',
+    legendary: 'Lendária',
+  };
+
   const areasQuery = liveQuery(() => db.areas.toArray());
+
   onMount(() => {
     const sub = areasQuery.subscribe((dbAreas) => {
       areas = dbAreas;
@@ -38,7 +50,7 @@
   });
 
   async function handleSubmit(event: SubmitEvent) {
-    event.preventDefault(); // Correção da sintaxe Svelte 5
+    event.preventDefault();
     const taskTitle = title.trim();
     if (!taskTitle) return;
 
@@ -46,10 +58,10 @@
       const taskData = {
         areaId: +areaId,
         title: taskTitle,
-        rarity: rarity,
+        rarity,
         xp: rarityOptions[rarity],
-        completed: isEditMode ? taskToEdit!.completed : false,
-        createdAt: isEditMode ? taskToEdit!.createdAt : new Date(),
+        completed: isEditMode && taskToEdit ? taskToEdit.completed : false,
+        createdAt: isEditMode && taskToEdit ? taskToEdit.createdAt : new Date(),
       };
 
       if (isEditMode && taskToEdit?.id) {
@@ -74,7 +86,7 @@
 
 <div
   class="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2
-            bg-slate-900 border border-slate-800 rounded-2xl shadow-xl p-6"
+    bg-slate-900 border border-slate-800 rounded-2xl shadow-xl p-6"
   role="dialog"
   aria-modal="true"
   aria-labelledby="modal-title"
@@ -94,7 +106,7 @@
         bind:value={title}
         placeholder="Ex: Ler 20 páginas..."
         class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200
-                        focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/30"
+          focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/30"
         required
       />
     </div>
@@ -111,12 +123,12 @@
           id="rarity"
           bind:value={rarity}
           class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200
-                            focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/30"
+            focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/30"
         >
-          {#each Object.entries(rarityOptions) as [key, xp] (key)}
-            <option value={key}
-              >{key.charAt(0).toUpperCase() + key.slice(1)} (+{xp} XP)</option
-            >
+          {#each rarityOrder as key (key)}
+            <option value={key}>
+              {rarityLabels[key]} (+{rarityOptions[key]} XP)
+            </option>
           {/each}
         </select>
       </div>
@@ -129,7 +141,7 @@
           id="area"
           bind:value={areaId}
           class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200
-                            focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/30"
+            focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/30"
         >
           <option value={0}>Geral</option>
           {#each areas as area (area.id)}

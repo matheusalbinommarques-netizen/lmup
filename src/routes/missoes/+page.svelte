@@ -13,19 +13,23 @@
   let filter = $state<'active' | 'completed'>('active');
   let selectedAreaId = $state<'all' | number>('all');
 
+  // Tipagem baseada no próprio Task
+  type Rarity = Task['rarity'];
+  const rarityOrder: Rarity[] = ['common', 'rare', 'epic', 'legendary'];
+
+  let selectedRarity = $state<null | Rarity>(null);
+
   let isModalOpen = $state(false);
   let taskToEdit = $state<Task | null>(null);
 
   const tasksQuery = liveQuery(() =>
     db.tasks.orderBy('createdAt').reverse().toArray(),
   );
-
   const areasQuery = liveQuery(() => db.areas.toArray());
 
   onMount(() => {
     const tasksSub = tasksQuery.subscribe((dbTasks) => (tasks = dbTasks));
     const areasSub = areasQuery.subscribe((dbAreas) => (areas = dbAreas));
-
     return () => {
       tasksSub.unsubscribe();
       areasSub.unsubscribe();
@@ -42,12 +46,56 @@
     ),
   );
 
+  // Cores de borda/texto por raridade (cards da lista)
+  const rarityColors: Record<Rarity, string> = {
+    common: 'border-slate-600 text-slate-400',
+    rare: 'border-blue-500 text-blue-400',
+    epic: 'border-purple-500 text-purple-400',
+    legendary: 'border-[#ffb74d] text-[#ffb74d]',
+  };
+
+  // NOVO: labels em PT-BR por raridade
+  const rarityLabels: Record<Rarity, string> = {
+    common: 'Comum',
+    rare: 'Rara',
+    epic: 'Épica',
+    legendary: 'Lendária',
+  };
+
+  // NOVO: estilos dos chips de filtro
+  const chipBase =
+    'px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors';
+  const chipOn: Record<Rarity, string> = {
+    common: 'bg-slate-700 text-slate-100 border-slate-400',
+    rare: 'bg-blue-500/20 text-blue-300 border-blue-400',
+    epic: 'bg-purple-500/20 text-purple-300 border-purple-400',
+    legendary: 'bg-[#ffb74d]/20 text-[#ffb74d] border-[#ffb74d]',
+  };
+  const chipOff: Record<Rarity, string> = {
+    common: 'border-slate-600 text-slate-400 hover:bg-slate-800',
+    rare: 'border-blue-500 text-blue-400 hover:bg-blue-950/40',
+    epic: 'border-purple-500 text-purple-400 hover:bg-purple-950/40',
+    legendary:
+      'border-[#ffb74d] text-[#ffb74d] hover:bg-[rgba(255,183,77,0.12)]',
+  };
+
+  function chipClass(r: Rarity): string {
+    const state = selectedRarity === r ? chipOn[r] : chipOff[r];
+    return `${chipBase} ${state}`;
+  }
+
+  function toggleRarity(r: Rarity) {
+    selectedRarity = selectedRarity === r ? null : r;
+  }
+
+  // Lista filtrada (status + área + raridade)
   let filteredTasks = $derived(
     tasks
       .filter((t) => (filter === 'active' ? !t.completed : t.completed))
       .filter((t) =>
         selectedAreaId === 'all' ? true : t.areaId === selectedAreaId,
-      ),
+      )
+      .filter((t) => (selectedRarity ? t.rarity === selectedRarity : true)),
   );
 
   async function toggleTask(id: number | undefined) {
@@ -96,13 +144,6 @@
       alert('Falha ao excluir missão.');
     }
   }
-
-  const rarityColors = {
-    common: 'border-slate-600 text-slate-400',
-    rare: 'border-blue-500 text-blue-400',
-    epic: 'border-purple-500 text-purple-400',
-    legendary: 'border-[#ffb74d] text-[#ffb74d]',
-  } as const;
 </script>
 
 {#if isModalOpen}
@@ -121,7 +162,7 @@
     </div>
   </header>
 
-  <!-- Painel principal de status (largura de referência) -->
+  <!-- Painel principal de status -->
   <StatsManager />
 
   <!-- Tudo abaixo alinhado à mesma largura do StatsManager -->
@@ -130,6 +171,47 @@
 
     <AreaManager bind:selectedId={selectedAreaId} />
 
+    <!-- Card de filtro de raridade -->
+    <section class="bg-slate-900/50 p-3 rounded-xl border border-slate-800">
+      <div class="flex items-center justify-between mb-2">
+        <p class="text-xs text-slate-400">
+          Filtrar por raridade (opcional)
+          {#if selectedRarity}
+            <span class="ml-1 text-slate-500">
+              • Mostrando apenas
+              <strong class="uppercase">
+                {rarityLabels[selectedRarity]}
+              </strong>
+            </span>
+          {/if}
+        </p>
+        {#if selectedRarity}
+          <button
+            type="button"
+            class="text-xs text-slate-400 hover:text-slate-200 underline"
+            onclick={() => (selectedRarity = null)}
+          >
+            Limpar
+          </button>
+        {/if}
+      </div>
+
+      <div class="flex flex-wrap gap-2">
+        {#each rarityOrder as r (r)}
+          <button
+            type="button"
+            class={chipClass(r)}
+            onclick={() => toggleRarity(r)}
+            aria-pressed={selectedRarity === r}
+            aria-label={`Filtrar por raridade ${rarityLabels[r]}`}
+          >
+            {rarityLabels[r]}
+          </button>
+        {/each}
+      </div>
+    </section>
+
+    <!-- Filtro de status + botão nova missão -->
     <div
       class="flex items-center justify-between gap-4 bg-slate-900/50 p-2 rounded-xl border border-slate-800"
     >
@@ -162,6 +244,7 @@
       </button>
     </div>
 
+    <!-- Lista -->
     <div class="grid grid-cols-1 gap-3">
       {#if filteredTasks.length === 0}
         <div
@@ -200,7 +283,7 @@
                     task.rarity
                   ]}"
                 >
-                  {task.rarity}
+                  {rarityLabels[task.rarity]}
                 </span>
                 <span
                   class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400"
@@ -209,7 +292,7 @@
                 </span>
               </div>
               <h3
-                class="text-slate-100 font-medium truncate {task.completed
+                class="text-slate-100 font-medium break-words whitespace-pre-line {task.completed
                   ? 'line-through'
                   : ''}"
               >
@@ -240,7 +323,7 @@
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
+                    d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A.75.75 0 0 1 17.25 19.75H6.75A.75.75 0 0 1 6 18.75V8.25A.75.75 0 0 1 6.75 7.5H10"
                   />
                 </svg>
               </button>
