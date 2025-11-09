@@ -2,7 +2,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
-  import { exportarDados, importarDados } from '../services/backupService.js';
 
   type NeuroPrefs = {
     focusMode: boolean;
@@ -40,6 +39,7 @@
     if (!browser) return;
     const root = document.documentElement;
 
+    // esses data-* batem com o que já está no app.css
     root.dataset.neuroFocus = prefs.focusMode ? 'true' : 'false';
     root.dataset.neuroLargeText = prefs.largeText ? 'true' : 'false';
     root.dataset.neuroLowStimulus = prefs.lowStimulus ? 'true' : 'false';
@@ -89,14 +89,15 @@
     saveNeuroPrefs(prefs);
   }
 
-  // ---------- backup / restore ----------
+  // ---------- backup / restore (via import dinâmico pra não quebrar SSR) ----------
 
   async function handleExport() {
-    if (isExporting) return;
+    if (isExporting || !browser) return;
     isExporting = true;
+
     try {
-      // exportarDados já cuida de gerar o arquivo .json
-      await exportarDados();
+      const { exportData } = await import('$services/backupService');
+      await exportData();
     } catch (err) {
       console.error(err);
       alert('Erro ao exportar dados. Tente novamente.');
@@ -114,6 +115,8 @@
   }
 
   async function handleFileSelected(event: Event) {
+    if (!browser) return;
+
     const input = event.target as HTMLInputElement;
     if (!input.files || input.files.length === 0) return;
 
@@ -121,8 +124,8 @@
     isImporting = true;
 
     try {
-      // importarDados espera um File, então passamos o File direto
-      await importarDados(file);
+      const { importData } = await import('$services/backupService');
+      await importData(file);
       input.value = '';
       alert(
         'Backup importado com sucesso! Recarregue a página para ver as mudanças.',
@@ -137,7 +140,8 @@
     }
   }
 
-  // switch genérico para reuso
+  // ---------- helpers visuais dos switches ----------
+
   function switchClasses(enabled: boolean) {
     return enabled
       ? 'inline-flex h-7 w-12 items-center rounded-full bg-emerald-400/90 px-1 transition-colors'
@@ -182,9 +186,9 @@
       >
         <div class="flex items-start gap-3">
           <div
-            class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-violet-500/25 text-violet-100"
+            class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-violet-500/20 text-violet-200"
           >
-            🕯️
+            🌙
           </div>
           <div>
             <div class="flex items-center gap-2">
@@ -192,13 +196,14 @@
                 Encantamento sombrio
               </p>
               <span
-                class="rounded-full border border-violet-300/70 bg-violet-500/15 px-2 py-[1px] text-[0.6rem] font-semibold uppercase tracking-widest text-violet-100"
+                class="rounded-full border border-violet-400/60 bg-violet-500/10 px-2 py-[1px] text-[0.6rem] font-semibold uppercase tracking-widest text-violet-200"
               >
-                Em breve
+                Visual
               </span>
             </div>
-            <p class="text-xs text-slate-300/80 max-w-md">
-              Encanta o seu reino com as trevas ou com a luz. Use com cuidado.
+            <p class="mt-1 text-xs text-slate-300/80 max-w-md">
+              Uma camada extra de magia estética, deixando o reino ainda mais
+              imersivo. Por enquanto é apenas um encantamento visual interno.
             </p>
           </div>
         </div>
@@ -206,17 +211,16 @@
         <button
           type="button"
           class={switchClasses(darkEnchantment)}
-          role="switch"
-          aria-checked={darkEnchantment}
-          aria-label="Ativar ou desativar encantamento sombrio"
           onclick={() => (darkEnchantment = !darkEnchantment)}
         >
-          <span class={knobClasses(darkEnchantment)}></span>
+          <span class={knobClasses(darkEnchantment)} aria-hidden="true"></span>
+          <span class="sr-only">Alternar encantamento sombrio</span>
         </button>
       </div>
 
-      <!-- Linha 1: Grimório de backup -->
-      <div class="space-y-3">
+      <!-- Seção de backup -->
+      <div class="space-y-4">
+        <!-- Linha 1: Grimório de backup -->
         <div
           class="settings-subcard flex flex-col gap-3 rounded-2xl border border-violet-500/60 bg-gradient-to-r from-violet-950 via-slate-900 to-slate-950 px-4 py-4 shadow-[0_0_40px_rgba(168,85,247,0.55)] md:flex-row md:items-center md:justify-between"
         >
@@ -238,9 +242,9 @@
                 </span>
               </div>
               <p class="text-xs text-slate-300/80 max-w-md">
-                Aprisiona as memórias do seu reino num grimório em <code
-                  >.json</code
-                >, para que possa levar e restaurar em qualquer lugar.
+                Aprisiona as memórias do seu reino num grimório em
+                <code>.json</code>, para que possa levar e restaurar em qualquer
+                lugar.
               </p>
             </div>
           </div>
@@ -347,96 +351,80 @@
         </div>
       </div>
 
-      <!-- Divider entre Configurações e Neurodiversidade -->
-      <div
-        class="my-6 h-px bg-gradient-to-r from-transparent via-slate-600/60 to-transparent"
-      ></div>
-
-      <!-- Neurodiversidade -->
-      <div class="space-y-4">
-        <!-- Card verde do título Neurodiversidade -->
-        <div
-          class="rounded-2xl border border-emerald-500/70 bg-gradient-to-r from-emerald-950 via-slate-950 to-emerald-900 px-4 py-4 text-center shadow-[0_0_45px_rgba(16,185,129,0.85)]"
+      <!-- Seção de neurodiversidade -->
+      <div class="mt-8 space-y-4">
+        <h3
+          class="text-sm font-semibold text-slate-200 flex items-center gap-2"
         >
-          <h2 class="text-2xl md:text-3xl font-extrabold text-emerald-100">
-            Neurodiversidade
-          </h2>
-          <p class="mx-auto mt-2 max-w-xl text-xs text-emerald-50/80">
-            Ajustes suaves para foco, legibilidade e redução de estímulos
-            visuais. Pense nisso como encantamentos opcionais para o seu
-            cérebro.
-          </p>
-        </div>
+          <span class="text-base">🧠</span>
+          Neurodiversidade
+        </h3>
 
-        <!-- Card 1: Modo foco -->
-        <div
-          class="neuro-card flex items-center justify-between rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-slate-950/95 via-slate-900/95 to-slate-950/95 px-4 py-3"
-        >
-          <div>
-            <p class="text-sm font-semibold text-white">Modo foco</p>
-            <p class="text-xs text-slate-300/80 max-w-md">
-              Reduz brilhos e sombras intensas para diminuir distrações visuais.
-            </p>
+        <div class="grid gap-3 md:grid-cols-3">
+          <!-- Modo foco -->
+          <div
+            class="settings-subcard flex items-center justify-between gap-3 rounded-2xl border border-emerald-500/60 bg-gradient-to-r from-emerald-900 via-slate-900 to-slate-950 px-4 py-3"
+          >
+            <div class="space-y-1">
+              <p class="text-xs font-semibold text-slate-100">Modo foco</p>
+              <p class="text-xs text-slate-300/90 max-w-xs">
+                Reduz distrações e animações, deixando a interface mais calma
+                para longas sessões.
+              </p>
+            </div>
+            <button
+              type="button"
+              class={switchClasses(focusMode)}
+              onclick={toggleFocusMode}
+            >
+              <span class={knobClasses(focusMode)} aria-hidden="true"></span>
+              <span class="sr-only">Alternar modo foco</span>
+            </button>
           </div>
 
-          <button
-            type="button"
-            class={switchClasses(focusMode)}
-            role="switch"
-            aria-checked={focusMode}
-            aria-label="Ativar ou desativar modo foco"
-            onclick={toggleFocusMode}
+          <!-- Texto maior -->
+          <div
+            class="settings-subcard flex items-center justify-between gap-3 rounded-2xl border border-sky-500/60 bg-gradient-to-r from-sky-950 via-slate-900 to-slate-950 px-4 py-3"
           >
-            <span class={knobClasses(focusMode)}></span>
-          </button>
-        </div>
-
-        <!-- Card 2: Texto maior -->
-        <div
-          class="neuro-card flex items-center justify-between rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-slate-950/95 via-slate-900/95 to-slate-950/95 px-4 py-3"
-        >
-          <div>
-            <p class="text-sm font-semibold text-white">Texto maior</p>
-            <p class="text-xs text-slate-300/80 max-w-md">
-              Aumenta levemente o tamanho base das fontes para leitura mais
-              confortável.
-            </p>
+            <div class="space-y-1">
+              <p class="text-xs font-semibold text-slate-100">Texto maior</p>
+              <p class="text-xs text-slate-300/90 max-w-xs">
+                Aumenta a legibilidade dos textos principais e labels
+                importantes pelo reino.
+              </p>
+            </div>
+            <button
+              type="button"
+              class={switchClasses(largeText)}
+              onclick={toggleLargeText}
+            >
+              <span class={knobClasses(largeText)} aria-hidden="true"></span>
+              <span class="sr-only">Alternar texto maior</span>
+            </button>
           </div>
 
-          <button
-            type="button"
-            class={switchClasses(largeText)}
-            role="switch"
-            aria-checked={largeText}
-            aria-label="Ativar ou desativar texto maior"
-            onclick={toggleLargeText}
+          <!-- Estímulos suaves -->
+          <div
+            class="settings-subcard flex items-center justify-between gap-3 rounded-2xl border border-purple-500/60 bg-gradient-to-r from-purple-950 via-slate-900 to-slate-950 px-4 py-3"
           >
-            <span class={knobClasses(largeText)}></span>
-          </button>
-        </div>
-
-        <!-- Card 3: Estímulos suaves -->
-        <div
-          class="neuro-card flex items-center justify-between rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-slate-950/95 via-slate-900/95 to-slate-950/95 px-4 py-3"
-        >
-          <div>
-            <p class="text-sm font-semibold text-white">Estímulos suaves</p>
-            <p class="text-xs text-slate-300/80 max-w-md">
-              Encurta animações e transições para que nada fique piscando por
-              muito tempo na tela.
-            </p>
+            <div class="space-y-1">
+              <p class="text-xs font-semibold text-slate-100">
+                Estímulos suaves
+              </p>
+              <p class="text-xs text-slate-300/90 max-w-xs">
+                Diminui brilhos e efeitos mais intensos, deixando o reino mais
+                gentil aos sentidos.
+              </p>
+            </div>
+            <button
+              type="button"
+              class={switchClasses(lowStimulus)}
+              onclick={toggleLowStimulus}
+            >
+              <span class={knobClasses(lowStimulus)} aria-hidden="true"></span>
+              <span class="sr-only">Alternar estímulos suaves</span>
+            </button>
           </div>
-
-          <button
-            type="button"
-            class={switchClasses(lowStimulus)}
-            role="switch"
-            aria-checked={lowStimulus}
-            aria-label="Ativar ou desativar estímulos suaves"
-            onclick={toggleLowStimulus}
-          >
-            <span class={knobClasses(lowStimulus)}></span>
-          </button>
         </div>
       </div>
     </div>

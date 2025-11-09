@@ -1,47 +1,56 @@
+<!-- src/lib/BottomNav.svelte -->
 <script lang="ts">
   import { page } from '$app/stores';
-  // CORREÇÃO: Usar '$page' para ler o valor do store
+
   let pathname = $derived($page.url.pathname);
+
+  type NavLink = {
+    href: string;
+    label: string;
+    icon: string;
+  };
+
+  const links: NavLink[] = [
+    {
+      href: '/',
+      label: 'Taverna',
+      icon: '/art/icones/icon-taverna.png',
+    },
+    {
+      href: '/missoes',
+      label: 'Missões',
+      icon: '/art/icones/icon-missoes.png',
+    },
+    {
+      href: '/cla',
+      label: 'Clã',
+      icon: '/art/icones/icon-cla.png',
+    },
+    {
+      href: '/config',
+      label: 'Config.',
+      icon: '/art/icones/icon-config.png',
+    },
+  ];
 </script>
 
 <nav
-  class="bg-slate-900 border-t border-slate-800/50 p-2 flex justify-around items-center"
+  class="fixed inset-x-0 bottom-0 z-40 border-t border-slate-800/70 bg-slate-900/95 backdrop-blur"
 >
-  <a
-    href="/"
-    class="flex flex-col items-center p-2 rounded-lg {pathname === '/'
-      ? 'text-primary'
-      : 'text-slate-400'}"
-  >
-    <img src="/art/icones/icon-taverna.png" alt="Taverna" class="w-6 h-6" />
-    <span class="text-xs font-medium">Taverna</span>
-  </a>
-  <a
-    href="/missoes"
-    class="flex flex-col items-center p-2 rounded-lg {pathname === '/missoes'
-      ? 'text-primary'
-      : 'text-slate-400'}"
-  >
-    <img src="/art/icones/icon-missoes.png" alt="Missões" class="w-6 h-6" />
-    <span class="text-xs font-medium">Missões</span>
-  </a>
-
-  <a
-    href="/santuario"
-    class="flex flex-col items-center p-2 rounded-lg {pathname === '/santuario'
-      ? 'text-primary'
-      : 'text-slate-400'}"
-  >
-    <img src="/art/icones/icon-leaf-eco.png" alt="Santuário" class="w-6 h-6" />
-    <span class="text-xs font-medium">Santuário</span>
-  </a>
-  <a
-    href="/config"
-    class="flex flex-col items-center p-2 rounded-lg {pathname === '/config'
-      ? 'text-primary'
-      : 'text-slate-400'}"
-  >
-    <img src="/art/icones/icon-config.png" alt="Config." class="w-6 h-6" />
-    <span class="text-xs font-medium">Config.</span>
-  </a>
+  <div class="bottom-nav-inner">
+    {#each links as link (link.href)}
+      <a
+        href={link.href}
+        class={`flex flex-col items-center gap-1 rounded-xl px-2 py-1 text-[0.65rem] font-medium transition-colors ${
+          pathname === link.href
+            ? 'text-emerald-300 drop-shadow-[0_0_12px_rgba(52,211,153,0.9)]'
+            : 'text-slate-400 hover:text-slate-100'
+        }`}
+        aria-current={pathname === link.href ? 'page' : undefined}
+      >
+        <img src={link.icon} alt={link.label} class="h-6 w-6" />
+        <span>{link.label}</span>
+      </a>
+    {/each}
+  </div>
 </nav>
