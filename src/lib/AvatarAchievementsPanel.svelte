@@ -117,9 +117,13 @@
         class="flex items-center gap-3 rounded-2xl border border-amber-400/80 bg-slate-950/90 px-3 py-2 shadow-[0_0_30px_rgba(251,191,36,0.55)]"
       >
         <div
-          class="flex h-10 w-10 items-center justify-center rounded-full border border-amber-400/80 bg-slate-950 shadow-[0_0_20px_rgba(251,191,36,0.7)]"
+          class="flex h-32 w-32 items-center justify-center rounded-full border border-amber-400/80 bg-slate-950 shadow-[0_0_20px_rgba(251,191,36,0.7)]"
         >
-          <span class="text-xl">🛡️</span>
+          <img
+            src="/art/heroi.png"
+            alt="Avatar do herói"
+            class="h-36 w-36 object-contain"
+          />
         </div>
         <div class="text-xs">
           <div class="text-slate-300/90">Nível do avatar</div>
@@ -151,7 +155,17 @@
                 : 'border-slate-700 text-slate-400 bg-slate-950'
             }`}
           >
-            <span>{ach.icon}</span>
+            {#if ach.icon && ach.icon.startsWith('/')}
+              <!-- Ícone vindo de arquivo (PNG/WebP etc.) -->
+              <img
+                src={ach.icon}
+                alt={ach.title}
+                class="h-12 w-12 object-contain"
+              />
+            {:else}
+              <!-- Ícone como emoji (comportamento antigo) -->
+              <span>{ach.icon}</span>
+            {/if}
           </div>
 
           <div class="flex-1">

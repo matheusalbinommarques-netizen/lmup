@@ -318,7 +318,17 @@
                         }`}
                         aria-hidden="true"
                       >
-                        <span>{ach.icon}</span>
+                        {#if ach.icon && ach.icon.startsWith('/')}
+                          <!-- Ícone vindo de arquivo (PNG/WebP etc.) -->
+                          <img
+                            src={ach.icon}
+                            alt={ach.title}
+                            class="h-12 w-12 object-contain"
+                          />
+                        {:else}
+                          <!-- Ícone como emoji (padrão antigo) -->
+                          <span>{ach.icon}</span>
+                        {/if}
                       </div>
 
                       <div class="min-w-0 flex-1">
