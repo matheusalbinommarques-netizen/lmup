@@ -186,9 +186,13 @@
       >
         <div class="flex items-start gap-3">
           <div
-            class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-violet-500/20 text-violet-200"
+            class="mt-0.5 flex h-12 w-12 items-center justify-center rounded-full bg-violet-500/20 text-violet-200"
           >
-            🌙
+            <img
+              src="art/icones/encantamento-sombrio.png"
+              alt="Encantamento sombrio"
+              class="h-20 w-20 object-contain"
+            />
           </div>
           <div>
             <div class="flex items-center gap-2">
@@ -226,9 +230,13 @@
         >
           <div class="flex items-start gap-3">
             <div
-              class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-violet-500/20 text-violet-200"
+              class="mt-0.5 flex h-12 w-12 items-center justify-center rounded-full bg-violet-500/20 text-violet-200"
             >
-              📜
+              <img
+                src="art/icones/grimorio-backup.png"
+                alt="Encantamento sombrio"
+                class="h-20 w-20 object-contain"
+              />
             </div>
             <div>
               <div class="flex items-center gap-2">
@@ -265,10 +273,15 @@
         >
           <div class="flex items-start gap-3">
             <div
-              class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-200"
+              class="mt-0.5 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-200"
             >
-              🧪
+              <img
+                src="art/icones/ritual-restauracao.png"
+                alt="Ritual de restauração"
+                class="h-20 w-20 object-contain"
+              />
             </div>
+
             <div>
               <div class="flex items-center gap-2">
                 <p class="text-sm font-semibold text-white">
@@ -317,9 +330,13 @@
         >
           <div class="flex items-start gap-3">
             <div
-              class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-sky-500/25 text-sky-200"
+              class="mt-0.5 flex h-12 w-12 items-center justify-center rounded-full bg-sky-500/25 text-sky-200"
             >
-              ☁️
+              <img
+                src="art/icones/sincronia-estelar.png"
+                alt="Encantamento sombrio"
+                class="h-20 w-20 object-contain"
+              />
             </div>
             <div class="flex-1">
               <div class="flex items-center gap-2">

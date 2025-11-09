@@ -127,3 +127,36 @@ body {
 :root[data-neuro-focus='true'] [aria-hidden='true'] {
   opacity: 0 !important;
 }
+.lmup-bg-taverna {
+  background-image: url('/art/bg/bg-taverna.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.lmup-bg-missoes {
+  background-image: url('/art/bg/bg-global-dungeon.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.lmup-bg-config {
+  background-image: url('/art/bg/bg-config.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.lmup-bg-cla {
+  background-image: url('/art/bg/bg-cla.webp'); /* ou .png conforme seu arquivo */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.lmup-bg-missoes {
+  background-image: url('/art/bg/bg-missoes.webp'); /* ou .png conforme seu arquivo */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}

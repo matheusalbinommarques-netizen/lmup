@@ -132,141 +132,143 @@
   }
 </script>
 
-<div class="flex flex-col gap-6">
-  <header class="text-center md:text-left">
-    <h1 class="text-3xl font-bold text-[#ffb74d] drop-shadow-sm font-serif">
-      Salão do Clã
-    </h1>
-    <p class="text-slate-400">
-      Conecte-se com outros heróis e dispute a glória.
-    </p>
-  </header>
-
-  <section
-    class="relative overflow-hidden rounded-2xl bg-slate-900/50 border border-slate-800 p-6 lg:p-8 shadow-xl flex flex-col md:flex-row items-center md:items-start gap-6 text-center md:text-left"
-  >
-    <div
-      class="shrink-0 w-24 h-24 lg:w-32 lg:h-32 bg-slate-950 rounded-2xl border-2 border-[#ffb74d]/30 flex items-center justify-center text-5xl lg:text-6xl shadow-lg p-4"
-    >
-      <img src={clanInfo.banner} alt="Brasão do Clã" class="opacity-80" />
-    </div>
-    <div class="flex-1 relative z-10">
-      <div class="flex flex-col md:flex-row md:items-center gap-2 mb-2">
-        <h2 class="text-2xl lg:text-3xl font-bold text-slate-100">
-          {clanInfo.name}
-        </h2>
-        <span
-          class="self-center md:self-auto px-3 py-1 rounded-full bg-[#ffb74d]/10 text-[#ffb74d] text-xs font-bold border border-[#ffb74d]/20"
-        >
-          Nível {clanInfo.level}
-        </span>
-      </div>
-      <p class="text-slate-400 text-sm lg:text-base max-w-2xl mb-6">
-        "{clanInfo.description}"
+<div class="min-h-full lmup-bg-cla bg-slate-950/60">
+  <div class="flex flex-col gap-6">
+    <header class="mb-4 flex flex-col items-center gap-3 text-center">
+      <h1 class="text-3xl font-bold text-[#ffb74d] drop-shadow-sm font-serif">
+        Salão do Clã
+      </h1>
+      <p class="text-slate-400">
+        Conecte-se com outros heróis e dispute a glória.
       </p>
-      <div
-        class="flex items-center justify-center md:justify-start gap-6 text-sm"
-      >
-        <div class="flex items-center gap-2 text-slate-300">
-          <span class="text-lg">👥</span>
-          <span><strong>{clanInfo.members}</strong> Membros</span>
-        </div>
-        <div class="flex items-center gap-2 text-slate-300">
-          <span class="text-lg">⚔️</span>
-          <span><strong>Top 10%</strong> Global</span>
-        </div>
-      </div>
-    </div>
-  </section>
+    </header>
 
-  <section>
-    <div class="flex items-center justify-between mb-4">
-      <h3 class="text-xl font-bold text-slate-200 font-serif">
-        Ranking da Temporada
-      </h3>
-      <button class="text-sm text-primary hover:underline">Ver Todos</button>
-    </div>
-
-    <div
-      class="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden shadow-sm"
+    <section
+      class="relative overflow-hidden rounded-2xl bg-slate-900/50 border border-slate-800 p-6 lg:p-8 shadow-xl flex flex-col md:flex-row items-center md:items-start gap-6 text-center md:text-left"
     >
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm">
-          <thead
-            class="bg-slate-950/50 text-slate-400 uppercase text-xs tracking-wider font-medium"
-          >
-            <tr>
-              <th class="px-4 py-3 lg:px-6">Rank</th>
-              <th class="px-4 py-3 lg:px-6 w-full">Herói</th>
-              <th class="px-4 py-3 lg:px-6 text-right">Nível</th>
-              <th class="px-4 py-3 lg:px-6 text-right">XP Total</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-800/50">
-            {#each leaderboard as player (player.id)}
-              <tr
-                class="transition-colors {player.isUser
-                  ? 'bg-primary/10 hover:bg-primary/15'
-                  : 'hover:bg-slate-800/30'}"
-              >
-                <td
-                  class="px-4 py-4 lg:px-6 whitespace-nowrap text-base {getRankStyle(
-                    player.rank,
-                  )}"
-                >
-                  #{player.rank}
-                </td>
-                <td
-                  class="px-4 py-4 lg:px-6 font-medium flex items-center gap-3 {player.isUser
-                    ? 'text-[#ffb74d]'
-                    : 'text-slate-200'}"
-                >
-                  <div
-                    class="relative w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs overflow-hidden"
-                  >
-                    {#if player.isUser && player.avatarUrl}
-                      <img
-                        src={player.avatarUrl}
-                        alt={player.name}
-                        class="w-full h-full object-cover"
-                      />
-                      <img
-                        src="/art/hero-avatar-default.png"
-                        alt="Moldura do Avatar"
-                        class="absolute inset-0 w-full h-full pointer-events-none scale-[1.50]"
-                      />
-                    {:else if player.isUser}
-                      <img
-                        src="/art/hero-avatar-default.png"
-                        alt="Seu Avatar"
-                        class="w-full h-full object-cover scale-[1.50]"
-                      />
-                    {:else}
-                      <span>{player.name[0]}</span>
-                    {/if}
-                  </div>
-                  {player.name}
-                  {#if player.isUser}
-                    <span
-                      class="text-[10px] px-1.5 py-0.5 bg-[#ffb74d]/20 text-[#ffb74d] rounded font-bold ml-2"
-                    >
-                      VOCÊ
-                    </span>
-                  {/if}
-                </td>
-                <td class="px-4 py-4 lg:px-6 text-right text-slate-400">
-                  {player.level}
-                </td>
-                <td
-                  class="px-4 py-4 lg:px-6 text-right font-mono text-slate-300"
-                >
-                  {player.xpCurrent.toLocaleString()}
-                </td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
+      <div
+        class="shrink-0 w-24 h-24 lg:w-32 lg:h-32 bg-slate-950 rounded-2xl border-2 border-[#ffb74d]/30 flex items-center justify-center text-5xl lg:text-6xl shadow-lg p-4"
+      >
+        <img src={clanInfo.banner} alt="Brasão do Clã" class="opacity-80" />
       </div>
-    </div>
-  </section>
+      <div class="flex-1 relative z-10">
+        <div class="flex flex-col md:flex-row md:items-center gap-2 mb-2">
+          <h2 class="text-2xl lg:text-3xl font-bold text-slate-100">
+            {clanInfo.name}
+          </h2>
+          <span
+            class="self-center md:self-auto px-3 py-1 rounded-full bg-[#ffb74d]/10 text-[#ffb74d] text-xs font-bold border border-[#ffb74d]/20"
+          >
+            Nível {clanInfo.level}
+          </span>
+        </div>
+        <p class="text-slate-400 text-sm lg:text-base max-w-2xl mb-6">
+          "{clanInfo.description}"
+        </p>
+        <div
+          class="flex items-center justify-center md:justify-start gap-6 text-sm"
+        >
+          <div class="flex items-center gap-2 text-slate-300">
+            <span class="text-lg">👥</span>
+            <span><strong>{clanInfo.members}</strong> Membros</span>
+          </div>
+          <div class="flex items-center gap-2 text-slate-300">
+            <span class="text-lg">⚔️</span>
+            <span><strong>Top 10%</strong> Global</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-xl font-bold text-slate-200 font-serif">
+          Ranking da Temporada
+        </h3>
+        <button class="text-sm text-primary hover:underline">Ver Todos</button>
+      </div>
+
+      <div
+        class="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden shadow-sm"
+      >
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead
+              class="bg-slate-950/50 text-slate-400 uppercase text-xs tracking-wider font-medium"
+            >
+              <tr>
+                <th class="px-4 py-3 lg:px-6">Rank</th>
+                <th class="px-4 py-3 lg:px-6 w-full">Herói</th>
+                <th class="px-4 py-3 lg:px-6 text-right">Nível</th>
+                <th class="px-4 py-3 lg:px-6 text-right">XP Total</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/50">
+              {#each leaderboard as player (player.id)}
+                <tr
+                  class="transition-colors {player.isUser
+                    ? 'bg-primary/10 hover:bg-primary/15'
+                    : 'hover:bg-slate-800/30'}"
+                >
+                  <td
+                    class="px-4 py-4 lg:px-6 whitespace-nowrap text-base {getRankStyle(
+                      player.rank,
+                    )}"
+                  >
+                    #{player.rank}
+                  </td>
+                  <td
+                    class="px-4 py-4 lg:px-6 font-medium flex items-center gap-3 {player.isUser
+                      ? 'text-[#ffb74d]'
+                      : 'text-slate-200'}"
+                  >
+                    <div
+                      class="relative w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs overflow-hidden"
+                    >
+                      {#if player.isUser && player.avatarUrl}
+                        <img
+                          src={player.avatarUrl}
+                          alt={player.name}
+                          class="w-full h-full object-cover"
+                        />
+                        <img
+                          src="/art/hero-avatar-default.png"
+                          alt="Moldura do Avatar"
+                          class="absolute inset-0 w-full h-full pointer-events-none scale-[1.50]"
+                        />
+                      {:else if player.isUser}
+                        <img
+                          src="/art/hero-avatar-default.png"
+                          alt="Seu Avatar"
+                          class="w-full h-full object-cover scale-[1.50]"
+                        />
+                      {:else}
+                        <span>{player.name[0]}</span>
+                      {/if}
+                    </div>
+                    {player.name}
+                    {#if player.isUser}
+                      <span
+                        class="text-[10px] px-1.5 py-0.5 bg-[#ffb74d]/20 text-[#ffb74d] rounded font-bold ml-2"
+                      >
+                        VOCÊ
+                      </span>
+                    {/if}
+                  </td>
+                  <td class="px-4 py-4 lg:px-6 text-right text-slate-400">
+                    {player.level}
+                  </td>
+                  <td
+                    class="px-4 py-4 lg:px-6 text-right font-mono text-slate-300"
+                  >
+                    {player.xpCurrent.toLocaleString()}
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
 </div>

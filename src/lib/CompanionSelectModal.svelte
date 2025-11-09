@@ -1,129 +1,302 @@
+<!-- src/lib/CompanionSelectModal.svelte -->
 <script lang="ts">
-  // CORREÇÃO: 'UnlockedCompanion' removido (não é necessário aqui)
   import { db, type Companion } from '$services/db';
   import { liveQuery } from 'dexie';
-  // CORREÇÃO: 'onDestroy' removido (não utilizado)
   import { onMount } from 'svelte';
 
-  let { close }: { close: () => void } = $props();
+  // --- Props (Svelte 5 runes) ---
+  let { close } = $props<{ close: () => void }>();
 
-  // --- Estado do Banco de Dados ---
-  let allCompanions = $state<Companion[]>([]);
-  let unlockedIds = $state<number[]>([]);
-  let activeId = $state<number>(1);
+  // --- Seed local (mesmo conjunto do Bestiário) ---
+  const PET_SEED: Companion[] = [
+    {
+      id: 1,
+      name: 'Lobo Etéreo',
+      type: 'Caçador das Sombras',
+      imagePath: '/art/pets/pet-wolf-final.png',
+    },
+    {
+      id: 2,
+      name: 'Lorde Lich',
+      type: 'Mago Imortal',
+      imagePath: '/art/pets/pet-lich-final.png',
+    },
+    {
+      id: 3,
+      name: 'Dragão Ancião',
+      type: 'Guardião de Chamas',
+      imagePath: '/art/pets/pet-dragon-final.png',
+    },
+    {
+      id: 4,
+      name: 'Aberração Abissal',
+      type: 'Eco do Vazio',
+      imagePath: '/art/pets/pet-aberration-final.png',
+    },
+  ];
 
-  // --- Queries ---
-  const allCompanionsQuery = liveQuery(() => db.companions.toArray());
-  const unlockedQuery = liveQuery(() => db.unlockedCompanions.toArray());
-  const profileQuery = liveQuery(() => db.profile.get(1));
+  // Mesmo mapeamento de nível usado no Bestiário
+  const PET_LEVELS: { imagePath: string; requiredLevel: number }[] = [
+    { imagePath: '/art/pets/pet-wolf-final.png', requiredLevel: 1 },
+    { imagePath: '/art/pets/pet-lich-final.png', requiredLevel: 5 },
+    { imagePath: '/art/pets/pet-dragon-final.png', requiredLevel: 15 },
+    { imagePath: '/art/pets/pet-aberration-final.png', requiredLevel: 20 },
+  ];
+
+  type PetCard = Companion & {
+    requiredLevel: number;
+    isUnlocked: boolean;
+    isActive: boolean;
+  };
+
+  // --- Estado do banco / herói ---
+  let companions = $state<Companion[]>([]);
+  let heroLevel = $state<number>(1);
+  let activeCompanionId = $state<number>(1);
+
+  const companionsQuery = liveQuery(() => db.companions.toArray());
+  const heroQuery = liveQuery(() => db.profile.get(1));
+
+  async function ensureCompanionsSeeded() {
+    const count = await db.companions.count();
+    if (count === 0) {
+      await db.companions.bulkAdd(PET_SEED);
+    }
+  }
+
+  function getRequiredLevelForImage(imagePath: string): number {
+    const cfg = PET_LEVELS.find((c) => c.imagePath === imagePath);
+    return cfg?.requiredLevel ?? 1;
+  }
+
+  // Lista derivada com gating por nível (igual ao Bestiário)
+  let petCards = $derived.by<PetCard[]>(() => {
+    const list = companions.length > 0 ? companions : PET_SEED;
+    const lvl = heroLevel ?? 1;
+
+    return list
+      .map((pet) => {
+        const requiredLevel = getRequiredLevelForImage(pet.imagePath);
+        const isUnlocked = lvl >= requiredLevel;
+        const isActive = pet.id === activeCompanionId;
+
+        return {
+          ...pet,
+          requiredLevel,
+          isUnlocked,
+          isActive,
+        };
+      })
+      .sort((a, b) => a.requiredLevel - b.requiredLevel);
+  });
+
+  let currentActivePet = $derived.by<PetCard | undefined>(() =>
+    petCards.find((p) => p.isActive),
+  );
 
   onMount(() => {
-    const compSub = allCompanionsQuery.subscribe((data) => {
-      allCompanions = data;
-    });
-    const unlockedSub = unlockedQuery.subscribe((data) => {
-      // CORREÇÃO: Tipar 'uc' (any) para 'UnlockedCompanion' (importado do db)
-      unlockedIds = data.map((uc: { companionId: number }) => uc.companionId);
-    });
-    const profileSub = profileQuery.subscribe((data) => {
-      activeId = data?.activeCompanionId || 1;
+    // Seed de segurança dos pets
+    ensureCompanionsSeeded().catch((err) => {
+      console.error('Erro ao semear pets na Taverna:', err);
     });
 
-    // Listener para a tecla "Escape"
-    const handleKeydown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+    // Profile / herói
+    const heroSub = heroQuery.subscribe((profileData) => {
+      const profile = profileData ?? {
+        id: 1,
+        name: 'Seu herói',
+        title: 'Aprendiz de Aventuras',
+        level: 1,
+        xpCurrent: 0,
+        xpNext: 100,
+        avatarUrl: '',
+        totalXpEarned: 0,
+        currentStreak: 0,
+        lastCompletionDate: '',
+        activeCompanionId: 1,
+      };
+
+      heroLevel = profile.level ?? 1;
+      activeCompanionId = profile.activeCompanionId ?? 1;
+    });
+
+    // Pets
+    const compSub = companionsQuery.subscribe((list) => {
+      companions = list ?? [];
+    });
+
+    // Acessibilidade: Esc fecha modal
+    const handleKeydown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
         close();
       }
     };
+
     window.addEventListener('keydown', handleKeydown);
 
     return () => {
+      heroSub.unsubscribe();
       compSub.unsubscribe();
-      unlockedSub.unsubscribe();
-      profileSub.unsubscribe();
       window.removeEventListener('keydown', handleKeydown);
     };
   });
 
-  // --- Funções ---
-  async function selectCompanion(id: number | undefined) {
-    if (!id) return;
-    if (unlockedIds.includes(id)) {
-      await db.profile.update(1, { activeCompanionId: id });
+  function handleOverlayClick(event: MouseEvent) {
+    // Fecha só se clicar no fundo, não dentro do card
+    if (event.currentTarget === event.target) {
       close();
     }
   }
 
-  // Função para fechar ao clicar no overlay
-  function handleOverlayClick() {
-    close();
+  function handleOverlayKeydown(event: KeyboardEvent) {
+    // A11y: permite fechar com Enter/Espaço se o overlay tiver foco
+    if (event.currentTarget !== event.target) return;
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      close();
+    }
   }
 
-  // Handler de teclado para o overlay
-  // CORREÇÃO: 'event' (não utilizado) removido
-  function handleOverlayKeydown(event: KeyboardEvent) {
-    if (event.key === 'Enter' || event.key === ' ') {
+  async function selectCompanion(pet: PetCard) {
+    if (!pet.id) return;
+
+    const requiredLevel =
+      pet.requiredLevel ?? getRequiredLevelForImage(pet.imagePath);
+    if (heroLevel < requiredLevel) {
+      // Segurança extra: nem tenta gravar se não tiver nível
+      return;
+    }
+
+    try {
+      await db.profile.update(1, { activeCompanionId: pet.id });
+      activeCompanionId = pet.id;
       close();
+    } catch (err) {
+      console.error('Erro ao selecionar companheiro:', err);
     }
   }
 </script>
 
 <div
-  class="fixed inset-0 bg-slate-950/70 z-50 flex items-center justify-center p-4"
+  class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+  role="dialog"
+  tabindex="-1"
+  aria-modal="true"
+  aria-labelledby="companion-modal-title"
   onclick={handleOverlayClick}
   onkeydown={handleOverlayKeydown}
-  role="button"
-  tabindex="0"
 >
   <div
-    class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg w-full max-w-2xl max-h-[80vh] flex flex-col cursor-auto"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="companion-modal-title"
-    tabindex="-1"
-    onclick={(e) => e.stopPropagation()}
-    onkeydown={(e) => e.stopPropagation()}
+    class="relative w-full max-w-3xl mx-4 rounded-3xl border border-slate-700 bg-slate-950/95 shadow-2xl"
   >
-    <h2
-      id="companion-modal-title"
-      class="flex items-center gap-3 text-xl font-bold text-[#ffb74d] font-serif mb-6"
+    <header
+      class="flex items-start justify-between gap-4 px-6 pt-5 pb-3 border-b border-slate-800"
     >
-      🐾 Trocar Companheiro
-    </h2>
-
-    <div class="overflow-y-auto grid grid-cols-2 md:grid-cols-4 gap-4 pr-2">
-      {#each allCompanions as pet (pet.id)}
-        {@const isUnlocked = unlockedIds.includes(pet.id!)}
-        {@const isActive = activeId === pet.id}
-
-        <button
-          onclick={() => selectCompanion(pet.id)}
-          disabled={!isUnlocked}
-          class="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all relative
-            {isActive
-            ? 'border-primary bg-primary/20'
-            : 'border-slate-800 bg-slate-900/50'}
-            {isUnlocked
-            ? 'hover:border-primary/50 hover:bg-slate-800/80 cursor-pointer'
-            : 'opacity-50 grayscale'}"
+      <div>
+        <p class="text-xs uppercase tracking-[0.2em] text-slate-500">
+          Taverna • Companheiro de Batalha
+        </p>
+        <h2
+          id="companion-modal-title"
+          class="mt-1 text-lg font-semibold text-slate-50"
         >
-          {#if !isUnlocked}
-            <div
-              class="absolute inset-0 bg-black/50 flex items-center justify-center rounded-xl"
-            >
-              <span class="text-3xl" title="Bloqueado">🔒</span>
-            </div>
-          {/if}
+          Escolha quem luta ao seu lado
+        </h2>
+        <p class="mt-1 text-xs text-slate-400">
+          Companheiros são liberados conforme o nível do seu herói. Você está no
+          nível
+          <span class="font-semibold text-emerald-400">{heroLevel}</span>.
+        </p>
+      </div>
 
-          <img
-            src={pet.imagePath}
-            alt={pet.name}
-            class="w-20 h-20 object-contain drop-shadow-xl"
-          />
-          <h4 class="text-sm font-bold text-slate-200 mt-2">{pet.name}</h4>
-          <p class="text-xs text-slate-500">{pet.type}</p>
-        </button>
-      {/each}
+      <button
+        type="button"
+        class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700 text-slate-400 hover:text-slate-100 hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
+        onclick={close}
+        aria-label="Fechar seleção de companheiro"
+      >
+        ✕
+      </button>
+    </header>
+
+    <div class="px-6 pb-6 pt-4">
+      <div
+        class="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between text-xs text-slate-400"
+      >
+        <p>Pets desbloqueiam nos níveis: 1 • 5 • 15 • 20.</p>
+        <p>
+          Pet atual:
+          <span class="font-semibold text-emerald-400">
+            {#if currentActivePet}
+              {currentActivePet.name}
+            {:else}
+              Nenhum
+            {/if}
+          </span>
+        </p>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {#each petCards as pet (pet.id ?? pet.imagePath)}
+          <button
+            type="button"
+            class="group relative flex flex-col items-center gap-2 rounded-2xl border bg-slate-900/70 p-3 shadow-md transition
+              {pet.isActive
+              ? 'border-emerald-500/80 shadow-[0_0_30px_rgba(16,185,129,0.8)]'
+              : pet.isUnlocked
+                ? 'border-slate-700 hover:border-emerald-400/70 hover:bg-slate-900/90'
+                : 'border-slate-800 opacity-60 grayscale'}"
+            disabled={!pet.isUnlocked}
+            onclick={() => selectCompanion(pet)}
+          >
+            {#if !pet.isUnlocked}
+              <div
+                class="pointer-events-none absolute inset-0 rounded-2xl bg-black/50 flex items-center justify-center"
+              >
+                <span
+                  class="text-2xl"
+                  title={`Desbloqueia no nível ${pet.requiredLevel}`}
+                >
+                  🔒
+                </span>
+              </div>
+            {/if}
+
+            <div
+              class="w-full aspect-square rounded-xl bg-slate-950 border border-slate-800 overflow-hidden flex items-center justify-center"
+            >
+              <img
+                src={pet.imagePath}
+                alt={pet.name}
+                class="w-full h-full object-contain drop-shadow-xl"
+              />
+            </div>
+
+            <div class="text-center">
+              <h3 class="text-xs font-semibold text-slate-100">
+                {pet.name}
+              </h3>
+              <p class="text-[0.65rem] text-slate-400">{pet.type}</p>
+              <p class="mt-1 text-[0.65rem]">
+                {#if pet.isUnlocked}
+                  {#if pet.isActive}
+                    <span class="font-semibold text-emerald-400">
+                      Equipado
+                    </span>
+                  {:else}
+                    <span class="text-slate-400"> Clique para equipar </span>
+                  {/if}
+                {:else}
+                  <span class="text-slate-500">
+                    Nível {pet.requiredLevel} necessário
+                  </span>
+                {/if}
+              </p>
+            </div>
+          </button>
+        {/each}
+      </div>
     </div>
   </div>
 </div>

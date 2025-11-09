@@ -39,25 +39,25 @@
     (() => {
       const totalXp = hero.totalXpEarned ?? 0;
 
-      if (totalXp < 500) {
+      if (totalXp < 2500) {
         return {
           image: '/art/bg/eco-stage-1-seed.webp',
           label: 'Semente',
-          next: 500,
+          next: 2500,
         };
       }
-      if (totalXp < 1500) {
+      if (totalXp < 7500) {
         return {
           image: '/art/bg/eco-stage-2-sprout.webp',
           label: 'Brotinho',
-          next: 1500,
+          next: 7500,
         };
       }
-      if (totalXp < 3000) {
+      if (totalXp < 12000) {
         return {
           image: '/art/bg/eco-stage-3-tree.webp',
           label: 'Árvore Jovem',
-          next: 3000,
+          next: 12000,
         };
       }
       return {
@@ -76,9 +76,9 @@
       const totalXp = hero.totalXpEarned ?? 0;
 
       let startXp = 0;
-      if (totalXp >= 3000) startXp = 3000;
-      else if (totalXp >= 1500) startXp = 1500;
-      else if (totalXp >= 500) startXp = 500;
+      if (totalXp >= 12000) startXp = 12000;
+      else if (totalXp >= 7500) startXp = 7500;
+      else if (totalXp >= 2500) startXp = 2500;
 
       const currentProgress = totalXp - startXp;
       const goal = ecoData.next - startXp;
