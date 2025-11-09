@@ -107,10 +107,27 @@ export const xpService = {
     if (amount <= 0) return;
 
     await db.transaction('rw', db.profile, async () => {
-      const profile = await db.profile.get(1);
-      if (!profile) return;
+      // Garante que exista um profile com id = 1
+      let profile = await db.profile.get(1);
 
-      // Somente leitura → const (para agradar o lint)
+      if (!profile) {
+        profile = {
+          id: 1,
+          name: 'Seu herói',
+          title: 'Nobre Aventureiro Nv. 1',
+          level: 1,
+          xpCurrent: 0,
+          xpNext: getXpForNextLevel(1),
+          avatarUrl: '',
+          totalXpEarned: 0,
+          currentStreak: 0,
+          lastCompletionDate: '',
+          activeCompanionId: 1,
+        };
+        await db.profile.put(profile);
+      }
+
+      // Somente leitura → const
       const {
         currentStreak,
         lastCompletionDate,
@@ -164,10 +181,28 @@ export const xpService = {
     if (amount <= 0) return;
 
     await db.transaction('rw', db.profile, async () => {
-      const profile = await db.profile.get(1);
-      if (!profile) return;
+      let profile = await db.profile.get(1);
+
+      if (!profile) {
+        // Se não existir perfil, cria um zerado só para manter consistência
+        profile = {
+          id: 1,
+          name: 'Seu herói',
+          title: 'Aventureiro Nv. 1',
+          level: 1,
+          xpCurrent: 0,
+          xpNext: getXpForNextLevel(1),
+          avatarUrl: '',
+          totalXpEarned: 0,
+          currentStreak: 0,
+          lastCompletionDate: '',
+          activeCompanionId: 1,
+        };
+        await db.profile.put(profile);
+      }
 
       let { xpCurrent, xpNext, level, title } = profile;
+
       xpCurrent -= amount;
 
       // Loop de "de-level"

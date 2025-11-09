@@ -78,20 +78,40 @@ export async function importData(file) {
 }
 
 /**
- * Apaga TODOS os dados do banco local.
+ * Reseta o progresso do usuário, preservando identidade visual (nome, avatar, pet).
+ * - Limpa áreas e tarefas.
+ * - Zera XP, nível, streak e totalXp.
  */
 export async function clearAllData() {
   if (!browser) return;
 
   try {
     await db.transaction('rw', db.profile, db.areas, db.tasks, async () => {
-      await Promise.all([
-        db.profile.clear(),
-        db.areas.clear(),
-        db.tasks.clear(),
-      ]);
+      // Perfil atual (se existir)
+      const existingProfile = await db.profile.get(1);
+
+      // Limpa apenas progresso (áreas + tarefas)
+      await Promise.all([db.areas.clear(), db.tasks.clear()]);
+
+      // Perfil base preservando identidade visual
+      const baseProfile = {
+        id: 1,
+        name: existingProfile?.name ?? 'Seu herói',
+        title: existingProfile?.title ?? 'Aprendiz de Aventuras',
+        level: 1,
+        xpCurrent: 0,
+        xpNext: 100,
+        avatarUrl: existingProfile?.avatarUrl ?? '',
+        totalXpEarned: 0,
+        currentStreak: 0,
+        lastCompletionDate: '',
+        activeCompanionId: existingProfile?.activeCompanionId ?? 1,
+      };
+
+      await db.profile.put(baseProfile);
     });
-    console.log('Todos os dados foram apagados.');
+
+    console.log('Progresso resetado. Perfil preservado.');
   } catch (error) {
     console.error('Erro ao limpar dados:', error);
     throw error;
