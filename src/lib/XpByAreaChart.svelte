@@ -118,9 +118,8 @@
   class="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-md"
 >
   <h2
-    class="flex items-center gap-3 text-xl font-bold text-slate-200 mb-6 pb-4 border-b border-slate-800/50"
+    class="text-center text-xl font-bold text-slate-200 mb-6 pb-4 border-b border-slate-800/50"
   >
-    <span class="text-2xl">📊</span>
     Estatísticas de XP por Área
   </h2>
 

@@ -8,6 +8,7 @@
   import XpByAreaChart from '$lib/XpByAreaChart.svelte';
   import StatsManager from '$lib/StatsManager.svelte';
   import PageTitleCard from '$lib/PageTitleCard.svelte';
+  import SelfComparisonPanel from '$lib/SelfComparisonPanel.svelte';
 
   let tasks = $state<Task[]>([]);
   let areas = $state<Area[]>([]);
@@ -55,7 +56,7 @@
     legendary: 'border-[#ffb74d] text-[#ffb74d]',
   };
 
-  // NOVO: labels em PT-BR por raridade
+  // Labels em PT-BR por raridade
   const rarityLabels: Record<Rarity, string> = {
     common: 'Comum',
     rare: 'Rara',
@@ -63,7 +64,7 @@
     legendary: 'Lendária',
   };
 
-  // NOVO: estilos dos chips de filtro
+  // Estilos dos chips de filtro
   const chipBase =
     'px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors';
   const chipOn: Record<Rarity, string> = {
@@ -104,15 +105,14 @@
     const task = tasks.find((t) => t.id === id);
     if (!task) return;
 
-    // Se já está concluída, não faz nada
+    // Não permite "desmarcar" missão concluída
     if (task.completed) return;
 
     // Marca como concluída
     await db.tasks.update(id, { completed: true });
 
-    // Dá XP e gold (50% do XP)
+    // Dá XP (e gold é calculado dentro do xpService)
     await xpService.addXp(task.xp);
-    await xpService.addGoldFromXp(task.xp);
   }
 
   function openAddTaskModal() {
@@ -164,9 +164,12 @@
 
   <!-- Tudo abaixo alinhado à mesma largura do StatsManager -->
   <div class="mx-auto flex w-full max-w-4xl flex-col gap-6">
-    <XpByAreaChart />
-
-    <AreaManager bind:selectedId={selectedAreaId} />
+    <!-- XP por área + comparação consigo mesmo + áreas -->
+    <div class="mt-6 grid gap-6 lg:grid-cols-2">
+      <XpByAreaChart />
+      <SelfComparisonPanel />
+      <AreaManager bind:selectedId={selectedAreaId} />
+    </div>
 
     <!-- Card de filtro de raridade -->
     <section class="bg-slate-900/50 p-3 rounded-xl border border-slate-800">
@@ -241,7 +244,7 @@
       </button>
     </div>
 
-    <!-- Lista -->
+    <!-- Lista de missões -->
     <div class="grid grid-cols-1 gap-3">
       {#if filteredTasks.length === 0}
         <div
@@ -262,6 +265,7 @@
               task.rarity
             ]} {task.completed ? 'opacity-50 grayscale' : 'shadow-md'}"
           >
+            <!-- Botão de completar -->
             <button
               onclick={() => toggleTask(task.id)}
               class="shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all
@@ -273,6 +277,7 @@
               {#if task.completed}✓{/if}
             </button>
 
+            <!-- Título / área / raridade -->
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-1">
                 <span
@@ -297,8 +302,9 @@
               </h3>
             </div>
 
+            <!-- Recompensas (XP + Gold) -->
             <div class="shrink-0 flex flex-col items-end gap-1 text-xs">
-              <!-- Linha de XP -->
+              <!-- XP -->
               <div class="flex items-center gap-1">
                 <img
                   src="/art/icones/icon-xp.png"
@@ -308,7 +314,7 @@
                 <span class="text-[#eec39a] font-bold">+{task.xp} XP</span>
               </div>
 
-              <!-- Linha de Gold (50% do XP) -->
+              <!-- Gold (50% do XP) -->
               <div class="flex items-center gap-1 text-amber-200">
                 <img
                   src="/art/icones/gold-icon.png"
@@ -321,6 +327,7 @@
               </div>
             </div>
 
+            <!-- Ações (editar / excluir) -->
             <div
               class="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
             >
@@ -361,7 +368,7 @@
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    d="M6 7.5h12M9.75 7.5v9.75m4.5-9.75v9.75M9 4.5h6a.75.75 0 0 1 .75.75V6H8.25v-.75A.75.75 0 0 1 9 4.5zm-3 2.25h12v12A2.25 2.25 0 0 1 15.75 21H8.25A2.25 2.25 0 0 1 6 18.75v-12z"
+                    d="M6 7.5h12M9.75 7.5v9.75m4.5-9.75v9.75M9 4.5h6a.75.75 0 0 1 .75.75V6H8.25v-.75A.75.75 0 0 1 9 4.5zm-3 2.25h12v12A2.25 2.25 0 0 1 15.75 21H8.25A.75.75 0 0 1 6 18.75v-12z"
                   />
                 </svg>
               </button>
