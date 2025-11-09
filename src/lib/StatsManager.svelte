@@ -110,11 +110,13 @@
         <!-- Level badge -->
         <div class="flex items-center gap-4">
           <div
-            class="flex h-16 w-16 items-center justify-center rounded-full border border-sky-400/70 bg-slate-950/90 shadow-[0_0_30px_rgba(56,189,248,0.45)]"
+            class="flex h-32 w-32 items-center justify-center rounded-full border border-amber-400/80 bg-slate-950 shadow-[0_0_20px_rgba(251,191,36,0.7)]"
           >
-            <span class="text-2xl font-bold text-sky-100">
-              {level}
-            </span>
+            <img
+              src="/art/heroi.png"
+              alt="Avatar do herói"
+              class="h-36 w-36 object-contain"
+            />
           </div>
           <div class="space-y-1">
             <p
@@ -122,6 +124,9 @@
             >
               Nível atual
             </p>
+            <span class="text-2xl font-bold text-green-100">
+              {level}
+            </span>
             <p class="text-xs text-slate-300/85 max-w-xs">
               Falta
               <span class="font-semibold text-sky-100">
