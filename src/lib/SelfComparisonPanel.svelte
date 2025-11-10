@@ -1,17 +1,24 @@
 <!-- src/lib/SelfComparisonPanel.svelte -->
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { SvelteMap } from 'svelte/reactivity';
   import { liveQuery } from 'dexie';
   import { db, type XpLog } from '$services/db';
 
   // Range do gráfico
   type ChartRange = '7d' | '30d' | '6m' | '1y';
 
-  // Ponto no gráfico
   type ChartPoint = {
-    label: string; // Ex: "10/11" ou "Nov"
-    value: number; // XP somado naquele dia/mês
+    label: string;
+    value: number;
+  };
+
+  type SvgBar = {
+    label: string;
+    value: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
   };
 
   // Histórico de XP vindo do Dexie
@@ -111,23 +118,23 @@
     const monthsBack = range === '6m' ? 6 : 12;
     const result: ChartPoint[] = [];
 
-    // Mapa de XP por "YYYY-MM"
-    const mapMonthToXp = new SvelteMap<string, number>();
+    // "YYYY-MM" -> XP
+    const monthMap: Record<string, number> = {};
+
     for (const log of logs) {
       const d = parseDate(log.date);
       if (!d) continue;
       const key = toMonthKey(d);
-      const current = mapMonthToXp.get(key) ?? 0;
-      mapMonthToXp.set(key, current + (log.amount ?? 0));
+      const current = monthMap[key] ?? 0;
+      monthMap[key] = current + (log.amount ?? 0);
     }
 
-    // Gera últimos N meses
     const current = new Date(today.getFullYear(), today.getMonth(), 1);
     for (let i = monthsBack - 1; i >= 0; i--) {
       const d = new Date(current.getFullYear(), current.getMonth() - i, 1);
       const key = toMonthKey(d);
       const label = formatMonthLabel(d);
-      const value = mapMonthToXp.get(key) ?? 0;
+      const value = monthMap[key] ?? 0;
       result.push({ label, value });
     }
 
@@ -142,6 +149,45 @@
     points.length
       ? points.reduce((max, p) => (p.value > max ? p.value : max), 0)
       : 0,
+  );
+
+  // Barras em coordenadas de SVG (0–100 x 0–100)
+  const svgBars = $derived(
+    (() => {
+      if (!points.length) return [] as SvgBar[];
+
+      const max = maxValue || 1;
+
+      const chartWidth = 100;
+      const chartHeight = 100;
+      const paddingX = 4;
+      const paddingTop = 4;
+      const paddingBottom = 12;
+
+      const innerWidth = chartWidth - paddingX * 2;
+      const innerHeight = chartHeight - paddingTop - paddingBottom;
+
+      const n = points.length;
+      const step = innerWidth / n;
+      const barWidth = step * 0.7;
+
+      return points.map((p, i) => {
+        const rawHeight = (p.value / max) * innerHeight;
+        const height = Math.max(rawHeight, 1); // nunca 0, pra sempre aparecer
+
+        const x = paddingX + i * step + (step - barWidth) / 2;
+        const y = chartHeight - paddingBottom - height;
+
+        return {
+          label: p.label,
+          value: p.value,
+          x,
+          y,
+          width: barWidth,
+          height,
+        } as SvgBar;
+      });
+    })(),
   );
 
   const hasData = $derived(points.some((p) => p.value !== 0));
@@ -181,13 +227,13 @@
       }
 
       const labels = [
-        'domingo',
-        'segunda',
-        'terça',
-        'quarta',
-        'quinta',
-        'sexta',
-        'sábado',
+        'Domingo',
+        'Segunda',
+        'Terça',
+        'Quarta',
+        'Quinta',
+        'Sexta',
+        'Sábado',
       ];
 
       let best = 0;
@@ -235,29 +281,104 @@
   function isMonthlyRange(range: ChartRange): boolean {
     return range === '6m' || range === '1y';
   }
+
+  // ---------- Helpers de label do eixo X ----------
+
+  function shouldShowLabel(
+    index: number,
+    total: number,
+    range: ChartRange,
+  ): boolean {
+    if (range === '7d') return true;
+    if (range === '30d') {
+      // tenta ~8 labels distribuídos
+      const target = 8;
+      const step = Math.max(1, Math.floor(total / target));
+      return index % step === 0;
+    }
+    // ranges mensais: sempre mostra todos os meses
+    return true;
+  }
+
+  function formatAxisLabel(label: string, range: ChartRange): string {
+    // label diário vem como "dd/mm"
+    if (range === '7d' || range === '30d') {
+      return label.slice(0, 2); // só o dia
+    }
+    // mensal já vem "Jan", "Fev"...
+    return label;
+  }
 </script>
 
 <section class="w-full">
   <div
     class="mx-auto max-w-4xl rounded-3xl border border-slate-800 bg-slate-950/85 px-4 py-4 md:px-6 md:py-5 shadow-[0_0_30px_rgba(15,23,42,0.7)]"
   >
-    <!-- Cabeçalho + botões de range -->
-    <header
-      class="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
-    >
-      <div>
-        <p class="text-[0.65rem] uppercase tracking-[0.22em] text-slate-400">
-          Comparação pessoal
-        </p>
-        <h3 class="text-base font-semibold text-slate-100 md:text-lg">
-          {headerTitle}
-        </h3>
-        <p class="text-[0.7rem] text-slate-500">
-          Gráfico atualizado em tempo real conforme você ganha XP.
-        </p>
+    <!-- Cabeçalho (somente textos, centralizado) -->
+    <header class="mb-4 text-center space-y-1">
+      <p class="text-[1 rem] uppercase tracking-[0.22em] text-slate-400">
+        Comparação pessoal
+      </p>
+      <h3 class="text-base font-semibold text-slate-100 md:text-lg">
+        {headerTitle}
+      </h3>
+      <p class="text-[0.7rem] text-slate-500">
+        Gráfico atualizado em tempo real conforme você ganha XP.
+      </p>
+    </header>
+
+    {#if hasData}
+      <!-- 3 cards em cima -->
+      <div class="mb-4 grid gap-3 text-xs text-slate-300 md:grid-cols-3">
+        <div
+          class="rounded-2xl border border-emerald-500/70 bg-emerald-950/40 px-3 py-2.5 shadow-[0_0_18px_rgba(16,185,129,0.45)]"
+        >
+          <p
+            class="text-[0.65rem] uppercase tracking-[0.18em] text-emerald-200/80"
+          >
+            Total no período
+          </p>
+          <p class="mt-1 text-lg font-semibold text-emerald-100">
+            {totalInRange} XP
+          </p>
+          <p class="text-[0.7rem] text-emerald-200/80">
+            Somando tudo que você fez em cada {unitLabel}.
+          </p>
+        </div>
+
+        <div
+          class="rounded-2xl border border-slate-700/80 bg-slate-900/80 px-3 py-2.5"
+        >
+          <p class="text-[0.65rem] uppercase tracking-[0.18em] text-slate-400">
+            Média por {unitLabel}
+          </p>
+          <p class="mt-1 text-lg font-semibold text-slate-100">
+            {averageValue} XP
+          </p>
+          <p class="text-[0.7rem] text-slate-400">
+            Se mantiver esse ritmo, seu crescimento continua estável.
+          </p>
+        </div>
+
+        <div
+          class="rounded-2xl border border-slate-700/80 bg-slate-900/80 px-3 py-2.5"
+        >
+          <p class="text-[0.65rem] uppercase tracking-[0.18em] text-slate-400">
+            Melhor {isMonthlyRange(selectedRange) ? 'mês' : 'dia'} do período
+          </p>
+          <p class="mt-1 text-sm font-semibold text-emerald-300">
+            {bestPointLabel}
+          </p>
+          <p class="text-[0.7rem] text-slate-400">
+            Quando você mais acumulou XP dentro deste recorte.
+          </p>
+        </div>
       </div>
 
-      <div class="flex flex-wrap gap-2 text-[0.7rem]">
+      <!-- Filtros de range: logo abaixo dos 3 cards, alinhados lado a lado -->
+      <div
+        class="mb-4 flex flex-wrap items-center justify-center gap-2 text-[0.7rem]"
+      >
         {#each ['7d', '30d', '6m', '1y'] as ChartRange[] as range (range)}
           <button
             type="button"
@@ -272,122 +393,68 @@
           </button>
         {/each}
       </div>
-    </header>
 
-    {#if hasData}
-      <div class="grid gap-4 md:grid-cols-3 md:items-stretch">
-        <!-- Gráfico -->
-        <div class="md:col-span-2">
-          <div
-            class="relative h-52 w-full rounded-2xl border border-slate-800 bg-slate-950/90 px-3 py-3"
-          >
-            <div
-              class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(52,211,153,0.16),_transparent_60%)] opacity-70"
-              aria-hidden="true"
-            ></div>
+      <!-- Gráfico de barras em SVG -->
+      <div
+        class="mb-4 rounded-2xl border border-slate-800 bg-slate-950/90 px-3 py-3"
+      >
+        <svg
+          viewBox="0 0 100 100"
+          class="h-52 w-full"
+          role="img"
+          aria-label="XP por {unitLabel}"
+        >
+          <!-- linha de base -->
+          <line
+            x1="0"
+            y1="84"
+            x2="100"
+            y2="84"
+            stroke="rgba(148,163,184,0.6)"
+            stroke-width="0.5"
+          />
 
-            <div class="relative flex h-full items-end gap-1.5">
-              {#each points as point, index (point.label)}
-                {@const fraction =
-                  maxValue > 0 ? Math.max(point.value / maxValue, 0.05) : 0}
-                {@const heightPercent = fraction * 100}
-
-                <div
-                  class="flex min-w-0 flex-1 flex-col items-center justify-end gap-1"
-                >
-                  <!-- Barra -->
-                  <div
-                    class="relative flex h-full w-full items-end justify-center"
-                  >
-                    <div
-                      class="w-2 rounded-full bg-gradient-to-t from-emerald-500 via-emerald-400 to-lime-300 shadow-[0_0_12px_rgba(74,222,128,0.7)]"
-                      style={`height: ${heightPercent}%;`}
-                      title={`${point.label}: ${point.value} XP`}
-                    ></div>
-                  </div>
-
-                  <!-- Label do eixo X -->
-                  <span class="truncate text-[0.6rem] text-slate-500">
-                    {#if selectedRange === '30d' && points.length > 20}
-                      {#if index % 3 === 0}
-                        {point.label}
-                      {/if}
-                    {:else}
-                      {point.label}
-                    {/if}
-                  </span>
-                </div>
-              {/each}
-            </div>
-          </div>
-        </div>
-
-        <!-- Resumo lateral -->
-        <div class="space-y-3 text-xs text-slate-300">
-          <div
-            class="rounded-2xl border border-emerald-500/70 bg-emerald-950/40 px-3 py-2.5 shadow-[0_0_18px_rgba(16,185,129,0.45)]"
-          >
-            <p
-              class="text-[0.65rem] uppercase tracking-[0.18em] text-emerald-200/80"
+          {#each svgBars as bar, index (bar.label)}
+            <!-- barra -->
+            <rect
+              x={bar.x}
+              y={bar.y}
+              width={bar.width}
+              height={bar.height}
+              rx="1.5"
+              fill="#22c55e"
             >
-              Total no período
-            </p>
-            <p class="mt-1 text-lg font-semibold text-emerald-100">
-              {totalInRange} XP
-            </p>
-            <p class="text-[0.7rem] text-emerald-200/80">
-              Somando tudo que você fez em cada {unitLabel}.
-            </p>
-          </div>
+              <title>{bar.label}: {bar.value} XP</title>
+            </rect>
 
-          <div
-            class="rounded-2xl border border-slate-700/80 bg-slate-900/80 px-3 py-2.5"
-          >
-            <p
-              class="text-[0.65rem] uppercase tracking-[0.18em] text-slate-400"
-            >
-              Média por {unitLabel}
-            </p>
-            <p class="mt-1 text-lg font-semibold text-slate-100">
-              {averageValue} XP
-            </p>
-            <p class="text-[0.7rem] text-slate-400">
-              Se mantiver esse ritmo, seu crescimento continua estável.
-            </p>
-          </div>
+            {#if shouldShowLabel(index, svgBars.length, selectedRange)}
+              <text
+                x={bar.x + bar.width / 2}
+                y="96"
+                font-size="4.2"
+                fill="rgba(148,163,184,0.9)"
+                text-anchor="middle"
+              >
+                {formatAxisLabel(bar.label, selectedRange)}
+              </text>
+            {/if}
+          {/each}
+        </svg>
+      </div>
 
-          <div
-            class="rounded-2xl border border-slate-700/80 bg-slate-900/80 px-3 py-2.5"
-          >
-            <p
-              class="text-[0.65rem] uppercase tracking-[0.18em] text-slate-400"
-            >
-              Melhor {isMonthlyRange(selectedRange) ? 'mês' : 'dia'} do período
-            </p>
-            <p class="mt-1 text-sm font-semibold text-emerald-300">
-              {bestPointLabel}
-            </p>
-            <p class="text-[0.7rem] text-slate-400">
-              Quando você mais acumulou XP dentro deste recorte.
-            </p>
-          </div>
-
-          <div
-            class="rounded-2xl border border-slate-700/80 bg-slate-900/80 px-3 py-2.5"
-          >
-            <p
-              class="text-[0.65rem] uppercase tracking-[0.18em] text-slate-400"
-            >
-              Dia da semana mais forte
-            </p>
-            <p class="mt-1 text-sm font-semibold text-emerald-300">
-              {bestWeekdayLabel}
-            </p>
-            <p class="text-[0.7rem] text-slate-400">
-              Considerando todo o histórico, é quando você tende a render mais.
-            </p>
-          </div>
-        </div>
+      <!-- Card "Dia da semana mais forte" embaixo do gráfico -->
+      <div
+        class="rounded-2xl border border-slate-700/80 bg-slate-900/80 px-3 py-2.5 text-xs text-slate-300"
+      >
+        <p class="text-[0.65rem] uppercase tracking-[0.18em] text-slate-400">
+          Dia da semana mais forte
+        </p>
+        <p class="mt-1 text-sm font-semibold text-emerald-300">
+          {bestWeekdayLabel}
+        </p>
+        <p class="text-[0.7rem] text-slate-400">
+          Considerando todo o histórico, é quando você tende a render mais.
+        </p>
       </div>
     {:else}
       <p class="text-sm text-slate-400">
