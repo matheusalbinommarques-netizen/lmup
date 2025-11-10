@@ -116,8 +116,8 @@
 </script>
 
 <section
-  class="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-md
-         flex flex-col min-h-[420px]"
+  class="mx-auto w-full max-w-4xl rounded-2xl border border-green-500/60 bg-slate-950/70 px-4 py-3
+           shadow-[0_0_20px_rgba(56,189,248,0.45)]"
 >
   <!-- HEADER ESTILIZADO -->
   <header class="text-center space-y-1 mb-4">

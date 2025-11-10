@@ -310,7 +310,10 @@
   }
 </script>
 
-<section class="w-full">
+<section
+  class="mx-auto w-full max-w-4xl rounded-2xl border border-green-500/60 bg-slate-950/70 px-4 py-3
+           shadow-[0_0_20px_rgba(56,189,248,0.45)]"
+>
   <div
     class="mx-auto max-w-4xl rounded-3xl border border-slate-800 bg-slate-950/85 px-4 py-4 md:px-6 md:py-5 shadow-[0_0_30px_rgba(15,23,42,0.7)]"
   >
@@ -347,7 +350,8 @@
         </div>
 
         <div
-          class="rounded-2xl border border-slate-700/80 bg-slate-900/80 px-3 py-2.5"
+          class="mx-auto w-full max-w-4xl rounded-2xl border border-yellow-300/60 bg-slate-950/70 px-4 py-3
+           shadow-[0_0_20px_rgba(56,189,248,0.45)]"
         >
           <p class="text-[0.65rem] uppercase tracking-[0.18em] text-slate-400">
             Média por {unitLabel}
@@ -361,7 +365,8 @@
         </div>
 
         <div
-          class="rounded-2xl border border-slate-700/80 bg-slate-900/80 px-3 py-2.5"
+          class="mx-auto w-full max-w-4xl rounded-2xl border border-blue-300/60 bg-slate-950/70 px-4 py-3
+           shadow-[0_0_20px_rgba(56,189,248,0.45)]"
         >
           <p class="text-[0.65rem] uppercase tracking-[0.18em] text-slate-400">
             Melhor {isMonthlyRange(selectedRange) ? 'mês' : 'dia'} do período
@@ -444,12 +449,15 @@
 
       <!-- Card "Dia da semana mais forte" embaixo do gráfico -->
       <div
-        class="rounded-2xl border border-slate-700/80 bg-slate-900/80 px-3 py-2.5 text-xs text-slate-300"
+        class="mx-auto w-full max-w-4xl rounded-2xl border border-green-500/60 bg-slate-950/70 px-4 py-3
+           shadow-[0_0_20px_rgba(56,189,248,0.45)]"
       >
-        <p class="text-[0.65rem] uppercase tracking-[0.18em] text-slate-400">
+        <p
+          class="text-center [0.65rem] uppercase tracking-[0.18em] text-green-300/80"
+        >
           Dia da semana mais forte
         </p>
-        <p class="mt-1 text-sm font-semibold text-emerald-300">
+        <p class="text-center text-lg font-semibold text-emerald-300">
           {bestWeekdayLabel}
         </p>
         <p class="text-[0.7rem] text-slate-400">

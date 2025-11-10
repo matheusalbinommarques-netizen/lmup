@@ -132,6 +132,7 @@ declare module '$app/types' {
       | '/art/bg/bg-hero.png'
       | '/art/bg/bg-main-shell.webp'
       | '/art/bg/bg-missoes.webp'
+      | '/art/bg/bg-shop.webp'
       | '/art/bg/bg-taverna.webp'
       | '/art/bg/eco-stage-1-seed.webp'
       | '/art/bg/eco-stage-2-sprout.webp'

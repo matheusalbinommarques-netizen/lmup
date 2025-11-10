@@ -73,7 +73,9 @@
 </script>
 
 <section class="flex flex-col gap-3">
-  <h3 class="text-xl font-bold text-slate-200 font-serif">Áreas de Foco</h3>
+  <h3 class="text-[1.5 rem] uppercase tracking-[0.22em] text-amber-300/80">
+    Áreas de Foco
+  </h3>
 
   <div
     class="flex flex-row gap-2 overflow-x-auto no-scrollbar pb-2 -mb-2"

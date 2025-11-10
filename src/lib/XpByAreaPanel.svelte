@@ -156,9 +156,13 @@
   }
 </script>
 
-<section class="w-full">
+<section
+  class="mx-auto w-full max-w-4xl rounded-2xl border border-sky-500/60 bg-slate-900/70 px-4 py-3
+           shadow-[0_0_20px_rgba(56,189,248,0.45)]"
+>
   <div
-    class="mx-auto max-w-4xl rounded-3xl border border-emerald-800/70 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-6 py-6 shadow-[0_0_40px_rgba(16,185,129,0.25)] md:px-8 md:py-7"
+    class="mx-auto w-full max-w-4xl rounded-2xl border border-sky-500/60 bg-slate-900/70 px-4 py-3
+           shadow-[0_0_20px_rgba(56,189,248,0.45)]"
   >
     <div
       class="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
