@@ -1,63 +1,37 @@
 <script lang="ts">
+  import ShopItemCard from '$lib/shop/ShopItemCard.svelte';
+  import type { ShopItem, ShopCategory } from '$lib/shop/types';
   import { onMount } from 'svelte';
   import { liveQuery } from 'dexie';
   import { db } from '$services/db';
   import PageTitleCard from '$lib/PageTitleCard.svelte';
 
-  type ShopItem = {
-    id: number;
-    name: string;
-    description: string;
-    price: number;
-    currency: 'xp' | 'gema';
-    rarity: 'common' | 'rare' | 'epic' | 'legendary';
-    tag?: string;
-  };
+  // categoria selecionada (runes)
+  let selectedCategory = $state<ShopCategory>('highlight');
 
-  const rarityLabels: Record<ShopItem['rarity'], string> = {
-    common: 'Comum',
-    rare: 'Raro',
-    epic: 'Épico',
-    legendary: 'Lendário',
-  };
-
-  const rarityClasses: Record<ShopItem['rarity'], string> = {
-    common:
-      'border-slate-700/80 bg-slate-900/80 text-slate-200 shadow-sm shadow-slate-900/40',
-    rare: 'border-blue-500/60 bg-slate-900/80 text-blue-100 shadow-lg shadow-blue-500/30',
-    epic: 'border-purple-500/70 bg-slate-900/80 text-purple-100 shadow-lg shadow-purple-500/40',
-    legendary:
-      'border-amber-400/80 bg-slate-900/90 text-amber-100 shadow-xl shadow-amber-400/40',
-  };
-
-  function getRarityLabel(r: ShopItem['rarity']): string {
-    return rarityLabels[r];
-  }
-
-  function getRarityClass(r: ShopItem['rarity']): string {
-    return rarityClasses[r];
-  }
-
-  const featuredItems: ShopItem[] = [
+  // itens da loja (por enquanto mock, depois você pode puxar do DB se quiser)
+  const items: ShopItem[] = [
     {
       id: 1,
-      name: 'Tema “Noite Arcana”',
+      name: 'Tema "Noite Arcana"',
       description:
         'Transforma a taverna em um salão ainda mais místico, com brilhos sutis e runas animadas.',
       price: 800,
-      currency: 'xp',
       rarity: 'epic',
+      category: 'theme',
       tag: 'Visual',
+      status: 'available',
     },
     {
       id: 2,
-      name: 'Pacote de Sons “Forja & Canecas”',
+      name: 'Pacote de Sons "Forja & Canecas"',
       description:
-        'Adiciona sons imersivos de forja, canecas se chocando e páginas virando aos seus cliques.',
-      price: 400,
-      currency: 'xp',
+        'Adiciona sons imersivos de forja, canecas se chocando e páginas virando ao seus cliques.',
+      price: 600,
       rarity: 'rare',
+      category: 'effect',
       tag: 'Imersão',
+      status: 'available',
     },
     {
       id: 3,
@@ -65,21 +39,21 @@
       description:
         'Uma moldura especial para o avatar, reservada apenas aos aventureiros verdadeiramente dedicados.',
       price: 1500,
-      currency: 'xp',
       rarity: 'legendary',
+      category: 'profile',
       tag: 'Perfil',
+      status: 'soon',
     },
-  ];
-
-  const utilityItems: ShopItem[] = [
     {
       id: 4,
       name: 'Slot Extra de Inventário',
       description:
         'Aumenta a capacidade de itens carregados, ideal para quem acumula artefatos.',
       price: 300,
-      currency: 'xp',
       rarity: 'rare',
+      category: 'utility',
+      tag: 'Raro',
+      status: 'available',
     },
     {
       id: 5,
@@ -87,8 +61,10 @@
       description:
         'Desbloqueia lembretes suaves para não deixar suas missões passarem em branco.',
       price: 200,
-      currency: 'xp',
       rarity: 'common',
+      category: 'utility',
+      tag: 'Comum',
+      status: 'soon',
     },
     {
       id: 6,
@@ -96,25 +72,26 @@
       description:
         'Um pequeno efeito visual quando você volta para a Taverna, mostrando sua presença.',
       price: 600,
-      currency: 'xp',
       rarity: 'epic',
-      tag: 'Cosmético',
+      category: 'effect',
+      tag: 'Épico',
+      status: 'soon',
+    },
+    {
+      id: 7,
+      name: 'Tema "Aurora do Herói"',
+      description:
+        'Tema claro com auroras suaves e partículas de luz; perfeito para quem prefere um clima amanhecer.',
+      price: 900,
+      rarity: 'epic',
+      category: 'theme',
+      tag: 'Visual',
+      status: 'available',
     },
   ];
 
-  // Agora o preço é só o número
-  function formatPrice(item: ShopItem): string {
-    return `${item.price}`;
-  }
+  // ---------- SALDO REAL DE GOLD (mesma lógica da loja antiga) ----------
 
-  // Ícone da moeda (por enquanto tudo gold)
-  function getCurrencyIcon(item: ShopItem): string {
-    if (item.currency === 'xp') return 'art/icones/gold-icon.png';
-    // se depois tiver gemas, dá pra trocar aqui
-    return 'art/icones/gold-icon.png';
-  }
-
-  // Saldo de gold do jogador
   const goldQuery = liveQuery(async () => {
     const profile = await db.profile.get(1);
     return profile?.gold ?? 0;
@@ -129,179 +106,124 @@
 
     return () => sub.unsubscribe();
   });
+
+  // ----------------------------------------------------------------------
+
+  // itens filtrados pela categoria (runes: $derived)
+  const filteredItems = $derived(
+    selectedCategory === 'highlight'
+      ? items
+      : items.filter((item) => item.category === selectedCategory),
+  );
+
+  const categories: { id: ShopCategory; label: string }[] = [
+    { id: 'highlight', label: 'Destaque' },
+    { id: 'theme', label: 'Temas' },
+    { id: 'utility', label: 'Utilidades' },
+    { id: 'effect', label: 'Efeitos' },
+    { id: 'profile', label: 'Perfil' },
+  ];
 </script>
 
-<div class="flex flex-col gap-6 pb-8">
-  <PageTitleCard
-    title="Loja da Taverna"
-    subtitle="Gaste aqui seu precioso e suado ouro conquistado em missões, em recompensas, temas e efeitos exclusivos!"
-    align="center"
-  />
-  <section
-    class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 md:p-6 flex flex-col md:flex-row items-start md:items-center gap-4"
-  >
-    <div class="flex-1 text-sm text-slate-300">
-      <p>
-        Esta loja é totalmente cosmética: nada aqui é <em>pay to win</em>. Tudo
-        é conquistado com esforço, foco e gold das suas próprias missões.
-      </p>
-      <p class="mt-2 text-xs text-slate-500">
-        No futuro, itens daqui podem se integrar com a Taverna, Inventário e
-        Sala de Troféus, desbloqueando visuais exclusivos conforme você evolui.
-      </p>
-    </div>
+<!-- Fundo da loja com imagem + overlay escuro -->
+<div
+  class="relative flex-1"
+  style="
+    background-image: url('/art/bg/bg-shop.webp');
+    background-size: cover;
+    background-position: center top;
+    background-repeat: no-repeat;
+  "
+>
+  <!-- overlay para legibilidade -->
+  <div class="pointer-events-none absolute inset-0 bg-slate-950/85"></div>
 
-    <div
-      class="flex flex-col items-stretch gap-2 text-xs text-slate-400 min-w-[190px]"
+  <!-- conteúdo da loja -->
+  <main class="relative z-10 mx-auto max-w-6xl px-4 py-6 md:px-6 md:py-8">
+    <!-- Hero da loja -->
+    <PageTitleCard
+      title="Loja da Taverna"
+      subtitle="Gaste seu Gold em itens exclusivos para personalizar sua experiência e aprimorar sua jornada."
+      align="center"
+    />
+
+    <!-- Card de saldo (usando gold real do DB) -->
+    <section
+      class="mb-6 flex flex-col gap-3 rounded-2xl border border-slate-800
+             bg-slate-900/80 px-4 py-3 md:flex-row md:items-center md:justify-between"
     >
-      <!-- Card: Saldo atual -->
-      <div
-        class="px-3 py-2 rounded-xl bg-slate-950/80 border border-amber-500/60 flex items-center justify-between"
-      >
-        <span class="text-amber-200/90">Seu saldo</span>
-        <span
-          class="font-semibold text-amber-200 flex items-center gap-1 text-sm"
+      <!-- AQUI ESTÁ A ÚNICA MUDANÇA: label + pill lado a lado -->
+      <div class="flex items-center gap-3">
+        <p class="text-[0.7 rem] uppercase tracking-[0.18em] text-slate-400">
+          Seu saldo
+        </p>
+        <div
+          class="inline-flex items-center gap-1 rounded-full border border-amber-500/70
+                 bg-slate-950/80 px-3 py-1 text-xs font-semibold text-amber-200"
         >
-          {gold}
+          <span>{gold}</span>
+          <span class="text-[0.7rem] font-normal text-amber-100">Gold</span>
           <img
-            src="art/icones/gold-icon.png"
-            alt="Gold atual"
+            src="/art/icones/gold-icon.png"
+            alt="Gold"
             class="h-4 w-4 object-contain"
           />
-          Gold
-        </span>
+        </div>
       </div>
 
-      <div
-        class="px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[0.7rem]"
-      >
-        <p class="text-slate-300 font-semibold">Como funciona?</p>
-        <p class="text-slate-500 mt-1">
-          Você desbloqueia itens só jogando: complete missões, mantenha o streak
-          e acumule XP. Nada de dinheiro real aqui.
+      <div class="text-xs text-slate-400 max-w-md">
+        <p>
+          Você ganha Gold ao completar missões, manter sua sequência ativa e
+          evoluir de nível.
         </p>
       </div>
-    </div>
-  </section>
 
-  <section class="space-y-6">
-    <div class="space-y-3">
-      <h2 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
-        <span class="text-base">🛍️</span>
-        Itens em Destaque
-      </h2>
+      <button
+        type="button"
+        class="self-start rounded-full border border-amber-400/70
+               bg-amber-500/10 px-4 py-1.5 text-xs font-medium text-amber-100
+               hover:bg-amber-500/20 transition-colors"
+        onclick={() => console.log('como ganhar mais gold')}
+      >
+        Como ganhar mais Gold?
+      </button>
+    </section>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-        {#each featuredItems as item (item.id)}
-          <article
-            class={`rounded-2xl border p-4 flex flex-col gap-3 ${getRarityClass(
-              item.rarity,
-            )}`}
-          >
-            <div class="flex items-start justify-between gap-2">
-              <div>
-                <h3 class="font-semibold text-sm">
-                  {item.name}
-                </h3>
-                <p
-                  class="text-[0.7rem] uppercase tracking-widest text-slate-400"
-                >
-                  {getRarityLabel(item.rarity)}
-                </p>
-              </div>
+    <!-- Tabs de categoria -->
+    <nav
+      class="mb-4 flex flex-wrap items-center gap-2 text-[0.75rem]"
+      aria-label="Categorias da loja"
+    >
+      {#each categories as cat (cat.id)}
+        <button
+          type="button"
+          onclick={() => (selectedCategory = cat.id)}
+          class={`rounded-full px-3 py-1.5 border transition-colors ${
+            selectedCategory === cat.id
+              ? 'border-emerald-400/80 bg-emerald-500/15 text-emerald-200 shadow-[0_0_12px_rgba(16,185,129,0.45)]'
+              : 'border-slate-700 bg-slate-900/80 text-slate-300 hover:border-emerald-400/60 hover:text-emerald-200'
+          }`}
+        >
+          {cat.label}
+        </button>
+      {/each}
+    </nav>
 
-              <!-- Preço: número + ícone gold -->
-              <div
-                class="px-3 py-1 rounded-full bg-slate-950/70 border border-slate-700 text-[0.7rem] text-slate-100 flex items-center gap-1"
-              >
-                <span class="font-semibold">{formatPrice(item)}</span>
-                <img
-                  src={getCurrencyIcon(item)}
-                  alt="Moeda da loja"
-                  class="h-4 w-4 object-contain"
-                />
-              </div>
-            </div>
-
-            <p class="text-xs text-slate-200 leading-relaxed">
-              {item.description}
-            </p>
-
-            <div class="flex items-center justify-between text-[0.7rem]">
-              <div class="text-slate-400">
-                {#if item.tag}
-                  <span
-                    class="px-2 py-0.5 rounded-full bg-slate-950/60 border border-slate-700 text-slate-300"
-                  >
-                    {item.tag}
-                  </span>
-                {/if}
-              </div>
-              <button
-                type="button"
-                class="px-3 py-1.5 rounded-lg bg-[#ffb74d] text-slate-950 font-semibold hover:bg-[#ffa726] text-xs transition-colors"
-              >
-                Pré-visualizar
-              </button>
-            </div>
-          </article>
-        {/each}
-      </div>
-    </div>
-
-    <div class="space-y-3">
-      <h2 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
-        <span class="text-base">🧰</span>
-        Utilidades & Qualidade de Vida
-      </h2>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-        {#each utilityItems as item (item.id)}
-          <article
-            class={`rounded-2xl border p-4 flex flex-col gap-3 ${getRarityClass(
-              item.rarity,
-            )}`}
-          >
-            <div class="flex items-start justify-between gap-2">
-              <div>
-                <h3 class="font-semibold text-sm">
-                  {item.name}
-                </h3>
-                <p
-                  class="text-[0.7rem] uppercase tracking-widest text-slate-400"
-                >
-                  {getRarityLabel(item.rarity)}
-                </p>
-              </div>
-
-              <!-- Preço: número + ícone gold -->
-              <div
-                class="px-3 py-1 rounded-full bg-slate-950/70 border border-slate-700 text-[0.7rem] text-slate-100 flex items-center gap-1"
-              >
-                <span class="font-semibold">{formatPrice(item)}</span>
-                <img
-                  src={getCurrencyIcon(item)}
-                  alt="Moeda da loja"
-                  class="h-4 w-4 object-contain"
-                />
-              </div>
-            </div>
-
-            <p class="text-xs text-slate-200 leading-relaxed">
-              {item.description}
-            </p>
-
-            <div class="flex items-center justify-end text-[0.7rem]">
-              <button
-                type="button"
-                class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-100 font-semibold hover:bg-slate-700 transition-colors"
-              >
-                Em breve
-              </button>
-            </div>
-          </article>
-        {/each}
-      </div>
-    </div>
-  </section>
+    <!-- Grid de itens -->
+    <section>
+      {#if filteredItems.length > 0}
+        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {#each filteredItems as item (item.id)}
+            <ShopItemCard {item} />
+          {/each}
+        </div>
+      {:else}
+        <div
+          class="rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-8 text-center text-sm text-slate-400"
+        >
+          Nenhum item disponível nesta categoria por enquanto.
+        </div>
+      {/if}
+    </section>
+  </main>
 </div>
