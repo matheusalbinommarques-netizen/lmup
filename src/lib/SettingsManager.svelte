@@ -140,18 +140,17 @@
     }
   }
 
-  // ---------- helpers visuais dos switches ----------
+  // ---------- helper visual: botões com ícone oneoff ----------
 
-  function switchClasses(enabled: boolean) {
-    return enabled
-      ? 'inline-flex h-7 w-12 items-center rounded-full bg-emerald-400/90 px-1 transition-colors'
-      : 'inline-flex h-7 w-12 items-center rounded-full bg-slate-700/80 px-1 transition-colors';
-  }
-
-  function knobClasses(enabled: boolean) {
-    return enabled
-      ? 'h-5 w-5 translate-x-5 rounded-full bg-slate-950 shadow transition-transform'
-      : 'h-5 w-5 translate-x-0 rounded-full bg-slate-300 shadow transition-transform';
+  function toggleButtonClasses(on: boolean): string {
+    return [
+      'inline-flex items-center justify-center',
+      'h-9 w-9 rounded-full',
+      'transition-colors border',
+      on
+        ? 'bg-emerald-400/90 border-emerald-200 shadow-[0_0_16px_rgba(52,211,153,0.7)]'
+        : 'bg-slate-800 border-slate-600 hover:bg-slate-700',
+    ].join(' ');
   }
 </script>
 
@@ -164,19 +163,46 @@
     ></div>
 
     <div class="relative px-6 pt-6 pb-7 md:px-8 md:pt-8 md:pb-8">
-      <!-- Cabeçalho das configurações dentro de card azul (estilo Sincronia) -->
+      <!-- Cabeçalho das configurações (Cofre Arcano) -->
       <header class="mb-6">
         <div
-          class="settings-subcard rounded-2xl border border-sky-500/60 bg-gradient-to-r from-sky-950 via-slate-900 to-slate-950 px-4 py-4 text-center shadow-[0_0_40px_rgba(56,189,248,0.55)]"
+          class="relative rounded-2xl border border-violet-700/70
+                 bg-gradient-to-r from-black via-slate-950 to-violet-950
+                 px-4 py-4 md:px-6 md:py-5
+                 shadow-[0_0_40px_rgba(76,29,149,0.85)]"
         >
-          <h2 class="text-2xl md:text-3xl font-extrabold text-sky-50">
-            Configurações &amp; Backup
-          </h2>
-          <p class="mx-auto mt-2 max-w-xl text-xs text-slate-200/85">
-            Guarde seu progresso em segurança, restaure seus dados quando
-            precisar e ative encantamentos para deixar a experiência mais
-            confortável.
-          </p>
+          <!-- moldura interna / brilho arcano -->
+          <div
+            class="pointer-events-none absolute inset-0 opacity-50"
+            aria-hidden="true"
+          >
+            <div
+              class="absolute inset-[10px] rounded-2xl border border-violet-500/35"
+            ></div>
+            <div
+              class="absolute -top-10 left-1/3 h-28 w-28 rounded-full bg-violet-500/18 blur-3xl"
+            ></div>
+            <div
+              class="absolute -bottom-12 right-6 h-24 w-24 rounded-full bg-emerald-400/10 blur-3xl"
+            ></div>
+          </div>
+
+          <div class="relative space-y-2 text-center">
+            <h2
+              class="font-serif text-2xl md:text-3xl font-extrabold
+                     bg-gradient-to-r from-violet-100 via-violet-300 to-emerald-300
+                     bg-clip-text text-transparent
+                     drop-shadow-[0_0_22px_rgba(129,140,248,0.95)]"
+            >
+              Cofre Arcano
+            </h2>
+
+            <p class="mx-auto mt-1 max-w-xl text-xs text-slate-200/85">
+              Guarde seu progresso em segurança, restaure seus dados quando
+              precisar e ative encantamentos para deixar a experiência mais
+              confortável — mesmo nas noites mais sombrias.
+            </p>
+          </div>
         </div>
       </header>
 
@@ -186,7 +212,7 @@
       >
         <div class="flex items-start gap-3">
           <div
-            class="mt-0.5 flex h-12 w-12 items-center justify-center rounded-full bg-violet-500/20 text-violet-200"
+            class="mt-0.5 flex h-16 w-16 items-center justify-center rounded-full bg-violet-500/20 text-violet-200"
           >
             <img
               src="art/icones/encantamento-sombrio.png"
@@ -214,10 +240,15 @@
 
         <button
           type="button"
-          class={switchClasses(darkEnchantment)}
+          class={toggleButtonClasses(darkEnchantment)}
           onclick={() => (darkEnchantment = !darkEnchantment)}
+          aria-pressed={darkEnchantment}
         >
-          <span class={knobClasses(darkEnchantment)} aria-hidden="true"></span>
+          <img
+            src="art/icones/oneoff.png"
+            alt="Alternar encantamento sombrio"
+            class="h-16 w-16 object-contain"
+          />
           <span class="sr-only">Alternar encantamento sombrio</span>
         </button>
       </div>
@@ -230,11 +261,11 @@
         >
           <div class="flex items-start gap-3">
             <div
-              class="mt-0.5 flex h-12 w-12 items-center justify-center rounded-full bg-violet-500/20 text-violet-200"
+              class="mt-0.5 flex h-16 w-16 items-center justify-center rounded-full bg-violet-500/20 text-violet-200"
             >
               <img
                 src="art/icones/grimorio-backup.png"
-                alt="Encantamento sombrio"
+                alt="Grimório de backup"
                 class="h-20 w-20 object-contain"
               />
             </div>
@@ -273,7 +304,7 @@
         >
           <div class="flex items-start gap-3">
             <div
-              class="mt-0.5 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-200"
+              class="mt-0.5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-200"
             >
               <img
                 src="art/icones/ritual-restauracao.png"
@@ -297,11 +328,6 @@
                 Importe um grimório em <code>.json</code> criado por um herói, para
                 trazer de volta as memórias de seu reino, com suas áreas, missões
                 e XP.
-              </p>
-              <p class="mt-1 text-[0.65rem] text-amber-200/80">
-                Atenção: este ritual substituirá o reino atual pelo do grimório
-                utilizado. E este será jogado em trevas sombrias e ranger de
-                dentes!.
               </p>
             </div>
           </div>
@@ -330,11 +356,11 @@
         >
           <div class="flex items-start gap-3">
             <div
-              class="mt-0.5 flex h-12 w-12 items-center justify-center rounded-full bg-sky-500/25 text-sky-200"
+              class="mt-0.5 flex h-16 w-16 items-center justify-center rounded-full bg-sky-500/25 text-sky-200"
             >
               <img
                 src="art/icones/sincronia-estelar.png"
-                alt="Encantamento sombrio"
+                alt="Sincronia estelar"
                 class="h-20 w-20 object-contain"
               />
             </div>
@@ -370,20 +396,59 @@
 
       <!-- Seção de neurodiversidade -->
       <div class="mt-8 space-y-4">
-        <h3
-          class="text-sm font-semibold text-slate-200 flex items-center gap-2"
+        <!-- Título estilizado (agora com mesma largura dos cards acima) -->
+        <div
+          class="relative rounded-2xl border border-emerald-500/70
+                 bg-gradient-to-r from-black via-emerald-950 to-slate-950
+                 px-4 py-3 md:px-6 md:py-4
+                 shadow-[0_0_32px_rgba(16,185,129,0.65)]"
         >
-          <span class="text-base">🧠</span>
-          Neurodiversidade
-        </h3>
+          <div
+            class="pointer-events-none absolute inset-0 opacity-40"
+            aria-hidden="true"
+          >
+            <div
+              class="absolute inset-[8px] rounded-2xl border border-emerald-400/30"
+            ></div>
+            <div
+              class="absolute -top-8 left-1/4 h-20 w-20 rounded-full bg-emerald-400/15 blur-3xl"
+            ></div>
+            <div
+              class="absolute -bottom-10 right-4 h-20 w-20 rounded-full bg-lime-300/10 blur-3xl"
+            ></div>
+          </div>
 
-        <div class="grid gap-3 md:grid-cols-3">
+          <div class="relative space-y-1 text-center">
+            <h3
+              class="font-serif text-lg md:text-xl font-extrabold
+                     bg-gradient-to-r from-emerald-100 via-emerald-300 to-lime-300
+                     bg-clip-text text-transparent
+                     drop-shadow-[0_0_18px_rgba(16,185,129,0.9)]"
+            >
+              Neurodiversidade
+            </h3>
+
+            <p class="text-[0.7rem] text-slate-200/85">
+              Ative modos especiais para reduzir estímulos, aumentar a
+              legibilidade e moldar o reino ao seu jeito.
+            </p>
+          </div>
+        </div>
+
+        <!-- Cards um embaixo do outro -->
+        <div class="space-y-3">
           <!-- Modo foco -->
           <div
             class="settings-subcard flex items-center justify-between gap-3 rounded-2xl border border-emerald-500/60 bg-gradient-to-r from-emerald-900 via-slate-900 to-slate-950 px-4 py-3"
           >
             <div class="space-y-1">
-              <p class="text-xs font-semibold text-slate-100">Modo foco</p>
+              <p
+                class="text-[1 rem] font-semibold uppercase tracking-[0.18em]
+         bg-gradient-to-r from-emerald-100 via-emerald-300 to-lime-200
+         bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(16,185,129,0.8)]"
+              >
+                Modo foco
+              </p>
               <p class="text-xs text-slate-300/90 max-w-xs">
                 Reduz distrações e animações, deixando a interface mais calma
                 para longas sessões.
@@ -391,10 +456,15 @@
             </div>
             <button
               type="button"
-              class={switchClasses(focusMode)}
+              class={toggleButtonClasses(focusMode)}
               onclick={toggleFocusMode}
+              aria-pressed={focusMode}
             >
-              <span class={knobClasses(focusMode)} aria-hidden="true"></span>
+              <img
+                src="art/icones/oneoff.png"
+                alt="Alternar modo foco"
+                class="h-20 w-20 object-contain"
+              />
               <span class="sr-only">Alternar modo foco</span>
             </button>
           </div>
@@ -404,7 +474,13 @@
             class="settings-subcard flex items-center justify-between gap-3 rounded-2xl border border-sky-500/60 bg-gradient-to-r from-sky-950 via-slate-900 to-slate-950 px-4 py-3"
           >
             <div class="space-y-1">
-              <p class="text-xs font-semibold text-slate-100">Texto maior</p>
+              <p
+                class="text-[1 rem] font-semibold uppercase tracking-[0.18em]
+         bg-gradient-to-r from-sky-100 via-sky-300 to-cyan-200
+         bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(56,189,248,0.85)]"
+              >
+                Texto maior
+              </p>
               <p class="text-xs text-slate-300/90 max-w-xs">
                 Aumenta a legibilidade dos textos principais e labels
                 importantes pelo reino.
@@ -412,10 +488,15 @@
             </div>
             <button
               type="button"
-              class={switchClasses(largeText)}
+              class={toggleButtonClasses(largeText)}
               onclick={toggleLargeText}
+              aria-pressed={largeText}
             >
-              <span class={knobClasses(largeText)} aria-hidden="true"></span>
+              <img
+                src="art/icones/oneoff.png"
+                alt="Alternar texto maior"
+                class="h-20 w-20 object-contain"
+              />
               <span class="sr-only">Alternar texto maior</span>
             </button>
           </div>
@@ -425,7 +506,11 @@
             class="settings-subcard flex items-center justify-between gap-3 rounded-2xl border border-purple-500/60 bg-gradient-to-r from-purple-950 via-slate-900 to-slate-950 px-4 py-3"
           >
             <div class="space-y-1">
-              <p class="text-xs font-semibold text-slate-100">
+              <p
+                class="text-[1 rem] font-semibold uppercase tracking-[0.18em]
+         bg-gradient-to-r from-fuchsia-100 via-fuchsia-300 to-purple-200
+         bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(192,132,252,0.9)]"
+              >
                 Estímulos suaves
               </p>
               <p class="text-xs text-slate-300/90 max-w-xs">
@@ -435,10 +520,15 @@
             </div>
             <button
               type="button"
-              class={switchClasses(lowStimulus)}
+              class={toggleButtonClasses(lowStimulus)}
               onclick={toggleLowStimulus}
+              aria-pressed={lowStimulus}
             >
-              <span class={knobClasses(lowStimulus)} aria-hidden="true"></span>
+              <img
+                src="art/icones/oneoff.png"
+                alt="Alternar estímulos suaves"
+                class="h-20 w-20 object-contain"
+              />
               <span class="sr-only">Alternar estímulos suaves</span>
             </button>
           </div>

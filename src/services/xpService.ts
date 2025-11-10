@@ -48,11 +48,13 @@ function parseDateOnly(dateStr: string | undefined | null): Date | null {
 
 /**
  * Calcula o streak atualizado dado o streak atual + última data salva.
+ *
  * Regra:
  *  - Nunca teve streak -> vira 1 hoje.
  *  - Mesma data que hoje -> mantém streak.
  *  - Ontem -> streak + 1.
- *  - Mais de 1 dia sem completar -> reseta para 1.
+ *  - 1 dia de furo -> não zera, só congela (streak amigável).
+ *  - 2+ dias sem completar -> reseta para 1.
  */
 function computeUpdatedStreak(
   currentStreak: number | undefined,
@@ -61,6 +63,7 @@ function computeUpdatedStreak(
   const today = toDateOnly(new Date());
   const todayStr = toDateOnlyString(today);
 
+  // Nunca teve streak
   if (!lastCompletionDate) {
     return { currentStreak: 1, lastCompletionDate: todayStr };
   }
@@ -73,7 +76,7 @@ function computeUpdatedStreak(
   const lastDate = toDateOnly(lastDateParsed);
   const lastStr = toDateOnlyString(lastDate);
 
-  // Já registrou streak hoje
+  // Já registrou streak hoje -> mantém
   if (lastStr === todayStr) {
     return {
       currentStreak: currentStreak ?? 1,
@@ -90,7 +93,13 @@ function computeUpdatedStreak(
     return { currentStreak: nextStreak, lastCompletionDate: todayStr };
   }
 
-  // Passou mais de um dia (ou relógio bagunçado) -> reseta
+  if (diffDays === 2) {
+    // Streak amigável: 1 dia de furo -> não zera, só congela o valor
+    const safeStreak = currentStreak ?? 1;
+    return { currentStreak: safeStreak, lastCompletionDate: todayStr };
+  }
+
+  // 2+ dias sem completar (ou relógio muito bagunçado) -> reseta
   return { currentStreak: 1, lastCompletionDate: todayStr };
 }
 
@@ -100,13 +109,14 @@ function computeUpdatedStreak(
 
 export const xpService = {
   /**
-   * Adiciona XP ao perfil do usuário, checa level up
-   * e atualiza o streak diário.
+   * Adiciona XP ao perfil do usuário, checa level up,
+   * atualiza o streak diário, dá gold (50% do XP)
+   * e registra um log em xpLogs.
    */
   async addXp(amount: number) {
     if (amount <= 0) return;
 
-    await db.transaction('rw', db.profile, async () => {
+    await db.transaction('rw', db.profile, db.xpLogs, async () => {
       // Garante que exista um profile com id = 1
       let profile = await db.profile.get(1);
 
@@ -123,6 +133,7 @@ export const xpService = {
           currentStreak: 0,
           lastCompletionDate: '',
           activeCompanionId: 1,
+          gold: 0,
         };
         await db.profile.put(profile);
       }
@@ -137,10 +148,15 @@ export const xpService = {
       // Valores que vamos mutar → let
       let { xpCurrent, xpNext, level, title } = profile;
       let totalXpEarned = totalXpEarnedRaw;
+      let gold = typeof profile.gold === 'number' ? profile.gold : 0;
 
       // XP atual + histórico
       xpCurrent += amount;
       totalXpEarned += amount;
+
+      // Gold: 50% do XP (arredondado pra baixo)
+      const goldEarned = Math.floor(amount * 0.5);
+      gold += goldEarned;
 
       // Loop de level up
       let leveledUp = false;
@@ -161,6 +177,13 @@ export const xpService = {
         lastCompletionDate,
       );
 
+      // Log de XP diário
+      const todayStr = toDateOnlyString(new Date());
+      await db.xpLogs.add({
+        date: todayStr,
+        amount,
+      });
+
       await db.profile.update(1, {
         xpCurrent,
         xpNext,
@@ -169,18 +192,22 @@ export const xpService = {
         totalXpEarned,
         currentStreak: streakInfo.currentStreak,
         lastCompletionDate: streakInfo.lastCompletionDate,
+        gold,
       });
     });
   },
 
   /**
    * Remove XP do perfil (ex: ao desmarcar uma missão).
-   * Não mexe no totalXpEarned nem no streak.
+   * Não mexe no totalXpEarned (XP da vida),
+   * mas remove o XP atual, pode "desupar" nível
+   * e tira o gold correspondente.
+   * Também registra um log negativo em xpLogs.
    */
   async removeXp(amount: number) {
     if (amount <= 0) return;
 
-    await db.transaction('rw', db.profile, async () => {
+    await db.transaction('rw', db.profile, db.xpLogs, async () => {
       let profile = await db.profile.get(1);
 
       if (!profile) {
@@ -197,13 +224,19 @@ export const xpService = {
           currentStreak: 0,
           lastCompletionDate: '',
           activeCompanionId: 1,
+          gold: 0,
         };
         await db.profile.put(profile);
       }
 
       let { xpCurrent, xpNext, level, title } = profile;
+      let gold = typeof profile.gold === 'number' ? profile.gold : 0;
 
       xpCurrent -= amount;
+
+      // Remove gold (50% do XP), sem deixar negativo
+      const goldLost = Math.floor(amount * 0.5);
+      gold = Math.max(0, gold - goldLost);
 
       // Loop de "de-level"
       let deleveled = false;
@@ -221,18 +254,26 @@ export const xpService = {
         title = `Aventureiro Nv. ${level}`;
       }
 
+      // Log negativo de XP
+      const todayStr = toDateOnlyString(new Date());
+      await db.xpLogs.add({
+        date: todayStr,
+        amount: -amount,
+      });
+
       await db.profile.update(1, {
         xpCurrent,
         xpNext,
         level,
         title,
+        gold,
       });
     });
   },
 } as const;
 
 // -----------------------------
-// Observables para painéis (XP total + streak)
+// Observables para painéis (XP total + streak + gold)
 // -----------------------------
 
 /**
@@ -256,6 +297,16 @@ export function getStreakObservable() {
       count: profile?.currentStreak ?? 0,
       lastCompletionDate: profile?.lastCompletionDate ?? '',
     };
+  });
+}
+
+/**
+ * Observable com o gold atual do jogador.
+ */
+export function getGoldObservable() {
+  return liveQuery(async () => {
+    const profile = await db.profile.get(1);
+    return profile?.gold ?? 0;
   });
 }
 

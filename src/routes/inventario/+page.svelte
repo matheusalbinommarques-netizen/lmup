@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PageTitleCard from '$lib/PageTitleCard.svelte';
   type InventoryItem = {
     id: number;
     name: string;
@@ -112,15 +113,11 @@
 </script>
 
 <div class="flex flex-col gap-6 pb-8">
-  <header class="mb-4 text-center">
-    <h1 class="text-3xl font-bold text-[#ffb74d] drop-shadow-sm font-serif">
-      Inventário
-    </h1>
-    <p class="text-slate-400">
-      Aqui ficam seus artefatos, ferramentas e itens mágicos que te acompanham
-      na jornada.
-    </p>
-  </header>
+  <PageTitleCard
+    title="Inventário"
+    subtitle="Seu inventário é o reflexo da sua aventura: cada item representa um hábito, uma ferramenta ou um ritual que te fez evoluir."
+    align="center"
+  />
 
   <section
     class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 md:p-6 flex flex-col md:flex-row items-start md:items-center gap-4"

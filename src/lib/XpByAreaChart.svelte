@@ -67,7 +67,7 @@
 
   $effect(() => {
     if (canvasElement) {
-      const stats = chartStats(); // Acessa como função no <script>
+      const stats = chartStats();
 
       if (stats.data.length > 0) {
         chartInstance?.destroy();
@@ -108,6 +108,7 @@
         chartInstance = null;
       }
     }
+
     return () => {
       chartInstance?.destroy();
     };
@@ -115,22 +116,30 @@
 </script>
 
 <section
-  class="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-md"
+  class="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-md
+         flex flex-col min-h-[420px]"
 >
-  <h2
-    class="flex items-center gap-3 text-xl font-bold text-slate-200 mb-6 pb-4 border-b border-slate-800/50"
-  >
-    <span class="text-2xl">📊</span>
-    Estatísticas de XP por Área
-  </h2>
+  <!-- HEADER ESTILIZADO -->
+  <header class="text-center space-y-1 mb-4">
+    <p class="text-[1.5 rem] uppercase tracking-[0.22em] text-slate-400">
+      Estatísticas
+    </p>
+    <h2 class="text-xl md:text-xl font-semibold text-slate-100">XP por Área</h2>
+    <div
+      class="mx-auto mt-3 h-px w-24 bg-gradient-to-r from-transparent via-slate-700 to-transparent"
+    ></div>
+  </header>
 
-  <div class="h-64 lg:h-80 relative">
-    {#if chartStats().data.length > 0}
-      <canvas bind:this={canvasElement}></canvas>
-    {:else}
-      <div class="flex items-center justify-center h-full text-slate-500">
-        <p>Complete missões para ver suas estatísticas aqui!</p>
-      </div>
-    {/if}
+  <!-- Área do gráfico centralizada no eixo Y -->
+  <div class="flex-1 flex items-center justify-center">
+    <div class="relative h-64 lg:h-80 w-full max-w-md">
+      {#if chartStats().data.length > 0}
+        <canvas bind:this={canvasElement} class="!w-full !h-full"></canvas>
+      {:else}
+        <div class="flex items-center justify-center h-full text-slate-500">
+          <p>Complete missões para ver suas estatísticas aqui!</p>
+        </div>
+      {/if}
+    </div>
   </div>
 </section>

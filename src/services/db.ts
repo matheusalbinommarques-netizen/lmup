@@ -15,6 +15,7 @@ export interface Profile {
   currentStreak: number; // Da V4 (Streak)
   lastCompletionDate: string; // Da V4 (Streak)
   activeCompanionId: number; // Da V5 (Pets)
+  gold?: number; // Da V6 (moeda da loja)
 }
 
 export interface Area {
@@ -22,6 +23,13 @@ export interface Area {
   nome: string;
   cor: string;
 }
+
+// Log de XP diário para estatísticas
+export type XpLog = {
+  id?: number;
+  date: string; // 'YYYY-MM-DD'
+  amount: number; // XP ganho nesse dia
+};
 
 export interface Task {
   id?: number;
@@ -33,7 +41,7 @@ export interface Task {
   createdAt: Date;
 }
 
-// Interface para o Schema Antigo (V1)
+// Schema antigo (V1)
 interface ItemV1 {
   id: number;
   areaId: number;
@@ -41,7 +49,7 @@ interface ItemV1 {
   xp?: number;
 }
 
-// CORREÇÃO: Exportar 'Companion'
+// Companheiros (pets)
 export interface Companion {
   id?: number;
   name: string;
@@ -49,7 +57,6 @@ export interface Companion {
   imagePath: string;
 }
 
-// CORREÇÃO: Exportar 'UnlockedCompanion'
 export interface UnlockedCompanion {
   id?: number;
   companionId: number;
@@ -62,8 +69,9 @@ export class MySubClassedDexie extends Dexie {
   areas!: Table<Area>;
   tasks!: Table<Task>;
   items!: Table<ItemV1>; // Tabela antiga da v1
-  companions!: Table<Companion>; // <-- CORREÇÃO: Tabela adicionada
-  unlockedCompanions!: Table<UnlockedCompanion>; // <-- CORREÇÃO: Tabela adicionada
+  companions!: Table<Companion>;
+  unlockedCompanions!: Table<UnlockedCompanion>;
+  xpLogs!: Table<XpLog>;
 
   constructor() {
     super('levelMeUpDb');
@@ -80,6 +88,7 @@ export class MySubClassedDexie extends Dexie {
         profile: '++id',
         areas: '++id, nome',
         tasks: '++id, areaId, completed, createdAt',
+        items: '++id, areaId, titulo',
       })
       .upgrade(async (tx) => {
         const itemsCount = await tx.table('items').count();
@@ -101,30 +110,64 @@ export class MySubClassedDexie extends Dexie {
         }
       });
 
-    // Versão 3: Adicionando totalXpEarned
+    // Versão 3: adiciona totalXpEarned em profile
     this.version(3)
       .stores({
         profile: '++id, totalXpEarned',
+        areas: '++id, nome',
+        tasks: '++id, areaId, completed, createdAt',
+        items: '++id, areaId, titulo',
       })
       .upgrade(() => {});
 
-    // Versão 4: Adicionando campos de Streak
+    // Versão 4: campos de streak em profile
     this.version(4)
       .stores({
         profile: '++id, totalXpEarned, currentStreak, lastCompletionDate',
+        areas: '++id, nome',
+        tasks: '++id, areaId, completed, createdAt',
+        items: '++id, areaId, titulo',
       })
       .upgrade(() => {});
 
-    // Versão 5: Adicionando Companheiros (Pets)
+    // Versão 5: Companheiros (pets)
     this.version(5)
       .stores({
         profile:
-          '++id, totalXpEarned, currentStreak, lastCompletionDate, activeCompanionId', // Atualiza profile
-        companions: '++id, name', // Nova tabela
-        unlockedCompanions: '++id, companionId', // Nova tabela
+          '++id, totalXpEarned, currentStreak, lastCompletionDate, activeCompanionId',
+        areas: '++id, nome',
+        tasks: '++id, areaId, completed, createdAt',
+        items: '++id, areaId, titulo',
+        companions: '++id, name',
+        unlockedCompanions: '++id, companionId',
       })
       .upgrade(() => {
-        // Bloco de upgrade Vazio.
+        // Nada especial por enquanto
+      });
+
+    // Versão 6: Gold + tabela de logs de XP
+    this.version(6)
+      .stores({
+        profile:
+          '++id, totalXpEarned, currentStreak, lastCompletionDate, activeCompanionId, gold',
+        areas: '++id, nome',
+        tasks: '++id, areaId, completed, createdAt',
+        items: '++id, areaId, titulo',
+        companions: '++id, name',
+        unlockedCompanions: '++id, companionId',
+        xpLogs: '++id, date', // índice por data pra facilitar agregações
+      })
+      .upgrade(async (tx) => {
+        // Garante que todo profile tenha gold inicializado
+        await tx
+          .table('profile')
+          .toCollection()
+          .modify((p: any) => {
+            if (typeof p.gold !== 'number') {
+              p.gold = 0;
+            }
+          });
+        // xpLogs começa vazio mesmo, será preenchido quando você logar XP
       });
   }
 }

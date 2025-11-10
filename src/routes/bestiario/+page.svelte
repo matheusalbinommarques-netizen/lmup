@@ -2,6 +2,7 @@
   import { db, type Profile, type Companion } from '$services/db';
   import { liveQuery } from 'dexie';
   import { onMount } from 'svelte';
+  import PageTitleCard from '$lib/PageTitleCard.svelte';
 
   const PET_SEED: Companion[] = [
     {
@@ -130,15 +131,11 @@
 </script>
 
 <div class="flex flex-col gap-6 pb-8">
-  <header class="mb-4 text-center">
-    <h1 class="text-3xl font-bold text-[#ffb74d] drop-shadow-sm font-serif">
-      Bestiário
-    </h1>
-    <p class="text-slate-400">
-      Um registro das criaturas que caminham ao seu lado — e das que você ainda
-      irá conquistar.
-    </p>
-  </header>
+  <PageTitleCard
+    title="Bestiário de Companheiros"
+    subtitle="Alimente e evolua seus fiéis companheiros enquanto você avança em sua jornada!"
+    align="center"
+  />
 
   <section
     class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 md:p-6 flex flex-col md:flex-row items-start md:items-center gap-4"

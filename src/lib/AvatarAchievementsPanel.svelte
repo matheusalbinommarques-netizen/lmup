@@ -1,6 +1,9 @@
 <!-- src/lib/AvatarAchievementsPanel.svelte -->
 <script lang="ts">
   import { onDestroy } from 'svelte';
+  import { liveQuery } from 'dexie';
+  import { db, type Profile } from '../services/db';
+
   import {
     getTotalXpObservable,
     getStreakObservable,
@@ -14,6 +17,23 @@
     type AchievementDef,
     type Rarity,
   } from '../services/achievementsCatalog';
+
+  const fallbackProfile: Profile = {
+    id: 1,
+    name: 'Seu herói',
+    title: 'Nobre aventureiro',
+    level: 1,
+    xpCurrent: 0,
+    xpNext: 100,
+    avatarUrl: '',
+    totalXpEarned: 0,
+    currentStreak: 0,
+    lastCompletionDate: '',
+    activeCompanionId: 1,
+  };
+
+  const hero = $state<Profile>(fallbackProfile);
+  const heroQuery = liveQuery(() => db.profile.get(1));
 
   // estado reativo básico
   let totalXp = $state(0);
@@ -54,7 +74,15 @@
       streak = count;
     });
 
-    unsubscribeFns = [() => sub1.unsubscribe(), () => sub2.unsubscribe()];
+    const profileSub = heroQuery.subscribe((profileData) => {
+      Object.assign(hero, profileData ?? fallbackProfile);
+    });
+
+    unsubscribeFns = [
+      () => sub1.unsubscribe(),
+      () => sub2.unsubscribe(),
+      () => profileSub.unsubscribe(),
+    ];
   }
 
   onDestroy(() => {
@@ -117,13 +145,21 @@
         class="flex items-center gap-3 rounded-2xl border border-amber-400/80 bg-slate-950/90 px-3 py-2 shadow-[0_0_30px_rgba(251,191,36,0.55)]"
       >
         <div
-          class="flex h-32 w-32 items-center justify-center rounded-full border border-amber-400/80 bg-slate-950 shadow-[0_0_20px_rgba(251,191,36,0.7)]"
+          class="flex h-32 w-32 items-center justify-center rounded-full border border-amber-400/80 bg-slate-950 shadow-[0_0_20px_rgba(251,191,36,0.7)] overflow-hidden"
         >
-          <img
-            src="/art/heroi.png"
-            alt="Avatar do herói"
-            class="h-36 w-36 object-contain"
-          />
+          {#if hero.avatarUrl}
+            <img
+              src={hero.avatarUrl}
+              alt={hero.name || 'Avatar do herói'}
+              class="h-full w-full object-cover rounded-full"
+            />
+          {:else}
+            <img
+              src="/art/heroi.png"
+              alt="Avatar do herói"
+              class="h-full w-full object-cover rounded-full"
+            />
+          {/if}
         </div>
         <div class="text-xs">
           <div class="text-slate-300/90">Nível do avatar</div>
@@ -131,8 +167,9 @@
             {level} • {totalXp} XP
           </div>
           <div class="text-[0.65rem] text-amber-200/80">
-            Streak atual: {streak}
-            {streak === 1 ? 'dia' : 'dias'}
+            Streak atual:
+            {streak}
+            {streak === 1 ? ' dia' : ' dias'}
           </div>
         </div>
       </div>

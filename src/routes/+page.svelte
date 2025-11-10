@@ -4,6 +4,7 @@
   import { onMount } from 'svelte';
   import EditProfileModal from '$lib/EditProfileModal.svelte';
   import CompanionSelectModal from '$lib/CompanionSelectModal.svelte';
+  import PageTitleCard from '$lib/PageTitleCard.svelte';
 
   // --- Estado do Herói (Fallback) ---
   const fallbackProfile: Profile = {
@@ -83,22 +84,19 @@
 {/if}
 <div class="min-h-full lmup-bg-taverna bg-slate-950/60">
   <div class="flex flex-col gap-6">
-    <header class="mb-2 text-center">
-      <h1 class="text-3xl font-bold text-[#ffb74d] drop-shadow-sm font-serif">
-        Taverna do Herói
-      </h1>
-      <p class="text-slate-400">
-        Bem-vindo de volta, viajante. Descanse e prepare-se.
-      </p>
-    </header>
+    <PageTitleCard
+      title="Taverna do Herói"
+      subtitle="Bem vindo de volta guerreiro! descanse e prepare-se para novas aventuras."
+      align="center"
+    />
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Painel do Herói -->
       <section
-        class="col-span-1 lg:col-span-2 bg-slate-900/50 border border-slate-800 rounded-2xl p-6 flex flex-col sm:flex-row items-center gap-6 shadow-lg relative overflow-hidden"
+        class="col-span-1 lg:col-span-2 bg-slate-900/50 border-2 border-amber-400/80 hover:border-amber-300 rounded-2xl p-6 flex flex-col sm:flex-row items-center gap-6 shadow-[0_0_24px_rgba(251,191,36,0.45)] relative overflow-hidden transition-all"
       >
         <div
-          class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none"
+          class="absolute inset-0 bg-gradient-to-br from-amber-400/10 via-transparent to-transparent pointer-events-none"
         ></div>
 
         <div class="relative shrink-0">
@@ -150,8 +148,17 @@
             class="flex items-center justify-between text-xs text-slate-400 mb-1"
           >
             <span>XP</span>
-            <span>{hero.xpCurrent} / {hero.xpNext}</span>
+
+            <span class="inline-flex items-center gap-1">
+              <img
+                src="art/icones/icon-xp.png"
+                alt="XP"
+                class="h-4 w-4 object-contain"
+              />
+              <span>{hero.xpCurrent} / {hero.xpNext}</span>
+            </span>
           </div>
+
           <div
             class="h-4 bg-slate-950 rounded-full overflow-hidden border border-slate-800/50"
           >
@@ -165,7 +172,7 @@
 
       <!-- Companheiro -->
       <section
-        class="col-span-1 bg-slate-900/50 border border-slate-800 rounded-2xl p-6 flex flex-col items-center text-center shadow-lg relative overflow-hidden"
+        class="col-span-1 bg-slate-900/50 border-2 border-amber-400/80 hover:border-amber-300 rounded-2xl p-6 flex flex-col items-center text-center shadow-[0_0_24px_rgba(251,191,36,0.45)] relative overflow-hidden transition-all"
       >
         <div class="absolute top-0 right-0 p-3 opacity-50">🐾</div>
         <h3 class="text-slate-300 font-semibold mb-4 w-full text-left">
@@ -191,17 +198,38 @@
     </div>
 
     <!-- Serviços da Taverna -->
-    <h3
-      class="text-xl font-bold text-slate-200 mt-4 font-serif text-center md:text-left"
-    >
-      Serviços da Taverna
-    </h3>
+    <div class="mt-6 flex justify-center">
+      <div
+        class="relative inline-flex items-center justify-center
+           rounded-2xl border border-amber-500/70
+           bg-gradient-to-r from-slate-950 via-amber-900/40 to-slate-950
+           px-8 md:px-12 py-3
+           shadow-[0_0_35px_rgba(245,158,11,0.65)]"
+      >
+        <!-- moldura interna / glow -->
+        <div
+          class="pointer-events-none absolute inset-0 opacity-50"
+          aria-hidden="true"
+        >
+          <div
+            class="absolute inset-[6px] rounded-2xl border border-amber-300/40"
+          ></div>
+        </div>
+
+        <h2
+          class="relative z-[1] font-serif text-xl md:text-2xl font-extrabold
+             tracking-wide text-amber-100"
+        >
+          Serviços da Taverna
+        </h2>
+      </div>
+    </div>
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <!-- Loja -->
       <a
         href="/loja"
-        class="p-4 bg-slate-900/50 border border-slate-800 hover:border-primary/50 hover:bg-slate-800/80 rounded-xl flex flex-col items-center gap-3 transition-all group"
+        class="p-4 bg-slate-900/50 border-2 border-amber-400/80 hover:border-amber-300 hover:bg-slate-800/80 rounded-xl flex flex-col items-center gap-3 transition-all shadow-[0_0_18px_rgba(251,191,36,0.35)] group"
         role="button"
       >
         <img
@@ -215,7 +243,7 @@
       <!-- Sala de Troféus -->
       <a
         href="/trofeus"
-        class="p-4 bg-slate-900/50 border border-slate-800 hover:border-primary/50 hover:bg-slate-800/80 rounded-xl flex flex-col items-center gap-3 transition-all group"
+        class="p-4 bg-slate-900/50 border-2 border-amber-400/80 hover:border-amber-300 hover:bg-slate-800/80 rounded-xl flex flex-col items-center gap-3 transition-all shadow-[0_0_18px_rgba(251,191,36,0.35)] group"
         role="button"
       >
         <img
@@ -229,7 +257,7 @@
       <!-- Inventário -->
       <a
         href="/inventario"
-        class="p-4 bg-slate-900/50 border border-slate-800 hover:border-primary/50 hover:bg-slate-800/80 rounded-xl flex flex-col items-center gap-3 transition-all group"
+        class="p-4 bg-slate-900/50 border-2 border-amber-400/80 hover:border-amber-300 hover:bg-slate-800/80 rounded-xl flex flex-col items-center gap-3 transition-all shadow-[0_0_18px_rgba(251,191,36,0.35)] group"
         role="button"
       >
         <img
@@ -243,7 +271,7 @@
       <!-- Bestiário -->
       <a
         href="/bestiario"
-        class="p-4 bg-slate-900/50 border border-slate-800 hover:border-primary/50 hover:bg-slate-800/80 rounded-xl flex flex-col items-center gap-3 transition-all group"
+        class="p-4 bg-slate-900/50 border-2 border-amber-400/80 hover:border-amber-300 hover:bg-slate-800/80 rounded-xl flex flex-col items-center gap-3 transition-all shadow-[0_0_18px_rgba(251,191,36,0.35)] group"
         role="button"
       >
         <img
