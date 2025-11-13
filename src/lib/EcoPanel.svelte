@@ -1,145 +1,388 @@
 <!-- src/lib/EcoPanel.svelte -->
 <script lang="ts">
-  import { db, type Profile } from '$services/db';
+  import { db, type Profile, type Area, type XpLog } from '$services/db';
   import { liveQuery } from 'dexie';
   import { onMount } from 'svelte';
+  import {
+    ECO_STAGES,
+    getEcoStageForTotalXp,
+    getEcoProgressForTotalXp,
+  } from '$services/ecoConfig';
 
-  type EcoStage = {
-    image: string;
-    label: string;
-    next: number | null; // XP alvo para o próximo estágio (null = máximo)
+  type TopArea = {
+    areaId: number;
+    name: string;
+    totalXp: number;
+    percentOfTotal: number;
+  };
+
+  type EcoStageWithStatus = (typeof ECO_STAGES)[number] & {
+    status: 'claimed' | 'available' | 'locked';
   };
 
   const fallbackProfile: Profile = {
     id: 1,
     name: '...',
     title: '...',
-    level: 1,
+    level: 0,
     xpCurrent: 0,
     xpNext: 100,
+    avatarUrl: '',
     totalXpEarned: 0,
     gold: 0,
-    avatarUrl: '',
     currentStreak: 0,
-    lastCompletionDate: null,
+    lastCompletionDate: '',
     activeCompanionId: 1,
-    createdAt: new Date(),
-    updatedAt: new Date(),
   };
 
-  let hero = $state<Profile>(fallbackProfile);
+  const hero = $state<Profile>(fallbackProfile);
+  let areas = $state<Area[]>([]);
+  let xpLogs = $state<XpLog[]>([]);
 
   const heroQuery = liveQuery(() => db.profile.get(1));
+  const areasQuery = liveQuery(() => db.areas.toArray());
+  const xpLogsQuery = liveQuery(() => db.xpLogs.toArray());
 
   onMount(() => {
-    const subscription = heroQuery.subscribe((profileData) => {
-      Object.assign(hero, profileData ?? fallbackProfile);
+    const heroSub = heroQuery.subscribe((profileData) => {
+      Object.assign(hero, profileData || fallbackProfile);
+    });
+
+    const areasSub = areasQuery.subscribe((rows) => {
+      areas = rows ?? [];
+    });
+
+    const logsSub = xpLogsQuery.subscribe((rows) => {
+      xpLogs = rows ?? [];
     });
 
     return () => {
-      subscription.unsubscribe();
+      heroSub.unsubscribe();
+      areasSub.unsubscribe();
+      logsSub.unsubscribe();
     };
   });
 
-  // Estágio ecológico baseado no XP total
-  const ecoData = $derived.by<EcoStage>(() => {
-    const totalXp = hero.totalXpEarned ?? 0;
+  // --- Derivados principais do Santuário ---
 
-    if (totalXp < 2500) {
-      return {
-        image: '/art/bg/eco-stage-1-seed.webp',
-        label: 'Semente',
-        next: 2500,
-      };
+  const totalXp = $derived(hero.totalXpEarned ?? 0);
+
+  const ecoStage = $derived(getEcoStageForTotalXp(totalXp));
+  const ecoProgress = $derived(getEcoProgressForTotalXp(totalXp));
+
+  const ecoBonusPercent = $derived(
+    Math.round(((ecoStage.xpBonusMultiplier ?? 1) - 1) * 100),
+  );
+
+  // meta salvo no profile pelo xpService (opcional, via "any")
+  const ecoGoldClaimedUpToStage = $derived.by<number>(() => {
+    const meta = hero as any;
+    const raw = meta?.ecoGoldClaimedUpToStage;
+
+    if (typeof raw === 'number' && raw >= 1) {
+      return raw;
     }
-    if (totalXp < 7500) {
-      return {
-        image: '/art/bg/eco-stage-2-sprout.webp',
-        label: 'Brotinho',
-        next: 7500,
-      };
-    }
-    if (totalXp < 12000) {
-      return {
-        image: '/art/bg/eco-stage-3-tree.webp',
-        label: 'Árvore Jovem',
-        next: 12000,
-      };
-    }
-    return {
-      image: '/art/bg/eco-stage-4-forest.webp',
-      label: 'Floresta Anciã',
-      next: null,
-    };
+
+    // por padrão, assumimos que o estágio 1 já está "claimado"
+    return 1;
   });
 
-  // Progresso dentro do estágio atual (0–100)
-  const ecoPercentage = $derived.by<number>(() => {
-    const totalXp = hero.totalXpEarned ?? 0;
-    const stage = ecoData;
+  const ecoStagesWithStatus = $derived.by<EcoStageWithStatus[]>(() => {
+    const current = ecoStage;
+    const claimedUpTo = ecoGoldClaimedUpToStage;
 
-    if (stage.next === null) return 100;
+    return ECO_STAGES.map((stage) => {
+      let status: EcoStageWithStatus['status'];
 
-    let startXp = 0;
-    if (totalXp >= 12000) startXp = 12000;
-    else if (totalXp >= 7500) startXp = 7500;
-    else if (totalXp >= 2500) startXp = 2500;
+      if (stage.id <= claimedUpTo) {
+        status = 'claimed';
+      } else if (stage.id <= current.id) {
+        status = 'available';
+      } else {
+        status = 'locked';
+      }
 
-    const currentProgress = totalXp - startXp;
-    const goal = stage.next - startXp;
+      return { ...stage, status };
+    });
+  });
 
-    if (goal <= 0) return 100;
+  // --- Árvore de Área em Destaque (últimos ~30 dias) ---
 
-    const pct = (currentProgress / goal) * 100;
-    if (pct < 0) return 0;
-    if (pct > 100) return 100;
-    return pct;
+  const topAreas = $derived.by<TopArea[]>(() => {
+    if (!xpLogs.length) return [];
+
+    const now = new Date();
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    const cutoff = new Date(now.getTime() - THIRTY_DAYS_MS);
+
+    const sumByArea: Record<number, number> = {};
+
+    for (const log of xpLogs) {
+      const amount = Number(log.amount) || 0;
+      if (amount <= 0) continue;
+
+      let createdAt: Date;
+
+      if (log.createdAt instanceof Date) {
+        createdAt = log.createdAt;
+      } else if (typeof log.createdAt === 'string') {
+        createdAt = new Date(log.createdAt);
+      } else if (typeof log.date === 'string') {
+        createdAt = new Date(log.date);
+      } else {
+        continue;
+      }
+
+      if (createdAt.getTime() < cutoff.getTime()) continue;
+
+      const rawId = log.areaId ?? 0;
+      const areaId = Number.isFinite(rawId as number) ? (rawId as number) : 0;
+
+      sumByArea[areaId] = (sumByArea[areaId] ?? 0) + amount;
+    }
+
+    const entries = Object.entries(sumByArea).map(([idStr, total]) => {
+      const areaId = Number(idStr);
+      const areaObj = areas.find((a) => a.id === areaId);
+
+      const name =
+        areaId === 0
+          ? 'Geral'
+          : areaObj?.nome?.trim() || `Área #${areaId.toString()}`;
+
+      return {
+        areaId,
+        name,
+        totalXp: total,
+      };
+    });
+
+    if (!entries.length) return [];
+
+    const totalAll = entries.reduce((acc, e) => acc + e.totalXp, 0) || 1;
+
+    entries.sort((a, b) => b.totalXp - a.totalXp);
+
+    return entries.slice(0, 3).map((e) => ({
+      ...e,
+      percentOfTotal: Math.round((e.totalXp / totalAll) * 100),
+    }));
   });
 </script>
 
 <section
-  class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 shadow-lg relative overflow-hidden flex flex-col gap-4"
+  class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 shadow-lg relative overflow-hidden flex flex-col gap-5"
 >
-  <img
-    src={ecoData.image}
-    alt={ecoData.label}
-    class="w-full h-84 object-cover rounded-lg border border-slate-700/50 shadow-inner"
-  />
+  <!-- Layout principal: imagem + painel lateral -->
+  <div class="flex flex-col gap-4 md:flex-row">
+    <!-- Bloco da imagem / progresso -->
+    <div class="md:w-2/3 flex flex-col gap-3">
+      <img
+        src={ecoStage.image}
+        alt={ecoStage.label}
+        class="w-full h-68 object-cover rounded-lg border border-slate-700/50 shadow-inner"
+      />
 
-  <div>
-    <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
-      <span class="font-medium text-slate-300">Estágio: {ecoData.label}</span>
+      <div>
+        <div
+          class="flex items-center justify-between text-xs text-slate-400 mb-1"
+        >
+          <span class="font-medium text-slate-300">
+            Estágio do Santuário:
+            <span class="text-emerald-300">{ecoStage.label}</span>
+          </span>
 
-      {#if ecoData.next !== null}
-        <!-- XP atual / próximo com ícone -->
-        <span class="inline-flex items-center gap-1 font-medium text-slate-200">
-          <img
-            src="/art/icones/icon-xp.png"
-            alt="XP"
-            class="h-4 w-4 object-contain"
-          />
-          <span>{hero.totalXpEarned ?? 0} / {ecoData.next}</span>
-        </span>
-      {:else}
-        <!-- Estágio máximo -->
-        <span class="inline-flex items-center gap-1 font-medium text-green-400">
-          <img
-            src="/art/icones/icon-xp.png"
-            alt="XP"
-            class="h-4 w-4 object-contain"
-          />
-          <span>{hero.totalXpEarned ?? 0} (Máx)</span>
-        </span>
-      {/if}
+          <span
+            class="inline-flex items-center gap-1 font-medium text-slate-200"
+          >
+            <img
+              src="/art/icones/icon-xp.png"
+              alt="XP"
+              class="h-4 w-4 object-contain"
+            />
+            {#if ecoStage.maxXp != null}
+              <span>
+                {totalXp.toLocaleString()} /
+                {ecoStage.maxXp.toLocaleString()}
+              </span>
+            {:else}
+              <span>{totalXp.toLocaleString()} (Máx)</span>
+            {/if}
+          </span>
+        </div>
+
+        <div
+          class="h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800/50"
+        >
+          <div
+            class="h-full bg-gradient-to-r from-green-600 to-emerald-400 transition-all duration-500"
+            style={`width: ${Math.max(0, Math.min(100, ecoProgress)).toFixed(
+              1,
+            )}%;`}
+          ></div>
+        </div>
+
+        <p class="mt-1 text-[0.7rem] text-slate-400">
+          Progresso dentro do estágio atual do Santuário. O bônus de XP aumenta
+          conforme você evolui.
+        </p>
+      </div>
     </div>
 
-    <div
-      class="h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800/50"
-    >
+    <!-- Painel lateral: Bênçãos & Recompensas -->
+    <aside class="md:w-1/3 flex flex-col gap-3">
+      <!-- Bênçãos do Santuário -->
       <div
-        class="h-full bg-gradient-to-r from-green-600 to-emerald-400 transition-all duration-500"
-        style={`width: ${ecoPercentage}%;`}
-      ></div>
+        class="rounded-xl border border-emerald-500/40 bg-slate-950/70 px-3 py-3 flex flex-col gap-2"
+      >
+        <h3
+          class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300"
+        >
+          Bênçãos do Santuário
+        </h3>
+        <p class="text-[0.8rem] text-slate-200">
+          Bônus permanente de XP:
+          <span class="font-semibold text-emerald-300">
+            +{ecoBonusPercent}%
+          </span>
+          em todas as missões.
+        </p>
+        <p class="text-[0.7rem] text-slate-400">
+          O bônus é aplicado automaticamente sempre que você ganha XP. Ouro é
+          calculado em cima do XP final, então o Santuário também turbina seu
+          Gold.
+        </p>
+
+        <div class="mt-2 space-y-1.5 text-[0.7rem]">
+          {#each ECO_STAGES as stage (stage.id)}
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span
+                  class="inline-flex h-5 w-5 items-center justify-center rounded-full border text-[0.6rem]
+                    {ecoStage.id >= stage.id
+                    ? 'border-emerald-400 text-emerald-300 bg-emerald-950/60'
+                    : 'border-slate-700 text-slate-400 bg-slate-900'}"
+                >
+                  {stage.id}
+                </span>
+                <span
+                  class="font-medium {ecoStage.id >= stage.id
+                    ? 'text-slate-100'
+                    : 'text-slate-400'}"
+                >
+                  {stage.label}
+                </span>
+              </div>
+              <span class="text-slate-400">
+                +{Math.round((stage.xpBonusMultiplier - 1) * 100)}% XP
+              </span>
+            </div>
+          {/each}
+        </div>
+      </div>
+
+      <!-- Recompensas de Gold por Estágio -->
+      <div
+        class="rounded-xl border border-amber-500/40 bg-slate-950/70 px-3 py-3 flex flex-col gap-2"
+      >
+        <h3
+          class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-300"
+        >
+          Recompensas do Santuário
+        </h3>
+        <p class="text-[0.7rem] text-slate-300">
+          Ao alcançar cada estágio, você já recebeu (ou receberá) um baú único
+          de Gold:
+        </p>
+
+        <div class="mt-1 space-y-1.5 text-[0.7rem]">
+          {#each ecoStagesWithStatus as stage (stage.id)}
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="text-base">
+                  {#if stage.status === 'claimed'}
+                    ✅
+                  {:else if stage.status === 'available'}
+                    🎁
+                  {:else}
+                    🔒
+                  {/if}
+                </span>
+                <span
+                  class="font-medium {stage.status === 'locked'
+                    ? 'text-slate-500'
+                    : 'text-slate-100'}"
+                >
+                  {stage.label}
+                </span>
+              </div>
+              <span
+                class={stage.status === 'claimed'
+                  ? 'text-amber-300'
+                  : stage.status === 'available'
+                    ? 'text-amber-200'
+                    : 'text-slate-500'}
+              >
+                +{stage.goldRewardOnEnter} Gold
+              </span>
+            </div>
+          {/each}
+        </div>
+
+        <p class="mt-1 text-[0.65rem] text-slate-500">
+          Essas recompensas são automáticas e só são dadas uma vez por estágio,
+          mesmo que você saia e volte do jogo.
+        </p>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Árvore de Área em Destaque -->
+  <div
+    class="mt-1 rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3 flex flex-col gap-2"
+  >
+    <div
+      class="flex flex-col gap-1 md:flex-row md:items-baseline md:justify-between"
+    >
+      <h3 class="text-sm font-semibold text-slate-100">
+        🌱 Árvore de Área em Destaque
+      </h3>
+      <p class="text-[0.7rem] text-slate-400 md:max-w-md">
+        Mostra quais áreas mais alimentaram o Santuário nos últimos ~30 dias.
+        Quanto mais XP uma área gera, mais ela "rega" sua floresta.
+      </p>
     </div>
+
+    {#if topAreas.length > 0}
+      <div class="mt-2 space-y-2">
+        {#each topAreas as area (area.areaId)}
+          <div class="space-y-1">
+            <div class="flex items-center justify-between text-[0.75rem]">
+              <span class="font-medium text-slate-100">{area.name}</span>
+              <span class="text-slate-400">
+                +{area.totalXp.toLocaleString()} XP
+                <span class="text-slate-500"> • {area.percentOfTotal}%</span>
+              </span>
+            </div>
+            <div
+              class="h-2 rounded-full bg-slate-900 overflow-hidden border border-slate-800/60"
+            >
+              <div
+                class="h-full bg-gradient-to-r from-emerald-500 to-emerald-300"
+                style={`width: ${Math.max(
+                  5,
+                  Math.min(100, area.percentOfTotal),
+                )}%;`}
+              ></div>
+            </div>
+          </div>
+        {/each}
+      </div>
+    {:else}
+      <p class="mt-2 text-[0.7rem] text-slate-500">
+        Ainda não há XP suficiente registrado para destacar áreas. Complete
+        algumas missões para começar a ver a floresta ganhar forma.
+      </p>
+    {/if}
   </div>
 </section>
