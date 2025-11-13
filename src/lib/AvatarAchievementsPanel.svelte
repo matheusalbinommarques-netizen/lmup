@@ -2,13 +2,9 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import { liveQuery } from 'dexie';
-  import { db, type Profile } from '../services/db';
+  import { db, type Profile } from '$services/db';
+  import { getLevelStateFromTotalXp } from '$services/xpService';
 
-  import {
-    getTotalXpObservable,
-    getStreakObservable,
-    calcularNivel,
-  } from '../services/xpService';
   import {
     ALL_ACHIEVEMENTS,
     HIGHLIGHT_ACHIEVEMENT_IDS,
@@ -16,7 +12,7 @@
     type HighlightAchievementId,
     type AchievementDef,
     type Rarity,
-  } from '../services/achievementsCatalog';
+  } from '$services/achievementsCatalog';
 
   const fallbackProfile: Profile = {
     id: 1,
@@ -28,19 +24,40 @@
     avatarUrl: '',
     totalXpEarned: 0,
     currentStreak: 0,
-    lastCompletionDate: '',
+    lastCompletionDate: null,
     activeCompanionId: 1,
+    gold: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
   };
 
-  const hero = $state<Profile>(fallbackProfile);
-  const heroQuery = liveQuery(() => db.profile.get(1));
+  let hero = $state<Profile>(fallbackProfile);
 
-  // estado reativo básico
+  // estado reativo básico derivado do perfil
   let totalXp = $state(0);
   let streak = $state(0);
 
-  const levelInfo = $derived(calcularNivel(totalXp));
+  const levelInfo = $derived(getLevelStateFromTotalXp(totalXp));
   const level = $derived(levelInfo.level ?? 1);
+
+  const heroQuery = liveQuery(() => db.profile.get(1));
+
+  let unsubscribe: (() => void) | null = null;
+
+  if (typeof window !== 'undefined') {
+    const profileSub = heroQuery.subscribe((profileData) => {
+      const data = profileData ?? fallbackProfile;
+      Object.assign(hero, data);
+      totalXp = data.totalXpEarned ?? 0;
+      streak = data.currentStreak ?? 0;
+    });
+
+    unsubscribe = () => profileSub.unsubscribe();
+  }
+
+  onDestroy(() => {
+    unsubscribe?.();
+  });
 
   // conquistas em destaque (subconjunto do catálogo)
   const highlightDefinitions: AchievementDef[] = ALL_ACHIEVEMENTS.filter(
@@ -62,32 +79,6 @@
       };
     }),
   );
-
-  let unsubscribeFns: (() => void)[] = [];
-
-  if (typeof window !== 'undefined') {
-    const sub1 = getTotalXpObservable().subscribe((xp) => {
-      totalXp = xp;
-    });
-
-    const sub2 = getStreakObservable().subscribe(({ count }) => {
-      streak = count;
-    });
-
-    const profileSub = heroQuery.subscribe((profileData) => {
-      Object.assign(hero, profileData ?? fallbackProfile);
-    });
-
-    unsubscribeFns = [
-      () => sub1.unsubscribe(),
-      () => sub2.unsubscribe(),
-      () => profileSub.unsubscribe(),
-    ];
-  }
-
-  onDestroy(() => {
-    for (const fn of unsubscribeFns) fn();
-  });
 
   function rarityBadgeClasses(rarity: Rarity): string {
     switch (rarity) {

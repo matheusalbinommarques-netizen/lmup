@@ -44,15 +44,14 @@
     return 'common';
   }
 
-  // --------- derived helpers (usar como FUNÇÃO no <script>) ---------
-  const cleanSubtasks = $derived(() =>
-    subtasks.map((s) => s.trim()).filter((s) => s.length > 0),
-  );
+  // --------- helpers de subtarefas ---------
+  function getCleanSubtasks(): string[] {
+    return subtasks.map((s) => s.trim()).filter((s) => s.length > 0);
+  }
 
-  const subtaskCount = $derived(() => cleanSubtasks().length || 1);
-
-  const autoRarity = $derived(() => rarityFromSubtaskCount(subtaskCount()));
-  const autoXp = $derived(() => rarityXp[autoRarity()]);
+  const subtaskCount = $derived(getCleanSubtasks().length || 1);
+  const autoRarity = $derived(rarityFromSubtaskCount(subtaskCount));
+  const autoXp = $derived(rarityXp[autoRarity]);
 
   // ------------------------------------------------------------------
 
@@ -60,7 +59,7 @@
 
   onMount(() => {
     const sub = areasQuery.subscribe((dbAreas) => {
-      areas = dbAreas;
+      areas = dbAreas ?? [];
     });
 
     if (isEditMode && taskToEdit) {
@@ -103,10 +102,11 @@
     const taskTitle = title.trim();
     if (!taskTitle) return;
 
-    const finalSubtasks = cleanSubtasks();
-    const count = finalSubtasks.length || 1;
-    const rarity = rarityFromSubtaskCount(count);
-    const xp = rarityXp[rarity];
+    const finalSubtasks = getCleanSubtasks();
+    const rarity = autoRarity;
+    const xp = autoXp;
+
+    const now = new Date();
 
     const taskData: any = {
       areaId: Number.parseInt(areaIdStr, 10) || 0,
@@ -114,7 +114,12 @@
       rarity,
       xp,
       completed: isEditMode && taskToEdit ? taskToEdit.completed : false,
-      createdAt: isEditMode && taskToEdit ? taskToEdit.createdAt : new Date(),
+      status:
+        isEditMode && taskToEdit
+          ? ((taskToEdit as any).status ?? 'available')
+          : 'available',
+      createdAt: isEditMode && taskToEdit ? taskToEdit.createdAt : now,
+      updatedAt: now,
       description: description.trim() || null,
       subtasks: finalSubtasks,
     };
@@ -214,11 +219,11 @@
           class="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-slate-200"
         >
           <p class="font-semibold text-slate-100">
-            {rarityLabels[autoRarity()]} (+{autoXp()} XP)
+            {rarityLabels[autoRarity]} (+{autoXp} XP)
           </p>
           <p class="mt-1 text-[0.7rem] text-slate-400">
-            Calculada a partir de {subtaskCount()}
-            {subtaskCount() === 1 ? ' subtarefa' : ' subtarefas'}.
+            Calculada a partir de {subtaskCount}
+            {subtaskCount === 1 ? ' subtarefa' : ' subtarefas'}.
           </p>
           <p class="mt-1 text-[0.65rem] text-slate-500">
             1 = Comum • 3 = Rara • 5 = Épica • 10+ = Lendária

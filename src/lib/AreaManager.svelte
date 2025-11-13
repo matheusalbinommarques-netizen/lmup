@@ -13,11 +13,15 @@
   let newAreaName = $state('');
 
   // --- Conexão com DB ---
-  const areasQuery = liveQuery(() => db.areas.orderBy('nome').toArray());
+  const areasQuery = liveQuery(() => db.areas.toArray());
 
   onMount(() => {
     const sub = areasQuery.subscribe((dbAreas) => {
-      areas = dbAreas;
+      areas = (dbAreas ?? []).slice().sort((a, b) =>
+        (a.nome ?? '').localeCompare(b.nome ?? '', 'pt-BR', {
+          sensitivity: 'base',
+        }),
+      );
     });
     return () => sub.unsubscribe();
   });
@@ -31,7 +35,8 @@
     try {
       await db.areas.add({
         nome: name,
-        cor: '#888888', // Placeholder
+        color: '#888888', // placeholder
+        createdAt: new Date(),
       });
       newAreaName = '';
     } catch (error) {
@@ -56,9 +61,7 @@
 
     try {
       await db.transaction('rw', db.areas, db.tasks, async () => {
-        // 1. Reatribui missões órfãs para a área "Geral" (ID 0)
         await db.tasks.where('areaId').equals(areaId).modify({ areaId: 0 });
-        // 2. Exclui a área
         await db.areas.delete(areaId);
       });
 
@@ -73,7 +76,7 @@
 </script>
 
 <section class="flex flex-col gap-3">
-  <h3 class="text-[1.5 rem] uppercase tracking-[0.22em] text-amber-300/80">
+  <h3 class="text-[1.5rem] uppercase tracking-[0.22em] text-amber-300/80">
     Áreas de Foco
   </h3>
 
@@ -153,7 +156,7 @@
     display: none;
   }
   .no-scrollbar {
-    -ms-overflow-style: none; /* IE e Edge */
-    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 </style>

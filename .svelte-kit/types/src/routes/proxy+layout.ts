@@ -3,9 +3,8 @@
 import type { LayoutLoad } from './$types';
 
 /**
- * Layout raiz bem simples.
- * Não acessa IndexedDB nem faz contagens aqui para evitar erros de hidratação.
- * Tudo que é "dinâmico" vem dos componentes (StatsManager, Taverna, etc).
+ * O layout NÃO deve acessar IndexedDB, localStorage ou RxJS.
+ * Apenas retorna um objeto vazio para evitar erros de hidratação.
  */
 export const load = async () => {
   return {};
