@@ -39,7 +39,7 @@
     if (!browser) return;
     const root = document.documentElement;
 
-    // esses data-* batem com o que já está no app.css
+    // Esses data-* batem com o que está no app.css
     root.dataset.neuroFocus = prefs.focusMode ? 'true' : 'false';
     root.dataset.neuroLargeText = prefs.largeText ? 'true' : 'false';
     root.dataset.neuroLowStimulus = prefs.lowStimulus ? 'true' : 'false';
@@ -215,7 +215,7 @@
             class="mt-0.5 flex h-16 w-16 items-center justify-center rounded-full bg-violet-500/20 text-violet-200"
           >
             <img
-              src="art/icones/encantamento-sombrio.png"
+              src="/art/icones/encantamento-sombrio.png"
               alt="Encantamento sombrio"
               class="h-20 w-20 object-contain"
             />
@@ -245,7 +245,7 @@
           aria-pressed={darkEnchantment}
         >
           <img
-            src="art/icones/oneoff.png"
+            src="/art/icones/oneoff.png"
             alt="Alternar encantamento sombrio"
             class="h-16 w-16 object-contain"
           />
@@ -264,7 +264,7 @@
               class="mt-0.5 flex h-16 w-16 items-center justify-center rounded-full bg-violet-500/20 text-violet-200"
             >
               <img
-                src="art/icones/grimorio-backup.png"
+                src="/art/icones/grimorio-backup.png"
                 alt="Grimório de backup"
                 class="h-20 w-20 object-contain"
               />
@@ -281,9 +281,9 @@
                 </span>
               </div>
               <p class="text-xs text-slate-300/80 max-w-md">
-                Aprisiona as memórias do seu reino num grimório em
-                <code>.json</code>, para que possa levar e restaurar em qualquer
-                lugar.
+                Aprisiona as memórias do seu reino num grimório em <code
+                  >.json</code
+                >, para que possa levar e restaurar em qualquer lugar.
               </p>
             </div>
           </div>
@@ -307,7 +307,7 @@
               class="mt-0.5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-200"
             >
               <img
-                src="art/icones/ritual-restauracao.png"
+                src="/art/icones/ritual-restauracao.png"
                 alt="Ritual de restauração"
                 class="h-20 w-20 object-contain"
               />
@@ -359,7 +359,7 @@
               class="mt-0.5 flex h-16 w-16 items-center justify-center rounded-full bg-sky-500/25 text-sky-200"
             >
               <img
-                src="art/icones/sincronia-estelar.png"
+                src="/art/icones/sincronia-estelar.png"
                 alt="Sincronia estelar"
                 class="h-20 w-20 object-contain"
               />
@@ -396,7 +396,7 @@
 
       <!-- Seção de neurodiversidade -->
       <div class="mt-8 space-y-4">
-        <!-- Título estilizado (agora com mesma largura dos cards acima) -->
+        <!-- Título estilizado -->
         <div
           class="relative rounded-2xl border border-emerald-500/70
                  bg-gradient-to-r from-black via-emerald-950 to-slate-950
@@ -435,7 +435,7 @@
           </div>
         </div>
 
-        <!-- Cards um embaixo do outro -->
+        <!-- Cards -->
         <div class="space-y-3">
           <!-- Modo foco -->
           <div
@@ -443,9 +443,9 @@
           >
             <div class="space-y-1">
               <p
-                class="text-[1 rem] font-semibold uppercase tracking-[0.18em]
-         bg-gradient-to-r from-emerald-100 via-emerald-300 to-lime-200
-         bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(16,185,129,0.8)]"
+                class="text-[1rem] font-semibold uppercase tracking-[0.18em]
+                   bg-gradient-to-r from-emerald-100 via-emerald-300 to-lime-200
+                   bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(16,185,129,0.8)]"
               >
                 Modo foco
               </p>
@@ -461,7 +461,7 @@
               aria-pressed={focusMode}
             >
               <img
-                src="art/icones/oneoff.png"
+                src="/art/icones/oneoff.png"
                 alt="Alternar modo foco"
                 class="h-20 w-20 object-contain"
               />
@@ -475,9 +475,9 @@
           >
             <div class="space-y-1">
               <p
-                class="text-[1 rem] font-semibold uppercase tracking-[0.18em]
-         bg-gradient-to-r from-sky-100 via-sky-300 to-cyan-200
-         bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(56,189,248,0.85)]"
+                class="text-[1rem] font-semibold uppercase tracking-[0.18em]
+                   bg-gradient-to-r from-sky-100 via-sky-300 to-cyan-200
+                   bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(56,189,248,0.85)]"
               >
                 Texto maior
               </p>
@@ -493,7 +493,7 @@
               aria-pressed={largeText}
             >
               <img
-                src="art/icones/oneoff.png"
+                src="/art/icones/oneoff.png"
                 alt="Alternar texto maior"
                 class="h-20 w-20 object-contain"
               />
@@ -507,9 +507,9 @@
           >
             <div class="space-y-1">
               <p
-                class="text-[1 rem] font-semibold uppercase tracking-[0.18em]
-         bg-gradient-to-r from-fuchsia-100 via-fuchsia-300 to-purple-200
-         bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(192,132,252,0.9)]"
+                class="text-[1rem] font-semibold uppercase tracking-[0.18em]
+                   bg-gradient-to-r from-fuchsia-100 via-fuchsia-300 to-purple-200
+                   bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(192,132,252,0.9)]"
               >
                 Estímulos suaves
               </p>
@@ -525,7 +525,7 @@
               aria-pressed={lowStimulus}
             >
               <img
-                src="art/icones/oneoff.png"
+                src="/art/icones/oneoff.png"
                 alt="Alternar estímulos suaves"
                 class="h-20 w-20 object-contain"
               />

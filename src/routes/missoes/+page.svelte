@@ -1,5 +1,6 @@
+<!-- src/routes/missoes/+page.svelte -->
 <script lang="ts">
-  import { db, type Task, type Area } from '$services/db';
+  import { db, type Task, type Area, type XpLog } from '$services/db';
   import { liveQuery } from 'dexie';
   import { onMount } from 'svelte';
   import { xpService } from '$services/xpService';
@@ -12,15 +13,14 @@
 
   let tasks = $state<Task[]>([]);
   let areas = $state<Area[]>([]);
+  let xpLogs = $state<XpLog[]>([]);
 
   type FilterTab = 'available' | 'todo' | 'completed';
   let filter = $state<FilterTab>('available');
   let selectedAreaId = $state<'all' | number>('all');
 
-  // Tipagem baseada no próprio Task
   type Rarity = Task['rarity'];
   const rarityOrder: Rarity[] = ['common', 'rare', 'epic', 'legendary'];
-
   let selectedRarity = $state<null | Rarity>(null);
 
   let isModalOpen = $state(false);
@@ -30,13 +30,19 @@
     db.tasks.orderBy('createdAt').reverse().toArray(),
   );
   const areasQuery = liveQuery(() => db.areas.toArray());
+  const xpLogsQuery = liveQuery(() => db.xpLogs.toArray());
 
   onMount(() => {
-    const tasksSub = tasksQuery.subscribe((dbTasks) => (tasks = dbTasks));
-    const areasSub = areasQuery.subscribe((dbAreas) => (areas = dbAreas));
+    const tasksSub = tasksQuery.subscribe((dbTasks) => {
+      tasks = dbTasks ?? [];
+      syncReviewTasks(); // auto-move missões espaçadas para "A fazer" quando chegar o dia
+    });
+    const areasSub = areasQuery.subscribe((dbAreas) => (areas = dbAreas ?? []));
+    const logsSub = xpLogsQuery.subscribe((rows) => (xpLogs = rows ?? []));
     return () => {
       tasksSub.unsubscribe();
       areasSub.unsubscribe();
+      logsSub.unsubscribe();
     };
   });
 
@@ -60,10 +66,12 @@
       oldestPendingCreatedAt: number;
     };
 
-    // 👇 em vez de new Map / SvelteMap
     const statsByArea: Record<number, AreaStats> = {};
 
     for (const task of tasks) {
+      const anyTask = task as any;
+      if (anyTask.archived) continue;
+
       const areaId = (task.areaId ?? 0) as number;
 
       let stats = statsByArea[areaId];
@@ -76,7 +84,8 @@
         statsByArea[areaId] = stats;
       }
 
-      if (task.completed) {
+      const status = getTaskStatus(task);
+      if (status === 'completed') {
         stats.completedCount += 1;
       } else {
         stats.pendingTasks.push(task);
@@ -93,16 +102,12 @@
       }
     }
 
-    // só áreas com pendentes entram na disputa
     const candidates = Object.values(statsByArea).filter(
       (stats) => stats.pendingTasks.length > 0,
     );
 
     if (!candidates.length) return null;
 
-    // “Negligenciada”:
-    // 1) menos concluídas
-    // 2) em empate, pendência mais antiga
     candidates.sort((a, b) => {
       if (a.completedCount !== b.completedCount) {
         return a.completedCount - b.completedCount;
@@ -115,7 +120,6 @@
 
     const worstAreaStats = candidates[0];
 
-    // missão do dia = pendente mais antiga dessa área
     const sortedPendings = [...worstAreaStats.pendingTasks].sort((t1, t2) => {
       const aVal = t1.createdAt;
       const bVal = t2.createdAt;
@@ -133,7 +137,24 @@
 
   const suggestedDailyTask = $derived(computeSuggestedDailyTask());
 
-  // --- Retrospectiva semanal (últimos 7 dias) ---
+  // ---------- Helpers de data ----------
+  function parseYMD(dateStr: string): Date | null {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+    if (!m) return null;
+    const y = +m[1],
+      mm = +m[2],
+      d = +m[3];
+    return new Date(y, mm - 1, d);
+  }
+
+  function toDateKey(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  // --- Retrospectiva semanal (últimos 7 dias) — via xpLogs ---
   type WeeklyStats = {
     missions: number;
     xp: number;
@@ -141,41 +162,54 @@
   };
 
   function computeWeeklyStats(): WeeklyStats {
-    const now = Date.now();
-    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    const byDay: Record<string, number> = {};
+    for (const log of xpLogs) {
+      const key = log.date;
+      byDay[key] = (byDay[key] ?? 0) + (log.amount ?? 0);
+    }
+
+    const today = new Date();
+    let total = 0;
+
+    const start = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate() - 6,
+    );
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate() - i,
+      );
+      const key = toDateKey(d);
+      const dayXp = byDay[key] ?? 0;
+      total += dayXp;
+    }
 
     let missions = 0;
-    let xp = 0;
-    let gold = 0;
-
-    for (const task of tasks) {
-      if (!task.completed) continue;
-
-      const anyTask = task as any;
-      const rawDate =
-        anyTask.completedAt ?? anyTask.updatedAt ?? task.createdAt;
-
-      if (!rawDate) continue;
-
-      const d = rawDate instanceof Date ? rawDate : new Date(rawDate as any);
-      if (isNaN(d.getTime())) continue;
-
-      const diff = now - d.getTime();
-      if (diff <= sevenDaysMs && diff >= 0) {
-        missions++;
-        xp += task.xp;
-        // mesma regra de gold que você usa nos cards
-        gold += Math.floor(task.xp * 0.5);
+    for (const log of xpLogs) {
+      const d = parseYMD(log.date);
+      if (!d) continue;
+      const dFloor = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const todayFloor = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate(),
+      );
+      if (dFloor >= start && dFloor <= todayFloor) {
+        if ((log.amount ?? 0) > 0) missions++;
       }
     }
 
-    return { missions, xp, gold };
+    const gold = Math.floor(total * 0.5);
+    return { missions, xp: total, gold };
   }
 
   const weeklyStats = $derived(computeWeeklyStats());
 
   // --- Revisões com intervalo configurável ---
-
   type ReviewMission = {
     task: Task;
     intervalDays: number;
@@ -239,6 +273,7 @@
 
     for (const task of tasks) {
       const anyTask = task as any;
+      if (anyTask.archived) continue;
       if (!anyTask.reviewEnabled) continue;
 
       const interval = Number(anyTask.reviewIntervalDays ?? 0);
@@ -252,7 +287,9 @@
       if (isNaN(started.getTime())) continue;
 
       const nextReview = new Date(
-        started.getTime() + interval * 24 * 60 * 60 * 1000,
+        started.getFullYear(),
+        started.getMonth(),
+        started.getDate() + interval,
       );
 
       list.push({
@@ -276,6 +313,49 @@
     return `${day}/${month}`;
   }
 
+  // ----- AUTO-MOVER MISSÕES DE REVISÃO PARA "A FAZER" QUANDO CHEGAR O DIA -----
+  async function syncReviewTasks() {
+    const snapshot = [...tasks];
+    if (!snapshot.length) return;
+
+    const today = new Date();
+    const todayFloor = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+    );
+
+    for (const task of snapshot) {
+      if (!task.id) continue;
+      const anyTask = task as any;
+      if (anyTask.archived) continue;
+      if (!anyTask.reviewEnabled) continue;
+
+      const interval = Number(anyTask.reviewIntervalDays ?? 0);
+      if (!interval || interval <= 0) continue;
+
+      const baseRaw = anyTask.reviewStartedAt ?? task.createdAt;
+      if (!baseRaw) continue;
+      const base = baseRaw instanceof Date ? baseRaw : new Date(baseRaw as any);
+      if (isNaN(base.getTime())) continue;
+
+      const due = new Date(
+        base.getFullYear(),
+        base.getMonth(),
+        base.getDate() + interval,
+      );
+
+      const status = getTaskStatus(task);
+      if (status === 'todo') continue;
+
+      if (due <= todayFloor && status === 'available') {
+        await db.tasks.update(task.id, {
+          status: 'todo',
+        } as any);
+      }
+    }
+  }
+
   // Cores de borda/texto por raridade (cards da lista)
   const rarityColors: Record<Rarity, string> = {
     common: 'border-slate-600 text-slate-400',
@@ -284,7 +364,6 @@
     legendary: 'border-[#ffb74d] text-[#ffb74d]',
   };
 
-  // Labels em PT-BR por raridade
   const rarityLabels: Record<Rarity, string> = {
     common: 'Comum',
     rare: 'Rara',
@@ -292,7 +371,6 @@
     legendary: 'Lendária',
   };
 
-  // Estilos dos chips de filtro
   const chipBase =
     'px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors';
   const chipOn: Record<Rarity, string> = {
@@ -319,62 +397,207 @@
   }
 
   // --- Status da missão: Disponível / A Fazer / Concluída ---
+  type TaskStatusLocal = 'available' | 'todo' | 'completed';
 
-  type TaskStatus = 'available' | 'todo' | 'completed';
-
-  function getTaskStatus(task: Task): TaskStatus {
+  function getTaskStatus(task: Task): TaskStatusLocal {
     const anyTask = task as any;
+    if (anyTask.archived) return 'completed';
+
+    const reviewEnabled = anyTask.reviewEnabled === true;
+
+    if (reviewEnabled) {
+      // Para missões de revisão, confiamos em "status"
+      if (anyTask.status === 'todo') return 'todo';
+      if (anyTask.status === 'completed') return 'completed';
+      return 'available';
+    }
 
     if (task.completed || anyTask.status === 'completed') return 'completed';
     if (anyTask.status === 'todo') return 'todo';
 
-    // default para tarefas antigas / sem status
     return 'available';
   }
 
-  // Lista filtrada (status + área + raridade)
+  // Lista filtrada (status + área + raridade + ordenação das "A fazer")
   let filteredTasks = $derived(
-    tasks
-      .filter((t) => {
-        const status = getTaskStatus(t);
-        if (filter === 'completed') return status === 'completed';
-        if (filter === 'todo') return status === 'todo';
-        return status === 'available';
-      })
-      .filter((t) =>
-        selectedAreaId === 'all' ? true : t.areaId === selectedAreaId,
-      )
-      .filter((t) => (selectedRarity ? t.rarity === selectedRarity : true)),
+    (() => {
+      const base = tasks
+        .filter((t) => !(t as any).archived)
+        .filter((t) => {
+          const status = getTaskStatus(t);
+          if (filter === 'completed') return status === 'completed';
+          if (filter === 'todo') return status === 'todo';
+          return status === 'available';
+        })
+        .filter((t) =>
+          selectedAreaId === 'all' ? true : t.areaId === selectedAreaId,
+        )
+        .filter((t) => (selectedRarity ? t.rarity === selectedRarity : true));
+
+      if (filter !== 'todo') {
+        return base;
+      }
+
+      const copy = [...base];
+      copy.sort((a, b) => {
+        const anyA = a as any;
+        const anyB = b as any;
+
+        const orderA =
+          typeof anyA.todoOrder === 'number'
+            ? anyA.todoOrder
+            : Number.MAX_SAFE_INTEGER;
+        const orderB =
+          typeof anyB.todoOrder === 'number'
+            ? anyB.todoOrder
+            : Number.MAX_SAFE_INTEGER;
+
+        if (orderA !== orderB) return orderA - orderB;
+
+        const aTime =
+          a.createdAt instanceof Date
+            ? a.createdAt.getTime()
+            : new Date(a.createdAt as any).getTime();
+        const bTime =
+          b.createdAt instanceof Date
+            ? b.createdAt.getTime()
+            : new Date(b.createdAt as any).getTime();
+        return aTime - bTime;
+      });
+
+      return copy;
+    })(),
   );
 
+  // Completar missão
   async function toggleTask(id: number | undefined) {
     if (!id) return;
     const task = tasks.find((t) => t.id === id);
     if (!task) return;
 
-    // Não permite "desmarcar" missão concluída
-    if (task.completed) return;
+    const anyTask = task as any;
+    const now = new Date();
 
-    // Marca como concluída
+    // Missão com revisão espaçada:
+    // - ganha XP/Gold
+    // - registra log
+    // - volta para "disponível"
+    // - "completed" serve apenas para estatísticas históricas
+    if (anyTask.reviewEnabled) {
+      await xpService.addXp(task.xp, task.areaId ?? null);
+
+      await db.tasks.update(id, {
+        completed: true,
+        status: 'available',
+        completedAt: now,
+        updatedAt: now,
+        reviewStartedAt: now,
+      } as any);
+
+      return;
+    }
+
+    // Missão normal: só marca como concluída uma vez
+    if (task.completed) {
+      // Já concluída — usar botão "Voltar" se quiser desfazer
+      return;
+    }
+
     await db.tasks.update(id, {
       completed: true,
       status: 'completed',
+      completedAt: now,
+      updatedAt: now,
     } as any);
 
-    // Dá XP (e gold é calculado dentro do xpService)
-    await xpService.addXp(task.xp);
+    await xpService.addXp(task.xp, task.areaId ?? null);
   }
 
+  // Marcar / desmarcar "A fazer"
   async function toggleTodo(task: Task) {
     if (!task.id) return;
     const current = getTaskStatus(task);
     if (current === 'completed') return;
 
-    const newStatus: TaskStatus = current === 'todo' ? 'available' : 'todo';
+    const anyTask = task as any;
+    const newStatus: TaskStatusLocal =
+      current === 'todo' ? 'available' : 'todo';
 
-    await db.tasks.update(task.id, {
-      status: newStatus,
-    } as any);
+    const update: any = { status: newStatus };
+
+    // Se estamos colocando em "A fazer" pela 1ª vez, definimos uma ordem
+    if (newStatus === 'todo' && typeof anyTask.todoOrder !== 'number') {
+      const todoTasks = tasks.filter(
+        (t) => !(t as any).archived && getTaskStatus(t) === 'todo',
+      );
+      const maxOrder = todoTasks.reduce((max, t) => {
+        const n = (t as any).todoOrder;
+        return typeof n === 'number' && n > max ? n : max;
+      }, 0);
+      update.todoOrder = maxOrder + 1;
+    }
+
+    await db.tasks.update(task.id, update);
+  }
+
+  // Reordenar missões "A fazer"
+  async function reorderTodo(task: Task, direction: 'up' | 'down') {
+    if (!task.id) return;
+    if (getTaskStatus(task) !== 'todo') return;
+
+    const todoTasks = tasks
+      .filter((t) => !(t as any).archived && getTaskStatus(t) === 'todo')
+      .slice();
+
+    // Usa o mesmo critério do filteredTasks p/ ordenar antes de mexer
+    todoTasks.sort((a, b) => {
+      const anyA = a as any;
+      const anyB = b as any;
+
+      const orderA =
+        typeof anyA.todoOrder === 'number'
+          ? anyA.todoOrder
+          : Number.MAX_SAFE_INTEGER;
+      const orderB =
+        typeof anyB.todoOrder === 'number'
+          ? anyB.todoOrder
+          : Number.MAX_SAFE_INTEGER;
+
+      if (orderA !== orderB) return orderA - orderB;
+
+      const aTime =
+        a.createdAt instanceof Date
+          ? a.createdAt.getTime()
+          : new Date(a.createdAt as any).getTime();
+      const bTime =
+        b.createdAt instanceof Date
+          ? b.createdAt.getTime()
+          : new Date(b.createdAt as any).getTime();
+      return aTime - bTime;
+    });
+
+    const index = todoTasks.findIndex((t) => t.id === task.id);
+    if (index === -1) return;
+
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= todoTasks.length) return;
+
+    const current = todoTasks[index] as any;
+    const target = todoTasks[newIndex] as any;
+
+    const currentOrder =
+      typeof current.todoOrder === 'number' ? current.todoOrder : index;
+    const targetOrder =
+      typeof target.todoOrder === 'number' ? target.todoOrder : newIndex;
+
+    await db.transaction('rw', db.tasks, async () => {
+      await db.tasks.update(todoTasks[index].id!, {
+        todoOrder: targetOrder,
+      } as any);
+      await db.tasks.update(todoTasks[newIndex].id!, {
+        todoOrder: currentOrder,
+      } as any);
+    });
   }
 
   function openAddTaskModal() {
@@ -392,6 +615,40 @@
     taskToEdit = null;
   }
 
+  // Voltar missão concluída para disponível
+  // - Missão normal: perde XP + gold da conclusão
+  // - Missão espaçada: NÃO perde XP nem gold (só volta pro fluxo)
+  async function revertCompletedToAvailable(task: Task) {
+    if (!task.id) return;
+    const anyTask = task as any;
+
+    const status = getTaskStatus(task);
+    if (status !== 'completed') return;
+
+    const isReview = anyTask.reviewEnabled === true;
+    const now = new Date();
+
+    if (!isReview && task.xp && task.xp > 0) {
+      // remove XP e gold da conclusão (xpService.removeXp já gera log negativo)
+      await xpService.removeXp(task.xp, task.areaId ?? null);
+    }
+
+    const update: any = {
+      status: 'available',
+      archived: false,
+      updatedAt: now,
+    };
+
+    if (!isReview) {
+      // Para missões normais, remoção real da conclusão
+      update.completed = false;
+      update.completedAt = null;
+    }
+
+    await db.tasks.update(task.id, update);
+  }
+
+  // Excluir missão (soft delete): NÃO tira XP nem gold, continua nas estatísticas
   async function handleDeleteTask(task: Task) {
     if (!task.id) return;
     if (!confirm(`Tem certeza que deseja apagar a missão "${task.title}"?`)) {
@@ -399,15 +656,39 @@
     }
 
     try {
-      if (task.completed) {
-        await xpService.removeXp(task.xp);
-      }
-      await db.tasks.delete(task.id);
+      await db.tasks.update(task.id, {
+        archived: true,
+      } as any);
     } catch (error) {
-      console.error('Erro ao excluir missão:', error);
+      console.error('Erro ao arquivar missão:', error);
       alert('Falha ao excluir missão.');
     }
   }
+
+  // Dia da semana mais produtivo (baseado em todos os logs)
+  const bestWeekdayLabel = $derived(
+    (() => {
+      if (!xpLogs.length) return '—';
+      const byWeekday = [0, 0, 0, 0, 0, 0, 0]; // domingo..sábado
+      for (const log of xpLogs) {
+        const d = parseYMD(log.date);
+        if (!d) continue;
+        byWeekday[d.getDay()] += log.amount ?? 0;
+      }
+      const labels = [
+        'Domingo',
+        'Segunda',
+        'Terça',
+        'Quarta',
+        'Quinta',
+        'Sexta',
+        'Sábado',
+      ];
+      let best = 0;
+      for (let i = 1; i < 7; i++) if (byWeekday[i] > byWeekday[best]) best = i;
+      return byWeekday[best] === 0 ? '—' : labels[best];
+    })(),
+  );
 </script>
 
 {#if isModalOpen}
@@ -437,20 +718,7 @@
           onclick={closeReviewConfig}
           aria-label="Fechar"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            class="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M6 6l12 12M18 6L6 18"
-            />
-          </svg>
+          ✕
         </button>
       </header>
 
@@ -523,14 +791,11 @@
   {#if suggestedDailyTask}
     {@const task = suggestedDailyTask}
     <section
-      class="mx-auto w-full max-w-4xl rounded-2xl border border-emerald-500/60 bg-emerald-950/40 px-4 py-3
-             shadow-[0_0_20px_rgba(16,185,129,0.35)] flex flex-col gap-3
-             md:flex-row md:items-center md:justify-between"
+      class="mx-auto w-full max-w-4xl rounded-2xl border border-emerald-500/60 bg-emerald-950/40 px-4 py-3 shadow-[0_0_20px_rgba(16,185,129,0.35)] flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
     >
       <div class="flex items-start gap-3">
         <div
-          class="mt-1 hidden h-9 w-9 items-center justify-center rounded-xl
-                 bg-emerald-500/20 text-2xl md:flex"
+          class="mt-1 hidden h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/20 text-2xl md:flex"
         >
           📌
         </div>
@@ -556,17 +821,14 @@
 
       <div class="mt-2 flex items-center gap-3 md:mt-0">
         <span
-          class="inline-flex items-center gap-1 rounded-full bg-amber-400/20
-                 px-3 py-1 text-[0.7rem] font-semibold text-emerald-100"
+          class="inline-flex items-center gap-1 rounded-full bg-amber-400/20 px-3 py-1 text-[0.7rem] font-semibold text-emerald-100"
         >
           +{task.xp} XP
         </span>
 
         <button
           type="button"
-          class="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold
-                 text-slate-950 shadow-[0_0_14px_rgba(16,185,129,0.6)]
-                 hover:bg-emerald-400 transition-colors"
+          class="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-slate-950 shadow-[0_0_14px_rgba(16,185,129,0.6)] hover:bg-emerald-400 transition-colors"
           onclick={() => {
             selectedAreaId = task.areaId ?? 'all';
             filter = 'available';
@@ -580,20 +842,14 @@
 
   <!-- Retrospectiva semanal -->
   <section
-    class="mx-auto w-full max-w-4xl rounded-2xl
-         border border-amber-500/70
-         bg-slate-950/70
-         px-4 py-3
-         shadow-[0_0_26px_rgba(16,185,129,0.65)]
-         flex flex-col gap-3
-         md:flex-row md:items-center md:justify-between"
+    class="mx-auto w-full max-w-4xl rounded-2xl border border-amber-500/70 bg-slate-950/70 px-4 py-3 shadow-[0_0_26px_rgba(16,185,129,0.65)] flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
   >
     <div>
-      <p class="text-[1.5 rem] uppercase tracking-[0.22em] text-amber-400">
+      <p class="text-[0.8rem] uppercase tracking-[0.22em] text-amber-400">
         Retrospectiva da última semana
       </p>
       <p class="mt-1 text-xs text-slate-400">
-        Considerando as missões concluídas nos últimos 7 dias.
+        Considerando as missões concluídas (logs de XP) nos últimos 7 dias.
       </p>
     </div>
 
@@ -627,21 +883,21 @@
       </div>
     </div>
   </section>
-  <!-- Tudo abaixo alinhado à mesma largura do StatsManager -->
+
+  <!-- XP por área + comparação consigo mesmo -->
   <div class="mx-auto flex w-full max-w-4xl flex-col gap-6">
-    <!-- XP por área + comparação consigo mesmo + áreas -->
     <div class="mt-6 grid gap-6 lg:grid-cols-2">
       <XpByAreaChart />
       <SelfComparisonPanel />
     </div>
+
     <!-- Missões para Revisão -->
     <section
-      class="mx-auto w-full max-w-4xl rounded-2xl border border-sky-500/60 bg-slate-900/70 px-4 py-3
-           shadow-[0_0_20px_rgba(56,189,248,0.45)]"
+      class="mx-auto w-full max-w-4xl rounded-2xl border border-sky-500/60 bg-slate-900/70 px-4 py-3 shadow-[0_0_20px_rgba(56,189,248,0.45)]"
     >
       <div class="flex items-center justify-between gap-3 mb-2">
         <div>
-          <p class="text-[1.5 rem] uppercase tracking-[0.22em] text-sky-300/80">
+          <p class="text-[0.7rem] uppercase tracking-[0.22em] text-sky-300/80">
             Missões para Revisão
           </p>
           <p class="mt-1 text-xs text-slate-400">
@@ -686,7 +942,7 @@
                 class="shrink-0 rounded-lg bg-sky-500 px-3 py-1 text-[0.7rem] font-semibold text-slate-950 hover:bg-sky-400 transition-colors"
                 onclick={() => {
                   selectedAreaId = task.areaId ?? 'all';
-                  filter = task.completed ? 'completed' : 'available';
+                  filter = getTaskStatus(task);
                 }}
               >
                 Ir para missão
@@ -696,12 +952,12 @@
         </div>
       {/if}
     </section>
-    <!-- Card de filtro de raridade -->
+
+    <!-- Filtro de raridade + áreas -->
     <section
-      class="mx-auto w-full max-w-4xl rounded-2xl border border-amber-500/60 bg-slate-900/70 px-4 py-3
-           shadow-[0_0_20px_rgba(56,189,248,0.45)]"
+      class="mx-auto w-full max-w-4xl rounded-2xl border border-amber-500/60 bg-slate-900/70 px-4 py-3 shadow-[0_0_20px_rgba(56,189,248,0.45)]"
     >
-      <div class="flex items-center justify-between mb-2">
+      <div class="flex items-center justify-between mb-2 gap-2">
         <AreaManager bind:selectedId={selectedAreaId} />
 
         <p class="text-xs text-slate-400">
@@ -745,7 +1001,6 @@
       class="flex items-center justify-between gap-4 bg-slate-900/50 p-2 rounded-xl border border-slate-800"
     >
       <div class="flex gap-2">
-        <!-- Disponíveis (azul) -->
         <button
           class="px-4 py-2 rounded-lg text-sm font-medium transition-colors {filter ===
           'available'
@@ -756,7 +1011,6 @@
           Disponíveis
         </button>
 
-        <!-- A Fazer (verde) -->
         <button
           class="px-4 py-2 rounded-lg text-sm font-medium transition-colors {filter ===
           'todo'
@@ -767,7 +1021,6 @@
           A Fazer
         </button>
 
-        <!-- Concluídas (dourado) -->
         <button
           class="px-4 py-2 rounded-lg text-sm font-medium transition-colors {filter ===
           'completed'
@@ -806,23 +1059,25 @@
           <div
             class="group flex items-center gap-4 p-4 bg-slate-900/80 border rounded-xl transition-colors {rarityColors[
               task.rarity
-            ]} {task.completed ? 'opacity-50 grayscale' : 'shadow-md'}"
+            ]} {getTaskStatus(task) === 'completed'
+              ? 'opacity-50 grayscale'
+              : 'shadow-md'}"
           >
             <!-- Botão de completar -->
             <button
               onclick={() => toggleTask(task.id)}
               class="shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all
-                {task.completed
+                {getTaskStatus(task) === 'completed'
                 ? 'bg-green-500/20 border-green-500 text-green-500'
                 : 'border-slate-600 hover:border-[#ffb74d] text-transparent'}"
               aria-label="Completar missão"
             >
-              {#if task.completed}✓{/if}
+              {#if getTaskStatus(task) === 'completed'}✓{/if}
             </button>
 
             <!-- Título / área / raridade -->
             <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 mb-1">
+              <div class="flex items-center gap-2 mb-1 flex-wrap">
                 <span
                   class="text-xs font-bold uppercase tracking-wider opacity-70 {rarityColors[
                     task.rarity
@@ -833,7 +1088,7 @@
                 <span
                   class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400"
                 >
-                  {areaMap[task.areaId] || 'Sem Área'}
+                  {areaMap[task.areaId ?? 0] || 'Sem Área'}
                 </span>
 
                 <!-- Botão A Fazer -->
@@ -850,7 +1105,9 @@
                 </button>
               </div>
               <h3
-                class="text-slate-100 font-medium break-words whitespace-pre-line {task.completed
+                class="text-slate-100 font-medium break-words whitespace-pre-line {getTaskStatus(
+                  task,
+                ) === 'completed'
                   ? 'line-through'
                   : ''}"
               >
@@ -860,7 +1117,6 @@
 
             <!-- Recompensas (XP + Gold) -->
             <div class="shrink-0 flex flex-col items-end gap-1 text-xs">
-              <!-- XP -->
               <div class="flex items-center gap-1">
                 <img
                   src="/art/icones/icon-xp.png"
@@ -870,7 +1126,6 @@
                 <span class="text-[#eec39a] font-bold">+{task.xp} XP</span>
               </div>
 
-              <!-- Gold (50% do XP) -->
               <div class="flex items-center gap-1 text-amber-200">
                 <img
                   src="/art/icones/gold-icon.png"
@@ -883,10 +1138,31 @@
               </div>
             </div>
 
-            <!-- Ações (revisão / editar / excluir) -->
+            <!-- Ações (ordem / revisão / editar / voltar / excluir) -->
             <div
               class="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
             >
+              {#if getTaskStatus(task) === 'todo'}
+                <button
+                  type="button"
+                  class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-sky-300 hover:bg-slate-800 text-xs"
+                  onclick={() => reorderTodo(task, 'up')}
+                  aria-label="Subir na ordem"
+                  title="Subir na ordem"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-sky-300 hover:bg-slate-800 text-xs"
+                  onclick={() => reorderTodo(task, 'down')}
+                  aria-label="Descer na ordem"
+                  title="Descer na ordem"
+                >
+                  ↓
+                </button>
+              {/if}
+
               <!-- Configurar revisão -->
               <button
                 onclick={() => openReviewConfig(task)}
@@ -894,27 +1170,9 @@
                 aria-label="Configurar revisão"
               >
                 {#if isReviewEnabled(task)}
-                  <!-- bookmark cheio -->
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    class="w-4 h-4"
-                    fill="currentColor"
-                  >
-                    <path d="M6 4.5h12v15l-6-3-6 3z" />
-                  </svg>
+                  <span title="Revisão ativada">🔖</span>
                 {:else}
-                  <!-- bookmark contorno -->
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    class="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                  >
-                    <path d="M6 4.5h12v15l-6-3-6 3z" />
-                  </svg>
+                  <span title="Ativar revisão">🏷️</span>
                 {/if}
               </button>
 
@@ -923,46 +1181,48 @@
                 class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-primary hover:bg-slate-800"
                 aria-label="Editar"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke-width="2"
-                  stroke="currentColor"
-                  class="w-4 h-4"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A.75.75 0 0 1 17.25 19.75H6.75A.75.75 0 0 1 6 18.75v-12z"
-                  />
-                </svg>
+                ✏️
               </button>
+
+              {#if getTaskStatus(task) === 'completed'}
+                <button
+                  onclick={() => revertCompletedToAvailable(task)}
+                  class="w-8 h-8 flex items-center justify-center rounded-lg text-amber-300 hover:text-amber-200 hover:bg-slate-800"
+                  aria-label="Voltar para disponível"
+                  title="Voltar para disponível (perde XP/Gold, exceto missões de revisão)"
+                >
+                  ↩
+                </button>
+              {/if}
 
               <button
                 onclick={() => handleDeleteTask(task)}
                 class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-slate-800"
                 aria-label="Excluir"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke-width="2"
-                  stroke="currentColor"
-                  class="w-4 h-4"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M6 7.5h12M9.75 7.5v9.75m4.5-9.75v9.75M9 4.5h6a.75.75 0 0 1 .75.75V6H8.25v-.75A.75.75 0 0 1 9 4.5zm-3 2.25h12v12A2.25 2.25 0 0 1 15.75 21H8.25A.75.75 0 0 1 6 18.75v-12z"
-                  />
-                </svg>
+                🗑️
               </button>
             </div>
           </div>
         {/each}
       {/if}
     </div>
+
+    <!-- Dia da semana mais forte -->
+    <section
+      class="mx-auto w-full max-w-4xl rounded-2xl border border-green-500/60 bg-slate-950/70 px-4 py-3 shadow-[0_0_20px_rgba(56,189,248,0.45)]"
+    >
+      <p
+        class="text-center text-[0.65rem] uppercase tracking-[0.18em] text-green-300/80"
+      >
+        Dia da semana mais forte
+      </p>
+      <p class="text-center text-lg font-semibold text-emerald-300">
+        {bestWeekdayLabel}
+      </p>
+      <p class="text-[0.7rem] text-slate-400 text-center">
+        Considerando todo o histórico, é quando você tende a render mais.
+      </p>
+    </section>
   </div>
 </div>

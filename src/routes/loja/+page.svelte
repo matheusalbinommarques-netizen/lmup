@@ -1,15 +1,17 @@
+<!-- src/routes/loja/+page.svelte -->
 <script lang="ts">
   import ShopItemCard from '$lib/shop/ShopItemCard.svelte';
   import type { ShopItem, ShopCategory } from '$lib/shop/types';
   import { onMount } from 'svelte';
   import { liveQuery } from 'dexie';
-  import { db } from '$services/db';
+  import { db, type OwnedShopItem } from '$services/db';
   import PageTitleCard from '$lib/PageTitleCard.svelte';
+  import { buyItem, equipItemById } from '$services/shopService';
 
-  // categoria selecionada (runes)
+  // categoria selecionada
   let selectedCategory = $state<ShopCategory>('highlight');
 
-  // itens da loja (por enquanto mock, depois você pode puxar do DB se quiser)
+  // mock dos itens disponíveis na vitrine
   const items: ShopItem[] = [
     {
       id: 1,
@@ -90,26 +92,68 @@
     },
   ];
 
-  // ---------- SALDO REAL DE GOLD (mesma lógica da loja antiga) ----------
-
+  // ---------- saldo real de Gold ----------
   const goldQuery = liveQuery(async () => {
     const profile = await db.profile.get(1);
     return profile?.gold ?? 0;
   });
-
   let gold = $state(0);
 
   onMount(() => {
-    const sub = goldQuery.subscribe((value) => {
-      gold = value;
-    });
-
+    const sub = goldQuery.subscribe((value) => (gold = value));
     return () => sub.unsubscribe();
   });
 
-  // ----------------------------------------------------------------------
+  // ---------- itens já comprados (owned) ----------
+  let ownedSet = $state<Set<number>>(new Set());
+  const ownedQuery = liveQuery(() => db.ownedShopItems.toArray());
 
-  // itens filtrados pela categoria (runes: $derived)
+  onMount(() => {
+    const sub = ownedQuery.subscribe((rows: OwnedShopItem[]) => {
+      ownedSet = new Set(rows.map((r) => r.itemId));
+    });
+    return () => sub.unsubscribe();
+  });
+
+  // ---------- UI state por item (comprando...) ----------
+  let buyingId = $state<number | null>(null);
+
+  async function handleBuy(item: ShopItem) {
+    if (item.status === 'soon') return;
+    if (ownedSet.has(item.id)) return;
+
+    if (gold < item.price) {
+      alert('Gold insuficiente.');
+      return;
+    }
+
+    try {
+      buyingId = item.id;
+      const res = await buyItem(item);
+      if (!res.ok) {
+        if (res.code === 'no_funds') alert('Gold insuficiente.');
+        else if (res.code === 'profile_missing')
+          alert('Perfil não encontrado.');
+        else alert('Não foi possível concluir a compra.');
+      } else if (res.code === 'already_owned') {
+        // idempotente — já possuído
+      } else {
+        // sucesso — liveQuery atualiza gold e ownedSet automaticamente
+        // opcional: auto-equip
+        // if (item.category === 'theme' || item.category === 'profile') {
+        //   await equipItemById(item.id);
+        // }
+      }
+    } finally {
+      buyingId = null;
+    }
+  }
+
+  async function handleEquip(item: ShopItem) {
+    await equipItemById(item.id);
+  }
+
+  // ---------- filtro de itens ----------
   const filteredItems = $derived(
     selectedCategory === 'highlight'
       ? items
@@ -135,26 +179,22 @@
     background-repeat: no-repeat;
   "
 >
-  <!-- overlay para legibilidade -->
   <div class="pointer-events-none absolute inset-0 bg-slate-950/85"></div>
 
-  <!-- conteúdo da loja -->
   <main class="relative z-10 mx-auto max-w-6xl px-4 py-6 md:px-6 md:py-8">
-    <!-- Hero da loja -->
     <PageTitleCard
       title="Loja da Taverna"
       subtitle="Gaste seu Gold em itens exclusivos para personalizar sua experiência e aprimorar sua jornada."
       align="center"
     />
 
-    <!-- Card de saldo (usando gold real do DB) -->
+    <!-- Saldo -->
     <section
       class="mb-6 flex flex-col gap-3 rounded-2xl border border-slate-800
              bg-slate-900/80 px-4 py-3 md:flex-row md:items-center md:justify-between"
     >
-      <!-- AQUI ESTÁ A ÚNICA MUDANÇA: label + pill lado a lado -->
       <div class="flex items-center gap-3">
-        <p class="text-[0.7 rem] uppercase tracking-[0.18em] text-slate-400">
+        <p class="text-[0.7rem] uppercase tracking-[0.18em] text-slate-400">
           Seu saldo
         </p>
         <div
@@ -189,7 +229,7 @@
       </button>
     </section>
 
-    <!-- Tabs de categoria -->
+    <!-- Tabs -->
     <nav
       class="mb-4 flex flex-wrap items-center gap-2 text-[0.75rem]"
       aria-label="Categorias da loja"
@@ -209,12 +249,19 @@
       {/each}
     </nav>
 
-    <!-- Grid de itens -->
+    <!-- Grid -->
     <section>
       {#if filteredItems.length > 0}
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {#each filteredItems as item (item.id)}
-            <ShopItemCard {item} />
+            <ShopItemCard
+              {item}
+              owned={ownedSet.has(item.id)}
+              buying={buyingId === item.id}
+              canAfford={gold >= item.price}
+              onBuy={() => handleBuy(item)}
+              onEquip={() => handleEquip(item)}
+            />
           {/each}
         </div>
       {:else}

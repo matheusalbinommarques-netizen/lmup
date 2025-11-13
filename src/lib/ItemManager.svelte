@@ -1,23 +1,40 @@
+<!-- src/lib/ItemManager.svelte -->
 <script lang="ts">
-  import { db, type Item } from '../services/db';
+  import { db, type Task } from '$services/db';
   import { liveQuery } from 'dexie';
   import { browser } from '$app/environment';
-  import { addXp, checkStreak } from '../services/xpService';
+  import { xpService } from '$services/xpService';
 
   // props
   let { areaId } = $props<{ areaId: number }>();
 
-  let items = $state<Item[]>([]);
+  // Representação simplificada só pra UI
+  type LegacyItem = {
+    id?: number;
+    areaId: number;
+    titulo: string;
+    xp: number;
+  };
+
+  let items = $state<LegacyItem[]>([]);
   let novoItemNome = $state('');
   let novoItemXp = $state(10);
 
+  // liveQuery só no client
   if (browser) {
     const sub = liveQuery(() =>
-      db.items.where('areaId').equals(areaId).toArray(),
-    ).subscribe((rows) => {
-      items = rows;
+      db.tasks.where('areaId').equals(areaId).toArray(),
+    ).subscribe((rows: Task[]) => {
+      items =
+        (rows ?? []).map((task) => ({
+          id: task.id,
+          areaId: task.areaId ?? areaId,
+          titulo: task.title,
+          xp: task.xp ?? 0,
+        })) ?? [];
     });
 
+    // cleanup
     $effect(() => () => sub.unsubscribe());
   }
 
@@ -26,19 +43,49 @@
     const xp = Number(novoItemXp) || 0;
     if (!nome || xp <= 0) return;
 
-    await db.items.add({ areaId, nome, xp, done: false });
+    // Cria uma Task mínima compatível com o schema atual
+    const now = new Date();
+
+    const taskData: Task = {
+      title: nome,
+      description: null,
+      areaId,
+      xp,
+      rarity: 'common',
+      status: 'available',
+      completed: false,
+      archived: false,
+      createdAt: now,
+      updatedAt: now,
+      completedAt: null,
+      reviewEnabled: false,
+      reviewIntervalDays: null,
+      reviewStartedAt: null,
+    };
+
+    await db.tasks.add(taskData);
+
     novoItemNome = '';
     novoItemXp = 10;
   }
 
-  async function completar(item: Item) {
-    await addXp(item.xp);
-    checkStreak();
-    await db.items.delete(item.id!);
+  async function completar(item: LegacyItem) {
+    const xp = item.xp ?? 0;
+
+    if (xp > 0) {
+      // usa o serviço novo unificado de XP, já marcando a área
+      await xpService.addXp(xp, item.areaId);
+    }
+
+    if (item.id != null) {
+      await db.tasks.delete(item.id);
+    }
   }
 
-  async function remover(item: Item) {
-    await db.items.delete(item.id!);
+  async function remover(item: LegacyItem) {
+    if (item.id != null) {
+      await db.tasks.delete(item.id);
+    }
   }
 
   // IDs únicos por área pra acessibilidade
@@ -76,7 +123,7 @@
       </div>
 
       <button
-        class="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-md transition-colors duração-150 ease-in-out hover:bg-primary/90"
+        class="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-md transition-colors duration-150 ease-in-out hover:bg-primary/90"
         onclick={addItem}
       >
         Adicionar
@@ -92,8 +139,9 @@
           class="flex items-center justify-between rounded-xl border border-border/60 bg-card/80 px-3 py-2 text-sm shadow-sm"
         >
           <div class="flex items-center gap-2">
-            <span class="text-text">{item.nome}</span>
-            <span class="ml-1 text-xs text-text-secondary">(+{item.xp} XP)</span
+            <span class="text-text">{item.titulo}</span>
+            <span class="ml-1 text-xs text-text-secondary"
+              >(+{item.xp ?? 0} XP)</span
             >
           </div>
 

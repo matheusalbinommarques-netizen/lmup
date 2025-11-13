@@ -2,6 +2,7 @@
 <script lang="ts">
   import { db, type Profile } from '$services/db';
   import { onMount } from 'svelte';
+  import { getXpForNextLevel, getTitleForLevel } from '$services/xpService';
 
   // Props (runes Svelte 5)
   let { profile, close } = $props<{ profile: Profile; close: () => void }>();
@@ -77,24 +78,35 @@
 
       if (!existing) {
         // Primeiro perfil após reset / instalação
-        await db.profile.put({
+        const now = new Date();
+        const level = 1;
+        const xpNext = getXpForNextLevel(level);
+        const title = getTitleForLevel(level);
+
+        const newProfile: Profile = {
           id: 1,
           name: trimmedName,
-          title: 'Nobre Aventureiro Nv. 1',
-          level: 1,
+          title,
+          level,
           xpCurrent: 0,
-          xpNext: 100,
-          avatarUrl: localAvatarUrl,
+          xpNext,
           totalXpEarned: 0,
+          gold: 0,
+          avatarUrl: localAvatarUrl,
           currentStreak: 0,
-          lastCompletionDate: '',
+          lastCompletionDate: null,
           activeCompanionId: 1,
-        });
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        await db.profile.put(newProfile);
       } else {
-        // Atualiza somente identidade visual
+        // Atualiza somente identidade visual + updatedAt
         await db.profile.update(1, {
           name: trimmedName,
           avatarUrl: localAvatarUrl,
+          updatedAt: new Date(),
         });
       }
 

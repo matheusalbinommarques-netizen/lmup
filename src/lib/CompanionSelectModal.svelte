@@ -7,31 +7,55 @@
   // --- Props (Svelte 5 runes) ---
   let { close } = $props<{ close: () => void }>();
 
+  // Companion com metadados extras que o DB não exige mas a UI usa
+  type CompanionWithMeta = Companion & {
+    type: string;
+    imagePath: string;
+  };
+
+  type PetCard = CompanionWithMeta & {
+    requiredLevel: number;
+    isUnlocked: boolean;
+    isActive: boolean;
+  };
+
   // --- Seed local (mesmo conjunto do Bestiário) ---
-  const PET_SEED: Companion[] = [
+  const PET_SEED: CompanionWithMeta[] = [
     {
       id: 1,
+      key: 'wolf',
       name: 'Lobo Etéreo',
+      rarity: 'rare',
       type: 'Caçador das Sombras',
       imagePath: '/art/pets/pet-wolf-final.png',
+      unlocked: false,
     },
     {
       id: 2,
+      key: 'lich',
       name: 'Lorde Lich',
+      rarity: 'epic',
       type: 'Mago Imortal',
       imagePath: '/art/pets/pet-lich-final.png',
+      unlocked: false,
     },
     {
       id: 3,
+      key: 'dragon',
       name: 'Dragão Ancião',
+      rarity: 'legendary',
       type: 'Guardião de Chamas',
       imagePath: '/art/pets/pet-dragon-final.png',
+      unlocked: false,
     },
     {
       id: 4,
+      key: 'aberration',
       name: 'Aberração Abissal',
+      rarity: 'epic',
       type: 'Eco do Vazio',
       imagePath: '/art/pets/pet-aberration-final.png',
+      unlocked: false,
     },
   ];
 
@@ -43,14 +67,8 @@
     { imagePath: '/art/pets/pet-aberration-final.png', requiredLevel: 20 },
   ];
 
-  type PetCard = Companion & {
-    requiredLevel: number;
-    isUnlocked: boolean;
-    isActive: boolean;
-  };
-
   // --- Estado do banco / herói ---
-  let companions = $state<Companion[]>([]);
+  let companions = $state<CompanionWithMeta[]>([]);
   let heroLevel = $state<number>(1);
   let activeCompanionId = $state<number>(1);
 
@@ -60,11 +78,13 @@
   async function ensureCompanionsSeeded() {
     const count = await db.companions.count();
     if (count === 0) {
+      // salva apenas o que o schema exige; extras (type/imagePath) também são guardados
       await db.companions.bulkAdd(PET_SEED);
     }
   }
 
-  function getRequiredLevelForImage(imagePath: string): number {
+  function getRequiredLevelForImage(imagePath?: string): number {
+    if (!imagePath) return 1;
     const cfg = PET_LEVELS.find((c) => c.imagePath === imagePath);
     return cfg?.requiredLevel ?? 1;
   }
@@ -77,13 +97,13 @@
     return list
       .map((pet) => {
         const requiredLevel = getRequiredLevelForImage(pet.imagePath);
-        const isUnlocked = lvl >= requiredLevel;
+        const isUnlockedByLevel = lvl >= requiredLevel;
         const isActive = pet.id === activeCompanionId;
 
         return {
           ...pet,
           requiredLevel,
-          isUnlocked,
+          isUnlocked: isUnlockedByLevel,
           isActive,
         };
       })
@@ -102,19 +122,21 @@
 
     // Profile / herói
     const heroSub = heroQuery.subscribe((profileData) => {
-      const profile = profileData ?? {
-        id: 1,
-        name: 'Seu herói',
-        title: 'Aprendiz de Aventuras',
-        level: 1,
-        xpCurrent: 0,
-        xpNext: 100,
-        avatarUrl: '',
-        totalXpEarned: 0,
-        currentStreak: 0,
-        lastCompletionDate: '',
-        activeCompanionId: 1,
-      };
+      const profile =
+        profileData ??
+        ({
+          id: 1,
+          name: 'Seu herói',
+          title: 'Aprendiz de Aventuras',
+          level: 1,
+          xpCurrent: 0,
+          xpNext: 100,
+          avatarUrl: '',
+          totalXpEarned: 0,
+          currentStreak: 0,
+          lastCompletionDate: null,
+          activeCompanionId: 1,
+        } as any);
 
       heroLevel = profile.level ?? 1;
       activeCompanionId = profile.activeCompanionId ?? 1;
@@ -122,7 +144,7 @@
 
     // Pets
     const compSub = companionsQuery.subscribe((list) => {
-      companions = list ?? [];
+      companions = (list ?? []) as CompanionWithMeta[];
     });
 
     // Acessibilidade: Esc fecha modal
@@ -169,7 +191,10 @@
     }
 
     try {
+      // Atualiza perfil e marca esse pet como desbloqueado
       await db.profile.update(1, { activeCompanionId: pet.id });
+      await db.companions.update(pet.id, { unlocked: true });
+
       activeCompanionId = pet.id;
       close();
     } catch (err) {

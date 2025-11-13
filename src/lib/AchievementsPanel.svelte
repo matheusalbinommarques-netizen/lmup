@@ -1,12 +1,8 @@
 <!-- src/lib/AchievementsPanel.svelte -->
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import { liveQuery } from 'dexie';
-  import {
-    getTotalXpObservable,
-    getStreakObservable,
-    calcularNivel,
-  } from '../services/xpService';
+  import { getLevelStateFromTotalXp } from '$services/xpService';
   import {
     ALL_ACHIEVEMENTS,
     SECTIONS,
@@ -14,13 +10,8 @@
     type AchievementStats,
     type Rarity,
     type Category,
-  } from '../services/achievementsCatalog';
-  import {
-    db,
-    type Task,
-    type Companion,
-    type UnlockedCompanion,
-  } from '../services/db';
+  } from '$services/achievementsCatalog';
+  import { db, type Task, type Companion, type Profile } from '$services/db';
 
   // regra simples: 100 XP por “nível de área”
   const XP_PER_AREA_LEVEL = 100;
@@ -28,6 +19,9 @@
   // estados globais (xp/streak/nível)
   let totalXp = $state(0);
   let streak = $state(0);
+
+  const levelInfo = $derived(getLevelStateFromTotalXp(totalXp));
+  const level = $derived(levelInfo.level ?? 1);
 
   // estatísticas de missões / áreas
   let completedMissions = $state(0);
@@ -47,20 +41,17 @@
   // placeholder pra quando tiver tracking real
   let companionInteractions = $state(0);
 
-  const levelInfo = $derived(calcularNivel(totalXp));
-  const level = $derived(levelInfo.level ?? 1);
+  onMount(() => {
+    // Perfil -> totalXp / streak
+    const profileSub = liveQuery(() => db.profile.get(1)).subscribe(
+      (profile) => {
+        const p = profile as Profile | undefined;
+        totalXp = p?.totalXpEarned ?? 0;
+        streak = p?.currentStreak ?? 0;
+      },
+    );
 
-  let unsubscribeFns: (() => void)[] = [];
-
-  if (typeof window !== 'undefined') {
-    const sub1 = getTotalXpObservable().subscribe((xp) => {
-      totalXp = xp;
-    });
-
-    const sub2 = getStreakObservable().subscribe(({ count }) => {
-      streak = count;
-    });
-
+    // Missões
     const tasksSub = liveQuery(() => db.tasks.toArray()).subscribe(
       (tasks: Task[]) => {
         const allTasks = tasks ?? [];
@@ -103,7 +94,8 @@
         let localMaxAreaLevel = 0;
         let localAreasAtLeastLevel20 = 0;
 
-        for (const xp of Object.values(xpPerArea)) {
+        const xpValues = Object.values(xpPerArea) as number[];
+        for (const xp of xpValues) {
           const areaLevel = Math.floor(xp / XP_PER_AREA_LEVEL);
           if (areaLevel > localMaxAreaLevel) {
             localMaxAreaLevel = areaLevel;
@@ -118,52 +110,42 @@
       },
     );
 
-    const companionsSub = liveQuery(async () => {
-      const [companions, unlocked] = await Promise.all([
-        db.companions.toArray(),
-        db.unlockedCompanions.toArray(),
-      ]);
-
-      return { companions, unlocked };
-    }).subscribe(
-      ({
-        companions,
-        unlocked,
-      }: {
-        companions: Companion[];
-        unlocked: UnlockedCompanion[];
-      }) => {
+    // Companheiros (usando campo `unlocked` do próprio companion)
+    const companionsSub = liveQuery(() => db.companions.toArray()).subscribe(
+      (companions: Companion[]) => {
         const allCompanions = companions ?? [];
-        const unlockedList = unlocked ?? [];
+        const unlockedList = allCompanions.filter(
+          (c) => (c as any).unlocked === true,
+        );
 
         unlockedCompanionsCount = unlockedList.length;
 
-        const unlockedIds = unlockedList
-          .map((u) => Number(u.companionId))
-          .filter((id) => Number.isFinite(id));
+        const lower = (v: string | undefined | null) => (v ?? '').toLowerCase();
 
-        hasWolf = unlockedIds.includes(1);
-        hasDragon = unlockedIds.includes(3);
-
-        const allIds = allCompanions
-          .map((c) => c.id)
-          .filter((id): id is number => typeof id === 'number');
+        hasWolf = unlockedList.some(
+          (c) =>
+            lower(c.key).includes('wolf') ||
+            lower(c.name).includes('lobo') ||
+            c.id === 1,
+        );
+        hasDragon = unlockedList.some(
+          (c) =>
+            lower(c.key).includes('drag') ||
+            lower(c.name).includes('drag') ||
+            c.id === 3,
+        );
 
         allCompanionsUnlocked =
-          allIds.length > 0 && allIds.every((id) => unlockedIds.includes(id));
+          allCompanions.length > 0 &&
+          unlockedList.length === allCompanions.length;
       },
     );
 
-    unsubscribeFns = [
-      () => sub1.unsubscribe(),
-      () => sub2.unsubscribe(),
-      () => tasksSub.unsubscribe(),
-      () => companionsSub.unsubscribe(),
-    ];
-  }
-
-  onDestroy(() => {
-    for (const fn of unsubscribeFns) fn();
+    return () => {
+      profileSub.unsubscribe();
+      tasksSub.unsubscribe();
+      companionsSub.unsubscribe();
+    };
   });
 
   const achievements = $derived(
@@ -228,7 +210,7 @@
       case 'lendário':
         return 'bg-amber-400/25 text-amber-100';
       default:
-        return '';
+        return 'bg-slate-700/60 text-slate-100';
     }
   }
 

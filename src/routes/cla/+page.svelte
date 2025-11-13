@@ -1,3 +1,4 @@
+<!-- src/routes/cla/+page.svelte -->
 <script lang="ts">
   import { db, type Profile } from '$services/db';
   import { liveQuery } from 'dexie';
@@ -64,6 +65,7 @@
     currentStreak: 0,
     lastCompletionDate: '',
     activeCompanionId: 1,
+    gold: 0, // 👈 campo exigido pelo tipo Profile
   };
 
   const hero = $state<Profile>(fallbackProfile);
@@ -99,7 +101,7 @@
         title: p.title,
         isUser: false,
         avatarUrl: undefined,
-        rank: index + 1, // valor inicial, vamos sobrescrever depois
+        rank: index + 1,
       }));
 
       const userPlayer: ClanPlayer = {

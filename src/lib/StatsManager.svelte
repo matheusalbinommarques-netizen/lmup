@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import { liveQuery } from 'dexie';
   import { db, type Profile } from '$services/db';
+  import { getXpForNextLevel } from '$services/xpService';
 
   const fallbackProfile: Profile = {
     id: 1,
@@ -10,32 +11,42 @@
     title: 'Nobre aventureiro',
     level: 1,
     xpCurrent: 0,
-    xpNext: 100,
+    xpNext: 100, // ainda existe no schema, mas o painel usa getXpForNextLevel()
     avatarUrl: '',
     totalXpEarned: 0,
     currentStreak: 0,
     lastCompletionDate: '',
     activeCompanionId: 1,
+    gold: 0,
   };
 
+  // estado do herói
   const hero = $state<Profile>(fallbackProfile);
 
+  // stream do Dexie
   const heroQuery = liveQuery(() => db.profile.get(1));
 
   onMount(() => {
     const sub = heroQuery.subscribe((profileData) => {
       Object.assign(hero, profileData ?? fallbackProfile);
     });
-
     return () => sub.unsubscribe();
   });
 
+  // derivadas exibidas no card
   const totalXp = $derived(hero.totalXpEarned ?? 0);
   const level = $derived(hero.level ?? 1);
   const currentLevelXp = $derived(hero.xpCurrent ?? 0);
-  const xpToNextLevel = $derived(hero.xpNext ?? 100);
+
+  // curva unificada: próximo nível vem da função (não do campo xpNext)
+  const xpToNextLevel = $derived(getXpForNextLevel(level));
+
+  // usado no texto “Falta X XP…”
+  const remainingXp = $derived(Math.max(xpToNextLevel - currentLevelXp, 0));
+
   const streak = $derived(hero.currentStreak ?? 0);
 
+  // largura da barra (0–100)
   const xpProgress = $derived(
     xpToNextLevel > 0
       ? Math.min(100, (currentLevelXp / xpToNextLevel) * 100)
@@ -86,14 +97,13 @@
             <span class="text-sm">🔥</span>
 
             {#if streak > 0}
-              <span class="font-semibold">
-                {streak} dia{streak === 1 ? '' : 's'}
-              </span>
+              <span class="font-semibold"
+                >{streak} dia{streak === 1 ? '' : 's'}</span
+              >
               <span
                 class="text-[0.65rem] uppercase tracking-[0.18em] text-amber-200/80"
+                >sequência</span
               >
-                sequência
-              </span>
             {:else}
               <span class="font-semibold">Comece hoje</span>
             {/if}
@@ -101,9 +111,7 @@
 
           <p class="text-[0.7rem] text-slate-400">
             XP total:
-            <span class="font-semibold text-slate-100">
-              {totalXp}
-            </span>
+            <span class="font-semibold text-slate-100">{totalXp}</span>
           </p>
         </div>
       </div>
@@ -139,21 +147,14 @@
 
             <!-- badge / card do nível -->
             <div
-              class="inline-flex items-center justify-center
-           rounded-md border border-amber-200/80
-           bg-slate-950/90 px-4 py-1
-           text-sm font-semibold text-amber-200/80
-           shadow-[0_0_14px_rgba(56,189,248,0.6)]"
+              class="inline-flex items-center justify-center rounded-md border border-amber-200/80 bg-slate-950/90 px-4 py-1 text-sm font-semibold text-amber-200/80 shadow-[0_0_14px_rgba(56,189,248,0.6)]"
             >
               {level}
             </div>
 
             <p class="text-xs text-slate-300/85 max-w-xs">
-              Falta
-              <span class="font-semibold text-sky-100">
-                {Math.max(xpToNextLevel - currentLevelXp, 0)}
-              </span>
-              XP para o próximo nível.
+              Falta <span class="font-semibold text-sky-100">{remainingXp}</span
+              > XP para o próximo nível.
             </p>
           </div>
         </div>

@@ -59,17 +59,13 @@ export type LayoutData = Expand<
   Omit<
     LayoutParentData,
     keyof Kit.LoadProperties<
-      Awaited<
-        ReturnType<typeof import('../../../../src/routes/+layout.js').load>
-      >
+      Awaited<ReturnType<typeof import('./proxy+layout.js').load>>
     >
   > &
     OptionalUnion<
       EnsureDefined<
         Kit.LoadProperties<
-          Awaited<
-            ReturnType<typeof import('../../../../src/routes/+layout.js').load>
-          >
+          Awaited<ReturnType<typeof import('./proxy+layout.js').load>>
         >
       >
     >

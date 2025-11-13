@@ -1,175 +1,194 @@
 // src/services/db.ts
 import Dexie, { type Table } from 'dexie';
 
-// --- INTERFACES DO BANCO DE DADOS ---
-
+/**
+ * PERFIL DO HERÓI
+ */
 export interface Profile {
-  id?: number; // Sempre será 1
+  id?: number;
   name: string;
   title: string;
   level: number;
   xpCurrent: number;
   xpNext: number;
+  totalXpEarned: number;
+
+  // Deixamos opcional para não quebrar fallbacks antigos
+  gold?: number;
+
   avatarUrl?: string;
-  totalXpEarned: number; // Da V3 (Santuário)
-  currentStreak: number; // Da V4 (Streak)
-  lastCompletionDate: string; // Da V4 (Streak)
-  activeCompanionId: number; // Da V5 (Pets)
-  gold?: number; // Da V6 (moeda da loja)
+  currentStreak?: number;
+  lastCompletionDate?: string | null; // 'YYYY-MM-DD'
+  activeCompanionId?: number | null;
+
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
 }
 
+/**
+ * ÁREAS (Carreira, Geral, LMU, etc.)
+ */
 export interface Area {
   id?: number;
   nome: string;
-  cor: string;
+  color?: string | null;
+  icon?: string | null;
+  createdAt?: Date | string;
 }
 
-// Log de XP diário para estatísticas
-export type XpLog = {
-  id?: number;
-  date: string; // 'YYYY-MM-DD'
-  amount: number; // XP ganho nesse dia
-};
+/**
+ * MISSÕES / TAREFAS
+ */
+export type TaskRarity = 'common' | 'rare' | 'epic' | 'legendary';
+
+export type TaskStatus = 'available' | 'todo' | 'completed';
 
 export interface Task {
   id?: number;
-  areaId: number;
   title: string;
+
+  // Aceita string ou null (pra bater com os modais que enviam `null`)
+  description?: string | null;
+
+  areaId?: number; // referência a Area.id
   xp: number;
-  rarity: 'common' | 'rare' | 'epic' | 'legendary';
-  completed: boolean;
+  rarity: TaskRarity;
+
+  // status / fluxo
+  status?: TaskStatus;
+  completed?: boolean;
+  archived?: boolean;
+
+  createdAt: Date | string;
+  updatedAt?: Date | string;
+  completedAt?: Date | string | null;
+
+  // ordenação da lista "A fazer"
+  todoOrder?: number;
+
+  // revisão espaçada
+  reviewEnabled?: boolean;
+  reviewIntervalDays?: number | null;
+  reviewStartedAt?: Date | string | null;
+}
+
+/**
+ * LOG DE XP POR DIA / ÁREA
+ */
+export interface XpLog {
+  id?: number;
+  date: string; // 'YYYY-MM-DD'
+  amount: number; // pode ser positivo ou negativo
+  areaId: number | null;
   createdAt: Date;
 }
 
-// Schema antigo (V1)
-interface ItemV1 {
-  id: number;
+/**
+ * INVENTÁRIO (itens cosméticos, etc.)
+ * (estrutura mínima — pode ter mais campos em outros arquivos)
+ */
+export interface InventoryItem {
+  id?: number;
+  key: string; // ex: 'avatar_frame_01'
+  type: string; // ex: 'avatar-frame', 'background'
+  owned: boolean;
+  equipped?: boolean;
+  acquiredAt?: Date | string;
+}
+
+/**
+ * ITENS DE LOJA (catálogo da loja no banco, não o tipo da UI)
+ */
+export interface ShopItem {
+  id?: number;
+  key: string; // identificador interno do item
+  type: string; // ex: 'theme', 'effect', 'profile'
+  name: string;
+  description?: string;
+  price: number;
+  createdAt?: Date | string;
+}
+
+/**
+ * ITENS DE LOJA POSSUÍDOS PELO JOGADOR
+ * (ligação entre um item de catálogo e o jogador)
+ */
+export interface OwnedShopItem {
+  id?: number;
+  itemId: number; // referencia ShopItem.id
+  acquiredAt: Date | string;
+}
+
+/**
+ * COMPANHEIROS / PETS
+ * Compatível com o Bestiário e a Taverna:
+ * - name, type, imagePath (como nas seeds)
+ * - key/rarity opcionais (pra achievements)
+ */
+export interface Companion {
+  id?: number;
+  key?: string;
+  name: string;
+  type: string;
+  imagePath: string;
+  rarity?: TaskRarity;
+  unlocked?: boolean;
+}
+
+/**
+ * TABELA LEGADA DE ITENS POR ÁREA (ItemManager)
+ * Estrutura equivalente ao ItemV1 do app antigo.
+ */
+export interface LegacyItem {
+  id?: number;
   areaId: number;
   titulo: string;
   xp?: number;
 }
 
-// Companheiros (pets)
-export interface Companion {
-  id?: number;
-  name: string;
-  type: string;
-  imagePath: string;
-}
+/**
+ * BANCO DEXIE
+ */
+export class LevelMeUpDB extends Dexie {
+  profile!: Table<Profile, number>;
+  tasks!: Table<Task, number>;
+  areas!: Table<Area, number>;
+  xpLogs!: Table<XpLog, number>;
 
-export interface UnlockedCompanion {
-  id?: number;
-  companionId: number;
-}
+  inventory!: Table<InventoryItem, number>;
+  shopItems!: Table<ShopItem, number>;
+  ownedShopItems!: Table<OwnedShopItem, number>;
 
-// --- CLASSE DO BANCO DE DADOS ---
+  companions!: Table<Companion, number>;
 
-export class MySubClassedDexie extends Dexie {
-  profile!: Table<Profile>;
-  areas!: Table<Area>;
-  tasks!: Table<Task>;
-  items!: Table<ItemV1>; // Tabela antiga da v1
-  companions!: Table<Companion>;
-  unlockedCompanions!: Table<UnlockedCompanion>;
-  xpLogs!: Table<XpLog>;
+  // tabela legada de itens por área (ItemManager)
+  items!: Table<LegacyItem, number>;
 
   constructor() {
-    super('levelMeUpDb');
+    super('LevelMeUpDB');
 
-    // Versão 1: Schema antigo
-    this.version(1).stores({
-      areas: '++id, nome',
-      items: '++id, areaId, titulo',
+    /**
+     * IMPORTANTE:
+     * - Versão 2 para evitar o warning "Schema was extended without increasing db.version()".
+     * - Aqui listamos TODAS as stores atuais do app.
+     */
+    this.version(2).stores({
+      profile: '++id',
+      tasks:
+        '++id, areaId, completed, status, archived, reviewEnabled, createdAt, completedAt',
+      areas: '++id',
+      xpLogs: '++id, date, areaId',
+
+      inventory: '++id, key, type, owned, equipped',
+      shopItems: '++id, key, type, price',
+      ownedShopItems: '++id, itemId',
+
+      companions: '++id, key, rarity, unlocked',
+
+      // tabela de itens legados por área (ItemManager)
+      items: '++id, areaId',
     });
-
-    // Versão 2: Novo Schema (profile, tasks)
-    this.version(2)
-      .stores({
-        profile: '++id',
-        areas: '++id, nome',
-        tasks: '++id, areaId, completed, createdAt',
-        items: '++id, areaId, titulo',
-      })
-      .upgrade(async (tx) => {
-        const itemsCount = await tx.table('items').count();
-        if (itemsCount > 0) {
-          await tx
-            .table('items')
-            .toCollection()
-            .modify(async (item: ItemV1) => {
-              await tx.table('tasks').add({
-                id: item.id,
-                areaId: item.areaId,
-                title: item.titulo,
-                xp: item.xp || 50,
-                rarity: 'common',
-                completed: false,
-                createdAt: new Date(),
-              });
-            });
-        }
-      });
-
-    // Versão 3: adiciona totalXpEarned em profile
-    this.version(3)
-      .stores({
-        profile: '++id, totalXpEarned',
-        areas: '++id, nome',
-        tasks: '++id, areaId, completed, createdAt',
-        items: '++id, areaId, titulo',
-      })
-      .upgrade(() => {});
-
-    // Versão 4: campos de streak em profile
-    this.version(4)
-      .stores({
-        profile: '++id, totalXpEarned, currentStreak, lastCompletionDate',
-        areas: '++id, nome',
-        tasks: '++id, areaId, completed, createdAt',
-        items: '++id, areaId, titulo',
-      })
-      .upgrade(() => {});
-
-    // Versão 5: Companheiros (pets)
-    this.version(5)
-      .stores({
-        profile:
-          '++id, totalXpEarned, currentStreak, lastCompletionDate, activeCompanionId',
-        areas: '++id, nome',
-        tasks: '++id, areaId, completed, createdAt',
-        items: '++id, areaId, titulo',
-        companions: '++id, name',
-        unlockedCompanions: '++id, companionId',
-      })
-      .upgrade(() => {
-        // Nada especial por enquanto
-      });
-
-    // Versão 6: Gold + tabela de logs de XP
-    this.version(6)
-      .stores({
-        profile:
-          '++id, totalXpEarned, currentStreak, lastCompletionDate, activeCompanionId, gold',
-        areas: '++id, nome',
-        tasks: '++id, areaId, completed, createdAt',
-        items: '++id, areaId, titulo',
-        companions: '++id, name',
-        unlockedCompanions: '++id, companionId',
-        xpLogs: '++id, date', // índice por data pra facilitar agregações
-      })
-      .upgrade(async (tx) => {
-        // Garante que todo profile tenha gold inicializado
-        await tx
-          .table('profile')
-          .toCollection()
-          .modify((p: any) => {
-            if (typeof p.gold !== 'number') {
-              p.gold = 0;
-            }
-          });
-        // xpLogs começa vazio mesmo, será preenchido quando você logar XP
-      });
   }
 }
 
-export const db = new MySubClassedDexie();
+export const db = new LevelMeUpDB();
