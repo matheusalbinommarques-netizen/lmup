@@ -3,9 +3,14 @@
   import { onMount } from 'svelte';
   import { liveQuery } from 'dexie';
   import { db, type XpLog } from '$services/db';
+  import {
+    subscribeRange,
+    setCurrentRange,
+    getCurrentRange,
+    type ChartRange,
+  } from '$services/xpRangeService';
 
-  // Range do gráfico
-  type ChartRange = '7d' | '30d' | '6m' | '1y';
+  // range compartilhado com o donut
   const RANGES: ChartRange[] = ['7d', '30d', '6m', '1y'];
 
   type ChartPoint = { label: string; value: number };
@@ -21,8 +26,8 @@
   // Histórico de XP vindo do Dexie
   let xpLogs = $state<XpLog[]>([]);
 
-  // Range selecionado
-  let selectedRange = $state<ChartRange>('7d');
+  // Range selecionado (global)
+  let selectedRange = $state<ChartRange>(getCurrentRange());
 
   const xpLogsQuery = liveQuery(() => db.xpLogs.toArray());
 
@@ -30,7 +35,15 @@
     const sub = xpLogsQuery.subscribe((rows) => {
       xpLogs = rows ?? [];
     });
-    return () => sub.unsubscribe();
+
+    const unsubRange = subscribeRange((range) => {
+      selectedRange = range;
+    });
+
+    return () => {
+      sub.unsubscribe();
+      unsubRange();
+    };
   });
 
   // ---------- Helpers de data ----------
@@ -331,7 +344,7 @@
         {#each RANGES as range (range)}
           <button
             type="button"
-            onclick={() => (selectedRange = range)}
+            onclick={() => setCurrentRange(range)}
             class={`rounded-full px-3 py-1.5 border transition-colors ${
               selectedRange === range
                 ? 'border-emerald-400/80 bg-emerald-500/15 text-emerald-200 shadow-[0_0_12px_rgba(16,185,129,0.6)]'

@@ -6,6 +6,7 @@
   import EditProfileModal from '$lib/EditProfileModal.svelte';
   import CompanionSelectModal from '$lib/CompanionSelectModal.svelte';
   import PageTitleCard from '$lib/PageTitleCard.svelte';
+  import { getTitleForLevel } from '$services/xpService';
 
   // --- Estado do Herói (Fallback) ---
   const fallbackProfile: Profile = {
@@ -34,6 +35,11 @@
     const heroSub = heroQuery.subscribe((profileData) => {
       const data = profileData || fallbackProfile;
       Object.assign(hero, data);
+
+      // garante que o título sempre corresponde ao nível atual
+      const level = hero.level || 1;
+      hero.level = level;
+      hero.title = getTitleForLevel(level);
     });
 
     const compSub = allCompanionsQuery.subscribe((companionData) => {

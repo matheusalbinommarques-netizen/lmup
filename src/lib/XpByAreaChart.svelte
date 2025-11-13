@@ -1,30 +1,98 @@
 <!-- src/lib/XpByAreaChart.svelte -->
 <script lang="ts">
-  import { db, type Task, type Area } from '$services/db';
+  import { db, type Area, type XpLog } from '$services/db';
   import { liveQuery } from 'dexie';
   import { onMount } from 'svelte';
+  import {
+    getCurrentRange,
+    subscribeRange,
+    type ChartRange,
+  } from '$services/xpRangeService';
 
   // Estado reativo (runes)
-  let completedTasks = $state<Task[]>([]);
+  let xpLogs = $state<XpLog[]>([]);
   let areas = $state<Area[]>([]);
+  let selectedRange = $state<ChartRange>(getCurrentRange());
 
-  // Assinaturas Dexie
+  // Assinaturas Dexie + range global
   onMount(() => {
-    const tasksSub = liveQuery(() =>
-      db.tasks.filter((t) => t.completed === true).toArray(),
-    ).subscribe((rows) => {
-      completedTasks = rows ?? [];
+    const logsSub = liveQuery(() => db.xpLogs.toArray()).subscribe((rows) => {
+      xpLogs = rows ?? [];
     });
 
     const areasSub = liveQuery(() => db.areas.toArray()).subscribe((rows) => {
       areas = rows ?? [];
     });
 
+    const rangeUnsub = subscribeRange((range) => {
+      selectedRange = range;
+    });
+
     return () => {
-      tasksSub.unsubscribe();
+      logsSub.unsubscribe();
       areasSub.unsubscribe();
+      rangeUnsub();
     };
   });
+
+  // ---------- Helpers de data ----------
+  function parseYMD(dateStr: string | undefined | null): Date | null {
+    if (!dateStr) return null;
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return null;
+    const [yStr, mStr, dStr] = parts;
+    const y = Number(yStr);
+    const m = Number(mStr);
+    const d = Number(dStr);
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d);
+  }
+
+  function isLogWithinRange(log: XpLog, range: ChartRange): boolean {
+    const d = parseYMD(log.date);
+    if (!d) return false;
+
+    const today = new Date();
+    const todayDay = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+    );
+    const logDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+    if (range === '7d' || range === '30d') {
+      const daysBack = range === '7d' ? 6 : 29;
+      const start = new Date(
+        todayDay.getFullYear(),
+        todayDay.getMonth(),
+        todayDay.getDate() - daysBack,
+      );
+      return logDay >= start && logDay <= todayDay;
+    }
+
+    const firstDayThisMonth = new Date(
+      todayDay.getFullYear(),
+      todayDay.getMonth(),
+      1,
+    );
+
+    if (range === '6m') {
+      const startMonth = new Date(
+        firstDayThisMonth.getFullYear(),
+        firstDayThisMonth.getMonth() - 5,
+        1,
+      );
+      return d >= startMonth && d <= todayDay;
+    } else {
+      // '1y'
+      const startMonth = new Date(
+        firstDayThisMonth.getFullYear(),
+        firstDayThisMonth.getMonth() - 11,
+        1,
+      );
+      return d >= startMonth && d <= todayDay;
+    }
+  }
 
   // Mapa idArea -> nome
   const areaMap = $derived(
@@ -39,13 +107,19 @@
 
   type XpByAreaMap = Record<string, number>;
 
-  // Acúmulo de XP por área (apenas concluídas) — como VALOR (não função)
+  // Acúmulo de XP por área dentro do RANGE atual (usando logs)
   const xpByArea: XpByAreaMap = $derived(
     (() => {
       const acc: XpByAreaMap = {};
-      for (const t of completedTasks) {
-        const label = areaMap[t.areaId] ?? 'Geral';
-        acc[label] = (acc[label] ?? 0) + (t.xp ?? 0);
+      if (!xpLogs.length) return acc;
+
+      for (const log of xpLogs) {
+        if (!isLogWithinRange(log, selectedRange)) continue;
+
+        const areaId = (log.areaId ?? 0) as number;
+        const label = areaMap[areaId] ?? 'Geral';
+
+        acc[label] = (acc[label] ?? 0) + (log.amount ?? 0);
       }
       return acc;
     })(),
@@ -83,7 +157,7 @@
   const segments: Segment[] = $derived(
     (() => {
       if (!hasData) return [] as Segment[];
-      let acc = 0;
+      let accLen = 0;
       const out: Segment[] = [];
       for (let i = 0; i < values.length; i++) {
         const v = values[i];
@@ -94,10 +168,10 @@
           value: v,
           percent: p,
           len,
-          offset: acc,
+          offset: accLen,
           color: colorForIndex(i),
         });
-        acc += len;
+        accLen += len;
       }
       return out;
     })(),
@@ -106,6 +180,21 @@
   function pct(p: number): string {
     return `${Math.round(p * 100)}%`;
   }
+
+  const currentRangeLabel = $derived(
+    (() => {
+      switch (selectedRange) {
+        case '7d':
+          return 'Últimos 7 dias';
+        case '30d':
+          return 'Últimos 30 dias';
+        case '6m':
+          return 'Últimos 6 meses';
+        case '1y':
+          return 'Últimos 12 meses';
+      }
+    })(),
+  );
 </script>
 
 <section
@@ -117,6 +206,7 @@
       Estatísticas
     </p>
     <h2 class="text-xl font-semibold text-slate-100">XP por Área</h2>
+    <p class="text-[0.7rem] text-slate-500 mt-1">{currentRangeLabel}</p>
     <div
       class="mx-auto mt-3 h-px w-24 bg-gradient-to-r from-transparent via-slate-700 to-transparent"
     ></div>
@@ -206,7 +296,9 @@
               </div>
               <div class="flex items-center gap-2 shrink-0">
                 <span class="text-slate-400">{pct(seg.percent)}</span>
-                <span class="text-amber-300 font-semibold">{seg.value} XP</span>
+                <span class="text-amber-300 font-semibold">
+                  {seg.value} XP
+                </span>
               </div>
             </li>
           {/each}
@@ -215,7 +307,9 @@
     </div>
   {:else}
     <div class="flex items-center justify-center h-64 lg:h-80 text-slate-500">
-      <p>Complete missões para ver suas estatísticas aqui!</p>
+      <p>
+        Complete missões no período selecionado para ver suas estatísticas aqui!
+      </p>
     </div>
   {/if}
 </section>

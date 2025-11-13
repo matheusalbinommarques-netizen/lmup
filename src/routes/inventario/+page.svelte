@@ -1,272 +1,340 @@
+<!-- src/routes/inventario/+page.svelte -->
 <script lang="ts">
+  import { onMount } from 'svelte';
+  import { liveQuery } from 'dexie';
+  import { db, type InventoryItem, type Profile } from '$services/db';
   import PageTitleCard from '$lib/PageTitleCard.svelte';
 
-  // --- Tipos locais do inventário (mock) ---
-  type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
-  type InvType = 'arma' | 'armadura' | 'consumivel' | 'miscelanea';
+  // Estado
+  let items = $state<InventoryItem[]>([]);
+  let profile = $state<Profile | null>(null);
 
-  type InventoryItem = {
-    id: number;
-    name: string;
-    type: InvType;
-    rarity: Rarity;
-    description: string;
-    quantity: number;
-    slot?: string;
+  type InventoryFilter =
+    | 'all'
+    | 'avatar-frame'
+    | 'background'
+    | 'companion'
+    | 'badge';
+
+  let activeFilter = $state<InventoryFilter>('all');
+
+  const inventoryQuery = liveQuery(() => db.inventory.toArray());
+  const profileQuery = liveQuery(() =>
+    db.profile.where('id').equals(1).first(),
+  );
+
+  onMount(() => {
+    const invSub = inventoryQuery.subscribe((rows) => {
+      items = rows ?? [];
+    });
+
+    const profSub = profileQuery.subscribe((p) => {
+      profile = p ?? null;
+    });
+
+    return () => {
+      invSub.unsubscribe();
+      profSub.unsubscribe();
+    };
+  });
+
+  // -------- Helpers de exibição --------
+  function typeLabel(type: string): string {
+    switch (type) {
+      case 'avatar-frame':
+        return 'Molduras de Avatar';
+      case 'background':
+        return 'Fundos & Cenários';
+      case 'companion':
+        return 'Companheiros';
+      case 'badge':
+        return 'Emblemas & Troféus';
+      default:
+        return type;
+    }
+  }
+
+  function filterLabel(filter: InventoryFilter): string {
+    switch (filter) {
+      case 'all':
+        return 'Tudo';
+      case 'avatar-frame':
+        return 'Molduras';
+      case 'background':
+        return 'Fundos';
+      case 'companion':
+        return 'Companheiros';
+      case 'badge':
+        return 'Emblemas';
+    }
+  }
+
+  // Agrupamento por tipo sem usar Map (usa Record)
+  type Group = {
+    type: string;
+    items: InventoryItem[];
   };
 
-  // Labels e classes por raridade
-  const rarityLabels: Record<Rarity, string> = {
-    common: 'Comum',
-    rare: 'Raro',
-    epic: 'Épico',
-    legendary: 'Lendário',
-  };
+  const groups = $derived<Group[]>(
+    (() => {
+      const acc: Record<string, InventoryItem[]> = {};
 
-  const rarityClasses: Record<Rarity, string> = {
-    common:
-      'border-slate-700/80 bg-slate-900/80 text-slate-200 shadow-sm shadow-slate-900/40',
-    rare: 'border-blue-500/60 bg-slate-900/80 text-blue-100 shadow-lg shadow-blue-500/30',
-    epic: 'border-purple-500/70 bg-slate-900/80 text-purple-100 shadow-lg shadow-purple-500/40',
-    legendary:
-      'border-amber-400/80 bg-slate-900/90 text-amber-100 shadow-xl shadow-amber-400/40',
-  };
+      for (const item of items) {
+        // só mostrar o que o jogador realmente possui
+        if (!item.owned) continue;
 
-  const typeLabels: Record<InvType, string> = {
-    arma: 'Ferramentas',
-    armadura: 'Equipamentos',
-    consumivel: 'Consumíveis',
-    miscelanea: 'Miscelânea',
-  };
+        const key = item.type || 'outros';
+        if (!acc[key]) {
+          acc[key] = [];
+        }
+        acc[key].push(item);
+      }
 
-  // Mock atual (substitua depois por dados do DB se quiser)
-  const items: InventoryItem[] = [
-    {
-      id: 1,
-      name: 'Caderno Arcano',
-      type: 'arma',
-      rarity: 'epic',
-      description:
-        'Cada página preenchida concede +10 de foco e +5 de clareza.',
-      quantity: 1,
-      slot: 'Mão principal',
-    },
-    {
-      id: 2,
-      name: 'Caneca da Cafeína Infinita',
-      type: 'consumivel',
-      rarity: 'rare',
-      description:
-        'Enche sozinha todas as manhãs. Aumenta a disposição em sessões longas.',
-      quantity: 3,
-    },
-    {
-      id: 3,
-      name: 'Fones Anti-Distracção',
-      type: 'armadura',
-      rarity: 'legendary',
-      description:
-        'Cria uma barreira mágica que silencia notificações e conversas aleatórias.',
-      quantity: 1,
-      slot: 'Cabeça',
-    },
-    {
-      id: 4,
-      name: 'Marca-Páginas Dimensional',
-      type: 'miscelanea',
-      rarity: 'common',
-      description: 'Sempre volta exatamente ao ponto onde você parou.',
-      quantity: 5,
-    },
-    {
-      id: 5,
-      name: 'Tocha da Motivação',
-      type: 'consumivel',
-      rarity: 'epic',
-      description:
-        'Acenda quando bater a preguiça. Ilumina o próximo passo do caminho.',
-      quantity: 2,
-    },
-    {
-      id: 6,
-      name: 'Mochila do Dev Andarilho',
-      type: 'armadura',
-      rarity: 'rare',
-      description:
-        'Capacidade extra para carregar ideias, livros e dispositivos mágicos.',
-      quantity: 1,
-      slot: 'Costas',
-    },
+      const result: Group[] = Object.entries(acc).map(([type, arr]) => ({
+        type,
+        items: arr.sort((a, b) => a.key.localeCompare(b.key)),
+      }));
+
+      result.sort((a, b) => typeLabel(a.type).localeCompare(typeLabel(b.type)));
+
+      return result;
+    })(),
+  );
+
+  const filteredGroups = $derived(
+    (() => {
+      if (activeFilter === 'all') return groups;
+      return groups.filter((g) => g.type === activeFilter);
+    })(),
+  );
+
+  const totalOwned = $derived(items.filter((i) => i.owned).length);
+  const totalEquipped = $derived(items.filter((i) => i.equipped).length);
+  const gold = $derived(profile?.gold ?? 0);
+
+  const filters: InventoryFilter[] = [
+    'all',
+    'avatar-frame',
+    'background',
+    'companion',
+    'badge',
   ];
 
-  // Helpers tipados p/ TS
-  function getRarityLabel(r: Rarity): string {
-    return rarityLabels[r];
-  }
-  function getRarityClass(r: Rarity): string {
-    return rarityClasses[r];
+  function itemName(item: InventoryItem): string {
+    // Se no futuro você adicionar "name" no InventoryItem, é só trocar aqui
+    return item.key;
   }
 
-  // --- Runes: derivados que viram funções ---
-  // Contadores por raridade
-  const countsByRarity = $derived(() => {
-    const counts: Record<Rarity, number> = {
-      common: 0,
-      rare: 0,
-      epic: 0,
-      legendary: 0,
-    };
-    for (const it of items) counts[it.rarity]++;
-    return counts;
-  });
-
-  // Agrupamento por tipo
-  const groupedByType = $derived(() => {
-    const groups: Record<InvType | string, InventoryItem[]> = {};
-    for (const item of items) {
-      const key = item.type;
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(item);
+  function equippedLabel(item: InventoryItem): string {
+    if (!item.equipped) return 'Equipar';
+    switch (item.type) {
+      case 'avatar-frame':
+        return 'Moldura ativa';
+      case 'background':
+        return 'Fundo ativo';
+      case 'companion':
+        return 'Companheiro ativo';
+      default:
+        return 'Ativo';
     }
-    return groups;
-  });
+  }
+
+  // Equipar / desequipar por tipo (apenas 1 equipado por tipo)
+  async function toggleEquip(item: InventoryItem) {
+    if (!item.id) return;
+
+    await db.transaction('rw', db.inventory, async () => {
+      const sameType = await db.inventory
+        .where('type')
+        .equals(item.type)
+        .toArray();
+
+      for (const it of sameType) {
+        if (!it.id) continue;
+        const shouldEquip = it.id === item.id ? !it.equipped : false;
+        await db.inventory.update(it.id, { equipped: shouldEquip });
+      }
+    });
+  }
 </script>
 
-<div class="flex flex-col gap-6 pb-8">
+<div class="flex flex-col gap-6">
   <PageTitleCard
-    title="Inventário"
-    subtitle="Seu inventário é o reflexo da sua aventura: cada item representa um hábito, uma ferramenta ou um ritual que te fez evoluir."
+    title="Inventário & Guarda-Roupa"
+    subtitle="Veja todos os cosméticos, fundos, companheiros e troféus que o seu herói já desbloqueou."
     align="center"
   />
 
-  <!-- Resumo / KPIs -->
+  <!-- Resumo rápido -->
   <section
-    class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 md:p-6 flex flex-col md:flex-row items-start md:items-center gap-4"
+    class="mx-auto w-full max-w-4xl rounded-2xl border border-emerald-500/60 bg-slate-950/80 px-4 py-3 shadow-[0_0_22px_rgba(16,185,129,0.45)] flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
   >
-    <div class="flex-1 text-sm text-slate-300">
-      <p>
-        Seu inventário é o reflexo da sua aventura: cada item representa um
-        hábito, uma ferramenta ou um ritual que te ajuda a evoluir.
+    <div>
+      <p class="text-[0.7rem] uppercase tracking-[0.22em] text-emerald-300/80">
+        Visão geral
       </p>
-      <p class="mt-2 text-xs text-slate-500">
-        No futuro, estes itens poderão ser conquistados através de missões,
-        conquistas e progresso em diferentes áreas.
+      <p class="mt-1 text-xs text-slate-400">
+        Tudo que o seu herói já conquistou em termos de visuais e troféus.
       </p>
     </div>
 
-    <div
-      class="flex flex-col items-stretch gap-2 text-xs text-slate-400 min-w-[180px]"
-    >
-      <div
-        class="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-950/80 border border-slate-800"
-      >
-        <span>Espaços usados</span>
-        <span class="font-semibold text-slate-100">
-          {items.length}
-          <span class="text-slate-500"> / 32</span>
-        </span>
+    <div class="grid grid-cols-3 gap-3 text-xs text-center md:text-right">
+      <div>
+        <p class="text-slate-400">Itens possuídos</p>
+        <p class="mt-1 text-base font-semibold text-emerald-300">
+          {totalOwned}
+        </p>
       </div>
-
-      <div class="grid grid-cols-2 gap-1">
-        <div
-          class="px-3 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800/80 text-[0.7rem]"
+      <div>
+        <p class="text-slate-400">Itens equipados</p>
+        <p class="mt-1 text-base font-semibold text-sky-300">
+          {totalEquipped}
+        </p>
+      </div>
+      <div>
+        <p class="text-slate-400">Gold disponível</p>
+        <p
+          class="mt-1 flex items-center justify-center gap-1 text-base font-semibold text-amber-300 md:justify-end"
         >
-          <span class="inline-block w-2 h-2 rounded-full bg-slate-400 mr-2"
-          ></span>
-          Comuns
-          <span class="float-right text-slate-200"
-            >{countsByRarity().common}</span
-          >
-        </div>
-        <div
-          class="px-3 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800/80 text-[0.7rem]"
-        >
-          <span class="inline-block w-2 h-2 rounded-full bg-blue-400 mr-2"
-          ></span>
-          Raros
-          <span class="float-right text-slate-200">{countsByRarity().rare}</span
-          >
-        </div>
-        <div
-          class="px-3 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800/80 text-[0.7rem]"
-        >
-          <span class="inline-block w-2 h-2 rounded-full bg-purple-400 mr-2"
-          ></span>
-          Épicos
-          <span class="float-right text-slate-200">{countsByRarity().epic}</span
-          >
-        </div>
-        <div
-          class="px-3 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800/80 text-[0.7rem]"
-        >
-          <span class="inline-block w-2 h-2 rounded-full bg-amber-400 mr-2"
-          ></span>
-          Lendários
-          <span class="float-right text-slate-200"
-            >{countsByRarity().legendary}</span
-          >
-        </div>
+          {gold}
+          <img
+            src="/art/icones/gold-icon.png"
+            alt="Gold"
+            class="h-4 w-4 object-contain"
+          />
+        </p>
       </div>
     </div>
   </section>
 
-  <!-- Listas por tipo -->
-  <section class="space-y-6">
-    {#each Object.entries(groupedByType()) as [typeKey, group] (typeKey)}
-      <div class="space-y-3">
-        <h2
-          class="text-sm font-semibold text-slate-300 flex items-center gap-2"
+  <!-- Filtros -->
+  <section
+    class="mx-auto w-full max-w-4xl rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-3"
+  >
+    <div class="mb-2 flex items-center justify-between gap-2">
+      <p class="text-[0.7rem] uppercase tracking-[0.22em] text-slate-400">
+        Filtrar por tipo
+      </p>
+      {#if activeFilter !== 'all'}
+        <button
+          type="button"
+          class="text-[0.75rem] text-slate-400 hover:text-slate-100 underline"
+          onclick={() => (activeFilter = 'all')}
         >
-          <span class="text-base">
-            {#if typeKey === 'arma'}
-              🛠️
-            {:else if typeKey === 'armadura'}
-              🧥
-            {:else if typeKey === 'consumivel'}
-              🧪
-            {:else}
-              🎒
-            {/if}
-          </span>
-          {typeLabels[typeKey as InvType]}
-        </h2>
+          Limpar filtro
+        </button>
+      {/if}
+    </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {#each group as item (item.id)}
-            <article
-              class={`rounded-2xl border p-4 flex flex-col gap-2 ${getRarityClass(
-                item.rarity as Rarity,
-              )}`}
-            >
-              <div class="flex items-start justify-between gap-2">
-                <div>
-                  <h3 class="font-semibold text-sm">{item.name}</h3>
-                  <p
-                    class="text-[0.7rem] uppercase tracking-widest text-slate-400"
-                  >
-                    {getRarityLabel(item.rarity as Rarity)}
-                  </p>
-                </div>
-                <div
-                  class="px-2 py-1 rounded-full bg-slate-950/60 border border-slate-700 text-[0.7rem] text-slate-300"
-                >
-                  x{item.quantity}
-                </div>
-              </div>
+    <div class="flex flex-wrap gap-2">
+      {#each filters as f (f)}
+        <button
+          type="button"
+          class={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
+            activeFilter === f
+              ? 'border-emerald-400 bg-emerald-500/15 text-emerald-200 shadow-[0_0_12px_rgba(16,185,129,0.6)]'
+              : 'border-slate-700 bg-slate-900/80 text-slate-300 hover:border-emerald-400/60 hover:text-emerald-200'
+          }`}
+          onclick={() => (activeFilter = f)}
+        >
+          {filterLabel(f)}
+        </button>
+      {/each}
+    </div>
+  </section>
 
-              <p class="text-xs text-slate-300 leading-relaxed">
-                {item.description}
-              </p>
-
-              {#if item.slot}
-                <p class="text-[0.7rem] text-slate-400 mt-1">
-                  <span class="text-slate-500">Slot:</span>&nbsp;{item.slot}
-                </p>
-              {/if}
-            </article>
-          {/each}
-        </div>
+  <!-- Listagem de grupos / itens -->
+  <section
+    class="mx-auto w-full max-w-4xl rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4"
+  >
+    {#if filteredGroups.length === 0}
+      <div
+        class="flex h-40 items-center justify-center rounded-xl border border-slate-800/60 border-dashed bg-slate-900/60"
+      >
+        <p class="text-sm text-slate-500">
+          Nenhum item encontrado nesse filtro. Explore a loja ou conclua missões
+          para desbloquear mais cosméticos!
+        </p>
       </div>
-    {/each}
+    {:else}
+      <div class="space-y-5">
+        {#each filteredGroups as group (group.type)}
+          <div class="space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="text-sm font-semibold text-slate-100">
+                {typeLabel(group.type)}
+              </h3>
+              <span
+                class="rounded-full bg-slate-900/80 px-2 py-0.5 text-[0.7rem] text-slate-400"
+              >
+                {group.items.length}
+                {group.items.length === 1 ? ' item' : ' itens'}
+              </span>
+            </div>
+
+            <div class="grid gap-3 sm:grid-cols-2">
+              {#each group.items as item (item.id)}
+                <article
+                  class="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-2.5 text-xs"
+                >
+                  <div
+                    class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800/70 text-lg"
+                  >
+                    {#if group.type === 'avatar-frame'}
+                      🖼️
+                    {:else if group.type === 'background'}
+                      🌌
+                    {:else if group.type === 'companion'}
+                      🐾
+                    {:else if group.type === 'badge'}
+                      🏅
+                    {:else}
+                      🎁
+                    {/if}
+                  </div>
+
+                  <div class="flex-1 min-w-0">
+                    <p class="truncate text-slate-100 font-medium">
+                      {itemName(item)}
+                    </p>
+                    <p class="mt-0.5 text-[0.7rem] text-slate-400">
+                      Chave: <span class="font-mono text-slate-300"
+                        >{item.key}</span
+                      >
+                    </p>
+                    {#if item.acquiredAt}
+                      <p class="mt-0.5 text-[0.65rem] text-slate-500">
+                        Desde:
+                        {new Date(item.acquiredAt).toLocaleDateString('pt-BR')}
+                      </p>
+                    {/if}
+                  </div>
+
+                  <div class="flex flex-col items-end gap-1">
+                    <button
+                      type="button"
+                      class={`rounded-lg px-3 py-1 text-[0.7rem] font-semibold transition-colors ${
+                        item.equipped
+                          ? 'bg-emerald-500 text-slate-950 hover:bg-emerald-400'
+                          : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                      }`}
+                      onclick={() => toggleEquip(item)}
+                    >
+                      {equippedLabel(item)}
+                    </button>
+
+                    {#if item.equipped}
+                      <span class="text-[0.65rem] text-emerald-300">
+                        Equipado
+                      </span>
+                    {/if}
+                  </div>
+                </article>
+              {/each}
+            </div>
+          </div>
+        {/each}
+      </div>
+    {/if}
   </section>
 </div>
