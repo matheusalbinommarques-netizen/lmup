@@ -1,6 +1,6 @@
 // src/services/xpService.ts
 import { db, type Profile, type XpLog } from '$services/db';
-import { BehaviorSubject, type Observable } from 'rxjs';
+import { ECO_STAGES, getEcoStageForTotalXp } from '$services/ecoConfig';
 
 /**
  * XP necessário para subir de N -> N+1.
@@ -42,7 +42,7 @@ export const XP_PER_LEVEL: number[] = [
 export const MAX_LEVEL = 30;
 
 // cumulativo de XP para chegar em cada nível
-// XP_CUMULATIVE[1] = 0 (nível 1), XP_CUMULATIVE[2] = xp pra chegar no 2, etc.
+// cumulative[1] = 0 (nível 1), cumulative[2] = xp pra chegar no 2, etc.
 const XP_CUMULATIVE: number[] = (() => {
   const acc: number[] = [];
   let sum = 0;
@@ -118,7 +118,7 @@ const LEVEL_TITLES: string[] = [
   'Grão-Mestre Mago', // 8
   'Arquimago', // 9
   'Arquimago Mestre', // 10
-  'Arquimago Grão-Mestre ', // 11
+  'Arquimago Grão-Mestre', // 11
   'Arcanista', // 12
   'Erudito', // 13
   'Sábio', // 14
@@ -148,69 +148,7 @@ export function getTitleForLevel(level: number): string {
   return LEVEL_TITLES[level] || LEVEL_TITLES[1];
 }
 
-/**
- * Versão "legacy" utilizada pelos painéis de conquistas.
- * É basicamente um alias para getLevelStateFromTotalXp.
- */
-export function calcularNivel(totalXp: number): LevelState {
-  return getLevelStateFromTotalXp(totalXp);
-}
-
-/* ------------------------------------------------------------------
- * Observables globais de XP total e Streak
- * ------------------------------------------------------------------ */
-
-const totalXpSubject = new BehaviorSubject<number>(0);
-const streakSubject = new BehaviorSubject<{ count: number }>({ count: 0 });
-
-async function hydrateSubjectsFromProfile() {
-  try {
-    const profile = await ensureProfile();
-    const totalXp = profile.totalXpEarned ?? 0;
-    const streak = profile.currentStreak ?? 0;
-
-    totalXpSubject.next(totalXp);
-    streakSubject.next({ count: streak });
-  } catch (error) {
-    console.error(
-      '[xpService] Erro ao hidratar subjects a partir do perfil:',
-      error,
-    );
-  }
-}
-
-// Só hidrata no browser (IndexedDB não existe no SSR)
-if (typeof window !== 'undefined') {
-  void hydrateSubjectsFromProfile();
-}
-
-/**
- * Observable com o XP total acumulado do herói.
- * Usado em AvatarAchievementsPanel, AchievementsPanel, etc.
- */
-export function getTotalXpObservable(): Observable<number> {
-  // Garantia extra: se o valor ainda for 0, tenta sincronizar do perfil
-  if (typeof window !== 'undefined') {
-    void hydrateSubjectsFromProfile();
-  }
-  return totalXpSubject.asObservable();
-}
-
-/**
- * Observable com o streak atual (objeto { count }).
- */
-export function getStreakObservable(): Observable<{ count: number }> {
-  if (typeof window !== 'undefined') {
-    void hydrateSubjectsFromProfile();
-  }
-  return streakSubject.asObservable();
-}
-
-/* ------------------------------------------------------------------
- * Perfil & Mutação de XP
- * ------------------------------------------------------------------ */
-
-export async function ensureProfile(): Promise<Profile> {
+async function ensureProfile(): Promise<Profile> {
   let profile = await db.profile.get(1);
 
   if (!profile) {
@@ -227,7 +165,7 @@ export async function ensureProfile(): Promise<Profile> {
       avatarUrl: '',
       currentStreak: 0,
       lastCompletionDate: null,
-      activeCompanionId: null,
+      activeCompanionId: 1,
       createdAt: now,
       updatedAt: now,
     };
@@ -239,8 +177,10 @@ export async function ensureProfile(): Promise<Profile> {
 
 /**
  * Aplica uma variação de XP (positiva ou negativa),
- * recalcula nível, XP atual, XP do próximo nível, gold
+ * com bônus do Santuário, recalcula nível, XP atual, XP do próximo nível, gold
  * e registra um XpLog com área.
+ *
+ * amount = XP base (antes do bônus do Santuário).
  */
 async function applyXpDelta(
   amount: number,
@@ -254,23 +194,56 @@ async function applyXpDelta(
   const now = new Date();
   const dateKey = toDateKey(now);
 
-  // --- XP total acumulado (não deixa ficar negativo) ---
+  // --- XP total acumulado ANTES do ganho/perda ---
   const currentTotal = profile.totalXpEarned ?? 0;
-  const newTotal = Math.max(0, currentTotal + amount);
 
-  // --- Estado de nível baseado no XP total ---
+  // --- Bônus do Santuário: multiplicador baseado no estágio atual (ANTES do ganho) ---
+  const ecoStageBefore = getEcoStageForTotalXp(currentTotal);
+  const bonusMultiplier = ecoStageBefore.xpBonusMultiplier ?? 1;
+  const isPositive = amount > 0;
+
+  // XP efetivo considerando o bônus de 5/10/20% (apenas para ganhos, não para perdas)
+  const effectiveAmount =
+    isPositive && bonusMultiplier > 1
+      ? Math.round(amount * bonusMultiplier)
+      : amount;
+
+  const newTotal = Math.max(0, currentTotal + effectiveAmount);
+
+  // --- Estado de nível baseado no XP total pós-bônus ---
   const { level, xpIntoLevel, xpForNext } = getLevelStateFromTotalXp(newTotal);
 
-  // --- Gold proporcional ao XP (0.5 por XP) ---
-  const goldDelta = Math.floor(Math.abs(amount) * 0.5) * (amount >= 0 ? 1 : -1);
+  // --- Gold proporcional ao XP efetivo (0.5 por XP) ---
+  const goldDelta =
+    Math.floor(Math.abs(effectiveAmount) * 0.5) *
+    (effectiveAmount >= 0 ? 1 : -1);
   const currentGold = profile.gold ?? 0;
-  const newGold = Math.max(0, currentGold + goldDelta);
 
-  // --- Streak (só mexe quando ganha XP positivo) ---
+  // --- Recompensas de Gold por avanço de estágio do Santuário ---
+  const ecoMeta = profile as any;
+  let ecoGoldClaimedUpToStage: number = ecoMeta.ecoGoldClaimedUpToStage ?? 1;
+  let extraGoldFromEco = 0;
+
+  const ecoStageAfter = getEcoStageForTotalXp(newTotal);
+
+  if (isPositive && ecoStageAfter.id > ecoGoldClaimedUpToStage) {
+    // Garante que damos 200 (Brotinho), 500 (Árvore Jovem) e 1000 (Floresta),
+    // sem repetir quando o usuário voltar depois.
+    for (const stage of ECO_STAGES) {
+      if (stage.id > ecoGoldClaimedUpToStage && stage.id <= ecoStageAfter.id) {
+        extraGoldFromEco += stage.goldRewardOnEnter;
+      }
+    }
+    ecoGoldClaimedUpToStage = ecoStageAfter.id;
+  }
+
+  const newGold = Math.max(0, currentGold + goldDelta + extraGoldFromEco);
+
+  // --- Streak (só mexe quando ganha XP positivo efetivo) ---
   let currentStreak = profile.currentStreak ?? 0;
   let lastCompletionDate = profile.lastCompletionDate ?? null;
 
-  if (amount > 0) {
+  if (effectiveAmount > 0) {
     const today = dateKey;
     if (!lastCompletionDate) {
       currentStreak = 1;
@@ -313,21 +286,20 @@ async function applyXpDelta(
     updatedAt: now,
   };
 
+  // injeta metadado do santuário sem exigir campo no tipo Profile
+  (updated as any).ecoGoldClaimedUpToStage = ecoGoldClaimedUpToStage;
+
   await db.profile.update(profile.id!, updated);
 
   // --- Log de XP (positivo ou negativo) para estatísticas ---
   const log: XpLog = {
     date: dateKey,
-    amount,
+    amount: effectiveAmount, // loga o XP já com bônus aplicado
     areaId,
     createdAt: now,
   };
 
   await db.xpLogs.add(log);
-
-  // Atualiza observables globais
-  totalXpSubject.next(newTotal);
-  streakSubject.next({ count: currentStreak ?? 0 });
 
   return { ...profile, ...updated } as Profile;
 }
@@ -336,6 +308,7 @@ async function addXp(amount: number, areaId?: number | null): Promise<Profile> {
   if (!amount || amount <= 0) {
     return ensureProfile();
   }
+  // amount = XP base; bônus é aplicado internamente
   return applyXpDelta(amount, areaId ?? null);
 }
 
@@ -346,12 +319,10 @@ async function removeXp(
   if (!amount || amount <= 0) {
     return ensureProfile();
   }
+  // remoção ignora bônus do santuário (amount é tratado como delta negativo)
   return applyXpDelta(-amount, areaId ?? null);
 }
 
-/**
- * Interface principal usada pelo restante do app (missões, stats, etc.)
- */
 export const xpService = {
   addXp,
   removeXp,
@@ -359,7 +330,4 @@ export const xpService = {
   getLevelStateFromTotalXp,
   getXpForNextLevel,
   getTitleForLevel,
-  calcularNivel,
-  getTotalXpObservable,
-  getStreakObservable,
 };
