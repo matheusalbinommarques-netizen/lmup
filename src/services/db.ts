@@ -12,14 +12,17 @@ export interface Profile {
   xpCurrent: number;
   xpNext: number;
   totalXpEarned: number;
-  gold: number;
+
+  // Deixamos opcional para não quebrar fallbacks antigos
+  gold?: number;
+
   avatarUrl?: string;
   currentStreak?: number;
   lastCompletionDate?: string | null; // 'YYYY-MM-DD'
   activeCompanionId?: number | null;
 
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
 }
 
 /**
@@ -28,12 +31,9 @@ export interface Profile {
 export interface Area {
   id?: number;
   nome: string;
-  // Preferir usar "color" daqui pra frente.
   color?: string | null;
-  // Campo legado, usado em alguns lugares como "cor".
-  cor?: string | null;
   icon?: string | null;
-  createdAt?: Date;
+  createdAt?: Date | string;
 }
 
 /**
@@ -46,7 +46,10 @@ export type TaskStatus = 'available' | 'todo' | 'completed';
 export interface Task {
   id?: number;
   title: string;
-  description?: string;
+
+  // Aceita string ou null (pra bater com os modais que enviam `null`)
+  description?: string | null;
+
   areaId?: number; // referência a Area.id
   xp: number;
   rarity: TaskRarity;
@@ -67,10 +70,6 @@ export interface Task {
   reviewEnabled?: boolean;
   reviewIntervalDays?: number | null;
   reviewStartedAt?: Date | string | null;
-
-  // subtarefas (existem em AddTaskModal)
-  // deixo como any[] pra não quebrar nada legado
-  subtasks?: any[];
 }
 
 /**
@@ -86,6 +85,7 @@ export interface XpLog {
 
 /**
  * INVENTÁRIO (itens cosméticos, etc.)
+ * (estrutura mínima — pode ter mais campos em outros arquivos)
  */
 export interface InventoryItem {
   id?: number;
@@ -93,40 +93,57 @@ export interface InventoryItem {
   type: string; // ex: 'avatar-frame', 'background'
   owned: boolean;
   equipped?: boolean;
-  acquiredAt?: Date;
+  acquiredAt?: Date | string;
 }
 
 /**
- * ITENS DE LOJA
+ * ITENS DE LOJA (catálogo da loja no banco, não o tipo da UI)
  */
 export interface ShopItem {
   id?: number;
-  key: string;
-  type: string;
+  key: string; // identificador interno do item
+  type: string; // ex: 'theme', 'effect', 'profile'
   name: string;
   description?: string;
   price: number;
-  createdAt?: Date;
+  createdAt?: Date | string;
 }
 
 /**
- * COMPANHEIROS / PETS (estrutura mínima)
+ * ITENS DE LOJA POSSUÍDOS PELO JOGADOR
+ * (ligação entre um item de catálogo e o jogador)
+ */
+export interface OwnedShopItem {
+  id?: number;
+  itemId: number; // referencia ShopItem.id
+  acquiredAt: Date | string;
+}
+
+/**
+ * COMPANHEIROS / PETS
+ * Compatível com o Bestiário e a Taverna:
+ * - name, type, imagePath (como nas seeds)
+ * - key/rarity opcionais (pra achievements)
  */
 export interface Companion {
   id?: number;
-  key: string;
+  key?: string;
   name: string;
-  rarity: TaskRarity;
+  type: string;
+  imagePath: string;
+  rarity?: TaskRarity;
   unlocked?: boolean;
 }
 
 /**
- * COMPANHEIROS DESBLOQUEADOS (para conquistas / bestiário)
+ * TABELA LEGADA DE ITENS POR ÁREA (ItemManager)
+ * Estrutura equivalente ao ItemV1 do app antigo.
  */
-export interface UnlockedCompanion {
+export interface LegacyItem {
   id?: number;
-  companionId: number;
-  unlockedAt?: Date;
+  areaId: number;
+  titulo: string;
+  xp?: number;
 }
 
 /**
@@ -140,35 +157,36 @@ export class LevelMeUpDB extends Dexie {
 
   inventory!: Table<InventoryItem, number>;
   shopItems!: Table<ShopItem, number>;
+  ownedShopItems!: Table<OwnedShopItem, number>;
+
   companions!: Table<Companion, number>;
-  unlockedCompanions!: Table<UnlockedCompanion, number>;
+
+  // tabela legada de itens por área (ItemManager)
+  items!: Table<LegacyItem, number>;
 
   constructor() {
     super('LevelMeUpDB');
 
-    // Versão 1 — schema original
-    this.version(1).stores({
-      profile: '++id',
-      tasks:
-        '++id, areaId, completed, status, archived, reviewEnabled, createdAt, completedAt',
-      areas: '++id',
-      xpLogs: '++id, date, areaId',
-      inventory: '++id, key, type, owned, equipped',
-      shopItems: '++id, key, type, price',
-      companions: '++id, key, rarity, unlocked',
-    });
-
-    // Versão 2 — adiciona tabela unlockedCompanions
+    /**
+     * IMPORTANTE:
+     * - Versão 2 para evitar o warning "Schema was extended without increasing db.version()".
+     * - Aqui listamos TODAS as stores atuais do app.
+     */
     this.version(2).stores({
       profile: '++id',
       tasks:
         '++id, areaId, completed, status, archived, reviewEnabled, createdAt, completedAt',
       areas: '++id',
       xpLogs: '++id, date, areaId',
+
       inventory: '++id, key, type, owned, equipped',
       shopItems: '++id, key, type, price',
+      ownedShopItems: '++id, itemId',
+
       companions: '++id, key, rarity, unlocked',
-      unlockedCompanions: '++id, companionId',
+
+      // tabela de itens legados por área (ItemManager)
+      items: '++id, areaId',
     });
   }
 }

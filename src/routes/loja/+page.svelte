@@ -4,7 +4,7 @@
   import type { ShopItem, ShopCategory } from '$lib/shop/types';
   import { onMount } from 'svelte';
   import { liveQuery } from 'dexie';
-  import { db } from '$services/db';
+  import { db, type OwnedShopItem } from '$services/db';
   import PageTitleCard from '$lib/PageTitleCard.svelte';
   import { buyItem, equipItemById } from '$services/shopService';
 
@@ -109,7 +109,7 @@
   const ownedQuery = liveQuery(() => db.ownedShopItems.toArray());
 
   onMount(() => {
-    const sub = ownedQuery.subscribe((rows) => {
+    const sub = ownedQuery.subscribe((rows: OwnedShopItem[]) => {
       ownedSet = new Set(rows.map((r) => r.itemId));
     });
     return () => sub.unsubscribe();
@@ -137,10 +137,9 @@
         else alert('Não foi possível concluir a compra.');
       } else if (res.code === 'already_owned') {
         // idempotente — já possuído
-        // nada a fazer
       } else {
         // sucesso — liveQuery atualiza gold e ownedSet automaticamente
-        // opcional: auto-equip para categorias visuais
+        // opcional: auto-equip
         // if (item.category === 'theme' || item.category === 'profile') {
         //   await equipItemById(item.id);
         // }
@@ -195,7 +194,7 @@
              bg-slate-900/80 px-4 py-3 md:flex-row md:items-center md:justify-between"
     >
       <div class="flex items-center gap-3">
-        <p class="text-[0.7 rem] uppercase tracking-[0.18em] text-slate-400">
+        <p class="text-[0.7rem] uppercase tracking-[0.18em] text-slate-400">
           Seu saldo
         </p>
         <div

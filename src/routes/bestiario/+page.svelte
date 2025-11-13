@@ -1,3 +1,4 @@
+<!-- src/routes/bestiario/+page.svelte -->
 <script lang="ts">
   import { db, type Profile, type Companion } from '$services/db';
   import { liveQuery } from 'dexie';
@@ -50,6 +51,7 @@
     currentStreak: 0,
     lastCompletionDate: '',
     activeCompanionId: 1,
+    gold: 0, // 👈 campo que faltava pro tipo Profile
   };
 
   let hero = $state<Profile>(fallbackProfile);

@@ -1,6 +1,6 @@
 <!-- src/lib/ItemManager.svelte -->
 <script lang="ts">
-  import { db } from '$services/db';
+  import { db, type Task } from '$services/db';
   import { liveQuery } from 'dexie';
   import { browser } from '$app/environment';
   import { xpService } from '$services/xpService';
@@ -8,12 +8,12 @@
   // props
   let { areaId } = $props<{ areaId: number }>();
 
-  // Alinhado com o schema legado ItemV1 (tabela items)
+  // Representação simplificada só pra UI
   type LegacyItem = {
     id?: number;
     areaId: number;
     titulo: string;
-    xp?: number;
+    xp: number;
   };
 
   let items = $state<LegacyItem[]>([]);
@@ -23,11 +23,18 @@
   // liveQuery só no client
   if (browser) {
     const sub = liveQuery(() =>
-      db.items.where('areaId').equals(areaId).toArray(),
-    ).subscribe((rows) => {
-      items = rows as LegacyItem[];
+      db.tasks.where('areaId').equals(areaId).toArray(),
+    ).subscribe((rows: Task[]) => {
+      items =
+        (rows ?? []).map((task) => ({
+          id: task.id,
+          areaId: task.areaId ?? areaId,
+          titulo: task.title,
+          xp: task.xp ?? 0,
+        })) ?? [];
     });
 
+    // cleanup
     $effect(() => () => sub.unsubscribe());
   }
 
@@ -36,12 +43,27 @@
     const xp = Number(novoItemXp) || 0;
     if (!nome || xp <= 0) return;
 
-    // ItemV1: { id, areaId, titulo, xp }
-    await db.items.add({
+    // Cria uma Task mínima compatível com o schema atual
+    const now = new Date();
+
+    const taskData: Task = {
+      title: nome,
+      description: null,
       areaId,
-      titulo: nome,
       xp,
-    });
+      rarity: 'common',
+      status: 'available',
+      completed: false,
+      archived: false,
+      createdAt: now,
+      updatedAt: now,
+      completedAt: null,
+      reviewEnabled: false,
+      reviewIntervalDays: null,
+      reviewStartedAt: null,
+    };
+
+    await db.tasks.add(taskData);
 
     novoItemNome = '';
     novoItemXp = 10;
@@ -51,18 +73,18 @@
     const xp = item.xp ?? 0;
 
     if (xp > 0) {
-      // usa o serviço novo unificado de XP
-      await xpService.addXp(xp);
+      // usa o serviço novo unificado de XP, já marcando a área
+      await xpService.addXp(xp, item.areaId);
     }
 
     if (item.id != null) {
-      await db.items.delete(item.id);
+      await db.tasks.delete(item.id);
     }
   }
 
   async function remover(item: LegacyItem) {
     if (item.id != null) {
-      await db.items.delete(item.id);
+      await db.tasks.delete(item.id);
     }
   }
 
