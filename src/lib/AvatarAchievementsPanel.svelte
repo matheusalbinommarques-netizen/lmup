@@ -1,6 +1,6 @@
 <!-- src/lib/AvatarAchievementsPanel.svelte -->
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import { liveQuery } from 'dexie';
   import { db, type Profile } from '$services/db';
   import { getLevelStateFromTotalXp } from '$services/xpService';
@@ -40,23 +40,18 @@
   const levelInfo = $derived(getLevelStateFromTotalXp(totalXp));
   const level = $derived(levelInfo.level ?? 1);
 
-  const heroQuery = liveQuery(() => db.profile.get(1));
+  // Assina o Dexie só no client (onMount = só no browser)
+  onMount(() => {
+    const heroQuery = liveQuery(() => db.profile.get(1));
 
-  let unsubscribe: (() => void) | null = null;
-
-  if (typeof window !== 'undefined') {
-    const profileSub = heroQuery.subscribe((profileData) => {
+    const sub = heroQuery.subscribe((profileData) => {
       const data = profileData ?? fallbackProfile;
       Object.assign(hero, data);
       totalXp = data.totalXpEarned ?? 0;
       streak = data.currentStreak ?? 0;
     });
 
-    unsubscribe = () => profileSub.unsubscribe();
-  }
-
-  onDestroy(() => {
-    unsubscribe?.();
+    return () => sub.unsubscribe();
   });
 
   // conquistas em destaque (subconjunto do catálogo)

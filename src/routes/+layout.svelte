@@ -8,7 +8,7 @@
   import type { Snippet } from 'svelte';
 
   // Svelte 5: filhos chegam como Snippet e rendemos com {@render}
-  let { children } = $props<{ children: Snippet }>();
+  const { children } = $props<{ children: Snippet }>();
 </script>
 
 <div class="min-h-dvh bg-slate-950 text-slate-200 md:flex">
@@ -31,6 +31,3 @@
     <BottomNav />
   </div>
 </div>
-
-<!-- ✅ segunda garantia: injeta o CSS global via tag -->
-<style global src="../app.css"></style>

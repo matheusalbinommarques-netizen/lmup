@@ -1,5 +1,6 @@
 // src/services/xpService.ts
 import { db, type Profile, type XpLog } from '$services/db';
+import { BehaviorSubject, type Observable } from 'rxjs';
 
 /**
  * XP necessário para subir de N -> N+1.
@@ -41,7 +42,7 @@ export const XP_PER_LEVEL: number[] = [
 export const MAX_LEVEL = 30;
 
 // cumulativo de XP para chegar em cada nível
-// cumulative[1] = 0 (nível 1), cumulative[2] = xp pra chegar no 2, etc.
+// XP_CUMULATIVE[1] = 0 (nível 1), XP_CUMULATIVE[2] = xp pra chegar no 2, etc.
 const XP_CUMULATIVE: number[] = (() => {
   const acc: number[] = [];
   let sum = 0;
@@ -107,36 +108,36 @@ export function getLevelStateFromTotalXp(totalXp: number): LevelState {
 // Títulos por nível (fica à vontade pra trocar os textos depois)
 const LEVEL_TITLES: string[] = [
   '',
-  'Aventureiro Iniciante', // 1
-  'Explorador Determinado', // 2
-  'Guardião em Treinamento', // 3
-  'Caçador de Metas', // 4
-  'Aprendiz de Lendas', // 5
-  'Herói da Rotina', // 6
-  'Mestre da Disciplina', // 7
-  'Guardião do Tempo', // 8
-  'Arquiteto de Hábitos', // 9
-  'Lenda da Consistência', // 10
-  'Mentor da Jornada', // 11
-  'Forjador de Rotinas', // 12
-  'Domador de Procrastinação', // 13
-  'Estrategista da Vida', // 14
-  'Campeão do Foco', // 15
-  'Arconte da Ordem', // 16
-  'Guardião dos Objetivos', // 17
-  'Sábio da Persistência', // 18
-  'Lâmina do Progresso', // 19
-  'Arquimago da Constância', // 20
-  'Lorde das Rotinas', // 21
-  'Lenda Viva', // 22
-  'Herói Atemporal', // 23
-  'Mestre das Mil Missões', // 24
-  'Avatar da Disciplina', // 25
-  'Guardião do Equilíbrio', // 26
-  'Deus(a) do Hábito', // 27
-  'Eterno da Jornada', // 28
-  'Mito Imortal', // 29
-  'Lenda Suprema', // 30+
+  'Estudante', // 1
+  'Acólito', // 2
+  'Acólito Mestre', // 3
+  'Grão-Acólito Mestre', // 4
+  'Iniciado', // 5
+  'Mago', // 6
+  'Grão-Mago', // 7
+  'Grão-Mestre Mago', // 8
+  'Arquimago', // 9
+  'Arquimago Mestre', // 10
+  'Arquimago Grão-Mestre ', // 11
+  'Arcanista', // 12
+  'Erudito', // 13
+  'Sábio', // 14
+  'Mestre do Conhecimento', // 15
+  'Grão-Mestre do Conhecimento', // 16
+  'Rei do Conhecimento', // 17
+  'Mestre dos Tempos', // 18
+  'Grão-Mestre dos Tempos', // 19
+  'Entidade do Tempo', // 20
+  'Ancião', // 21
+  'Grão-Ancião', // 22
+  'Grão-Mestre Ancião', // 23
+  'Profeta', // 24
+  'Mestre Profeta', // 25
+  'Grão-Mestre Profeta', // 26
+  'Celestial', // 27
+  'Semideus', // 28
+  'Eterno', // 29
+  'O Criador', // 30+
 ];
 
 export function getTitleForLevel(level: number): string {
@@ -147,7 +148,69 @@ export function getTitleForLevel(level: number): string {
   return LEVEL_TITLES[level] || LEVEL_TITLES[1];
 }
 
-async function ensureProfile(): Promise<Profile> {
+/**
+ * Versão "legacy" utilizada pelos painéis de conquistas.
+ * É basicamente um alias para getLevelStateFromTotalXp.
+ */
+export function calcularNivel(totalXp: number): LevelState {
+  return getLevelStateFromTotalXp(totalXp);
+}
+
+/* ------------------------------------------------------------------
+ * Observables globais de XP total e Streak
+ * ------------------------------------------------------------------ */
+
+const totalXpSubject = new BehaviorSubject<number>(0);
+const streakSubject = new BehaviorSubject<{ count: number }>({ count: 0 });
+
+async function hydrateSubjectsFromProfile() {
+  try {
+    const profile = await ensureProfile();
+    const totalXp = profile.totalXpEarned ?? 0;
+    const streak = profile.currentStreak ?? 0;
+
+    totalXpSubject.next(totalXp);
+    streakSubject.next({ count: streak });
+  } catch (error) {
+    console.error(
+      '[xpService] Erro ao hidratar subjects a partir do perfil:',
+      error,
+    );
+  }
+}
+
+// Só hidrata no browser (IndexedDB não existe no SSR)
+if (typeof window !== 'undefined') {
+  void hydrateSubjectsFromProfile();
+}
+
+/**
+ * Observable com o XP total acumulado do herói.
+ * Usado em AvatarAchievementsPanel, AchievementsPanel, etc.
+ */
+export function getTotalXpObservable(): Observable<number> {
+  // Garantia extra: se o valor ainda for 0, tenta sincronizar do perfil
+  if (typeof window !== 'undefined') {
+    void hydrateSubjectsFromProfile();
+  }
+  return totalXpSubject.asObservable();
+}
+
+/**
+ * Observable com o streak atual (objeto { count }).
+ */
+export function getStreakObservable(): Observable<{ count: number }> {
+  if (typeof window !== 'undefined') {
+    void hydrateSubjectsFromProfile();
+  }
+  return streakSubject.asObservable();
+}
+
+/* ------------------------------------------------------------------
+ * Perfil & Mutação de XP
+ * ------------------------------------------------------------------ */
+
+export async function ensureProfile(): Promise<Profile> {
   let profile = await db.profile.get(1);
 
   if (!profile) {
@@ -262,6 +325,10 @@ async function applyXpDelta(
 
   await db.xpLogs.add(log);
 
+  // Atualiza observables globais
+  totalXpSubject.next(newTotal);
+  streakSubject.next({ count: currentStreak ?? 0 });
+
   return { ...profile, ...updated } as Profile;
 }
 
@@ -282,6 +349,9 @@ async function removeXp(
   return applyXpDelta(-amount, areaId ?? null);
 }
 
+/**
+ * Interface principal usada pelo restante do app (missões, stats, etc.)
+ */
 export const xpService = {
   addXp,
   removeXp,
@@ -289,4 +359,7 @@ export const xpService = {
   getLevelStateFromTotalXp,
   getXpForNextLevel,
   getTitleForLevel,
+  calcularNivel,
+  getTotalXpObservable,
+  getStreakObservable,
 };

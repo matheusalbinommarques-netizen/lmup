@@ -28,7 +28,10 @@ export interface Profile {
 export interface Area {
   id?: number;
   nome: string;
+  // Preferir usar "color" daqui pra frente.
   color?: string | null;
+  // Campo legado, usado em alguns lugares como "cor".
+  cor?: string | null;
   icon?: string | null;
   createdAt?: Date;
 }
@@ -64,6 +67,10 @@ export interface Task {
   reviewEnabled?: boolean;
   reviewIntervalDays?: number | null;
   reviewStartedAt?: Date | string | null;
+
+  // subtarefas (existem em AddTaskModal)
+  // deixo como any[] pra não quebrar nada legado
+  subtasks?: any[];
 }
 
 /**
@@ -79,7 +86,6 @@ export interface XpLog {
 
 /**
  * INVENTÁRIO (itens cosméticos, etc.)
- * (estrutura mínima — pode ter mais campos em outros arquivos)
  */
 export interface InventoryItem {
   id?: number;
@@ -115,6 +121,15 @@ export interface Companion {
 }
 
 /**
+ * COMPANHEIROS DESBLOQUEADOS (para conquistas / bestiário)
+ */
+export interface UnlockedCompanion {
+  id?: number;
+  companionId: number;
+  unlockedAt?: Date;
+}
+
+/**
  * BANCO DEXIE
  */
 export class LevelMeUpDB extends Dexie {
@@ -126,11 +141,12 @@ export class LevelMeUpDB extends Dexie {
   inventory!: Table<InventoryItem, number>;
   shopItems!: Table<ShopItem, number>;
   companions!: Table<Companion, number>;
+  unlockedCompanions!: Table<UnlockedCompanion, number>;
 
   constructor() {
     super('LevelMeUpDB');
 
-    // Se você já tinha versões diferentes, pode subir o número aqui
+    // Versão 1 — schema original
     this.version(1).stores({
       profile: '++id',
       tasks:
@@ -140,6 +156,19 @@ export class LevelMeUpDB extends Dexie {
       inventory: '++id, key, type, owned, equipped',
       shopItems: '++id, key, type, price',
       companions: '++id, key, rarity, unlocked',
+    });
+
+    // Versão 2 — adiciona tabela unlockedCompanions
+    this.version(2).stores({
+      profile: '++id',
+      tasks:
+        '++id, areaId, completed, status, archived, reviewEnabled, createdAt, completedAt',
+      areas: '++id',
+      xpLogs: '++id, date, areaId',
+      inventory: '++id, key, type, owned, equipped',
+      shopItems: '++id, key, type, price',
+      companions: '++id, key, rarity, unlocked',
+      unlockedCompanions: '++id, companionId',
     });
   }
 }

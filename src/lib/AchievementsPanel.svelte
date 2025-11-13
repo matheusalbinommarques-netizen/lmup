@@ -1,6 +1,6 @@
 <!-- src/lib/AchievementsPanel.svelte -->
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import { liveQuery } from 'dexie';
   import { getLevelStateFromTotalXp } from '$services/xpService';
   import {
@@ -41,9 +41,7 @@
   // placeholder pra quando tiver tracking real
   let companionInteractions = $state(0);
 
-  let unsubscribeFns: (() => void)[] = [];
-
-  if (typeof window !== 'undefined') {
+  onMount(() => {
     // Perfil -> totalXp / streak
     const profileSub = liveQuery(() => db.profile.get(1)).subscribe(
       (profile) => {
@@ -96,7 +94,8 @@
         let localMaxAreaLevel = 0;
         let localAreasAtLeastLevel20 = 0;
 
-        for (const xp of Object.values(xpPerArea)) {
+        const xpValues = Object.values(xpPerArea) as number[];
+        for (const xp of xpValues) {
           const areaLevel = Math.floor(xp / XP_PER_AREA_LEVEL);
           if (areaLevel > localMaxAreaLevel) {
             localMaxAreaLevel = areaLevel;
@@ -142,15 +141,11 @@
       },
     );
 
-    unsubscribeFns = [
-      () => profileSub.unsubscribe(),
-      () => tasksSub.unsubscribe(),
-      () => companionsSub.unsubscribe(),
-    ];
-  }
-
-  onDestroy(() => {
-    for (const fn of unsubscribeFns) fn();
+    return () => {
+      profileSub.unsubscribe();
+      tasksSub.unsubscribe();
+      companionsSub.unsubscribe();
+    };
   });
 
   const achievements = $derived(
@@ -215,7 +210,7 @@
       case 'lendário':
         return 'bg-amber-400/25 text-amber-100';
       default:
-        return '';
+        return 'bg-slate-700/60 text-slate-100';
     }
   }
 

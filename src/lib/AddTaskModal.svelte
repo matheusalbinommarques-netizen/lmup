@@ -4,6 +4,7 @@
   import { liveQuery } from 'dexie';
   import { onMount } from 'svelte';
 
+  // --- Props ---
   let { close, taskToEdit = null } = $props<{
     close: () => void;
     taskToEdit: Task | null;
@@ -11,6 +12,7 @@
 
   type Rarity = Task['rarity'];
 
+  // --- Estado de formulário ---
   let title = $state('');
   let description = $state('');
 
@@ -20,7 +22,7 @@
   let areas = $state<Area[]>([]);
   let subtasks = $state<string[]>(['']);
 
-  // modal não precisa reatividade aqui; a prop não muda depois de aberto
+  // modal não precisa reatividade na prop; ela não muda depois de aberto
   const isEditMode = taskToEdit !== null;
 
   const rarityLabels: Record<Rarity, string> = {
@@ -44,12 +46,11 @@
     return 'common';
   }
 
-  // --------- helpers de subtarefas ---------
-  function getCleanSubtasks(): string[] {
-    return subtasks.map((s) => s.trim()).filter((s) => s.length > 0);
-  }
+  // --------- DERIVED para UI (dependências explícitas!) ---------
+  const subtaskCount = $derived(
+    subtasks.map((s) => s.trim()).filter((s) => s.length > 0).length || 1,
+  );
 
-  const subtaskCount = $derived(getCleanSubtasks().length || 1);
   const autoRarity = $derived(rarityFromSubtaskCount(subtaskCount));
   const autoXp = $derived(rarityXp[autoRarity]);
 
@@ -79,6 +80,7 @@
     return () => sub.unsubscribe();
   });
 
+  // --------- Subtarefas helpers ---------
   function addSubtask() {
     subtasks = [...subtasks, ''];
   }
@@ -97,14 +99,20 @@
     subtasks = subtasks.filter((_, i) => i !== index);
   }
 
+  // --------- Submit ---------
   async function handleSubmit(event: SubmitEvent) {
     event.preventDefault();
     const taskTitle = title.trim();
     if (!taskTitle) return;
 
-    const finalSubtasks = getCleanSubtasks();
-    const rarity = autoRarity;
-    const xp = autoXp;
+    // Limpa subtarefas para gravar
+    const finalSubtasks = subtasks
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
+    const count = finalSubtasks.length || 1;
+    const rarity: Rarity = rarityFromSubtaskCount(count);
+    const xp = rarityXp[rarity];
 
     const now = new Date();
 
