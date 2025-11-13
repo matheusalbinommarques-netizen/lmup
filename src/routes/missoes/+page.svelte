@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { db, type Task, type Area } from '$services/db';
+  import { db, type Task, type Area, type XpLog } from '$services/db';
   import { liveQuery } from 'dexie';
   import { onMount } from 'svelte';
   import { xpService } from '$services/xpService';
@@ -12,6 +12,7 @@
 
   let tasks = $state<Task[]>([]);
   let areas = $state<Area[]>([]);
+  let xpLogs = $state<XpLog[]>([]); // <-- NOVO
 
   type FilterTab = 'available' | 'todo' | 'completed';
   let filter = $state<FilterTab>('available');
@@ -30,13 +31,16 @@
     db.tasks.orderBy('createdAt').reverse().toArray(),
   );
   const areasQuery = liveQuery(() => db.areas.toArray());
+  const xpLogsQuery = liveQuery(() => db.xpLogs.toArray()); // <-- NOVO
 
   onMount(() => {
     const tasksSub = tasksQuery.subscribe((dbTasks) => (tasks = dbTasks));
     const areasSub = areasQuery.subscribe((dbAreas) => (areas = dbAreas));
+    const logsSub = xpLogsQuery.subscribe((rows) => (xpLogs = rows ?? [])); // <-- NOVO
     return () => {
       tasksSub.unsubscribe();
       areasSub.unsubscribe();
+      logsSub.unsubscribe(); // <-- NOVO
     };
   });
 
@@ -60,7 +64,6 @@
       oldestPendingCreatedAt: number;
     };
 
-    // 👇 em vez de new Map / SvelteMap
     const statsByArea: Record<number, AreaStats> = {};
 
     for (const task of tasks) {
@@ -93,16 +96,12 @@
       }
     }
 
-    // só áreas com pendentes entram na disputa
     const candidates = Object.values(statsByArea).filter(
       (stats) => stats.pendingTasks.length > 0,
     );
 
     if (!candidates.length) return null;
 
-    // “Negligenciada”:
-    // 1) menos concluídas
-    // 2) em empate, pendência mais antiga
     candidates.sort((a, b) => {
       if (a.completedCount !== b.completedCount) {
         return a.completedCount - b.completedCount;
@@ -115,7 +114,6 @@
 
     const worstAreaStats = candidates[0];
 
-    // missão do dia = pendente mais antiga dessa área
     const sortedPendings = [...worstAreaStats.pendingTasks].sort((t1, t2) => {
       const aVal = t1.createdAt;
       const bVal = t2.createdAt;
@@ -133,7 +131,24 @@
 
   const suggestedDailyTask = $derived(computeSuggestedDailyTask());
 
-  // --- Retrospectiva semanal (últimos 7 dias) ---
+  // ---------- Helpers de data ----------
+  function parseYMD(dateStr: string): Date | null {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+    if (!m) return null;
+    const y = +m[1],
+      mm = +m[2],
+      d = +m[3];
+    return new Date(y, mm - 1, d);
+  }
+
+  function toDateKey(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  // --- Retrospectiva semanal (últimos 7 dias) — AGORA VIA xpLogs ---
   type WeeklyStats = {
     missions: number;
     xp: number;
@@ -141,41 +156,57 @@
   };
 
   function computeWeeklyStats(): WeeklyStats {
-    const now = Date.now();
-    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    // mapa YYYY-MM-DD -> soma de XP do dia
+    const byDay: Record<string, number> = {};
+    for (const log of xpLogs) {
+      const key = log.date;
+      byDay[key] = (byDay[key] ?? 0) + (log.amount ?? 0);
+    }
 
+    const today = new Date();
+    let total = 0;
+
+    // últimos 7 dias (inclui hoje) — sempre 7 pontos, com zeros
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate() - i,
+      );
+      const key = toDateKey(d);
+      const dayXp = byDay[key] ?? 0;
+      total += dayXp;
+    }
+
+    // "missões concluídas" ~ quantidade de logs positivos no intervalo
+    const start = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate() - 6,
+    );
     let missions = 0;
-    let xp = 0;
-    let gold = 0;
-
-    for (const task of tasks) {
-      if (!task.completed) continue;
-
-      const anyTask = task as any;
-      const rawDate =
-        anyTask.completedAt ?? anyTask.updatedAt ?? task.createdAt;
-
-      if (!rawDate) continue;
-
-      const d = rawDate instanceof Date ? rawDate : new Date(rawDate as any);
-      if (isNaN(d.getTime())) continue;
-
-      const diff = now - d.getTime();
-      if (diff <= sevenDaysMs && diff >= 0) {
-        missions++;
-        xp += task.xp;
-        // mesma regra de gold que você usa nos cards
-        gold += Math.floor(task.xp * 0.5);
+    for (const log of xpLogs) {
+      const d = parseYMD(log.date);
+      if (!d) continue;
+      // entre start e hoje (fechado em dias)
+      const dFloor = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const todayFloor = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate(),
+      );
+      if (dFloor >= start && dFloor <= todayFloor) {
+        if ((log.amount ?? 0) > 0) missions++;
       }
     }
 
-    return { missions, xp, gold };
+    const gold = Math.floor(total * 0.5);
+    return { missions, xp: total, gold };
   }
 
   const weeklyStats = $derived(computeWeeklyStats());
 
   // --- Revisões com intervalo configurável ---
-
   type ReviewMission = {
     task: Task;
     intervalDays: number;
@@ -319,7 +350,6 @@
   }
 
   // --- Status da missão: Disponível / A Fazer / Concluída ---
-
   type TaskStatus = 'available' | 'todo' | 'completed';
 
   function getTaskStatus(task: Task): TaskStatus {
@@ -328,7 +358,6 @@
     if (task.completed || anyTask.status === 'completed') return 'completed';
     if (anyTask.status === 'todo') return 'todo';
 
-    // default para tarefas antigas / sem status
     return 'available';
   }
 
@@ -352,16 +381,13 @@
     const task = tasks.find((t) => t.id === id);
     if (!task) return;
 
-    // Não permite "desmarcar" missão concluída
     if (task.completed) return;
 
-    // Marca como concluída
     await db.tasks.update(id, {
       completed: true,
       status: 'completed',
     } as any);
 
-    // Dá XP (e gold é calculado dentro do xpService)
     await xpService.addXp(task.xp);
   }
 
@@ -578,7 +604,7 @@
     </section>
   {/if}
 
-  <!-- Retrospectiva semanal -->
+  <!-- Retrospectiva semanal (agora 100% baseada em xpLogs) -->
   <section
     class="mx-auto w-full max-w-4xl rounded-2xl
          border border-amber-500/70
@@ -593,7 +619,7 @@
         Retrospectiva da última semana
       </p>
       <p class="mt-1 text-xs text-slate-400">
-        Considerando as missões concluídas nos últimos 7 dias.
+        Considerando as missões concluídas (logs) nos últimos 7 dias.
       </p>
     </div>
 
@@ -627,6 +653,7 @@
       </div>
     </div>
   </section>
+
   <!-- Tudo abaixo alinhado à mesma largura do StatsManager -->
   <div class="mx-auto flex w-full max-w-4xl flex-col gap-6">
     <!-- XP por área + comparação consigo mesmo + áreas -->
@@ -634,6 +661,7 @@
       <XpByAreaChart />
       <SelfComparisonPanel />
     </div>
+
     <!-- Missões para Revisão -->
     <section
       class="mx-auto w-full max-w-4xl rounded-2xl border border-sky-500/60 bg-slate-900/70 px-4 py-3
@@ -696,6 +724,7 @@
         </div>
       {/if}
     </section>
+
     <!-- Card de filtro de raridade -->
     <section
       class="mx-auto w-full max-w-4xl rounded-2xl border border-amber-500/60 bg-slate-900/70 px-4 py-3

@@ -1,23 +1,29 @@
 <script lang="ts">
   import PageTitleCard from '$lib/PageTitleCard.svelte';
+
+  // --- Tipos locais do inventário (mock) ---
+  type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
+  type InvType = 'arma' | 'armadura' | 'consumivel' | 'miscelanea';
+
   type InventoryItem = {
     id: number;
     name: string;
-    type: 'arma' | 'armadura' | 'consumivel' | 'miscelanea';
-    rarity: 'common' | 'rare' | 'epic' | 'legendary';
+    type: InvType;
+    rarity: Rarity;
     description: string;
     quantity: number;
     slot?: string;
   };
 
-  const rarityLabels: Record<InventoryItem['rarity'], string> = {
+  // Labels e classes por raridade
+  const rarityLabels: Record<Rarity, string> = {
     common: 'Comum',
     rare: 'Raro',
     epic: 'Épico',
     legendary: 'Lendário',
   };
 
-  const rarityClasses: Record<InventoryItem['rarity'], string> = {
+  const rarityClasses: Record<Rarity, string> = {
     common:
       'border-slate-700/80 bg-slate-900/80 text-slate-200 shadow-sm shadow-slate-900/40',
     rare: 'border-blue-500/60 bg-slate-900/80 text-blue-100 shadow-lg shadow-blue-500/30',
@@ -26,6 +32,14 @@
       'border-amber-400/80 bg-slate-900/90 text-amber-100 shadow-xl shadow-amber-400/40',
   };
 
+  const typeLabels: Record<InvType, string> = {
+    arma: 'Ferramentas',
+    armadura: 'Equipamentos',
+    consumivel: 'Consumíveis',
+    miscelanea: 'Miscelânea',
+  };
+
+  // Mock atual (substitua depois por dados do DB se quiser)
   const items: InventoryItem[] = [
     {
       id: 1,
@@ -85,24 +99,30 @@
     },
   ];
 
-  const typeLabels: Record<InventoryItem['type'], string> = {
-    arma: 'Ferramentas',
-    armadura: 'Equipamentos',
-    consumivel: 'Consumíveis',
-    miscelanea: 'Miscelânea',
-  };
-
-  // Helpers tipados pro TS parar de chiar nos Records
-  function getRarityLabel(r: InventoryItem['rarity']): string {
+  // Helpers tipados p/ TS
+  function getRarityLabel(r: Rarity): string {
     return rarityLabels[r];
   }
-
-  function getRarityClass(r: InventoryItem['rarity']): string {
+  function getRarityClass(r: Rarity): string {
     return rarityClasses[r];
   }
 
+  // --- Runes: derivados que viram funções ---
+  // Contadores por raridade
+  const countsByRarity = $derived(() => {
+    const counts: Record<Rarity, number> = {
+      common: 0,
+      rare: 0,
+      epic: 0,
+      legendary: 0,
+    };
+    for (const it of items) counts[it.rarity]++;
+    return counts;
+  });
+
+  // Agrupamento por tipo
   const groupedByType = $derived(() => {
-    const groups: Record<string, InventoryItem[]> = {};
+    const groups: Record<InvType | string, InventoryItem[]> = {};
     for (const item of items) {
       const key = item.type;
       if (!groups[key]) groups[key] = [];
@@ -119,6 +139,7 @@
     align="center"
   />
 
+  <!-- Resumo / KPIs -->
   <section
     class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 md:p-6 flex flex-col md:flex-row items-start md:items-center gap-4"
   >
@@ -145,6 +166,7 @@
           <span class="text-slate-500"> / 32</span>
         </span>
       </div>
+
       <div class="grid grid-cols-2 gap-1">
         <div
           class="px-3 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800/80 text-[0.7rem]"
@@ -152,9 +174,9 @@
           <span class="inline-block w-2 h-2 rounded-full bg-slate-400 mr-2"
           ></span>
           Comuns
-          <span class="float-right text-slate-200">
-            {items.filter((i) => i.rarity === 'common').length}
-          </span>
+          <span class="float-right text-slate-200"
+            >{countsByRarity().common}</span
+          >
         </div>
         <div
           class="px-3 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800/80 text-[0.7rem]"
@@ -162,9 +184,8 @@
           <span class="inline-block w-2 h-2 rounded-full bg-blue-400 mr-2"
           ></span>
           Raros
-          <span class="float-right text-slate-200">
-            {items.filter((i) => i.rarity === 'rare').length}
-          </span>
+          <span class="float-right text-slate-200">{countsByRarity().rare}</span
+          >
         </div>
         <div
           class="px-3 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800/80 text-[0.7rem]"
@@ -172,9 +193,8 @@
           <span class="inline-block w-2 h-2 rounded-full bg-purple-400 mr-2"
           ></span>
           Épicos
-          <span class="float-right text-slate-200">
-            {items.filter((i) => i.rarity === 'epic').length}
-          </span>
+          <span class="float-right text-slate-200">{countsByRarity().epic}</span
+          >
         </div>
         <div
           class="px-3 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800/80 text-[0.7rem]"
@@ -182,16 +202,17 @@
           <span class="inline-block w-2 h-2 rounded-full bg-amber-400 mr-2"
           ></span>
           Lendários
-          <span class="float-right text-slate-200">
-            {items.filter((i) => i.rarity === 'legendary').length}
-          </span>
+          <span class="float-right text-slate-200"
+            >{countsByRarity().legendary}</span
+          >
         </div>
       </div>
     </div>
   </section>
 
+  <!-- Listas por tipo -->
   <section class="space-y-6">
-    {#each Object.entries(groupedByType) as [typeKey, group] (typeKey)}
+    {#each Object.entries(groupedByType()) as [typeKey, group] (typeKey)}
       <div class="space-y-3">
         <h2
           class="text-sm font-semibold text-slate-300 flex items-center gap-2"
@@ -207,25 +228,23 @@
               🎒
             {/if}
           </span>
-          {typeLabels[typeKey as InventoryItem['type']]}
+          {typeLabels[typeKey as InvType]}
         </h2>
 
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           {#each group as item (item.id)}
             <article
               class={`rounded-2xl border p-4 flex flex-col gap-2 ${getRarityClass(
-                item.rarity as InventoryItem['rarity'],
+                item.rarity as Rarity,
               )}`}
             >
               <div class="flex items-start justify-between gap-2">
                 <div>
-                  <h3 class="font-semibold text-sm">
-                    {item.name}
-                  </h3>
+                  <h3 class="font-semibold text-sm">{item.name}</h3>
                   <p
                     class="text-[0.7rem] uppercase tracking-widest text-slate-400"
                   >
-                    {getRarityLabel(item.rarity as InventoryItem['rarity'])}
+                    {getRarityLabel(item.rarity as Rarity)}
                   </p>
                 </div>
                 <div

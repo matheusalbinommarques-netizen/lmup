@@ -1,3 +1,4 @@
+<!-- src/lib/AddTaskModal.svelte -->
 <script lang="ts">
   import { db, type Area, type Task } from '$services/db';
   import { liveQuery } from 'dexie';
@@ -12,11 +13,15 @@
 
   let title = $state('');
   let description = $state('');
-  let areaId = $state(0);
+
+  // HTML <select> sempre entrega string; convertemos no submit
+  let areaIdStr = $state('0');
+
   let areas = $state<Area[]>([]);
   let subtasks = $state<string[]>(['']);
 
-  const isEditMode = $derived(taskToEdit !== null);
+  // modal não precisa reatividade aqui; a prop não muda depois de aberto
+  const isEditMode = taskToEdit !== null;
 
   const rarityLabels: Record<Rarity, string> = {
     common: 'Comum',
@@ -36,19 +41,20 @@
     if (count >= 10) return 'legendary';
     if (count >= 5) return 'epic';
     if (count >= 3) return 'rare';
-    // 1–2 subtarefas → comum
     return 'common';
   }
 
-  const cleanSubtasks = $derived(
+  // --------- derived helpers (usar como FUNÇÃO no <script>) ---------
+  const cleanSubtasks = $derived(() =>
     subtasks.map((s) => s.trim()).filter((s) => s.length > 0),
   );
 
-  const subtaskCount = $derived(cleanSubtasks.length || 1);
+  const subtaskCount = $derived(() => cleanSubtasks().length || 1);
 
-  const autoRarity = $derived(rarityFromSubtaskCount(subtaskCount));
+  const autoRarity = $derived(() => rarityFromSubtaskCount(subtaskCount()));
+  const autoXp = $derived(() => rarityXp[autoRarity()]);
 
-  const autoXp = $derived(rarityXp[autoRarity]);
+  // ------------------------------------------------------------------
 
   const areasQuery = liveQuery(() => db.areas.toArray());
 
@@ -59,7 +65,7 @@
 
     if (isEditMode && taskToEdit) {
       title = taskToEdit.title;
-      areaId = taskToEdit.areaId ?? 0;
+      areaIdStr = String(taskToEdit.areaId ?? 0);
 
       const anyTask = taskToEdit as any;
       description = anyTask.description ?? '';
@@ -86,7 +92,6 @@
 
   function removeSubtask(index: number) {
     if (subtasks.length === 1) {
-      // mantém pelo menos um campo
       subtasks = [''];
       return;
     }
@@ -98,13 +103,13 @@
     const taskTitle = title.trim();
     if (!taskTitle) return;
 
-    const finalSubtasks = cleanSubtasks;
+    const finalSubtasks = cleanSubtasks();
     const count = finalSubtasks.length || 1;
     const rarity = rarityFromSubtaskCount(count);
     const xp = rarityXp[rarity];
 
     const taskData: any = {
-      areaId: +areaId,
+      areaId: Number.parseInt(areaIdStr, 10) || 0,
       title: taskTitle,
       rarity,
       xp,
@@ -120,7 +125,6 @@
       } else {
         await db.tasks.add(taskData);
       }
-
       close();
     } catch (error) {
       console.error('Erro ao salvar missão:', error);
@@ -129,12 +133,14 @@
   }
 </script>
 
+<!-- overlay -->
 <div
   class="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm"
   onclick={close}
   aria-hidden="true"
 ></div>
 
+<!-- modal -->
 <div
   class="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2
     bg-slate-900 border border-slate-800 rounded-2xl shadow-xl p-6"
@@ -189,19 +195,18 @@
         </label>
         <select
           id="area"
-          bind:value={areaId}
+          bind:value={areaIdStr}
           class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200
             focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/30"
         >
-          <option value={0}>Geral</option>
+          <option value="0">Geral</option>
           {#each areas as area (area.id)}
-            <option value={area.id}>{area.nome}</option>
+            <option value={String(area.id)}>{area.nome}</option>
           {/each}
         </select>
       </div>
 
       <div class="flex-1">
-        <!-- AQUI era <label>, agora é só texto -->
         <p class="block text-sm font-medium text-slate-300 mb-1">
           Raridade (automática)
         </p>
@@ -209,11 +214,11 @@
           class="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-slate-200"
         >
           <p class="font-semibold text-slate-100">
-            {rarityLabels[autoRarity]} (+{autoXp} XP)
+            {rarityLabels[autoRarity()]} (+{autoXp()} XP)
           </p>
           <p class="mt-1 text-[0.7rem] text-slate-400">
-            Calculada a partir de {subtaskCount}
-            {subtaskCount === 1 ? ' subtarefa' : ' subtarefas'}.
+            Calculada a partir de {subtaskCount()}
+            {subtaskCount() === 1 ? ' subtarefa' : ' subtarefas'}.
           </p>
           <p class="mt-1 text-[0.65rem] text-slate-500">
             1 = Comum • 3 = Rara • 5 = Épica • 10+ = Lendária
@@ -225,7 +230,6 @@
     <!-- Subtarefas -->
     <div>
       <div class="flex items-center justify-between mb-1">
-        <!-- AQUI também era <label>, trocado por <p> -->
         <p class="block text-sm font-medium text-slate-300">
           Subtarefas da Missão
         </p>
@@ -253,6 +257,7 @@
                   (e.currentTarget as HTMLInputElement).value,
                 )}
               placeholder={`Subtarefa ${index + 1}`}
+              aria-label={`Subtarefa ${index + 1}`}
               class="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200
                 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
             />
@@ -261,6 +266,7 @@
               class="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-red-400 text-xs"
               onclick={() => removeSubtask(index)}
               disabled={subtasks.length === 1}
+              aria-label={`Remover subtarefa ${index + 1}`}
             >
               ✕
             </button>

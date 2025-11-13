@@ -1,3 +1,4 @@
+<!-- src/routes/+page.svelte -->
 <script lang="ts">
   import { db, type Profile, type Companion } from '$services/db';
   import { liveQuery } from 'dexie';
@@ -19,6 +20,7 @@
     currentStreak: 0,
     lastCompletionDate: '',
     activeCompanionId: 1,
+    gold: 0,
   };
 
   // --- Padrão Reativo Svelte 5 + Dexie ---
@@ -49,30 +51,40 @@
   let isProfileModalOpen = $state(false);
 
   // --- Dados Derivados ---
-  let xpPercentage = $derived(
-    hero.xpNext > 0 ? (hero.xpCurrent / hero.xpNext) * 100 : 0,
+  const xpPercentage = $derived(
+    hero.xpNext > 0 ? Math.min(100, (hero.xpCurrent / hero.xpNext) * 100) : 0,
   );
 
-  // corrigindo typo: usar hero.xpNext
-  $effect(() => {
-    xpPercentage = hero.xpNext > 0 ? (hero.xpCurrent / hero.xpNext) * 100 : 0;
+  // Somente o que o template usa do companheiro (evita acoplar ao schema completo)
+  type DisplayCompanion = {
+    id?: number;
+    name: string;
+    type: string;
+    imagePath: string;
+  };
+
+  type MaybeWithImage = Companion & { imagePath?: string };
+
+  const activePet = $derived.by<DisplayCompanion>(() => {
+    if (allCompanions.length === 0) {
+      return {
+        id: 0,
+        name: 'Carregando...',
+        type: '...',
+        imagePath: '/art/pets/pet-dragon-final.png',
+      };
+    }
+    const found =
+      allCompanions.find((c) => c.id === hero.activeCompanionId) ??
+      allCompanions[0];
+    const withImg = found as MaybeWithImage;
+    return {
+      id: (found as any).id, // id pode não existir em alguns schemas; apenas repassamos se houver
+      name: (found as any).name ?? 'Companheiro',
+      type: (found as any).type ?? 'Companion',
+      imagePath: withImg.imagePath ?? '/art/pets/pet-dragon-final.png',
+    };
   });
-
-  let activePet = $derived(
-    (() => {
-      if (allCompanions.length === 0) {
-        return {
-          name: 'Carregando...',
-          type: '...',
-          imagePath: '/art/pets/pet-dragon-final.png',
-        };
-      }
-      return (
-        allCompanions.find((c: Companion) => c.id === hero.activeCompanionId) ||
-        allCompanions[0]
-      );
-    })(),
-  );
 </script>
 
 {#if isProfileModalOpen}
@@ -82,6 +94,7 @@
 {#if isCompanionModalOpen}
   <CompanionSelectModal close={() => (isCompanionModalOpen = false)} />
 {/if}
+
 <div class="min-h-full lmup-bg-taverna bg-slate-950/60">
   <div class="flex flex-col gap-6">
     <PageTitleCard
@@ -151,7 +164,7 @@
 
             <span class="inline-flex items-center gap-1">
               <img
-                src="art/icones/icon-xp.png"
+                src="/art/icones/icon-xp.png"
                 alt="XP"
                 class="h-4 w-4 object-contain"
               />
@@ -200,13 +213,8 @@
     <!-- Serviços da Taverna -->
     <div class="mt-6 flex justify-center">
       <div
-        class="relative inline-flex items-center justify-center
-           rounded-2xl border border-amber-500/70
-           bg-gradient-to-r from-slate-950 via-amber-900/40 to-slate-950
-           px-8 md:px-12 py-3
-           shadow-[0_0_35px_rgba(245,158,11,0.65)]"
+        class="relative inline-flex items-center justify-center rounded-2xl border border-amber-500/70 bg-gradient-to-r from-slate-950 via-amber-900/40 to-slate-950 px-8 md:px-12 py-3 shadow-[0_0_35px_rgba(245,158,11,0.65)]"
       >
-        <!-- moldura interna / glow -->
         <div
           class="pointer-events-none absolute inset-0 opacity-50"
           aria-hidden="true"
@@ -217,8 +225,7 @@
         </div>
 
         <h2
-          class="relative z-[1] font-serif text-xl md:text-2xl font-extrabold
-             tracking-wide text-amber-100"
+          class="relative z-[1] font-serif text-xl md:text-2xl font-extrabold tracking-wide text-amber-100"
         >
           Serviços da Taverna
         </h2>
@@ -226,7 +233,6 @@
     </div>
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <!-- Loja -->
       <a
         href="/loja"
         class="p-4 bg-slate-900/50 border-2 border-amber-400/80 hover:border-amber-300 hover:bg-slate-800/80 rounded-xl flex flex-col items-center gap-3 transition-all shadow-[0_0_18px_rgba(251,191,36,0.35)] group"
@@ -240,7 +246,6 @@
         <span class="font-medium text-slate-300">Loja</span>
       </a>
 
-      <!-- Sala de Troféus -->
       <a
         href="/trofeus"
         class="p-4 bg-slate-900/50 border-2 border-amber-400/80 hover:border-amber-300 hover:bg-slate-800/80 rounded-xl flex flex-col items-center gap-3 transition-all shadow-[0_0_18px_rgba(251,191,36,0.35)] group"
@@ -254,7 +259,6 @@
         <span class="font-medium text-slate-300">Sala de Troféus</span>
       </a>
 
-      <!-- Inventário -->
       <a
         href="/inventario"
         class="p-4 bg-slate-900/50 border-2 border-amber-400/80 hover:border-amber-300 hover:bg-slate-800/80 rounded-xl flex flex-col items-center gap-3 transition-all shadow-[0_0_18px_rgba(251,191,36,0.35)] group"
@@ -268,7 +272,6 @@
         <span class="font-medium text-slate-300">Inventário</span>
       </a>
 
-      <!-- Bestiário -->
       <a
         href="/bestiario"
         class="p-4 bg-slate-900/50 border-2 border-amber-400/80 hover:border-amber-300 hover:bg-slate-800/80 rounded-xl flex flex-col items-center gap-3 transition-all shadow-[0_0_18px_rgba(251,191,36,0.35)] group"

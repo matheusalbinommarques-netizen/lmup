@@ -6,12 +6,9 @@
 
   // Range do gráfico
   type ChartRange = '7d' | '30d' | '6m' | '1y';
+  const RANGES: ChartRange[] = ['7d', '30d', '6m', '1y'];
 
-  type ChartPoint = {
-    label: string;
-    value: number;
-  };
-
+  type ChartPoint = { label: string; value: number };
   type SvgBar = {
     label: string;
     value: number;
@@ -33,20 +30,18 @@
     const sub = xpLogsQuery.subscribe((rows) => {
       xpLogs = rows ?? [];
     });
-
     return () => sub.unsubscribe();
   });
 
   // ---------- Helpers de data ----------
-
   const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
   function parseDate(dateStr: string | undefined | null): Date | null {
     if (!dateStr) return null;
     const [yStr, mStr, dStr] = dateStr.split('-');
-    const y = Number(yStr);
-    const m = Number(mStr);
-    const d = Number(dStr);
+    const y = Number(yStr),
+      m = Number(mStr),
+      d = Number(dStr);
     if (!y || !m || !d) return null;
     return new Date(y, m - 1, d);
   }
@@ -57,8 +52,8 @@
     return `${day}/${month}`;
   }
 
-  function formatMonthLabel(d: Date): string {
-    const monthNames = [
+  function monthShort(d: Date): string {
+    const M = [
       'Jan',
       'Fev',
       'Mar',
@@ -72,7 +67,7 @@
       'Nov',
       'Dez',
     ];
-    return monthNames[d.getMonth()];
+    return M[d.getMonth()];
   }
 
   function toDateKey(d: Date): string {
@@ -81,7 +76,6 @@
     const day = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
   }
-
   function toMonthKey(d: Date): string {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -89,55 +83,51 @@
   }
 
   // ---------- Construção dos pontos do gráfico ----------
-
   function buildPoints(logs: XpLog[], range: ChartRange): ChartPoint[] {
-    if (!logs || logs.length === 0) return [];
-
+    if (!logs?.length) return [];
     const today = new Date();
 
     if (range === '7d' || range === '30d') {
       const days = range === '7d' ? 7 : 30;
       const result: ChartPoint[] = [];
-
       for (let i = days - 1; i >= 0; i--) {
         const d = new Date(today.getTime() - i * MS_PER_DAY);
         const key = toDateKey(d);
         const label = formatDayLabel(d);
-
         const value = logs
           .filter((log) => log.date === key)
-          .reduce((sum, log) => sum + (log.amount ?? 0), 0);
-
+          .reduce((s, log) => s + (log.amount ?? 0), 0);
         result.push({ label, value });
       }
-
       return result;
     }
 
-    // range mensal (6m / 1y)
+    // mensal (6m / 1y)
     const monthsBack = range === '6m' ? 6 : 12;
     const result: ChartPoint[] = [];
-
-    // "YYYY-MM" -> XP
     const monthMap: Record<string, number> = {};
 
     for (const log of logs) {
       const d = parseDate(log.date);
       if (!d) continue;
       const key = toMonthKey(d);
-      const current = monthMap[key] ?? 0;
-      monthMap[key] = current + (log.amount ?? 0);
+      monthMap[key] = (monthMap[key] ?? 0) + (log.amount ?? 0);
     }
 
-    const current = new Date(today.getFullYear(), today.getMonth(), 1);
+    const firstDayThisMonth = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      1,
+    );
     for (let i = monthsBack - 1; i >= 0; i--) {
-      const d = new Date(current.getFullYear(), current.getMonth() - i, 1);
+      const d = new Date(
+        firstDayThisMonth.getFullYear(),
+        firstDayThisMonth.getMonth() - i,
+        1,
+      );
       const key = toMonthKey(d);
-      const label = formatMonthLabel(d);
-      const value = monthMap[key] ?? 0;
-      result.push({ label, value });
+      result.push({ label: monthShort(d), value: monthMap[key] ?? 0 });
     }
-
     return result;
   }
 
@@ -146,9 +136,7 @@
 
   // Maior valor para escalar as barras
   const maxValue = $derived(
-    points.length
-      ? points.reduce((max, p) => (p.value > max ? p.value : max), 0)
-      : 0,
+    points.length ? points.reduce((m, p) => (p.value > m ? p.value : m), 0) : 0,
   );
 
   // Barras em coordenadas de SVG (0–100 x 0–100)
@@ -157,12 +145,11 @@
       if (!points.length) return [] as SvgBar[];
 
       const max = maxValue || 1;
-
-      const chartWidth = 100;
-      const chartHeight = 100;
-      const paddingX = 4;
-      const paddingTop = 4;
-      const paddingBottom = 12;
+      const chartWidth = 100,
+        chartHeight = 100;
+      const paddingX = 4,
+        paddingTop = 4,
+        paddingBottom = 12;
 
       const innerWidth = chartWidth - paddingX * 2;
       const innerHeight = chartHeight - paddingTop - paddingBottom;
@@ -173,11 +160,9 @@
 
       return points.map((p, i) => {
         const rawHeight = (p.value / max) * innerHeight;
-        const height = Math.max(rawHeight, 1); // nunca 0, pra sempre aparecer
-
+        const height = Math.max(rawHeight, 1);
         const x = paddingX + i * step + (step - barWidth) / 2;
         const y = chartHeight - paddingBottom - height;
-
         return {
           label: p.label,
           value: p.value,
@@ -191,25 +176,17 @@
   );
 
   const hasData = $derived(points.some((p) => p.value !== 0));
-
   const totalInRange = $derived(points.reduce((sum, p) => sum + p.value, 0));
-
   const averageValue = $derived(
-    (() => {
-      if (!points.length) return 0;
-      return Math.round(totalInRange / points.length);
-    })(),
+    points.length ? Math.round(totalInRange / points.length) : 0,
   );
 
   const bestPointLabel = $derived(
     (() => {
       if (!points.length) return '—';
       let best = points[0];
-      for (const p of points) {
-        if (p.value > best.value) best = p;
-      }
-      if (best.value === 0) return '—';
-      return best.label;
+      for (const p of points) if (p.value > best.value) best = p;
+      return best.value === 0 ? '—' : best.label;
     })(),
   );
 
@@ -217,15 +194,12 @@
   const bestWeekdayLabel = $derived(
     (() => {
       if (!xpLogs.length) return '—';
-
       const byWeekday = [0, 0, 0, 0, 0, 0, 0]; // domingo..sábado
       for (const log of xpLogs) {
         const d = parseDate(log.date);
         if (!d) continue;
-        const dow = d.getDay();
-        byWeekday[dow] += log.amount ?? 0;
+        byWeekday[d.getDay()] += log.amount ?? 0;
       }
-
       const labels = [
         'Domingo',
         'Segunda',
@@ -235,14 +209,9 @@
         'Sexta',
         'Sábado',
       ];
-
       let best = 0;
-      for (let i = 1; i < 7; i++) {
-        if (byWeekday[i] > byWeekday[best]) best = i;
-      }
-
-      if (byWeekday[best] === 0) return '—';
-      return labels[best];
+      for (let i = 1; i < 7; i++) if (byWeekday[i] > byWeekday[best]) best = i;
+      return byWeekday[best] === 0 ? '—' : labels[best];
     })(),
   );
 
@@ -265,25 +234,7 @@
     selectedRange === '6m' || selectedRange === '1y' ? 'mês' : 'dia',
   );
 
-  function rangeLabel(range: ChartRange): string {
-    switch (range) {
-      case '7d':
-        return '7 dias';
-      case '30d':
-        return '30 dias';
-      case '6m':
-        return '6 meses';
-      case '1y':
-        return '1 ano';
-    }
-  }
-
-  function isMonthlyRange(range: ChartRange): boolean {
-    return range === '6m' || range === '1y';
-  }
-
-  // ---------- Helpers de label do eixo X ----------
-
+  // ---------- Helpers de labels do eixo X ----------
   function shouldShowLabel(
     index: number,
     total: number,
@@ -291,35 +242,28 @@
   ): boolean {
     if (range === '7d') return true;
     if (range === '30d') {
-      // tenta ~8 labels distribuídos
       const target = 8;
       const step = Math.max(1, Math.floor(total / target));
       return index % step === 0;
     }
-    // ranges mensais: sempre mostra todos os meses
-    return true;
+    return true; // mensal: mostra todos
   }
 
   function formatAxisLabel(label: string, range: ChartRange): string {
-    // label diário vem como "dd/mm"
-    if (range === '7d' || range === '30d') {
-      return label.slice(0, 2); // só o dia
-    }
-    // mensal já vem "Jan", "Fev"...
-    return label;
+    if (range === '7d' || range === '30d') return label.slice(0, 2); // exibe só o dia
+    return label; // mensal já é "Jan", "Fev"...
   }
 </script>
 
 <section
-  class="mx-auto w-full max-w-4xl rounded-2xl border border-green-500/60 bg-slate-950/70 px-4 py-3
-           shadow-[0_0_20px_rgba(56,189,248,0.45)]"
+  class="mx-auto w-full max-w-4xl rounded-2xl border border-green-500/60 bg-slate-950/70 px-4 py-3 shadow-[0_0_20px_rgba(56,189,248,0.45)]"
 >
   <div
     class="mx-auto max-w-4xl rounded-3xl border border-slate-800 bg-slate-950/85 px-4 py-4 md:px-6 md:py-5 shadow-[0_0_30px_rgba(15,23,42,0.7)]"
   >
-    <!-- Cabeçalho (somente textos, centralizado) -->
+    <!-- Cabeçalho -->
     <header class="mb-4 text-center space-y-1">
-      <p class="text-[1 rem] uppercase tracking-[0.22em] text-slate-400">
+      <p class="text-[1rem] uppercase tracking-[0.22em] text-slate-400">
         Comparação pessoal
       </p>
       <h3 class="text-base font-semibold text-slate-100 md:text-lg">
@@ -331,7 +275,7 @@
     </header>
 
     {#if hasData}
-      <!-- 3 cards em cima -->
+      <!-- 3 cards -->
       <div class="mb-4 grid gap-3 text-xs text-slate-300 md:grid-cols-3">
         <div
           class="rounded-2xl border border-emerald-500/70 bg-emerald-950/40 px-3 py-2.5 shadow-[0_0_18px_rgba(16,185,129,0.45)]"
@@ -350,8 +294,7 @@
         </div>
 
         <div
-          class="mx-auto w-full max-w-4xl rounded-2xl border border-yellow-300/60 bg-slate-950/70 px-4 py-3
-           shadow-[0_0_20px_rgba(56,189,248,0.45)]"
+          class="rounded-2xl border border-yellow-300/60 bg-slate-950/70 px-3 py-2.5 shadow-[0_0_20px_rgba(234,179,8,0.25)]"
         >
           <p class="text-[0.65rem] uppercase tracking-[0.18em] text-slate-400">
             Média por {unitLabel}
@@ -365,11 +308,12 @@
         </div>
 
         <div
-          class="mx-auto w-full max-w-4xl rounded-2xl border border-blue-300/60 bg-slate-950/70 px-4 py-3
-           shadow-[0_0_20px_rgba(56,189,248,0.45)]"
+          class="rounded-2xl border border-blue-300/60 bg-slate-950/70 px-3 py-2.5 shadow-[0_0_20px_rgba(59,130,246,0.25)]"
         >
           <p class="text-[0.65rem] uppercase tracking-[0.18em] text-slate-400">
-            Melhor {isMonthlyRange(selectedRange) ? 'mês' : 'dia'} do período
+            Melhor {selectedRange === '6m' || selectedRange === '1y'
+              ? 'mês'
+              : 'dia'} do período
           </p>
           <p class="mt-1 text-sm font-semibold text-emerald-300">
             {bestPointLabel}
@@ -380,11 +324,11 @@
         </div>
       </div>
 
-      <!-- Filtros de range: logo abaixo dos 3 cards, alinhados lado a lado -->
+      <!-- Filtros de range -->
       <div
         class="mb-4 flex flex-wrap items-center justify-center gap-2 text-[0.7rem]"
       >
-        {#each ['7d', '30d', '6m', '1y'] as ChartRange[] as range (range)}
+        {#each RANGES as range (range)}
           <button
             type="button"
             onclick={() => (selectedRange = range)}
@@ -394,7 +338,13 @@
                 : 'border-slate-700 bg-slate-900/80 text-slate-300 hover:border-emerald-400/60 hover:text-emerald-200'
             }`}
           >
-            {rangeLabel(range)}
+            {range === '7d'
+              ? '7 dias'
+              : range === '30d'
+                ? '30 dias'
+                : range === '6m'
+                  ? '6 meses'
+                  : '1 ano'}
           </button>
         {/each}
       </div>
@@ -409,12 +359,12 @@
           role="img"
           aria-label="XP por {unitLabel}"
         >
-          <!-- linha de base -->
+          <!-- linha de base (y = 100 - paddingBottom = 88) -->
           <line
             x1="0"
-            y1="84"
+            y1="88"
             x2="100"
-            y2="84"
+            y2="88"
             stroke="rgba(148,163,184,0.6)"
             stroke-width="0.5"
           />
@@ -447,13 +397,12 @@
         </svg>
       </div>
 
-      <!-- Card "Dia da semana mais forte" embaixo do gráfico -->
+      <!-- Dia da semana mais forte -->
       <div
-        class="mx-auto w-full max-w-4xl rounded-2xl border border-green-500/60 bg-slate-950/70 px-4 py-3
-           shadow-[0_0_20px_rgba(56,189,248,0.45)]"
+        class="mx-auto w-full max-w-4xl rounded-2xl border border-green-500/60 bg-slate-950/70 px-4 py-3 shadow-[0_0_20px_rgba(56,189,248,0.45)]"
       >
         <p
-          class="text-center [0.65rem] uppercase tracking-[0.18em] text-green-300/80"
+          class="text-center text-[0.65rem] uppercase tracking-[0.18em] text-green-300/80"
         >
           Dia da semana mais forte
         </p>

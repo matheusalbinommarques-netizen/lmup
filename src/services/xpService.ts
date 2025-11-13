@@ -1,355 +1,141 @@
 // src/services/xpService.ts
-import { db } from './db';
-import { liveQuery } from 'dexie';
+import { db, type Profile } from './db';
 
 /**
- * XP necessário para subir de nível.
- * Ex:
- *  - Nível 1 -> 2 = 100 XP
- *  - Nível 2 -> 3 = 200 XP
- *  - Nível 3 -> 4 = 300 XP
+ * Curva de XP unificada (linear):
+ * L1 -> 100, L2 -> 150, L3 -> 200, ...
  */
-const getXpForNextLevel = (level: number): number => {
-  if (level < 1) return 100;
-  return level * 100;
-};
+export const XP_BASE = 100;
+export const XP_STEP = 50;
 
-// -----------------------------
-// Helpers de data / streak
-// -----------------------------
-
-const DAY_IN_MS = 1000 * 60 * 60 * 24;
-
-function toDateOnly(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+export function getXpForNextLevel(level: number): number {
+  const L = Math.max(1, Math.floor(level || 1));
+  return XP_BASE + (L - 1) * XP_STEP;
 }
 
-function toDateOnlyString(d: Date): string {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
+function todayKey(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return `${y}-${m}-${day}`;
 }
 
-function parseDateOnly(dateStr: string | undefined | null): Date | null {
-  if (!dateStr) return null;
-  const parts = dateStr.split('-');
-  if (parts.length !== 3) return null;
-
-  const [yearStr, monthStr, dayStr] = parts;
-  const year = Number(yearStr);
-  const month = Number(monthStr);
-  const day = Number(dayStr);
-
-  if (!year || !month || !day) return null;
-
-  return new Date(year, month - 1, day);
-}
-
-/**
- * Calcula o streak atualizado dado o streak atual + última data salva.
- *
- * Regra:
- *  - Nunca teve streak -> vira 1 hoje.
- *  - Mesma data que hoje -> mantém streak.
- *  - Ontem -> streak + 1.
- *  - 1 dia de furo -> não zera, só congela (streak amigável).
- *  - 2+ dias sem completar -> reseta para 1.
- */
-function computeUpdatedStreak(
-  currentStreak: number | undefined,
-  lastCompletionDate: string | undefined | null,
-): { currentStreak: number; lastCompletionDate: string } {
-  const today = toDateOnly(new Date());
-  const todayStr = toDateOnlyString(today);
-
-  // Nunca teve streak
-  if (!lastCompletionDate) {
-    return { currentStreak: 1, lastCompletionDate: todayStr };
-  }
-
-  const lastDateParsed = parseDateOnly(lastCompletionDate);
-  if (!lastDateParsed) {
-    return { currentStreak: 1, lastCompletionDate: todayStr };
-  }
-
-  const lastDate = toDateOnly(lastDateParsed);
-  const lastStr = toDateOnlyString(lastDate);
-
-  // Já registrou streak hoje -> mantém
-  if (lastStr === todayStr) {
-    return {
-      currentStreak: currentStreak ?? 1,
-      lastCompletionDate,
+async function ensureProfile(): Promise<Profile> {
+  let p = await db.profile.get(1);
+  if (!p) {
+    p = {
+      id: 1,
+      name: 'Seu herói',
+      title: 'Nobre aventureiro',
+      level: 1,
+      xpCurrent: 0,
+      xpNext: getXpForNextLevel(1),
+      avatarUrl: '',
+      totalXpEarned: 0,
+      currentStreak: 0,
+      lastCompletionDate: '',
+      activeCompanionId: 1,
+      gold: 0,
     };
+    await db.profile.put(p);
+  } else if (!p.xpNext || p.xpNext <= 0) {
+    // Normaliza xpNext para a curva atual
+    p.xpNext = getXpForNextLevel(p.level || 1);
+    await db.profile.put(p);
   }
-
-  const diffMs = today.getTime() - lastDate.getTime();
-  const diffDays = Math.round(diffMs / DAY_IN_MS);
-
-  if (diffDays === 1) {
-    // Dia seguinte -> incrementa streak
-    const nextStreak = (currentStreak ?? 0) + 1;
-    return { currentStreak: nextStreak, lastCompletionDate: todayStr };
-  }
-
-  if (diffDays === 2) {
-    // Streak amigável: 1 dia de furo -> não zera, só congela o valor
-    const safeStreak = currentStreak ?? 1;
-    return { currentStreak: safeStreak, lastCompletionDate: todayStr };
-  }
-
-  // 2+ dias sem completar (ou relógio muito bagunçado) -> reseta
-  return { currentStreak: 1, lastCompletionDate: todayStr };
+  return p;
 }
 
-// -----------------------------
-// Serviço principal de XP
-// -----------------------------
+async function writeLog(amount: number) {
+  // XpLog tem apenas { date, amount } no schema atual
+  await db.xpLogs.add({
+    date: todayKey(),
+    amount,
+  });
+}
+
+async function _applyLeveling(
+  profile: Profile,
+  deltaXp: number,
+): Promise<Profile> {
+  // Garante campos básicos
+  let level = Math.max(1, profile.level || 1);
+  let xpCurrent = Math.max(0, profile.xpCurrent || 0);
+  let xpNext = getXpForNextLevel(level);
+
+  if (deltaXp >= 0) {
+    // Ganho de XP (pode dar vários level ups)
+    xpCurrent += deltaXp;
+    while (xpCurrent >= xpNext) {
+      xpCurrent -= xpNext;
+      level += 1;
+      xpNext = getXpForNextLevel(level);
+    }
+    profile.totalXpEarned = (profile.totalXpEarned || 0) + deltaXp;
+    profile.gold = Math.max(0, (profile.gold || 0) + Math.floor(deltaXp * 0.5));
+  } else {
+    // Perda de XP (pode baixar nível, até L1)
+    let remaining = -deltaXp;
+    while (remaining > 0) {
+      if (xpCurrent >= remaining) {
+        xpCurrent -= remaining;
+        remaining = 0;
+      } else {
+        remaining -= xpCurrent;
+        if (level > 1) {
+          level -= 1;
+          const prevNext = getXpForNextLevel(level);
+          xpCurrent = prevNext; // “empresta” do nível anterior
+          xpCurrent -= Math.min(xpCurrent, remaining);
+          remaining = Math.max(0, remaining - (prevNext - xpCurrent));
+        } else {
+          // Nível 1 não pode ficar negativo
+          xpCurrent = 0;
+          remaining = 0;
+        }
+      }
+    }
+    profile.totalXpEarned = Math.max(
+      0,
+      (profile.totalXpEarned || 0) + deltaXp, // deltaXp é negativo
+    );
+    profile.gold = Math.max(0, (profile.gold || 0) + Math.floor(deltaXp * 0.5));
+  }
+
+  profile.level = level;
+  profile.xpCurrent = xpCurrent;
+  profile.xpNext = xpNext;
+
+  return profile;
+}
 
 export const xpService = {
+  getXpForNextLevel,
+
   /**
-   * Adiciona XP ao perfil do usuário, checa level up,
-   * atualiza o streak diário, dá gold (50% do XP)
-   * e registra um log em xpLogs.
+   * Concede XP e registra log (fonte oficial).
    */
-  async addXp(amount: number) {
-    if (amount <= 0) return;
-
+  async addXp(amount: number): Promise<void> {
+    if (!amount || amount <= 0) return;
     await db.transaction('rw', db.profile, db.xpLogs, async () => {
-      // Garante que exista um profile com id = 1
-      let profile = await db.profile.get(1);
-
-      if (!profile) {
-        profile = {
-          id: 1,
-          name: 'Seu herói',
-          title: 'Nobre Aventureiro Nv. 1',
-          level: 1,
-          xpCurrent: 0,
-          xpNext: getXpForNextLevel(1),
-          avatarUrl: '',
-          totalXpEarned: 0,
-          currentStreak: 0,
-          lastCompletionDate: '',
-          activeCompanionId: 1,
-          gold: 0,
-        };
-        await db.profile.put(profile);
-      }
-
-      // Somente leitura → const
-      const {
-        currentStreak,
-        lastCompletionDate,
-        totalXpEarned: totalXpEarnedRaw = 0,
-      } = profile;
-
-      // Valores que vamos mutar → let
-      let { xpCurrent, xpNext, level, title } = profile;
-      let totalXpEarned = totalXpEarnedRaw;
-      let gold = typeof profile.gold === 'number' ? profile.gold : 0;
-
-      // XP atual + histórico
-      xpCurrent += amount;
-      totalXpEarned += amount;
-
-      // Gold: 50% do XP (arredondado pra baixo)
-      const goldEarned = Math.floor(amount * 0.5);
-      gold += goldEarned;
-
-      // Loop de level up
-      let leveledUp = false;
-      while (xpCurrent >= xpNext) {
-        leveledUp = true;
-        xpCurrent -= xpNext;
-        level += 1;
-        xpNext = getXpForNextLevel(level);
-      }
-
-      if (leveledUp) {
-        title = `Nobre Aventureiro Nv. ${level}`;
-      }
-
-      // Atualiza streak diário
-      const streakInfo = computeUpdatedStreak(
-        currentStreak,
-        lastCompletionDate,
-      );
-
-      // Log de XP diário
-      const todayStr = toDateOnlyString(new Date());
-      await db.xpLogs.add({
-        date: todayStr,
-        amount,
-      });
-
-      await db.profile.update(1, {
-        xpCurrent,
-        xpNext,
-        level,
-        title,
-        totalXpEarned,
-        currentStreak: streakInfo.currentStreak,
-        lastCompletionDate: streakInfo.lastCompletionDate,
-        gold,
-      });
+      const p = await ensureProfile();
+      const updated = await _applyLeveling({ ...p }, amount);
+      await db.profile.put(updated);
+      await writeLog(amount);
     });
   },
 
   /**
-   * Remove XP do perfil (ex: ao desmarcar uma missão).
-   * Não mexe no totalXpEarned (XP da vida),
-   * mas remove o XP atual, pode "desupar" nível
-   * e tira o gold correspondente.
-   * Também registra um log negativo em xpLogs.
+   * Remove XP (idempotente, sem deixar negativo) e registra log negativo.
    */
-  async removeXp(amount: number) {
-    if (amount <= 0) return;
-
+  async removeXp(amount: number): Promise<void> {
+    if (!amount || amount <= 0) return;
     await db.transaction('rw', db.profile, db.xpLogs, async () => {
-      let profile = await db.profile.get(1);
-
-      if (!profile) {
-        // Se não existir perfil, cria um zerado só para manter consistência
-        profile = {
-          id: 1,
-          name: 'Seu herói',
-          title: 'Aventureiro Nv. 1',
-          level: 1,
-          xpCurrent: 0,
-          xpNext: getXpForNextLevel(1),
-          avatarUrl: '',
-          totalXpEarned: 0,
-          currentStreak: 0,
-          lastCompletionDate: '',
-          activeCompanionId: 1,
-          gold: 0,
-        };
-        await db.profile.put(profile);
-      }
-
-      let { xpCurrent, xpNext, level, title } = profile;
-      let gold = typeof profile.gold === 'number' ? profile.gold : 0;
-
-      xpCurrent -= amount;
-
-      // Remove gold (50% do XP), sem deixar negativo
-      const goldLost = Math.floor(amount * 0.5);
-      gold = Math.max(0, gold - goldLost);
-
-      // Loop de "de-level"
-      let deleveled = false;
-      while (xpCurrent < 0 && level > 1) {
-        deleveled = true;
-        level -= 1;
-        xpNext = getXpForNextLevel(level);
-        xpCurrent += xpNext;
-      }
-
-      if (level < 1) level = 1;
-      if (xpCurrent < 0) xpCurrent = 0;
-
-      if (deleveled) {
-        title = `Aventureiro Nv. ${level}`;
-      }
-
-      // Log negativo de XP
-      const todayStr = toDateOnlyString(new Date());
-      await db.xpLogs.add({
-        date: todayStr,
-        amount: -amount,
-      });
-
-      await db.profile.update(1, {
-        xpCurrent,
-        xpNext,
-        level,
-        title,
-        gold,
-      });
+      const p = await ensureProfile();
+      const updated = await _applyLeveling({ ...p }, -amount);
+      await db.profile.put(updated);
+      await writeLog(-amount);
     });
   },
-} as const;
-
-// -----------------------------
-// Observables para painéis (XP total + streak + gold)
-// -----------------------------
-
-/**
- * Observable com o total de XP acumulado (totalXpEarned).
- */
-export function getTotalXpObservable() {
-  return liveQuery(async () => {
-    const profile = await db.profile.get(1);
-    return profile?.totalXpEarned ?? 0;
-  });
-}
-
-/**
- * Observable com o streak atual + última data de conclusão.
- * Formato: { count: number, lastCompletionDate: string }
- */
-export function getStreakObservable() {
-  return liveQuery(async () => {
-    const profile = await db.profile.get(1);
-    return {
-      count: profile?.currentStreak ?? 0,
-      lastCompletionDate: profile?.lastCompletionDate ?? '',
-    };
-  });
-}
-
-/**
- * Observable com o gold atual do jogador.
- */
-export function getGoldObservable() {
-  return liveQuery(async () => {
-    const profile = await db.profile.get(1);
-    return profile?.gold ?? 0;
-  });
-}
-
-// -----------------------------
-// Função de cálculo de nível
-// -----------------------------
-
-/**
- * Dado o total de XP da vida, retorna:
- *  - nivel / level
- *  - progresso (%)
- *  - xpAtualNesteNivel / currentLevelXp
- *  - xpParaProximoNivel / xpToNextLevel
- */
-export function calcularNivel(totalXp: number) {
-  if (!Number.isFinite(totalXp) || totalXp < 0) {
-    totalXp = 0;
-  }
-
-  let level = 1;
-  let xpRemaining = Math.floor(totalXp);
-  let xpForNext = getXpForNextLevel(level); // 100 no nível 1
-
-  while (xpRemaining >= xpForNext) {
-    xpRemaining -= xpForNext;
-    level += 1;
-    xpForNext = getXpForNextLevel(level);
-  }
-
-  const progress =
-    xpForNext > 0 ? Math.floor((xpRemaining / xpForNext) * 100) : 0;
-
-  return {
-    // nomes em pt-BR (se quiser usar em JS puro)
-    nivel: level,
-    progresso: progress,
-    xpAtualNesteNivel: xpRemaining,
-    xpParaProximoNivel: xpForNext,
-
-    // aliases em inglês (para os componentes Svelte)
-    level,
-    progress,
-    currentLevelXp: xpRemaining,
-    xpToNextLevel: xpForNext,
-  };
-}
+};
