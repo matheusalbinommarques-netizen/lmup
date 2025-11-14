@@ -82,9 +82,6 @@
         </span>
         <span class="relative text-amber-100">Level Me Up!</span>
       </span>
-      <span class="text-[0.7rem] text-slate-400">
-        Seu quadro de missões gamificado
-      </span>
     </div>
   </a>
 
