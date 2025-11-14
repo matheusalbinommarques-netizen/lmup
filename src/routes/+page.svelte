@@ -106,6 +106,7 @@
     <PageTitleCard
       title="Taverna do Herói"
       subtitle="Bem vindo de volta guerreiro! descanse e prepare-se para novas aventuras."
+      iconSrc="/art/icones/icon-taverna.png"
       align="center"
     />
 

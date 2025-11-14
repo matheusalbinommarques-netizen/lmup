@@ -185,6 +185,7 @@
     <PageTitleCard
       title="Loja da Taverna"
       subtitle="Gaste seu Gold em itens exclusivos para personalizar sua experiência e aprimorar sua jornada."
+      iconSrc="/art/icones/shop-icon.png"
       align="center"
     />
 

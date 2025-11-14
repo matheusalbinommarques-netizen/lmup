@@ -187,15 +187,24 @@
             ></div>
           </div>
 
-          <div class="relative space-y-2 text-center">
+          <div class="relative space-y-3 text-center">
             <h2
               class="font-serif text-2xl md:text-3xl font-extrabold
-                     bg-gradient-to-r from-violet-100 via-violet-300 to-emerald-300
-                     bg-clip-text text-transparent
-                     drop-shadow-[0_0_22px_rgba(129,140,248,0.95)]"
+           bg-gradient-to-r from-violet-100 via-violet-300 to-emerald-300
+           bg-clip-text text-transparent
+           drop-shadow-[0_0_22px_rgba(129,140,248,0.95)]"
             >
               Cofre Arcano
             </h2>
+
+            <!-- Ícone exatamente do tamanho dele -->
+            <div class="flex justify-center">
+              <img
+                src="/art/icones/icon-config.png"
+                alt="Configurações"
+                class="h-36 w-36 object-contain drop-shadow-[0_0_26px_rgba(139,92,246,0.9)]"
+              />
+            </div>
 
             <p class="mx-auto mt-1 max-w-xl text-xs text-slate-200/85">
               Guarde seu progresso em segurança, restaure seus dados quando

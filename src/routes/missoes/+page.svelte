@@ -857,6 +857,7 @@
   <PageTitleCard
     title="Quadro de Missões"
     subtitle="Complete tarefas para ganhar XP, manter a chama da consistência acesa e evoluir seu herói!"
+    iconSrc="/art/icones/icon-missoes.png"
     align="center"
   />
 
