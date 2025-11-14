@@ -244,34 +244,61 @@ async function applyXpDelta(
   let lastCompletionDate = profile.lastCompletionDate ?? null;
 
   if (effectiveAmount > 0) {
-    const today = dateKey;
-    if (!lastCompletionDate) {
+    const todayKey = dateKey; // "YYYY-MM-DD"
+
+    // Normaliza o que estiver salvo no perfil para uma date key estável
+    const normalizeToDateKey = (value: string | Date | null): string | null => {
+      if (!value) return null;
+
+      if (value instanceof Date) {
+        return toDateKey(value);
+      }
+
+      // já está no formato YYYY-MM-DD
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        return value;
+      }
+
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) {
+        return null;
+      }
+      return toDateKey(parsed);
+    };
+
+    const lastKey = normalizeToDateKey(lastCompletionDate as any);
+
+    if (!lastKey) {
+      // primeira missão com XP da vida
       currentStreak = 1;
-      lastCompletionDate = today;
+    } else if (lastKey === todayKey) {
+      // já contamos streak hoje — NÃO mexe no currentStreak
     } else {
-      const last = new Date(lastCompletionDate);
+      // compara a diferença de dias entre o último dia com XP e hoje
+      const lastDate = new Date(
+        Number(lastKey.slice(0, 4)),
+        Number(lastKey.slice(5, 7)) - 1,
+        Number(lastKey.slice(8, 10)),
+      );
       const todayDate = new Date(
         now.getFullYear(),
         now.getMonth(),
         now.getDate(),
       );
-      const lastDate = new Date(
-        last.getFullYear(),
-        last.getMonth(),
-        last.getDate(),
-      );
       const diffMs = todayDate.getTime() - lastDate.getTime();
       const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
-      if (diffDays === 0) {
-        // mesmo dia, mantém streak
-      } else if (diffDays === 1) {
+      if (diffDays === 1) {
+        // dia seguinte → continua sequência
         currentStreak = (currentStreak || 0) + 1;
       } else {
+        // pulou um ou mais dias → zera sequência e começa de 1
         currentStreak = 1;
       }
-      lastCompletionDate = today;
     }
+
+    // qualquer ganho de XP positivo marca que hoje teve missão concluída
+    lastCompletionDate = todayKey;
   }
 
   const updated: Partial<Profile> = {

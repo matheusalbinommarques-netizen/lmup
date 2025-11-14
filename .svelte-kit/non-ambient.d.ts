@@ -39,17 +39,23 @@ declare module '$app/types' {
       | '/inventario'
       | '/loja'
       | '/missoes'
+      | '/projetos'
+      | '/projetos/[id]'
       | '/santuario'
       | '/trofeus';
-    RouteParams(): {};
+    RouteParams(): {
+      '/projetos/[id]': { id: string };
+    };
     LayoutParams(): {
-      '/': Record<string, never>;
+      '/': { id?: string };
       '/bestiario': Record<string, never>;
       '/cla': Record<string, never>;
       '/config': Record<string, never>;
       '/inventario': Record<string, never>;
       '/loja': Record<string, never>;
       '/missoes': Record<string, never>;
+      '/projetos': { id?: string };
+      '/projetos/[id]': { id: string };
       '/santuario': Record<string, never>;
       '/trofeus': Record<string, never>;
     };
@@ -67,6 +73,10 @@ declare module '$app/types' {
       | '/loja/'
       | '/missoes'
       | '/missoes/'
+      | '/projetos'
+      | '/projetos/'
+      | (`/projetos/${string}` & {})
+      | (`/projetos/${string}/` & {})
       | '/santuario'
       | '/santuario/'
       | '/trofeus'
@@ -151,6 +161,7 @@ declare module '$app/types' {
       | '/art/icones/icon-leaf-eco.png'
       | '/art/icones/icon-missoes.png'
       | '/art/icones/icon-neurodiversity.png'
+      | '/art/icones/icon-projetos.png'
       | '/art/icones/icon-taverna.png'
       | '/art/icones/icon-xp.png'
       | '/art/icones/logo lmu.png'

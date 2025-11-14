@@ -6,6 +6,11 @@
   "/inventario": ["src/routes/+layout.ts"],
   "/loja": ["src/routes/+layout.ts"],
   "/missoes": ["src/routes/+layout.ts"],
+  "/projetos": ["src/routes/+layout.ts"],
+  "/projetos/[id]": [
+    "src/routes/projetos/[id]/+page.ts",
+    "src/routes/+layout.ts"
+  ],
   "/santuario": ["src/routes/+layout.ts"],
   "/trofeus": ["src/routes/+layout.ts"]
 }

@@ -34,10 +34,12 @@ type LayoutRouteId =
   | '/inventario'
   | '/loja'
   | '/missoes'
+  | '/projetos'
+  | '/projetos/[id]'
   | '/santuario'
   | '/trofeus'
   | null;
-type LayoutParams = RouteParams & {};
+type LayoutParams = RouteParams & { id?: string };
 type LayoutParentData = EnsureDefined<{}>;
 
 export type PageServerData = null;

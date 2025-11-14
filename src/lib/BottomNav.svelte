@@ -28,6 +28,11 @@
       label: 'Missões',
       icon: '/art/icones/icon-missoes.png',
     },
+    {
+      href: '/projetos',
+      label: 'Projetos',
+      icon: '/art/icones/icon-projetos.png',
+    },
     { href: '/cla', label: 'Clã', icon: '/art/icones/icon-cla.png' },
     { href: '/config', label: 'Config.', icon: '/art/icones/icon-config.png' },
   ];

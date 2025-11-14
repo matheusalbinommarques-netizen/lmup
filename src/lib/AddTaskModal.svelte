@@ -1,6 +1,6 @@
 <!-- src/lib/AddTaskModal.svelte -->
 <script lang="ts">
-  import { db, type Area, type Task } from '$services/db';
+  import { db, type Area, type Task, type HeroProject } from '$services/db';
   import { liveQuery } from 'dexie';
   import { onMount } from 'svelte';
 
@@ -18,8 +18,10 @@
 
   // HTML <select> sempre entrega string; convertemos no submit
   let areaIdStr = $state('0');
+  let projectIdStr = $state<'none' | string>('none');
 
   let areas = $state<Area[]>([]);
+  let projects = $state<HeroProject[]>([]);
   let subtasks = $state<string[]>(['']);
 
   // modal não precisa reatividade na prop; ela não muda depois de aberto
@@ -57,10 +59,15 @@
   // ------------------------------------------------------------------
 
   const areasQuery = liveQuery(() => db.areas.toArray());
+  const projectsQuery = liveQuery(() => db.projects.toArray());
 
   onMount(() => {
-    const sub = areasQuery.subscribe((dbAreas) => {
+    const subAreas = areasQuery.subscribe((dbAreas) => {
       areas = dbAreas ?? [];
+    });
+
+    const subProjects = projectsQuery.subscribe((dbProjects) => {
+      projects = dbProjects ?? [];
     });
 
     if (isEditMode && taskToEdit) {
@@ -75,9 +82,18 @@
       } else {
         subtasks = [''];
       }
+
+      if (anyTask.projectId != null) {
+        projectIdStr = String(anyTask.projectId);
+      } else {
+        projectIdStr = 'none';
+      }
     }
 
-    return () => sub.unsubscribe();
+    return () => {
+      subAreas.unsubscribe();
+      subProjects.unsubscribe();
+    };
   });
 
   // --------- Subtarefas helpers ---------
@@ -116,11 +132,17 @@
 
     const now = new Date();
 
+    const projectId =
+      projectIdStr === 'none'
+        ? null
+        : Number.parseInt(projectIdStr, 10) || null;
+
     const taskData: any = {
       areaId: Number.parseInt(areaIdStr, 10) || 0,
       title: taskTitle,
       rarity,
       xp,
+      projectId,
       completed: isEditMode && taskToEdit ? taskToEdit.completed : false,
       status:
         isEditMode && taskToEdit
@@ -200,86 +222,109 @@
       ></textarea>
     </div>
 
-    <!-- Área + Raridade automática -->
-    <div class="flex gap-4">
-      <div class="flex-1">
-        <label for="area" class="block text-sm font-medium text-slate-300 mb-1">
-          Área de Foco
-        </label>
-        <select
-          id="area"
-          bind:value={areaIdStr}
-          class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200
-            focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/30"
-        >
-          <option value="0">Geral</option>
-          {#each areas as area (area.id)}
-            <option value={String(area.id)}>{area.nome}</option>
-          {/each}
-        </select>
+    <!-- Área + Projeto + Raridade automática -->
+    <div class="flex flex-col gap-3">
+      <div class="flex gap-4">
+        <!-- Área -->
+        <div class="flex-1">
+          <label
+            for="area"
+            class="block text-sm font-medium text-slate-300 mb-1"
+          >
+            Área de Foco
+          </label>
+          <select
+            id="area"
+            bind:value={areaIdStr}
+            class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200
+              focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/30"
+          >
+            <option value="0">Geral</option>
+            {#each areas as area (area.id)}
+              <option value={String(area.id)}>{area.nome}</option>
+            {/each}
+          </select>
+        </div>
+
+        <!-- Projeto -->
+        <div class="flex-1">
+          <label
+            for="project"
+            class="block text-sm font-medium text-slate-300 mb-1"
+          >
+            Projeto (opcional)
+          </label>
+          <select
+            id="project"
+            bind:value={projectIdStr}
+            class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200
+              focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/30"
+          >
+            <option value="none">Sem projeto</option>
+            {#each projects as project (project.id)}
+              <option value={String(project.id)}>{project.name}</option>
+            {/each}
+          </select>
+        </div>
       </div>
 
-      <div class="flex-1">
-        <p class="block text-sm font-medium text-slate-300 mb-1">
-          Raridade (automática)
-        </p>
-        <div
-          class="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-slate-200"
-        >
-          <p class="font-semibold text-slate-100">
-            {rarityLabels[autoRarity]} (+{autoXp} XP)
-          </p>
-          <p class="mt-1 text-[0.7rem] text-slate-400">
-            Calculada a partir de {subtaskCount}
-            {subtaskCount === 1 ? ' subtarefa' : ' subtarefas'}.
-          </p>
-          <p class="mt-1 text-[0.65rem] text-slate-500">
-            1 = Comum • 3 = Rara • 5 = Épica • 10+ = Lendária
-          </p>
+      <!-- Raridade / XP auto -->
+      <div
+        class="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2"
+      >
+        <div class="flex flex-col">
+          <span
+            class="text-[0.7rem] text-slate-400 uppercase tracking-[0.18em]"
+          >
+            Dificuldade / Recompensa
+          </span>
+          <span class="text-sm font-semibold text-slate-100">
+            {rarityLabels[autoRarity]} · {autoXp} XP
+          </span>
         </div>
+        <span
+          class="rounded-full bg-slate-800/80 px-3 py-1 text-[0.7rem] text-slate-200"
+        >
+          {subtaskCount}
+          {subtaskCount === 1 ? 'subtarefa' : 'subtarefas'}
+        </span>
       </div>
     </div>
 
     <!-- Subtarefas -->
-    <div>
-      <div class="flex items-center justify-between mb-1">
+    <div class="space-y-2">
+      <div class="flex items-center justify-between">
         <p class="block text-sm font-medium text-slate-300">
-          Subtarefas da Missão
+          Subtarefas (passos da missão)
         </p>
         <button
           type="button"
-          class="text-[0.75rem] text-primary hover:underline"
+          class="text-xs font-medium text-primary hover:underline"
           onclick={addSubtask}
         >
-          + Adicionar subtask
+          + Adicionar passo
         </button>
       </div>
-      <p class="text-[0.7rem] text-slate-500 mb-2">
-        Quebre a missão em passos menores. A quantidade total define a raridade.
-      </p>
 
-      <div class="space-y-2 max-h-40 overflow-y-auto pr-1">
+      <div class="space-y-2 max-h-52 overflow-y-auto pr-1">
         {#each subtasks as subtask, index (index)}
-          <div class="flex items-center gap-2">
+          <div class="flex gap-2">
             <input
               type="text"
+              class="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200
+                focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/30"
+              placeholder={`Passo ${index + 1}`}
               value={subtask}
-              oninput={(e) =>
+              oninput={(event) =>
                 updateSubtask(
                   index,
-                  (e.currentTarget as HTMLInputElement).value,
+                  (event.currentTarget as HTMLInputElement).value,
                 )}
-              placeholder={`Subtarefa ${index + 1}`}
-              aria-label={`Subtarefa ${index + 1}`}
-              class="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200
-                focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
             />
             <button
               type="button"
-              class="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-red-400 text-xs"
+              class="rounded-lg border border-slate-700 px-2 text-xs text-slate-300 hover:bg-slate-800"
               onclick={() => removeSubtask(index)}
-              disabled={subtasks.length === 1}
-              aria-label={`Remover subtarefa ${index + 1}`}
             >
               ✕
             </button>
@@ -288,20 +333,20 @@
       </div>
     </div>
 
-    <div class="flex justify-end gap-3 mt-6">
+    <!-- Ações -->
+    <div class="mt-4 flex justify-end gap-2">
       <button
         type="button"
+        class="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800"
         onclick={close}
-        class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-sm rounded-lg transition-colors"
       >
         Cancelar
       </button>
       <button
         type="submit"
-        class="px-4 py-2 bg-[#ffb74d] hover:bg-[#ffa726] text-slate-950 font-bold text-sm rounded-lg transition-colors"
-        disabled={!title.trim()}
+        class="rounded-lg bg-[#ffb74d] px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-[#ffca6b]"
       >
-        {isEditMode ? 'Salvar Alterações' : '+ Criar Missão'}
+        {isEditMode ? 'Salvar alterações' : 'Criar missão'}
       </button>
     </div>
   </form>

@@ -1,9 +1,16 @@
 <!-- src/routes/missoes/+page.svelte -->
 <script lang="ts">
-  import { db, type Task, type Area, type XpLog } from '$services/db';
+  import {
+    db,
+    type Task,
+    type Area,
+    type XpLog,
+    type HeroProject,
+  } from '$services/db';
   import { liveQuery } from 'dexie';
   import { onMount } from 'svelte';
   import { xpService } from '$services/xpService';
+  import { checkAndApplyProjectCompletionBonus } from '$services/projectService';
   import AreaManager from '$lib/AreaManager.svelte';
   import AddTaskModal from '$lib/AddTaskModal.svelte';
   import XpByAreaChart from '$lib/XpByAreaChart.svelte';
@@ -14,10 +21,12 @@
   let tasks = $state<Task[]>([]);
   let areas = $state<Area[]>([]);
   let xpLogs = $state<XpLog[]>([]);
+  let projects = $state<HeroProject[]>([]);
 
   type FilterTab = 'available' | 'todo' | 'completed';
   let filter = $state<FilterTab>('available');
   let selectedAreaId = $state<'all' | number>('all');
+  let selectedProjectId = $state<'all' | number>('all');
 
   type Rarity = Task['rarity'];
   const rarityOrder: Rarity[] = ['common', 'rare', 'epic', 'legendary'];
@@ -26,23 +35,49 @@
   let isModalOpen = $state(false);
   let taskToEdit = $state<Task | null>(null);
 
-  const tasksQuery = liveQuery(() =>
-    db.tasks.orderBy('createdAt').reverse().toArray(),
-  );
+  const tasksQuery = liveQuery(async () => {
+    const rows = await db.tasks.toArray();
+
+    return (rows ?? []).sort((a, b) => {
+      const aTime = a.createdAt ? new Date(a.createdAt as any).getTime() : 0;
+      const bTime = b.createdAt ? new Date(b.createdAt as any).getTime() : 0;
+      // Mais recente primeiro
+      return bTime - aTime;
+    });
+  });
   const areasQuery = liveQuery(() => db.areas.toArray());
   const xpLogsQuery = liveQuery(() => db.xpLogs.toArray());
+  const projectsQuery = liveQuery(() => db.projects.toArray());
 
   onMount(() => {
+    // Pré-aplica filtro de projeto vindo de /missoes?projectId=123
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      const projectParam = url.searchParams.get('projectId');
+      if (projectParam) {
+        const parsed = Number(projectParam);
+        if (Number.isFinite(parsed)) {
+          selectedProjectId = parsed;
+        }
+      }
+    }
+
     const tasksSub = tasksQuery.subscribe((dbTasks) => {
       tasks = dbTasks ?? [];
-      syncReviewTasks(); // auto-move missões espaçadas para "A fazer" quando chegar o dia
+      syncReviewTasks();
     });
+
     const areasSub = areasQuery.subscribe((dbAreas) => (areas = dbAreas ?? []));
     const logsSub = xpLogsQuery.subscribe((rows) => (xpLogs = rows ?? []));
+    const projectsSub = projectsQuery.subscribe((rows) => {
+      projects = rows ?? [];
+    });
+
     return () => {
       tasksSub.unsubscribe();
       areasSub.unsubscribe();
       logsSub.unsubscribe();
+      projectsSub.unsubscribe();
     };
   });
 
@@ -55,6 +90,30 @@
       { 0: 'Geral' } as Record<number, string>,
     ),
   );
+
+  const projectMap = $derived(
+    projects.reduce(
+      (map, project) => {
+        if (project.id != null) {
+          map[project.id] = project.name;
+        }
+        return map;
+      },
+      {} as Record<number, string>,
+    ),
+  );
+
+  const activeProjects = $derived(
+    projects.filter((p) =>
+      ['planejando', 'em_andamento', 'pausado'].includes(p.status),
+    ),
+  );
+
+  function handleProjectFilterChange(event: Event) {
+    const select = event.currentTarget as HTMLSelectElement;
+    const value = select.value;
+    selectedProjectId = value === 'all' ? 'all' : Number(value);
+  }
 
   // --- Missão sugerida do dia (baseada em área negligenciada) ---
   function computeSuggestedDailyTask(): Task | null {
@@ -418,7 +477,7 @@
     return 'available';
   }
 
-  // Lista filtrada (status + área + raridade + ordenação das "A fazer")
+  // Lista filtrada (status + área + projeto + raridade + ordenação das "A fazer")
   let filteredTasks = $derived(
     (() => {
       const base = tasks
@@ -431,6 +490,11 @@
         })
         .filter((t) =>
           selectedAreaId === 'all' ? true : t.areaId === selectedAreaId,
+        )
+        .filter((t) =>
+          selectedProjectId === 'all'
+            ? true
+            : ((t as any).projectId ?? null) === selectedProjectId,
         )
         .filter((t) => (selectedRarity ? t.rarity === selectedRarity : true));
 
@@ -470,6 +534,7 @@
   );
 
   // Completar missão
+  // Completar missão
   async function toggleTask(id: number | undefined) {
     if (!id) return;
     const task = tasks.find((t) => t.id === id);
@@ -477,6 +542,10 @@
 
     const anyTask = task as any;
     const now = new Date();
+
+    // Missão ligada a projeto? Guarda o id antes de atualizar
+    const projectId: number | null =
+      typeof anyTask.projectId === 'number' ? anyTask.projectId : null;
 
     // Missão com revisão espaçada:
     // - ganha XP/Gold
@@ -494,6 +563,8 @@
         reviewStartedAt: now,
       } as any);
 
+      // Para missões de revisão eu NÃO aciono o bônus de projeto,
+      // senão um projeto de revisão daria bônus infinito.
       return;
     }
 
@@ -511,6 +582,11 @@
     } as any);
 
     await xpService.addXp(task.xp, task.areaId ?? null);
+
+    // Se essa missão pertence a um projeto, verifica se o projeto fechou
+    if (projectId != null) {
+      await checkAndApplyProjectCompletionBonus(projectId);
+    }
   }
 
   // Marcar / desmarcar "A fazer"
@@ -738,7 +814,7 @@
             onclick={() => (reviewIntervalDraft = days)}
           >
             {days}
-            {days === 1 ? 'dia' : 'dias'}
+            {days === 1 ? ' dia' : ' dias'}
           </button>
         {/each}
       </div>
@@ -953,7 +1029,7 @@
       {/if}
     </section>
 
-    <!-- Filtro de raridade + áreas -->
+    <!-- Filtro de raridade + áreas + projeto -->
     <section
       class="mx-auto w-full max-w-4xl rounded-2xl border border-amber-500/60 bg-slate-900/70 px-4 py-3 shadow-[0_0_20px_rgba(56,189,248,0.45)]"
     >
@@ -993,6 +1069,33 @@
             {rarityLabels[r]}
           </button>
         {/each}
+      </div>
+
+      <!-- filtro de projeto -->
+      <div class="mt-3 flex flex-wrap items-center gap-2">
+        <p class="text-xs text-slate-400">Projeto:</p>
+
+        <select
+          class="rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100"
+          onchange={handleProjectFilterChange}
+        >
+          <option value="all">Todos os projetos</option>
+          {#each activeProjects as project (project.id)}
+            {#if project.id}
+              <option value={project.id}>{project.name}</option>
+            {/if}
+          {/each}
+        </select>
+
+        {#if selectedProjectId !== 'all'}
+          <button
+            type="button"
+            class="text-[0.7rem] text-slate-400 hover:text-slate-200 underline"
+            onclick={() => (selectedProjectId = 'all')}
+          >
+            Limpar filtro de projeto
+          </button>
+        {/if}
       </div>
     </section>
 
@@ -1075,7 +1178,7 @@
               {#if getTaskStatus(task) === 'completed'}✓{/if}
             </button>
 
-            <!-- Título / área / raridade -->
+            <!-- Título / área / raridade / projeto -->
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-1 flex-wrap">
                 <span
@@ -1090,6 +1193,14 @@
                 >
                   {areaMap[task.areaId ?? 0] || 'Sem Área'}
                 </span>
+
+                {#if task.projectId && projectMap[task.projectId]}
+                  <span
+                    class="text-[0.65rem] px-2 py-0.5 rounded-full bg-emerald-900/40 border border-emerald-500/40 text-emerald-200"
+                  >
+                    {projectMap[task.projectId]}
+                  </span>
+                {/if}
 
                 <!-- Botão A Fazer -->
                 <button

@@ -1,10 +1,8 @@
 <!-- src/lib/EcoGamificationPanel.svelte -->
 <script lang="ts">
-  import { onDestroy } from 'svelte';
-  import {
-    getTotalXpObservable,
-    getStreakObservable,
-  } from '../services/xpService';
+  import { db, type Profile } from '$services/db';
+  import { liveQuery } from 'dexie';
+  import { onMount } from 'svelte';
 
   type EcoStageId = 'solo' | 'broto' | 'arbusto' | 'arvore' | 'floresta';
 
@@ -57,28 +55,23 @@
   let totalXp = $state(0);
   let streak = $state(0);
 
-  let unsubscribeFns: (() => void)[] = [];
+  // liveQuery do perfil (mesmo padrão do EcoPanel / AchievementsPanel)
+  const heroQuery = liveQuery(() => db.profile.get(1));
 
-  if (typeof window !== 'undefined') {
-    const sub1 = getTotalXpObservable().subscribe((xp) => {
-      totalXp = xp;
+  onMount(() => {
+    const sub = heroQuery.subscribe((profileData) => {
+      const hero = (profileData ?? null) as Profile | null;
+      totalXp = hero?.totalXpEarned ?? 0;
+      streak = hero?.currentStreak ?? 0;
     });
 
-    const sub2 = getStreakObservable().subscribe(({ count }) => {
-      streak = count;
-    });
-
-    unsubscribeFns = [() => sub1.unsubscribe(), () => sub2.unsubscribe()];
-  }
-
-  onDestroy(() => {
-    for (const fn of unsubscribeFns) {
-      fn();
-    }
+    return () => {
+      sub.unsubscribe();
+    };
   });
 
   // ------------------------------------
-  // DERIVADOS (corrigidos)
+  // DERIVADOS
   // ------------------------------------
 
   const currentStage = $derived(
