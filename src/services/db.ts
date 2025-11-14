@@ -29,6 +29,9 @@ export interface Profile {
 
   // usado no EcoPanel
   ecoGoldClaimedUpToStage?: number;
+
+  // NOVO: conquistas em destaque
+  highlightAchievementIds?: string[];
 }
 
 // ---------------------------------------------
