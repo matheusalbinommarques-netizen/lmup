@@ -99,13 +99,14 @@ export interface HeroProject {
   id?: number;
   title: string;
   description: string;
-  status: ProjectStatus;
-  difficulty: ProjectDifficulty;
+  status: 'planning' | 'in_progress' | 'done';
+  difficulty: 'easy' | 'medium' | 'hard' | 'expert';
   totalTasks: number;
   completedTasks: number;
-  baseXp: number; // soma do XP das tarefas (sem bônus)
-  createdAt: string; // ISO
-  targetDate: string; // ISO
+  baseXp: number;
+  createdAt: string;
+  targetDate: string; // pode ser string vazia quando não tiver alvo
+  updatedAt?: string; // ✅ novo campo opcional
 }
 
 // ----------------- DB DEXIE -----------------

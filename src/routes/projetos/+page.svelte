@@ -1,36 +1,47 @@
-<!-- src/routes/projetos/+page.svelte -->
 <script lang="ts">
-  import PageTitleCard from '$lib/PageTitleCard.svelte';
   import { onMount } from 'svelte';
+  import PageTitleCard from '$lib/PageTitleCard.svelte';
   import {
-    projectService,
+    createProject,
+    subscribeToProjects,
+    computeProjectDerived,
+    inferDifficultyFromTasks,
+    type ProjectWithComputed,
     type ProjectStatus,
     type ProjectDifficulty,
-    type ProjectComputed,
   } from '$services/projectService';
 
-  // -----------------------------
-  // STATE
-  // -----------------------------
+  type ProjectFormState = {
+    title: string;
+    description: string;
+    totalTasks: string;
+    baseXp: string;
+    targetDate: string;
+  };
 
-  let projects = $state<ProjectComputed[]>([]);
-  let isLoading = $state(true);
-  let isSaving = $state(false);
-  let errorMessage = $state<string | null>(null);
+  const form = $state<ProjectFormState>({
+    title: '',
+    description: '',
+    totalTasks: '3',
+    baseXp: '300',
+    targetDate: '',
+  });
 
-  // Formulário de novo projeto
-  let formTitle = $state('');
-  let formDescription = $state('');
-  let formTotalTasks = $state(3);
-  let formBaseXp = $state(300);
-  let formTargetDate = $state(''); // "YYYY-MM-DD"
+  let isSubmitting = $state(false);
+  let formError = $state<string | null>(null);
+  let loadError = $state<string | null>(null);
 
-  // -----------------------------
-  // HELPERS VISUAIS
-  // -----------------------------
+  let projects = $state<ProjectWithComputed[]>([]);
+  let isLoadingProjects = $state(true);
 
-  function difficultyLabel(difficulty: ProjectDifficulty): string {
-    switch (difficulty) {
+  const hasProjects = $derived(projects.length > 0);
+
+  const currentDifficulty = $derived(
+    inferDifficultyFromTasks(parseInt(form.totalTasks || '0', 10)),
+  );
+
+  function difficultyLabel(d: ProjectDifficulty): string {
+    switch (d) {
       case 'easy':
         return 'FÁCIL';
       case 'medium':
@@ -44,8 +55,8 @@
     }
   }
 
-  function difficultyClass(difficulty: ProjectDifficulty): string {
-    switch (difficulty) {
+  function difficultyClass(d: ProjectDifficulty): string {
+    switch (d) {
       case 'easy':
         return 'bg-emerald-500/10 text-emerald-300 border-emerald-400/40';
       case 'medium':
@@ -85,128 +96,105 @@
     }
   }
 
-  function formatDate(dateStr: string): string {
-    if (!dateStr) return '—';
-    const d = new Date(dateStr);
-    if (Number.isNaN(d.getTime())) return dateStr;
+  function formatDateFromIso(iso: string): string {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '—';
     return d.toLocaleDateString('pt-BR');
   }
 
-  function nextStatus(status: ProjectStatus): ProjectStatus {
-    if (status === 'planning') return 'in_progress';
-    if (status === 'in_progress') return 'done';
-    return 'done';
+  function toIsoFromInput(input: string): string | undefined {
+    const trimmed = input.trim();
+    if (!trimmed) return undefined;
+
+    const [dd, mm, yyyy] = trimmed.split('/');
+    const day = Number(dd);
+    const month = Number(mm);
+    const year = Number(yyyy);
+
+    if (!day || !month || !year) return undefined;
+
+    const d = new Date(year, month - 1, day);
+    if (Number.isNaN(d.getTime())) return undefined;
+
+    return d.toISOString();
   }
 
-  // -----------------------------
-  // CARREGAR PROJETOS
-  // -----------------------------
+  async function handleCreateProject(event: SubmitEvent) {
+    event.preventDefault();
+    formError = null;
 
-  async function loadProjects() {
-    isLoading = true;
+    const title = form.title.trim();
+    const description = form.description.trim();
+    const totalTasksNumber = parseInt(form.totalTasks || '0', 10);
+    const baseXpNumber = parseInt(form.baseXp || '0', 10);
+
+    if (!title) {
+      formError = 'Dê um nome ao seu projeto.';
+      return;
+    }
+
+    if (!description) {
+      formError = 'Descreva rapidamente o objetivo do projeto.';
+      return;
+    }
+
+    if (!Number.isFinite(totalTasksNumber) || totalTasksNumber <= 0) {
+      formError = 'Informe um número de tarefas maior que zero.';
+      return;
+    }
+
+    if (!Number.isFinite(baseXpNumber) || baseXpNumber <= 0) {
+      formError = 'Informe um XP base total maior que zero.';
+      return;
+    }
+
+    const targetIso = toIsoFromInput(form.targetDate);
+
+    isSubmitting = true;
+
     try {
-      const raw = await projectService.getAllProjects();
-      projects = raw.map((p) => projectService.computeProjectStats(p));
-      errorMessage = null;
+      await createProject({
+        title,
+        description,
+        totalTasks: totalTasksNumber,
+        baseXp: baseXpNumber,
+        targetDate: targetIso,
+      });
+
+      form.title = '';
+      form.description = '';
+      form.totalTasks = '3';
+      form.baseXp = '300';
+      form.targetDate = '';
     } catch (err) {
-      console.error('Erro ao carregar projetos:', err);
-      errorMessage = 'Não foi possível carregar seus projetos agora.';
+      console.error('Erro ao criar projeto:', err);
+      formError =
+        'Não foi possível criar o projeto agora. Tente novamente em alguns instantes.';
     } finally {
-      isLoading = false;
+      isSubmitting = false;
     }
   }
 
   onMount(() => {
-    loadProjects();
-  });
-
-  // -----------------------------
-  // FORMULÁRIO: CRIAR PROJETO
-  // -----------------------------
-
-  async function handleCreateProject(event: SubmitEvent) {
-    event.preventDefault();
-
-    const title = formTitle.trim();
-    const description = formDescription.trim();
-    const totalTasksNum = Math.max(1, Math.floor(Number(formTotalTasks) || 0));
-    const baseXpNum = Math.max(0, Math.floor(Number(formBaseXp) || 0));
-
-    if (!title) {
-      alert('Dê um nome para o projeto.');
-      return;
-    }
-    if (!description) {
-      alert('Descreva rapidamente o objetivo desse projeto.');
-      return;
-    }
-
-    try {
-      isSaving = true;
-
-      const newProject = await projectService.createProject({
-        title,
-        description,
-        totalTasks: totalTasksNum,
-        baseXp: baseXpNum,
-        targetDate: formTargetDate || undefined,
-      });
-
-      const computed = projectService.computeProjectStats(newProject);
-      projects = [computed, ...projects];
-
-      // resetar form
-      formTitle = '';
-      formDescription = '';
-      formTotalTasks = 3;
-      formBaseXp = 300;
-      formTargetDate = '';
-    } catch (err) {
-      console.error('Erro ao criar projeto:', err);
-      alert('Não foi possível criar o projeto agora.');
-    } finally {
-      isSaving = false;
-    }
-  }
-
-  // -----------------------------
-  // AÇÕES EM PROJETOS
-  // -----------------------------
-
-  async function handleToggleStatus(project: ProjectComputed) {
-    if (!project.id) return;
-
-    const newStatus = nextStatus(project.status);
-
-    try {
-      await projectService.setProjectStatus(project.id, newStatus);
-
-      projects = projects.map((p) =>
-        p.id === project.id
-          ? projectService.computeProjectStats({ ...p, status: newStatus })
-          : p,
-      );
-    } catch (err) {
-      console.error('Erro ao alterar status do projeto:', err);
-      alert('Não foi possível atualizar o status agora.');
-    }
-  }
-
-  async function handleDeleteProject(project: ProjectComputed) {
-    if (!project.id) return;
-    const ok = confirm(
-      `Remover o projeto "${project.title}"? Isso não afeta seu XP, apenas a organização.`,
+    const unsubscribe = subscribeToProjects(
+      (projectsFromDb) => {
+        projects = (projectsFromDb ?? []).map(computeProjectDerived);
+        isLoadingProjects = false;
+        loadError = null;
+      },
+      (err) => {
+        console.error('Erro ao carregar projetos:', err);
+        isLoadingProjects = false;
+        loadError =
+          'Não foi possível carregar seus projetos agora. Tente novamente mais tarde.';
+      },
     );
-    if (!ok) return;
 
-    try {
-      await projectService.deleteProject(project.id);
-      projects = projects.filter((p) => p.id !== project.id);
-    } catch (err) {
-      console.error('Erro ao excluir projeto:', err);
-      alert('Não foi possível excluir o projeto agora.');
-    }
-  }
+    return () => {
+      unsubscribe();
+    };
+  });
 </script>
 
 <div class="min-h-full bg-slate-950/80">
@@ -217,16 +205,27 @@
       align="center"
     />
 
-    <!-- Layout: Form + Lista -->
-    <div class="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.6fr)]">
-      <!-- FORMULÁRIO DE NOVO PROJETO -->
-      <section
-        class="rounded-3xl border border-slate-800/80 bg-slate-950/90 p-5 shadow-[0_0_30px_rgba(15,23,42,0.8)]"
+    {#if loadError}
+      <div
+        class="rounded-2xl border border-red-500/60 bg-red-950/70 px-4 py-3 text-sm text-red-100"
       >
-        <header class="mb-3 space-y-1">
-          <h2 class="text-sm font-semibold text-slate-100">
+        {loadError}
+      </div>
+    {/if}
+
+    <div
+      class="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1.35fr)] items-start"
+    >
+      <!-- FORMULÁRIO -->
+      <section
+        class="rounded-3xl border border-slate-800/80 bg-slate-950/90 p-5 shadow-[0_0_30px_rgba(15,23,42,0.8)] space-y-4"
+      >
+        <header class="space-y-1">
+          <p
+            class="text-[0.65rem] font-semibold uppercase tracking-[0.26em] text-slate-500"
+          >
             Novo projeto do herói
-          </h2>
+          </p>
           <p class="text-[0.75rem] text-slate-400">
             Defina um objetivo grande e quebre em tarefas. A dificuldade é
             calculada automaticamente pelo número de tarefas.
@@ -234,101 +233,124 @@
         </header>
 
         <form class="space-y-4" onsubmit={handleCreateProject}>
-          <div class="space-y-1.5">
+          <div class="space-y-1">
             <label
               for="project-title"
-              class="text-[0.75rem] font-medium text-slate-200"
+              class="text-xs font-medium text-slate-200"
             >
               Nome do projeto
             </label>
             <input
               id="project-title"
-              class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/60"
-              type="text"
+              class="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/70"
               placeholder="Ex: Certificação Banco do Brasil"
-              bind:value={formTitle}
+              bind:value={form.title}
             />
           </div>
 
-          <div class="space-y-1.5">
+          <div class="space-y-1">
             <label
               for="project-description"
-              class="text-[0.75rem] font-medium text-slate-200"
+              class="text-xs font-medium text-slate-200"
             >
               Descrição
             </label>
             <textarea
               id="project-description"
-              class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/60"
               rows="3"
+              class="w-full resize-none rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/70"
               placeholder="Ex: Estudar conteúdos, fazer simulados e revisar pontos fracos."
-              bind:value={formDescription}
-            ></textarea>
+              bind:value={form.description}
+            ></textarea>/>
           </div>
 
-          <div class="grid grid-cols-2 gap-3">
-            <div class="space-y-1.5">
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div class="space-y-1">
               <label
                 for="project-tasks"
-                class="text-[0.75rem] font-medium text-slate-200"
+                class="text-xs font-medium text-slate-200"
               >
                 Número de tarefas
               </label>
               <input
                 id="project-tasks"
-                class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/60"
                 type="number"
                 min="1"
-                bind:value={formTotalTasks}
+                class="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/70"
+                bind:value={form.totalTasks}
               />
               <p class="text-[0.65rem] text-slate-500">
                 Até 3 tarefas: FÁCIL · 4: MÉDIA · 5–9: DIFÍCIL · 10+: EXPERT.
               </p>
             </div>
 
-            <div class="space-y-1.5">
+            <div class="space-y-1">
               <label
-                for="project-basexp"
-                class="text-[0.75rem] font-medium text-slate-200"
+                for="project-xp"
+                class="text-xs font-medium text-slate-200"
               >
                 XP base total do projeto
               </label>
               <input
-                id="project-basexp"
-                class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/60"
+                id="project-xp"
                 type="number"
-                min="0"
-                bind:value={formBaseXp}
+                min="1"
+                class="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/70"
+                bind:value={form.baseXp}
               />
               <p class="text-[0.65rem] text-slate-500">
-                Este é o somatório do XP de todas as tarefas (sem o bônus de
-                +25%).
+                É o somatório do XP de todas as tarefas, sem o bônus de 25%.
               </p>
             </div>
           </div>
 
-          <div class="space-y-1.5">
+          <div class="space-y-1">
             <label
               for="project-target"
-              class="text-[0.75rem] font-medium text-slate-200"
+              class="text-xs font-medium text-slate-200"
             >
               Data alvo (opcional)
             </label>
             <input
               id="project-target"
-              class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/60"
-              type="date"
-              bind:value={formTargetDate}
+              type="text"
+              inputmode="numeric"
+              placeholder="dd/mm/aaaa"
+              class="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/70"
+              bind:value={form.targetDate}
             />
           </div>
 
+          <div class="flex items-center justify-between text-[0.7rem]">
+            <div class="flex items-center gap-2">
+              <span
+                class={`inline-flex items-center rounded-full border px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.22em] ${difficultyClass(
+                  currentDifficulty,
+                )}`}
+              >
+                {difficultyLabel(currentDifficulty)}
+              </span>
+              <span class="text-slate-500">
+                A dificuldade é calculada pela quantidade de tarefas.
+              </span>
+            </div>
+          </div>
+
+          {#if formError}
+            <div
+              class="rounded-lg border border-red-500/70 bg-red-950/70 px-3 py-2 text-[0.75rem] text-red-100"
+            >
+              {formError}
+            </div>
+          {/if}
+
           <button
             type="submit"
-            class="mt-1 inline-flex items-center justify-center rounded-full border border-primary/70 bg-primary/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-950 shadow-md hover:bg-primary transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-            disabled={isSaving}
+            class="mt-1 inline-flex items-center justify-center rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white shadow-md hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isSubmitting}
           >
-            {#if isSaving}
-              Salvando...
+            {#if isSubmitting}
+              Criando projeto...
             {:else}
               Criar projeto
             {/if}
@@ -337,33 +359,42 @@
       </section>
 
       <!-- LISTA DE PROJETOS -->
-      <section class="flex flex-col gap-3">
-        {#if isLoading}
+      <section
+        class="rounded-3xl border border-slate-800/80 bg-slate-950/90 p-5 shadow-[0_0_30px_rgba(15,23,42,0.8)] flex flex-col gap-4"
+      >
+        <header class="flex items-center justify-between">
+          <div>
+            <p
+              class="text-[0.65rem] font-semibold uppercase tracking-[0.26em] text-slate-500"
+            >
+              Projetos em andamento
+            </p>
+            <p class="text-xs text-slate-400">
+              Entregue todas as tarefas de um projeto para receber +25% de XP e
+              Gold extra.
+            </p>
+          </div>
+        </header>
+
+        {#if isLoadingProjects}
           <div
-            class="rounded-3xl border border-slate-800/80 bg-slate-950/80 p-5 text-sm text-slate-300"
+            class="flex-1 flex items-center justify-center text-sm text-slate-400"
           >
             Carregando seus projetos...
           </div>
-        {:else if errorMessage}
+        {:else if !hasProjects}
           <div
-            class="rounded-3xl border border-red-500/60 bg-red-950/40 p-5 text-sm text-red-100"
+            class="flex-1 flex items-center justify-center text-sm text-slate-500 text-center"
           >
-            {errorMessage}
-          </div>
-        {:else if projects.length === 0}
-          <div
-            class="rounded-3xl border border-slate-800/80 bg-slate-950/80 p-5 text-sm text-slate-300"
-          >
-            Nenhum projeto cadastrado ainda. Crie um projeto na coluna ao lado
-            para começar a organizar suas missões grandes.
+            Nenhum projeto cadastrado ainda. Crie seu primeiro objetivo do herói
+            ao lado.
           </div>
         {:else}
-          <section class="grid gap-5 xl:grid-cols-2">
+          <div class="grid gap-4 xl:grid-cols-2">
             {#each projects as project (project.id)}
               <article
                 class="flex h-full flex-col justify-between rounded-3xl border border-slate-800/80 bg-slate-950/80 p-5 shadow-[0_0_30px_rgba(15,23,42,0.8)]"
               >
-                <!-- HEADER -->
                 <header class="mb-3 flex items-start justify-between gap-3">
                   <div class="space-y-1">
                     <p
@@ -382,16 +413,13 @@
                   </div>
 
                   <div class="flex flex-col items-end gap-2">
-                    <button
-                      type="button"
+                    <span
                       class={`inline-flex items-center rounded-full border px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.22em] ${statusClass(
                         project.status,
                       )}`}
-                      onclick={() => handleToggleStatus(project)}
-                      title="Clique para avançar o status"
                     >
                       {statusLabel(project.status)}
-                    </button>
+                    </span>
                     <span
                       class={`inline-flex items-center rounded-full border px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.22em] ${difficultyClass(
                         project.difficulty,
@@ -402,13 +430,12 @@
                   </div>
                 </header>
 
-                <!-- PROGRESSO -->
                 <div class="space-y-2">
                   <div
                     class="flex items-center justify-between text-[0.7rem] text-slate-400"
                   >
                     <span>
-                      {project.completedTasks} / {project.totalTasks} tarefas concluídas
+                      {project.completedTasks}/{project.totalTasks} tarefas concluídas
                     </span>
                     <span>{project.completionPercent}%</span>
                   </div>
@@ -422,7 +449,6 @@
                   </div>
                 </div>
 
-                <!-- STATS -->
                 <div
                   class="mt-4 flex flex-col items-center gap-3 rounded-2xl bg-slate-900/60 p-4"
                 >
@@ -472,52 +498,43 @@
                   </p>
                 </div>
 
-                <!-- RODAPÉ -->
                 <footer
                   class="mt-4 flex flex-col gap-2 border-t border-slate-800 pt-3 text-[0.7rem] text-slate-500"
                 >
                   <div class="flex items-center justify-between">
                     <span>
-                      Criado em&nbsp;
+                      Criado em
                       <span class="font-medium text-slate-300">
-                        {formatDate(project.createdAt)}
+                        {formatDateFromIso(project.createdAt)}
                       </span>
                     </span>
                     <span>
-                      Alvo:&nbsp;
+                      Alvo:
                       <span class="font-medium text-slate-300">
-                        {formatDate(project.targetDate)}
+                        {project.targetDate
+                          ? formatDateFromIso(project.targetDate)
+                          : '—'}
                       </span>
                     </span>
                   </div>
 
-                  <div class="flex items-center justify-between text-[0.7rem]">
+                  <div class="flex items-center justify-between">
                     <span class="text-amber-300 font-semibold">
-                      Recompensa: {project.finalXp} XP • {project.finalGold}
-                      Gold
+                      Recompensa: {project.finalXp} XP • {project.finalGold} Gold
                     </span>
-                    <div class="flex items-center gap-2">
-                      <button
-                        type="button"
-                        class="rounded-full border border-slate-700 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-slate-300 hover:border-primary hover:text-primary transition-colors"
-                        onclick={() =>
-                          console.log('detalhes do projeto', project.id)}
-                      >
-                        Detalhes
-                      </button>
-                      <button
-                        type="button"
-                        class="rounded-full border border-red-600/70 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-red-200 hover:bg-red-600/20 transition-colors"
-                        onclick={() => handleDeleteProject(project)}
-                      >
-                        Remover
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      class="rounded-full border border-slate-700 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-slate-300 hover:border-primary hover:text-primary transition-colors"
+                      onclick={() =>
+                        console.log('ver detalhes do projeto', project.id)}
+                    >
+                      Detalhes
+                    </button>
                   </div>
                 </footer>
               </article>
             {/each}
-          </section>
+          </div>
         {/if}
       </section>
     </div>

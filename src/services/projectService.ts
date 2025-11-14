@@ -1,87 +1,79 @@
 // src/services/projectService.ts
-import { db } from '$services/db';
+import { liveQuery } from 'dexie';
+import { db, type HeroProject as DbHeroProject } from '$services/db';
 
 /**
- * Status de um projeto do herói
+ * Tipos básicos vindos do db
  */
-export type ProjectStatus = 'planning' | 'in_progress' | 'done';
+export type HeroProject = DbHeroProject;
+export type ProjectStatus = HeroProject['status'];
+export type ProjectDifficulty = HeroProject['difficulty'];
 
 /**
- * Dificuldade calculada automaticamente pela quantidade de tarefas:
- * - easy   → até 3 tarefas
- * - medium → 4 tarefas
- * - hard   → 5 a 9 tarefas
- * - expert → 10+ tarefas
+ * Payload para criação de projeto (entrada crua da UI)
  */
-export type ProjectDifficulty = 'easy' | 'medium' | 'hard' | 'expert';
-
-/**
- * Modelo principal salvo na tabela `projects` do Dexie.
- * IMPORTANTE: alinhado com o HeroProject do db.ts
- *  - targetDate: string (nada de null)
- *  - updatedAt: opcional (não obrigatório)
- */
-export interface HeroProject {
-  id?: number;
+export interface NewProjectInput {
   title: string;
   description: string;
-  status: ProjectStatus;
-  difficulty: ProjectDifficulty;
   totalTasks: number;
-  completedTasks: number;
   baseXp: number;
-  createdAt: string; // ISO ou "YYYY-MM-DD"
-  targetDate: string; // manter como string, vazio = sem alvo
-  updatedAt?: string; // opcional para não brigar com o db.HeroProject
+  /** ISO string (ex: 2025-12-31T00:00:00.000Z) ou undefined */
+  targetDate?: string;
 }
 
 /**
- * Versão do projeto com campos derivados usados na UI:
- * - completionPercent
- * - bonusXp (+25% se todas as tarefas concluídas)
- * - finalXp (base + bônus)
- * - finalGold (50% do XP final)
- * - allTasksDone (boolean)
+ * Projeto com campos derivados (para exibição)
  */
-export interface ProjectComputed extends HeroProject {
+export type ProjectWithComputed = HeroProject & {
   completionPercent: number;
   bonusXp: number;
   finalXp: number;
   finalGold: number;
   allTasksDone: boolean;
-}
+};
 
 /**
- * Regra centralizada de dificuldade por número de tarefas.
- * NÃO é escolhida pelo usuário — é sempre derivada.
+ * Regra de dificuldade baseada APENAS no número de tarefas:
+ * - até 3 tarefas → easy
+ * - 4 tarefas → medium
+ * - 5–9 tarefas → hard
+ * - 10+ tarefas → expert
  */
-export function getDifficultyForTaskCount(
+export function inferDifficultyFromTasks(
   totalTasks: number,
 ): ProjectDifficulty {
-  const n = Math.max(1, Math.floor(totalTasks || 0));
+  const n = Math.max(0, Math.floor(Number(totalTasks) || 0));
 
-  if (n <= 3) return 'easy'; // até 3 tarefas
-  if (n >= 10) return 'expert'; // 10 ou mais
-  if (n >= 5) return 'hard'; // 5 a 9
-  return 'medium'; // sobra o 4
+  if (n <= 3) return 'easy';
+  if (n === 4) return 'medium';
+  if (n >= 5 && n <= 9) return 'hard';
+  return 'expert';
 }
 
 /**
- * Calcula os campos derivados de um projeto.
- * Essa função NÃO grava nada no banco; é só pra UI.
+ * Calcula percentuais e recompensas (XP final + Gold).
+ * - 25% de bônus de XP se todas as tarefas estiverem concluídas
+ * - Gold = 50% do XP final
  */
-export function computeProjectStats(project: HeroProject): ProjectComputed {
-  const totalTasks = Math.max(project.totalTasks || 0, 1);
-  const completed = Math.min(project.completedTasks || 0, totalTasks);
+export function computeProjectDerived(
+  project: HeroProject,
+): ProjectWithComputed {
+  const totalTasks = Math.max(0, Math.floor(Number(project.totalTasks) || 0));
+  const completed = Math.max(
+    0,
+    Math.floor(Number(project.completedTasks) || 0),
+  );
 
-  const completionPercent = Math.round((completed / totalTasks) * 100);
+  const safeTotal = totalTasks > 0 ? totalTasks : 1;
+  const clampedCompleted = Math.min(completed, safeTotal);
 
-  const allTasksDone =
-    project.totalTasks > 0 && project.completedTasks >= project.totalTasks;
+  const completionPercent = Math.round((clampedCompleted / safeTotal) * 100);
 
-  const safeBaseXp = Math.max(0, Math.floor(project.baseXp || 0));
-  const bonusXp = allTasksDone ? Math.round(safeBaseXp * 0.25) : 0;
-  const finalXp = safeBaseXp + bonusXp;
+  const allTasksDone = totalTasks > 0 && clampedCompleted >= totalTasks;
+
+  const baseXp = Math.max(0, Math.floor(Number(project.baseXp) || 0));
+  const bonusXp = allTasksDone ? Math.round(baseXp * 0.25) : 0;
+  const finalXp = baseXp + bonusXp;
   const finalGold = Math.floor(finalXp * 0.5);
 
   return {
@@ -95,132 +87,74 @@ export function computeProjectStats(project: HeroProject): ProjectComputed {
 }
 
 /**
- * DTO para criação de projeto — entra só o que vem do formulário.
+ * Cria um novo projeto na tabela `projects`.
+ * A data alvo é opcional; se não vier, salvamos como string vazia
+ * para bater com o tipo do db (string, não string | null).
  */
-interface CreateProjectInput {
-  title: string;
-  description: string;
-  totalTasks: number;
-  baseXp: number;
-  targetDate?: string; // sempre string; se vazio, guardamos ''
-}
+export async function createProject(
+  input: NewProjectInput,
+): Promise<HeroProject> {
+  const title = input.title.trim();
+  const description = input.description.trim();
 
-/**
- * Cria um novo projeto do herói.
- * A dificuldade é calculada automaticamente com base em totalTasks.
- */
-async function createProject(input: CreateProjectInput): Promise<HeroProject> {
+  if (!title) {
+    throw new Error('Título do projeto é obrigatório.');
+  }
+  if (!description) {
+    throw new Error('Descrição do projeto é obrigatória.');
+  }
+
+  const totalTasks = Math.max(1, Math.floor(Number(input.totalTasks) || 1));
+  const baseXp = Math.max(0, Math.floor(Number(input.baseXp) || 0));
+  const difficulty = inferDifficultyFromTasks(totalTasks);
   const nowIso = new Date().toISOString();
 
-  const safeTasks = Math.max(1, Math.floor(input.totalTasks || 1));
-  const safeBaseXp = Math.max(0, Math.floor(input.baseXp || 0));
-  const difficulty = getDifficultyForTaskCount(safeTasks);
-
-  const targetDate = input.targetDate?.trim() || '';
-
   const project: HeroProject = {
-    title: input.title.trim(),
-    description: input.description.trim(),
-    status: 'planning',
+    // id é opcional, Dexie preenche
+    title,
+    description,
+    status: 'planning' as ProjectStatus,
     difficulty,
-    totalTasks: safeTasks,
+    totalTasks,
     completedTasks: 0,
-    baseXp: safeBaseXp,
+    baseXp,
     createdAt: nowIso,
-    targetDate,
-    updatedAt: nowIso,
+    // db espera string, então usamos '' quando não houver data alvo
+    targetDate: input.targetDate ?? '',
   };
 
-  // Dexie espera o tipo declarado em db.ts, mas como somos 100% estruturais,
-  // é seguro forçar aqui:
-  const id = await db.projects.add(project as any);
+  const id = await db.projects.add(project);
   return { ...project, id };
 }
 
 /**
- * Retorna todos os projetos, do mais recente para o mais antigo.
+ * Observa a lista de projetos em tempo real usando Dexie liveQuery.
+ * Retorna uma função de cleanup para desinscrever.
  */
-async function getAllProjects(): Promise<HeroProject[]> {
-  const rows = await db.projects.orderBy('createdAt').reverse().toArray();
-  // rows é tipado com o HeroProject do db.ts; coerção estrutural pra nosso HeroProject
-  return rows as unknown as HeroProject[];
+export function subscribeToProjects(
+  onNext: (projects: HeroProject[]) => void,
+  onError?: (error: unknown) => void,
+): () => void {
+  const observable = liveQuery(() => db.projects.toArray());
+
+  const subscription = observable.subscribe(
+    (rows) => {
+      if (typeof onNext === 'function') {
+        onNext(rows ?? []);
+      } else {
+        console.error(
+          'subscribeToProjects: onNext não é função. Valor recebido:',
+          onNext,
+        );
+      }
+    },
+    (err) => {
+      console.error('Erro ao observar projetos:', err);
+      if (typeof onError === 'function') {
+        onError(err);
+      }
+    },
+  );
+
+  return () => subscription.unsubscribe();
 }
-
-/**
- * Busca um projeto específico por id.
- */
-async function getProjectById(id: number): Promise<HeroProject | undefined> {
-  if (id == null) return undefined;
-  const row = await db.projects.get(id);
-  return row as HeroProject | undefined;
-}
-
-/**
- * Atualiza parcialmente um projeto (patch).
- * Se totalTasks for alterado, a dificuldade é recalculada automaticamente.
- */
-async function updateProject(
-  id: number,
-  patch: Partial<Omit<HeroProject, 'id'>>,
-): Promise<void> {
-  const existing = (await db.projects.get(id)) as HeroProject | undefined;
-  if (!existing) return;
-
-  const merged: HeroProject = {
-    ...existing,
-    ...patch,
-  };
-
-  // Se o total de tarefas mudou, recalcular dificuldade
-  if (patch.totalTasks !== undefined) {
-    const safeTasks = Math.max(1, Math.floor(patch.totalTasks || 1));
-    merged.totalTasks = safeTasks;
-    merged.difficulty = getDifficultyForTaskCount(safeTasks);
-  }
-
-  merged.updatedAt = new Date().toISOString();
-
-  await db.projects.put({ ...(merged as any), id });
-}
-
-/**
- * Atualiza o status de um projeto.
- */
-async function setProjectStatus(
-  id: number,
-  status: ProjectStatus,
-): Promise<void> {
-  await updateProject(id, { status });
-}
-
-/**
- * Atualiza o número de tarefas concluídas.
- */
-async function setCompletedTasks(
-  id: number,
-  completedTasks: number,
-): Promise<void> {
-  const safe = Math.max(0, Math.floor(completedTasks || 0));
-  await updateProject(id, { completedTasks: safe });
-}
-
-/**
- * Remove um projeto definitivamente.
- */
-async function deleteProject(id: number): Promise<void> {
-  await db.projects.delete(id);
-}
-
-/**
- * Service exportado para uso no +page.svelte.
- */
-export const projectService = {
-  createProject,
-  getAllProjects,
-  getProjectById,
-  updateProject,
-  setProjectStatus,
-  setCompletedTasks,
-  deleteProject,
-  computeProjectStats,
-};
