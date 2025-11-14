@@ -105,14 +105,23 @@
       }));
 
       const userPlayer: ClanPlayer = {
-        id: hero.id ?? 1,
-        name: hero.name,
-        level: hero.level,
-        // XP TOTAL para bater com a coluna "XP Total"
-        xpCurrent: hero.totalXpEarned ?? hero.xpCurrent,
-        title: hero.title,
+        // garante sempre um number
+        id: hero.id ?? fallbackProfile.id ?? 1,
+        // sempre string
+        name: hero.name || fallbackProfile.name,
+        // sempre number
+        level: hero.level ?? fallbackProfile.level ?? 1,
+        // sempre number no final
+        xpCurrent:
+          hero.totalXpEarned ??
+          hero.xpCurrent ??
+          fallbackProfile.totalXpEarned ??
+          0,
+        // sempre string no final (usa o title do fallback em vez de travar em 'Acólito')
+        title: hero.title ?? fallbackProfile.title ?? '',
         isUser: true,
-        avatarUrl: hero.avatarUrl,
+        // ClanPlayer.avatarUrl é opcional, então string aqui é ainda mais seguro
+        avatarUrl: hero.avatarUrl ?? fallbackProfile.avatarUrl,
         rank: 0,
       };
 
@@ -140,6 +149,7 @@
     <PageTitleCard
       title="Salão do Clã"
       subtitle="Junte-se aos seus irmãos de batalha e conquistem o mundo juntos!"
+      iconSrc="/art/icones/icon-cla.png"
       align="center"
     />
 

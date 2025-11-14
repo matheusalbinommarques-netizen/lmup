@@ -15,6 +15,7 @@
     <PageTitleCard
       title="Sala de Troféus"
       subtitle="Celebre suas conquistas e observe o poder das suas vitórias!"
+      iconSrc="/art/icones/trophy-icon.png"
       align="center"
     />
   </section>

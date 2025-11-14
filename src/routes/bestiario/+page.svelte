@@ -136,6 +136,7 @@
   <PageTitleCard
     title="Bestiário de Companheiros"
     subtitle="Alimente e evolua seus fiéis companheiros enquanto você avança em sua jornada!"
+    iconSrc="/art/icones/book-icon.png"
     align="center"
   />
 

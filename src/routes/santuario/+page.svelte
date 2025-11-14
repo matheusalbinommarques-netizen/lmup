@@ -8,6 +8,7 @@
   <PageTitleCard
     title="Santuário da Natureza"
     subtitle="Conclua missões e ganhe experiência, e seu santuário florescerá para uma floresta vigorosa!"
+    iconSrc="/art/icones/ritual-restauracao.png"
     align="center"
   />
 

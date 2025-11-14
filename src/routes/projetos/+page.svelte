@@ -275,6 +275,7 @@
   <PageTitleCard
     title="Projetos do Herói"
     subtitle="Enxergue suas grandes Sagas, quantas missões cada uma carrega e o quão desafiadoras elas são."
+    iconSrc="/art/icones/icon-projetos.png"
     align="center"
   />
 

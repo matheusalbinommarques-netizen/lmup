@@ -2,19 +2,20 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { liveQuery } from 'dexie';
-  import { db, type InventoryItem, type Profile } from '$services/db';
+  import {
+    db,
+    type InventoryItem,
+    type Profile,
+    type InventoryItemType,
+  } from '$services/db';
   import PageTitleCard from '$lib/PageTitleCard.svelte';
 
   // Estado
   let items = $state<InventoryItem[]>([]);
   let profile = $state<Profile | null>(null);
 
-  type InventoryFilter =
-    | 'all'
-    | 'avatar-frame'
-    | 'background'
-    | 'companion'
-    | 'badge';
+  // Filtros possíveis: "all" + os tipos reais do banco
+  type InventoryFilter = 'all' | InventoryItemType;
 
   let activeFilter = $state<InventoryFilter>('all');
 
@@ -40,15 +41,17 @@
 
   // -------- Helpers de exibição --------
   function typeLabel(type: string): string {
-    switch (type) {
-      case 'avatar-frame':
+    switch (type as InventoryItemType) {
+      case 'frame':
         return 'Molduras de Avatar';
+      case 'avatar':
+        return 'Avatares';
       case 'background':
         return 'Fundos & Cenários';
-      case 'companion':
-        return 'Companheiros';
-      case 'badge':
-        return 'Emblemas & Troféus';
+      case 'aura':
+        return 'Auras & Efeitos';
+      case 'weapon-skin':
+        return 'Skins de Arma';
       default:
         return type;
     }
@@ -58,14 +61,16 @@
     switch (filter) {
       case 'all':
         return 'Tudo';
-      case 'avatar-frame':
+      case 'frame':
         return 'Molduras';
+      case 'avatar':
+        return 'Avatares';
       case 'background':
         return 'Fundos';
-      case 'companion':
-        return 'Companheiros';
-      case 'badge':
-        return 'Emblemas';
+      case 'aura':
+        return 'Auras';
+      case 'weapon-skin':
+        return 'Armas';
     }
   }
 
@@ -114,26 +119,32 @@
 
   const filters: InventoryFilter[] = [
     'all',
-    'avatar-frame',
+    'frame',
+    'avatar',
     'background',
-    'companion',
-    'badge',
+    'aura',
+    'weapon-skin',
   ];
 
   function itemName(item: InventoryItem): string {
-    // Se no futuro você adicionar "name" no InventoryItem, é só trocar aqui
-    return item.key;
+    // você já tem "name" tipado no InventoryItem
+    return item.name || item.key;
   }
 
   function equippedLabel(item: InventoryItem): string {
     if (!item.equipped) return 'Equipar';
+
     switch (item.type) {
-      case 'avatar-frame':
+      case 'frame':
         return 'Moldura ativa';
+      case 'avatar':
+        return 'Avatar ativo';
       case 'background':
         return 'Fundo ativo';
-      case 'companion':
-        return 'Companheiro ativo';
+      case 'aura':
+        return 'Aura ativa';
+      case 'weapon-skin':
+        return 'Arma ativa';
       default:
         return 'Ativo';
     }
@@ -160,8 +171,9 @@
 
 <div class="flex flex-col gap-6">
   <PageTitleCard
-    title="Inventário & Guarda-Roupa"
+    title="Inventário"
     subtitle="Veja todos os cosméticos, fundos, companheiros e troféus que o seu herói já desbloqueou."
+    iconSrc="/art/icones/bag-icon.png"
     align="center"
   />
 
@@ -280,14 +292,16 @@
                   <div
                     class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800/70 text-lg"
                   >
-                    {#if group.type === 'avatar-frame'}
+                    {#if group.type === 'frame'}
                       🖼️
+                    {:else if group.type === 'avatar'}
+                      😃
                     {:else if group.type === 'background'}
                       🌌
-                    {:else if group.type === 'companion'}
-                      🐾
-                    {:else if group.type === 'badge'}
-                      🏅
+                    {:else if group.type === 'aura'}
+                      ✨
+                    {:else if group.type === 'weapon-skin'}
+                      ⚔️
                     {:else}
                       🎁
                     {/if}
@@ -302,12 +316,6 @@
                         >{item.key}</span
                       >
                     </p>
-                    {#if item.acquiredAt}
-                      <p class="mt-0.5 text-[0.65rem] text-slate-500">
-                        Desde:
-                        {new Date(item.acquiredAt).toLocaleDateString('pt-BR')}
-                      </p>
-                    {/if}
                   </div>
 
                   <div class="flex flex-col items-end gap-1">
