@@ -33,6 +33,11 @@
       label: 'Quadro de Missões',
       icon: '/art/icones/icon-missoes.png',
     },
+    {
+      href: '/projetos',
+      label: 'Projetos do Herói',
+      icon: '/art/icones/icon-projetos.png',
+    },
     { href: '/cla', label: 'Clã', icon: '/art/icones/icon-cla.png' },
     {
       href: '/santuario',
@@ -45,6 +50,12 @@
       icon: '/art/icones/icon-config.png',
     },
   ];
+
+  function isActive(href: string): boolean {
+    return (
+      pathname === href || (href !== '/' && pathname.startsWith(href + '/'))
+    );
+  }
 </script>
 
 <aside
@@ -63,48 +74,35 @@
       <span
         class="relative inline-block font-serif text-lg md:text-xl font-extrabold"
       >
-        <!-- Glow por trás -->
         <span
           class="absolute inset-0 text-amber-300 blur opacity-80 group-hover:blur-xl group-hover:opacity-100 transition-all duration-300"
           aria-hidden="true"
         >
           Level Me Up!
         </span>
-
-        <!-- Texto principal -->
-        <span
-          class="relative bg-gradient-to-r from-amber-100 via-amber-200 to-amber-400 bg-clip-text text-transparent drop-shadow-[0_0_18px_rgba(251,191,36,0.9)] group-hover:drop-shadow-[0_0_28px_rgba(251,191,36,1)] transition-all duration-300"
-        >
-          Level Me Up!
-        </span>
+        <span class="relative text-amber-100">Level Me Up!</span>
+      </span>
+      <span class="text-[0.7rem] text-slate-400">
+        Seu quadro de missões gamificado
       </span>
     </div>
   </a>
 
-  <!-- Navegação -->
-  <nav class="flex flex-col gap-2">
+  <!-- Links -->
+  <nav class="flex flex-1 flex-col gap-1" aria-label="Navegação lateral">
     {#each links as link (link.href)}
       <a
         href={link.href}
-        class={`flex items-center gap-3 rounded-lg p-3 text-sm transition-colors ${
-          pathname === link.href
-            ? 'bg-primary/20 text-primary'
-            : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+        class={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+          isActive(link.href)
+            ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-400/60 shadow-[0_0_18px_rgba(52,211,153,0.65)]'
+            : 'text-slate-300 hover:bg-slate-800/70 border border-transparent'
         }`}
-        aria-current={pathname === link.href ? 'page' : undefined}
+        aria-current={isActive(link.href) ? 'page' : undefined}
       >
-        <img
-          src={link.icon}
-          alt={link.label}
-          class="h-6 w-6"
-          decoding="async"
-        />
-        <span class="font-medium">{link.label}</span>
+        <img src={link.icon} alt={link.label} class="h-5 w-5" />
+        <span>{link.label}</span>
       </a>
     {/each}
   </nav>
-
-  <div class="mt-auto p-2 text-center">
-    <span class="text-xs text-slate-600">v0.0.0 – Alpha</span>
-  </div>
 </aside>

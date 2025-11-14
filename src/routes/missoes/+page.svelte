@@ -26,9 +26,16 @@
   let isModalOpen = $state(false);
   let taskToEdit = $state<Task | null>(null);
 
-  const tasksQuery = liveQuery(() =>
-    db.tasks.orderBy('createdAt').reverse().toArray(),
-  );
+  const tasksQuery = liveQuery(async () => {
+    const rows = await db.tasks.toArray();
+
+    return (rows ?? []).sort((a, b) => {
+      const aTime = a.createdAt ? new Date(a.createdAt as any).getTime() : 0;
+      const bTime = b.createdAt ? new Date(b.createdAt as any).getTime() : 0;
+      // Mais recente primeiro
+      return bTime - aTime;
+    });
+  });
   const areasQuery = liveQuery(() => db.areas.toArray());
   const xpLogsQuery = liveQuery(() => db.xpLogs.toArray());
 

@@ -1,60 +1,67 @@
 // src/services/db.ts
 import Dexie, { type Table } from 'dexie';
 
-/**
- * PERFIL DO HERÓI
- */
+// ---------------------------------------------
+// PROFILE (herói)
+// ---------------------------------------------
 export interface Profile {
   id?: number;
   name: string;
-  title: string;
+  title?: string;
+
   level: number;
   xpCurrent: number;
   xpNext: number;
   totalXpEarned: number;
 
-  // Deixamos opcional para não quebrar fallbacks antigos
-  gold?: number;
-
+  gold: number; // usado no app inteiro
   avatarUrl?: string;
-  currentStreak?: number;
-  lastCompletionDate?: string | null; // 'YYYY-MM-DD'
+
+  // streak
+  currentStreak: number;
+  lastCompletionDate?: string | null;
+
+  // pet ativo
   activeCompanionId?: number | null;
 
-  createdAt?: Date | string;
-  updatedAt?: Date | string;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+
+  // usado no EcoPanel
+  ecoGoldClaimedUpToStage?: number;
 }
 
-/**
- * ÁREAS (Carreira, Geral, LMU, etc.)
- */
+// ---------------------------------------------
+// AREAS
+// ---------------------------------------------
 export interface Area {
   id?: number;
   nome: string;
-  color?: string | null;
-  icon?: string | null;
-  createdAt?: Date | string;
+  descricao?: string;
+  ordem?: number;
+  cor?: string;
 }
 
-/**
- * MISSÕES / TAREFAS
- */
+// ---------------------------------------------
+// TASKS (missões)
+// ---------------------------------------------
 export type TaskRarity = 'common' | 'rare' | 'epic' | 'legendary';
-
 export type TaskStatus = 'available' | 'todo' | 'completed';
 
 export interface Task {
   id?: number;
+
   title: string;
+  description?: string;
 
-  // Aceita string ou null (pra bater com os modais que enviam `null`)
-  description?: string | null;
+  areaId?: number;
 
-  areaId?: number; // referência a Area.id
+  // FASE 2 – projetos
+  projectId?: number | null;
+
   xp: number;
   rarity: TaskRarity;
 
-  // status / fluxo
   status?: TaskStatus;
   completed?: boolean;
   archived?: boolean;
@@ -63,7 +70,6 @@ export interface Task {
   updatedAt?: Date | string;
   completedAt?: Date | string | null;
 
-  // ordenação da lista "A fazer"
   todoOrder?: number;
 
   // revisão espaçada
@@ -72,83 +78,120 @@ export interface Task {
   reviewStartedAt?: Date | string | null;
 }
 
-/**
- * LOG DE XP POR DIA / ÁREA
- */
+// ---------------------------------------------
+// XP LOGS
+// ---------------------------------------------
 export interface XpLog {
   id?: number;
-  date: string; // 'YYYY-MM-DD'
-  amount: number; // pode ser positivo ou negativo
-  areaId: number | null;
-  createdAt: Date;
+  date: string; // yyyy-mm-dd
+  amount: number;
+
+  areaId?: number | null;
+  type?: 'gain' | 'spend';
+  reason?: string;
+
+  createdAt?: string | Date;
 }
 
-/**
- * INVENTÁRIO (itens cosméticos, etc.)
- * (estrutura mínima — pode ter mais campos em outros arquivos)
- */
+// ---------------------------------------------
+// INVENTÁRIO / LOJA
+// ---------------------------------------------
+export type InventoryItemType =
+  | 'frame'
+  | 'avatar'
+  | 'background'
+  | 'aura'
+  | 'weapon-skin';
+
 export interface InventoryItem {
   id?: number;
-  key: string; // ex: 'avatar_frame_01'
-  type: string; // ex: 'avatar-frame', 'background'
+  key: string;
+  type: InventoryItemType;
+  name: string;
+  description?: string;
   owned: boolean;
   equipped?: boolean;
-  acquiredAt?: Date | string;
 }
 
-/**
- * ITENS DE LOJA (catálogo da loja no banco, não o tipo da UI)
- */
 export interface ShopItem {
   id?: number;
-  key: string; // identificador interno do item
-  type: string; // ex: 'theme', 'effect', 'profile'
+  key: string;
+  type: InventoryItemType;
   name: string;
   description?: string;
   price: number;
-  createdAt?: Date | string;
 }
 
-/**
- * ITENS DE LOJA POSSUÍDOS PELO JOGADOR
- * (ligação entre um item de catálogo e o jogador)
- */
 export interface OwnedShopItem {
   id?: number;
-  itemId: number; // referencia ShopItem.id
-  acquiredAt: Date | string;
+  itemId: number;
 }
 
-/**
- * COMPANHEIROS / PETS
- * Compatível com o Bestiário e a Taverna:
- * - name, type, imagePath (como nas seeds)
- * - key/rarity opcionais (pra achievements)
- */
+// ---------------------------------------------
+// COMPANIONS (PETS)
+// ---------------------------------------------
+export type CompanionRarity = 'common' | 'rare' | 'epic' | 'legendary';
+
 export interface Companion {
   id?: number;
+
+  // ⚠️ estes são OPCIONAIS pra bater com o PET_SEED do bestiário
   key?: string;
+  rarity?: CompanionRarity;
+  type?: string;
+  imagePath?: string;
+
   name: string;
-  type: string;
-  imagePath: string;
-  rarity?: TaskRarity;
+
   unlocked?: boolean;
+  requiredLevel?: number;
+  description?: string;
+  createdAt?: string | Date;
 }
 
-/**
- * TABELA LEGADA DE ITENS POR ÁREA (ItemManager)
- * Estrutura equivalente ao ItemV1 do app antigo.
- */
+// ---------------------------------------------
+// LEGACY ITEM (ItemManager antigo)
+// ---------------------------------------------
 export interface LegacyItem {
   id?: number;
-  areaId: number;
   titulo: string;
+  descricao?: string;
   xp?: number;
+  areaId?: number;
 }
 
-/**
- * BANCO DEXIE
- */
+// ---------------------------------------------
+// HERO PROJECT (FASE 2)
+// ---------------------------------------------
+export type HeroProjectStatus =
+  | 'planejando'
+  | 'em_andamento'
+  | 'concluido'
+  | 'pausado'
+  | 'arquivado';
+
+export interface HeroProject {
+  id?: number;
+
+  name: string;
+  vision?: string | null;
+  status: HeroProjectStatus;
+
+  createdAt: Date | string;
+  updatedAt?: Date | string;
+
+  targetDate?: Date | string | null;
+
+  color?: string | null;
+  icon?: string | null;
+
+  // pra Fase 4 (bônus de XP)
+  rewardGranted?: boolean;
+}
+
+// ---------------------------------------------
+// BANCO DEXIE
+// ---------------------------------------------
 export class LevelMeUpDB extends Dexie {
   profile!: Table<Profile, number>;
   tasks!: Table<Task, number>;
@@ -161,23 +204,23 @@ export class LevelMeUpDB extends Dexie {
 
   companions!: Table<Companion, number>;
 
-  // tabela legada de itens por área (ItemManager)
-  items!: Table<LegacyItem, number>;
+  items!: Table<LegacyItem, number>; // legado
+
+  projects!: Table<HeroProject, number>; // Fase 2
 
   constructor() {
     super('LevelMeUpDB');
 
-    /**
-     * IMPORTANTE:
-     * - Versão 2 para evitar o warning "Schema was extended without increasing db.version()".
-     * - Aqui listamos TODAS as stores atuais do app.
-     */
-    this.version(2).stores({
+    // versão 4 (já estávamos nela, não muda o schema aqui)
+    this.version(4).stores({
       profile: '++id',
+
       tasks:
-        '++id, areaId, completed, status, archived, reviewEnabled, createdAt, completedAt',
+        '++id, areaId, projectId, status, completed, archived, createdAt, completedAt, reviewEnabled',
+
+      xpLogs: '++id, date, areaId, createdAt',
+
       areas: '++id',
-      xpLogs: '++id, date, areaId',
 
       inventory: '++id, key, type, owned, equipped',
       shopItems: '++id, key, type, price',
@@ -185,8 +228,9 @@ export class LevelMeUpDB extends Dexie {
 
       companions: '++id, key, rarity, unlocked',
 
-      // tabela de itens legados por área (ItemManager)
       items: '++id, areaId',
+
+      projects: '++id, status, createdAt, targetDate',
     });
   }
 }

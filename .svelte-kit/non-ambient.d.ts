@@ -39,6 +39,7 @@ declare module '$app/types' {
       | '/inventario'
       | '/loja'
       | '/missoes'
+      | '/projetos'
       | '/santuario'
       | '/trofeus';
     RouteParams(): {};
@@ -50,6 +51,7 @@ declare module '$app/types' {
       '/inventario': Record<string, never>;
       '/loja': Record<string, never>;
       '/missoes': Record<string, never>;
+      '/projetos': Record<string, never>;
       '/santuario': Record<string, never>;
       '/trofeus': Record<string, never>;
     };
@@ -67,6 +69,8 @@ declare module '$app/types' {
       | '/loja/'
       | '/missoes'
       | '/missoes/'
+      | '/projetos'
+      | '/projetos/'
       | '/santuario'
       | '/santuario/'
       | '/trofeus'
@@ -151,6 +155,7 @@ declare module '$app/types' {
       | '/art/icones/icon-leaf-eco.png'
       | '/art/icones/icon-missoes.png'
       | '/art/icones/icon-neurodiversity.png'
+      | '/art/icones/icon-projetos.png'
       | '/art/icones/icon-taverna.png'
       | '/art/icones/icon-xp.png'
       | '/art/icones/logo lmu.png'
