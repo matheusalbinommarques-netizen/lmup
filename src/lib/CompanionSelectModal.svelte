@@ -9,8 +9,11 @@
 
   // Companion com metadados extras que o DB não exige mas a UI usa
   type CompanionWithMeta = Companion & {
-    type: string;
-    imagePath: string;
+    key?: string;
+    type?: string;
+    imagePath?: string;
+    rarity?: string; //  👈 adiciona esta linha
+    unlocked?: boolean;
   };
 
   type PetCard = CompanionWithMeta & {
@@ -26,7 +29,7 @@
       key: 'wolf',
       name: 'Lobo Etéreo',
       rarity: 'rare',
-      type: 'Caçador das Sombras',
+      type: 'Lobo das Estepes',
       imagePath: '/art/pets/pet-wolf-final.png',
       unlocked: false,
     },
@@ -78,8 +81,8 @@
   async function ensureCompanionsSeeded() {
     const count = await db.companions.count();
     if (count === 0) {
-      // salva apenas o que o schema exige; extras (type/imagePath) também são guardados
-      await db.companions.bulkAdd(PET_SEED);
+      // TS acha que Companion não tem key/type/unlocked — forçamos any
+      await db.companions.bulkAdd(PET_SEED as any);
     }
   }
 
@@ -144,7 +147,16 @@
 
     // Pets
     const compSub = companionsQuery.subscribe((list) => {
-      companions = (list ?? []) as CompanionWithMeta[];
+      const fromDb = (list ?? []) as CompanionWithMeta[];
+
+      // Garante que sempre temos meta (type, imagePath, key...) usando o seed
+      companions = fromDb.map((c) => {
+        const seed = PET_SEED.find((s) => s.id === c.id);
+        return {
+          ...seed,
+          ...c,
+        } as CompanionWithMeta;
+      });
     });
 
     // Acessibilidade: Esc fecha modal
@@ -193,7 +205,10 @@
     try {
       // Atualiza perfil e marca esse pet como desbloqueado
       await db.profile.update(1, { activeCompanionId: pet.id });
-      await db.companions.update(pet.id, { unlocked: true });
+      await db.companions.update(
+        pet.id,
+        { unlocked: true } as any, // TS não sabe do campo 'unlocked', forçamos any
+      );
 
       activeCompanionId = pet.id;
       close();
@@ -213,10 +228,10 @@
   onkeydown={handleOverlayKeydown}
 >
   <div
-    class="relative w-full max-w-3xl mx-4 rounded-3xl border border-slate-700 bg-slate-950/95 shadow-2xl"
+    class="relative mx-4 w-full max-w-3xl rounded-3xl border border-slate-700 bg-slate-950/95 shadow-2xl"
   >
     <header
-      class="flex items-start justify-between gap-4 px-6 pt-5 pb-3 border-b border-slate-800"
+      class="flex items-start justify-between gap-4 border-b border-slate-800 px-6 pt-5 pb-3"
     >
       <div>
         <p class="text-xs uppercase tracking-[0.2em] text-slate-500">
@@ -231,13 +246,13 @@
         <p class="mt-1 text-xs text-slate-400">
           Companheiros são liberados conforme o nível do seu herói. Você está no
           nível
-          <span class="font-semibold text-emerald-400">{heroLevel}</span>.
+          <span class="font-semibold text-emerald-400"> {heroLevel} </span>.
         </p>
       </div>
 
       <button
         type="button"
-        class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700 text-slate-400 hover:text-slate-100 hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
+        class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
         onclick={close}
         aria-label="Fechar seleção de companheiro"
       >
@@ -245,9 +260,9 @@
       </button>
     </header>
 
-    <div class="px-6 pb-6 pt-4">
+    <div class="px-6 pt-4 pb-6">
       <div
-        class="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between text-xs text-slate-400"
+        class="mb-4 flex flex-col gap-1 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between"
       >
         <p>Pets desbloqueiam nos níveis: 1 • 5 • 15 • 20.</p>
         <p>
@@ -262,7 +277,7 @@
         </p>
       </div>
 
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {#each petCards as pet (pet.id ?? pet.imagePath)}
           <button
             type="button"
@@ -277,7 +292,7 @@
           >
             {#if !pet.isUnlocked}
               <div
-                class="pointer-events-none absolute inset-0 rounded-2xl bg-black/50 flex items-center justify-center"
+                class="pointer-events-none absolute inset-0 flex items-center justify-center rounded-2xl bg-black/50"
               >
                 <span
                   class="text-2xl"
@@ -289,12 +304,12 @@
             {/if}
 
             <div
-              class="w-full aspect-square rounded-xl bg-slate-950 border border-slate-800 overflow-hidden flex items-center justify-center"
+              class="flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border border-slate-800 bg-slate-950"
             >
               <img
                 src={pet.imagePath}
                 alt={pet.name}
-                class="w-full h-full object-contain drop-shadow-xl"
+                class="h-full w-full object-contain drop-shadow-xl"
               />
             </div>
 
@@ -306,11 +321,9 @@
               <p class="mt-1 text-[0.65rem]">
                 {#if pet.isUnlocked}
                   {#if pet.isActive}
-                    <span class="font-semibold text-emerald-400">
-                      Equipado
-                    </span>
+                    <span class="font-semibold text-emerald-400">Equipado</span>
                   {:else}
-                    <span class="text-slate-400"> Clique para equipar </span>
+                    <span class="text-slate-400">Clique para equipar</span>
                   {/if}
                 {:else}
                   <span class="text-slate-500">

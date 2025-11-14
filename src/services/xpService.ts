@@ -4,7 +4,7 @@ import { ECO_STAGES, getEcoStageForTotalXp } from '$services/ecoConfig';
 
 /**
  * XP necessário para subir de N -> N+1.
- * Index 0 é ignorado. Somando 1..29 = 250.000 XP (até nível 30).
+ * Index 0 é ignorado. Somando 1..29 ≈ 250.000 XP (até nível 30).
  */
 export const XP_PER_LEVEL: number[] = [
   0, // índice 0 (não usado)
@@ -42,7 +42,7 @@ export const XP_PER_LEVEL: number[] = [
 export const MAX_LEVEL = 30;
 
 // cumulativo de XP para chegar em cada nível
-// cumulative[1] = 0 (nível 1), cumulative[2] = xp pra chegar no 2, etc.
+// XP_CUMULATIVE[1] = 0 (nível 1), XP_CUMULATIVE[2] = xp pra chegar no 2, etc.
 const XP_CUMULATIVE: number[] = (() => {
   const acc: number[] = [];
   let sum = 0;
@@ -105,7 +105,7 @@ export function getLevelStateFromTotalXp(totalXp: number): LevelState {
   return { level, xpIntoLevel, xpForNext };
 }
 
-// Títulos por nível (fica à vontade pra trocar os textos depois)
+// Títulos por nível
 const LEVEL_TITLES: string[] = [
   '',
   'Estudante', // 1
@@ -137,7 +137,7 @@ const LEVEL_TITLES: string[] = [
   'Celestial', // 27
   'Semideus', // 28
   'Eterno', // 29
-  'O Criador', // 30+
+  'O Criador', // 30+,
 ];
 
 export function getTitleForLevel(level: number): string {
@@ -148,11 +148,15 @@ export function getTitleForLevel(level: number): string {
   return LEVEL_TITLES[level] || LEVEL_TITLES[1];
 }
 
+/**
+ * Garante que existe um Profile com id=1.
+ */
 async function ensureProfile(): Promise<Profile> {
   let profile = await db.profile.get(1);
 
   if (!profile) {
-    const now = new Date();
+    const nowIso = new Date().toISOString();
+
     profile = {
       id: 1,
       name: 'Herói sem nome',
@@ -166,10 +170,11 @@ async function ensureProfile(): Promise<Profile> {
       currentStreak: 0,
       lastCompletionDate: null,
       activeCompanionId: 1,
-      createdAt: now,
-      updatedAt: now,
+      updatedAt: nowIso,
     };
-    await db.profile.add(profile);
+
+    // put() garante upsert seguro
+    await db.profile.put(profile);
   }
 
   return profile;
@@ -192,6 +197,7 @@ async function applyXpDelta(
   }
 
   const now = new Date();
+  const nowIso = now.toISOString();
   const dateKey = toDateKey(now);
 
   // --- XP total acumulado ANTES do ganho/perda ---
@@ -283,7 +289,7 @@ async function applyXpDelta(
     currentStreak,
     lastCompletionDate,
     title: getTitleForLevel(level),
-    updatedAt: now,
+    updatedAt: nowIso,
   };
 
   // injeta metadado do santuário sem exigir campo no tipo Profile
@@ -293,10 +299,14 @@ async function applyXpDelta(
 
   // --- Log de XP (positivo ou negativo) para estatísticas ---
   const log: XpLog = {
+    amount: effectiveAmount, // campo novo, usado pelo EcoPanel
+    xp: effectiveAmount, // compat com código legado que lia `xp`
+    reason: 'generic_xp_change',
+    areaId: areaId ?? null,
+    taskId: null,
+    projectId: null,
     date: dateKey,
-    amount: effectiveAmount, // loga o XP já com bônus aplicado
-    areaId,
-    createdAt: now,
+    createdAt: nowIso,
   };
 
   await db.xpLogs.add(log);

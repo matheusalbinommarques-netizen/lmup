@@ -9,7 +9,7 @@
     {
       id: 1,
       name: 'Lobo Etéreo',
-      type: 'Caçador das Sombras',
+      type: 'Lobo das Estepes',
       imagePath: '/art/pets/pet-wolf-final.png',
     },
     {

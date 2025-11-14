@@ -1,10 +1,8 @@
 <!-- src/lib/EcoGamificationPanel.svelte -->
 <script lang="ts">
   import { onDestroy } from 'svelte';
-  import {
-    getTotalXpObservable,
-    getStreakObservable,
-  } from '../services/xpService';
+  import { liveQuery } from 'dexie';
+  import { db, type Profile } from '$services/db';
 
   type EcoStageId = 'solo' | 'broto' | 'arbusto' | 'arvore' | 'floresta';
 
@@ -60,15 +58,15 @@
   let unsubscribeFns: (() => void)[] = [];
 
   if (typeof window !== 'undefined') {
-    const sub1 = getTotalXpObservable().subscribe((xp) => {
-      totalXp = xp;
+    // Lê direto do perfil (XP total e streak atual)
+    const profile$ = liveQuery(() => db.profile.get(1));
+
+    const sub = profile$.subscribe((profile: Profile | undefined) => {
+      totalXp = profile?.totalXpEarned ?? 0;
+      streak = profile?.currentStreak ?? 0;
     });
 
-    const sub2 = getStreakObservable().subscribe(({ count }) => {
-      streak = count;
-    });
-
-    unsubscribeFns = [() => sub1.unsubscribe(), () => sub2.unsubscribe()];
+    unsubscribeFns = [() => sub.unsubscribe()];
   }
 
   onDestroy(() => {
@@ -78,7 +76,7 @@
   });
 
   // ------------------------------------
-  // DERIVADOS (corrigidos)
+  // DERIVADOS
   // ------------------------------------
 
   const currentStage = $derived(

@@ -34,6 +34,7 @@ type LayoutRouteId =
   | '/inventario'
   | '/loja'
   | '/missoes'
+  | '/projetos'
   | '/santuario'
   | '/trofeus'
   | null;
