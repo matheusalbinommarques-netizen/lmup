@@ -2,15 +2,22 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { liveQuery } from 'dexie';
-  import { db, type HeroProject, type Task } from '$services/db';
+  import { db, type HeroProject, type Task, type Profile } from '$services/db';
   import PageTitleCard from '$lib/PageTitleCard.svelte';
+  import {
+    getProjectBaseXp,
+    getProjectDifficultyInfoForTasks,
+  } from '$services/projectService';
+  import { getEcoStageForTotalXp } from '$services/ecoConfig';
 
   let projects = $state<HeroProject[]>([]);
   let tasks = $state<Task[]>([]);
+  let hero = $state<Profile | null>(null);
   let isLoading = $state(true);
 
   const projectsQuery = liveQuery(() => db.projects.toArray());
   const tasksQuery = liveQuery(() => db.tasks.toArray());
+  const heroQuery = liveQuery(() => db.profile.get(1));
 
   onMount(() => {
     const projSub = projectsQuery.subscribe((rows) => {
@@ -22,15 +29,20 @@
       tasks = rows ?? [];
     });
 
+    const heroSub = heroQuery.subscribe((profileData) => {
+      hero = profileData ?? null;
+    });
+
     return () => {
       projSub.unsubscribe();
       taskSub.unsubscribe();
+      heroSub.unsubscribe();
     };
   });
 
   type ProjectStatus = HeroProject['status'];
 
-  // --------- helpers de status / dificuldade ---------
+  // --------- helpers de status / ordenação ---------
 
   const STATUS_ORDER: Record<ProjectStatus, number> = {
     em_andamento: 0,
@@ -74,55 +86,50 @@
     }
   }
 
+  // --------- Dificuldade / bônus de projeto ---------
+
   type DifficultyKey = 'none' | 'facil' | 'media' | 'dificil' | 'expert';
 
-  type DifficultyInfo = {
-    key: DifficultyKey;
+  type DifficultyUiInfo = {
     label: string;
     range: string;
     classes: string;
   };
 
-  function getDifficulty(totalTasks: number): DifficultyInfo {
-    if (totalTasks <= 0) {
-      return {
-        key: 'none',
-        label: 'Sem missões',
-        range: '0 missões',
-        classes: 'border-slate-600 text-slate-300 bg-slate-900/80',
-      };
-    }
-    if (totalTasks <= 2) {
-      return {
-        key: 'facil',
-        label: 'Fácil',
-        range: '1–2 missões',
-        classes: 'border-emerald-400 text-emerald-200 bg-emerald-900/40',
-      };
-    }
-    if (totalTasks <= 4) {
-      return {
-        key: 'media',
-        label: 'Média',
-        range: '3–4 missões',
-        classes: 'border-sky-400 text-sky-200 bg-sky-900/40',
-      };
-    }
-    if (totalTasks <= 9) {
-      return {
-        key: 'dificil',
-        label: 'Difícil',
-        range: '5–9 missões',
-        classes: 'border-purple-400 text-purple-200 bg-purple-900/40',
-      };
-    }
-    return {
-      key: 'expert',
+  const DIFFICULTY_UI: Record<DifficultyKey, DifficultyUiInfo> = {
+    none: {
+      label: 'Sem missões',
+      range: '0 missões',
+      classes: 'border-slate-600 text-slate-300 bg-slate-900/80',
+    },
+    facil: {
+      label: 'Fácil',
+      range: '1–2 missões',
+      classes: 'border-emerald-400 text-emerald-200 bg-emerald-900/40',
+    },
+    media: {
+      label: 'Média',
+      range: '3–4 missões',
+      classes: 'border-sky-400 text-sky-200 bg-sky-900/40',
+    },
+    dificil: {
+      label: 'Difícil',
+      range: '5–9 missões',
+      classes: 'border-purple-400 text-purple-200 bg-purple-900/40',
+    },
+    expert: {
       label: 'Expert',
       range: '10+ missões',
       classes: 'border-[#ffb74d] text-[#ffb74d] bg-[rgba(255,183,77,0.12)]',
-    };
-  }
+    },
+  };
+
+  type ProjectDifficultyInfoReturn = {
+    totalTasks: number;
+    difficultyKey: DifficultyKey;
+    bonusXpFraction: number; // 0.10 / 0.15 / 0.20 / 0.25
+    bonusXpPercent: number; // 10 / 15 / 20 / 25
+  };
 
   function isTaskCompleted(task: Task): boolean {
     const anyTask = task as any;
@@ -141,15 +148,21 @@
     'pausado',
   ];
 
-  type ProjectWithStats = {
-    project: HeroProject;
-    totalTasks: number;
-    completedTasks: number;
-    completionPercent: number;
-    difficulty: DifficultyInfo;
-  };
+  // --- Bônus do Santuário global (igual pra todos os projetos) ---
 
-  const projectsWithStats: ProjectWithStats[] = $derived(
+  const sanctuaryMultiplier = $derived(
+    (() => {
+      if (!hero || hero.totalXpEarned == null) return 1;
+      const stage = getEcoStageForTotalXp(hero.totalXpEarned ?? 0);
+      return stage.xpBonusMultiplier ?? 1;
+    })(),
+  );
+
+  const sanctuaryBonusPercent = $derived(
+    Math.round((Number(sanctuaryMultiplier) - 1) * 100),
+  );
+
+  const projectsWithStats = $derived(
     (() => {
       return projects.map((project) => {
         if (!project.id) {
@@ -158,7 +171,12 @@
             totalTasks: 0,
             completedTasks: 0,
             completionPercent: 0,
-            difficulty: getDifficulty(0),
+            difficulty: DIFFICULTY_UI.none,
+            baseXp: 0,
+            bonusXpBase: 0,
+            bonusXpPercent: 0,
+            bonusXpWithSanctuary: 0,
+            bonusGoldWithSanctuary: 0,
           };
         }
 
@@ -173,7 +191,27 @@
         const completionPercent =
           totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-        const difficulty = getDifficulty(totalTasks);
+        const projectDiffInfo = getProjectDifficultyInfoForTasks(
+          relatedTasks,
+        ) as ProjectDifficultyInfoReturn;
+
+        const difficultyKey = (projectDiffInfo.difficultyKey ??
+          'none') as DifficultyKey;
+        const difficulty = DIFFICULTY_UI[difficultyKey];
+
+        const baseXp = Number(getProjectBaseXp(relatedTasks) ?? 0);
+
+        const bonusXpBase = Math.floor(
+          Number(baseXp) * Number(projectDiffInfo.bonusXpFraction ?? 0),
+        );
+
+        const bonusXpWithSanctuary = Math.round(
+          Number(bonusXpBase) * Number(sanctuaryMultiplier),
+        );
+
+        const bonusGoldWithSanctuary = Math.floor(
+          Math.abs(Number(bonusXpWithSanctuary)) * 0.5,
+        );
 
         return {
           project,
@@ -181,6 +219,11 @@
           completedTasks,
           completionPercent,
           difficulty,
+          baseXp,
+          bonusXpBase,
+          bonusXpPercent: projectDiffInfo.bonusXpPercent ?? 0,
+          bonusXpWithSanctuary,
+          bonusGoldWithSanctuary,
         };
       });
     })(),
@@ -222,92 +265,6 @@
     if (Number.isNaN(d.getTime())) return '';
     return d.toLocaleDateString('pt-BR');
   }
-
-  // ------------- CRIAÇÃO DE PROJETO -------------
-
-  let isCreateModalOpen = $state(false);
-  let draftName = $state('');
-  let draftVision = $state('');
-  let draftStatus = $state<ProjectStatus>('planejando');
-  let draftTargetDate = $state('');
-  let createError = $state<string | null>(null);
-
-  function openCreateModal() {
-    draftName = '';
-    draftVision = '';
-    draftStatus = 'planejando';
-    draftTargetDate = '';
-    createError = null;
-    isCreateModalOpen = true;
-  }
-
-  function closeCreateModal() {
-    isCreateModalOpen = false;
-  }
-
-  async function handleCreateProject(event: SubmitEvent) {
-    event.preventDefault();
-    createError = null;
-
-    const name = draftName.trim();
-    if (!name) {
-      createError = 'Dê um nome para a Saga.';
-      return;
-    }
-
-    const now = new Date();
-    const targetDate = draftTargetDate ? new Date(draftTargetDate) : null;
-
-    try {
-      await db.projects.add({
-        name,
-        vision: draftVision.trim() || undefined,
-        status: draftStatus,
-        createdAt: now,
-        targetDate,
-      } as HeroProject);
-
-      isCreateModalOpen = false;
-    } catch (err) {
-      console.error('Erro ao criar projeto:', err);
-      createError = 'Não foi possível criar o projeto. Tente novamente.';
-    }
-  }
-
-  // ------------- EXCLUSÃO DE PROJETO -------------
-
-  let projectIdPendingDelete = $state<number | null>(null);
-
-  function askDeleteProject(id: number | undefined) {
-    if (!id) return;
-    projectIdPendingDelete = id;
-  }
-
-  function cancelDeleteProject() {
-    projectIdPendingDelete = null;
-  }
-
-  async function confirmDeleteProject() {
-    if (!projectIdPendingDelete) return;
-    const id = projectIdPendingDelete;
-    projectIdPendingDelete = null;
-    isLoading = true;
-
-    try {
-      await db.transaction('rw', db.projects, db.tasks, async () => {
-        await db.tasks
-          .where('projectId')
-          .equals(id)
-          .modify({ projectId: null } as any);
-
-        await db.projects.delete(id);
-      });
-    } catch (err) {
-      console.error('Erro ao excluir projeto:', err);
-    } finally {
-      isLoading = false;
-    }
-  }
 </script>
 
 <svelte:head>
@@ -330,57 +287,47 @@
           Visão geral das Sagas
         </p>
         <p class="mt-1 text-xs text-slate-300">
-          Dificuldade é baseada na quantidade de missões ligadas ao projeto.
+          Dificuldade é baseada na quantidade de missões ligadas ao projeto e
+          define o bônus de XP ao concluir a Saga.
         </p>
       </div>
 
-      <div class="flex items-center gap-2">
-        <!-- Filtros de status -->
-        <div
-          class="flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 p-1 text-[0.7rem]"
-        >
-          <button
-            type="button"
-            class={`rounded-full px-3 py-1 font-semibold transition-colors ${
-              statusFilter === 'ativos'
-                ? 'bg-emerald-500 text-slate-950'
-                : 'text-slate-300 hover:bg-slate-800'
-            }`}
-            onclick={() => (statusFilter = 'ativos')}
-          >
-            Ativos
-          </button>
-          <button
-            type="button"
-            class={`rounded-full px-3 py-1 font-semibold transition-colors ${
-              statusFilter === 'concluidos'
-                ? 'bg-[#ffb74d] text-slate-950'
-                : 'text-slate-300 hover:bg-slate-800'
-            }`}
-            onclick={() => (statusFilter = 'concluidos')}
-          >
-            Concluídos
-          </button>
-          <button
-            type="button"
-            class={`rounded-full px-3 py-1 font-semibold transition-colors ${
-              statusFilter === 'todos'
-                ? 'bg-slate-700 text-slate-100'
-                : 'text-slate-300 hover:bg-slate-800'
-            }`}
-            onclick={() => (statusFilter = 'todos')}
-          >
-            Todos
-          </button>
-        </div>
-
-        <!-- Botão Novo Projeto -->
+      <!-- Filtros de status -->
+      <div
+        class="flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 p-1 text-[0.7rem]"
+      >
         <button
           type="button"
-          class="rounded-lg bg-[#ffb74d] px-4 py-2 text-xs font-bold text-slate-950 hover:bg-[#ffa726] transition-colors"
-          onclick={openCreateModal}
+          class={`rounded-full px-3 py-1 font-semibold transition-colors ${
+            statusFilter === 'ativos'
+              ? 'bg-emerald-500 text-slate-950'
+              : 'text-slate-300 hover:bg-slate-800'
+          }`}
+          onclick={() => (statusFilter = 'ativos')}
         >
-          + Novo Projeto
+          Ativos
+        </button>
+        <button
+          type="button"
+          class={`rounded-full px-3 py-1 font-semibold transition-colors ${
+            statusFilter === 'concluidos'
+              ? 'bg-[#ffb74d] text-slate-950'
+              : 'text-slate-300 hover:bg-slate-800'
+          }`}
+          onclick={() => (statusFilter = 'concluidos')}
+        >
+          Concluídos
+        </button>
+        <button
+          type="button"
+          class={`rounded-full px-3 py-1 font-semibold transition-colors ${
+            statusFilter === 'todos'
+              ? 'bg-slate-700 text-slate-100'
+              : 'text-slate-300 hover:bg-slate-800'
+          }`}
+          onclick={() => (statusFilter = 'todos')}
+        >
+          Todos
         </button>
       </div>
     </header>
@@ -397,7 +344,7 @@
       >
         <p>Nenhum projeto encontrado para este filtro.</p>
         <p class="text-xs text-slate-500">
-          Comece criando sua primeira Saga no botão &quot;Novo Projeto&quot;.
+          Em breve você poderá criar novas Sagas diretamente por aqui.
         </p>
       </div>
     {:else}
@@ -486,37 +433,66 @@
                   projeto.
                 {/if}
               </p>
+
+              <!-- Resumo de bônus do projeto + Santuário -->
+              {#if item.baseXp > 0}
+                <div class="mt-1 space-y-0.5 text-[0.65rem]">
+                  <p>
+                    XP base das missões:
+                    <strong>{item.baseXp} XP</strong>
+                  </p>
+
+                  <p>
+                    Bônus de projeto:
+                    <strong>+{item.bonusXpPercent}%</strong>
+                    →
+                    <strong>+{item.bonusXpBase} XP</strong>
+                    (antes do Santuário)
+                  </p>
+
+                  <p>
+                    Bônus do Santuário atual:
+                    <strong>
+                      {sanctuaryBonusPercent > 0
+                        ? `+${sanctuaryBonusPercent}%`
+                        : '0%'}
+                    </strong>
+                  </p>
+
+                  <p class="text-emerald-200">
+                    Se você concluísse esta Saga agora, o bônus renderia
+                    aproximadamente
+                    <strong> {item.bonusXpWithSanctuary} XP</strong>
+                    e
+                    <strong> {item.bonusGoldWithSanctuary} Gold</strong>
+                    já com o efeito do Santuário.
+                  </p>
+                </div>
+              {:else}
+                <p class="mt-1 text-[0.65rem] text-slate-500">
+                  Ainda sem XP acumulado neste projeto — conclua missões
+                  vinculadas para gerar bônus de conclusão.
+                </p>
+              {/if}
             </div>
 
             <footer
               class="mt-4 flex items-center justify-between gap-3 text-[0.7rem]"
             >
-              <div class="flex gap-2">
-                <a
-                  href={`/projetos/${project.id}`}
-                  class="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold text-slate-200 hover:border-emerald-400 hover:text-emerald-200"
-                >
-                  Detalhes do projeto
-                </a>
-
-                {#if project.id}
-                  <a
-                    href={`/missoes?projectId=${project.id}`}
-                    class="rounded-lg bg-emerald-500 px-3 py-1.5 font-semibold text-slate-950 hover:bg-emerald-400"
-                  >
-                    Ver missões deste projeto
-                  </a>
-                {/if}
-              </div>
+              <a
+                href={`/projetos/${project.id}`}
+                class="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold text-slate-200 hover:border-emerald-400 hover:text-emerald-200"
+              >
+                Detalhes do projeto
+              </a>
 
               {#if project.id}
-                <button
-                  type="button"
-                  class="rounded-lg border border-red-500/70 px-3 py-1.5 font-semibold text-red-300 hover:bg-red-900/40"
-                  onclick={() => askDeleteProject(project.id)}
+                <a
+                  href={`/missoes?projectId=${project.id}`}
+                  class="rounded-lg bg-emerald-500 px-3 py-1.5 font-semibold text-slate-950 hover:bg-emerald-400"
                 >
-                  Excluir
-                </button>
+                  Ver missões deste projeto
+                </a>
               {/if}
             </footer>
           </article>
@@ -524,148 +500,4 @@
       </div>
     {/if}
   </section>
-
-  <!-- MODAL DE NOVO PROJETO -->
-  {#if isCreateModalOpen}
-    <div
-      class="fixed inset-0 z-40 flex items-center justify-center bg-black/60 px-4"
-    >
-      <div
-        class="w-full max-w-md rounded-2xl border border-amber-500/70 bg-slate-950 px-5 py-5 shadow-[0_0_30px_rgba(245,158,11,0.7)]"
-      >
-        <header class="mb-3">
-          <p
-            class="text-[0.65rem] uppercase tracking-[0.22em] text-amber-300/80"
-          >
-            Nova Saga
-          </p>
-          <h2 class="mt-1 text-base font-semibold text-slate-50">
-            Criar projeto do herói
-          </h2>
-          <p class="mt-1 text-xs text-slate-400">
-            Dê um nome e uma visão curta para este projeto. Você poderá ligar
-            missões a ele pelo quadro de missões.
-          </p>
-        </header>
-
-        <form class="space-y-3" onsubmit={handleCreateProject}>
-          <div class="space-y-1">
-            <label
-              for="project-name"
-              class="text-xs font-semibold text-slate-200"
-            >
-              Nome do projeto
-            </label>
-            <input
-              id="project-name"
-              type="text"
-              class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-amber-400"
-              bind:value={draftName}
-              autocomplete="off"
-            />
-          </div>
-
-          <div class="space-y-1">
-            <label
-              for="project-vision"
-              class="text-xs font-semibold text-slate-200"
-            >
-              Visão (opcional)
-            </label>
-            <textarea
-              id="project-vision"
-              rows="3"
-              class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-amber-400"
-              bind:value={draftVision}
-            ></textarea>
-          </div>
-
-          <div class="grid gap-3 md:grid-cols-2">
-            <div class="space-y-1">
-              <label
-                for="project-status"
-                class="text-xs font-semibold text-slate-200"
-              >
-                Status inicial
-              </label>
-              <select
-                id="project-status"
-                class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-amber-400"
-                bind:value={draftStatus}
-              >
-                <option value="planejando">Planejando</option>
-                <option value="em_andamento">Em andamento</option>
-                <option value="pausado">Pausado</option>
-              </select>
-            </div>
-
-            <div class="space-y-1">
-              <label
-                for="project-target"
-                class="text-xs font-semibold text-slate-200"
-              >
-                Data-meta (opcional)
-              </label>
-              <input
-                id="project-target"
-                type="date"
-                class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-amber-400"
-                bind:value={draftTargetDate}
-              />
-            </div>
-          </div>
-
-          {#if createError}
-            <p class="text-[0.7rem] text-red-400">
-              {createError}
-            </p>
-          {/if}
-
-          <div class="mt-3 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              class="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-100 hover:bg-slate-700"
-              onclick={closeCreateModal}
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              class="rounded-lg bg-[#ffb74d] px-4 py-1.5 text-xs font-bold text-slate-950 hover:bg-[#ffa726]"
-            >
-              Criar projeto
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  {/if}
-
-  <!-- MINI CONFIRMAÇÃO DE EXCLUSÃO -->
-  {#if projectIdPendingDelete}
-    <div
-      class="fixed inset-x-0 bottom-4 z-40 mx-auto flex max-w-md items-center justify-between gap-3 rounded-2xl border border-red-500/70 bg-slate-950 px-4 py-3 text-xs text-slate-100 shadow-[0_0_24px_rgba(239,68,68,0.7)]"
-    >
-      <p class="text-[0.75rem]">
-        Tem certeza que deseja excluir este projeto? As missões ligadas
-        continuarão existindo, apenas ficarão sem projeto.
-      </p>
-      <div class="flex shrink-0 gap-2">
-        <button
-          type="button"
-          class="rounded-lg bg-slate-800 px-3 py-1 text-[0.7rem] hover:bg-slate-700"
-          onclick={cancelDeleteProject}
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          class="rounded-lg bg-red-500 px-3 py-1 text-[0.7rem] font-semibold text-slate-950 hover:bg-red-400"
-          onclick={confirmDeleteProject}
-        >
-          Excluir
-        </button>
-      </div>
-    </div>
-  {/if}
 </div>

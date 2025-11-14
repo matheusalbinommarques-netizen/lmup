@@ -10,14 +10,69 @@ export type HeroProjectStatus =
   | 'pausado'
   | 'arquivado';
 
+// Dificuldade baseada na quantidade de missões ligadas ao projeto
+export type ProjectDifficultyKey =
+  | 'none'
+  | 'facil'
+  | 'media'
+  | 'dificil'
+  | 'expert';
+
+// Tabela de bônus de XP por dificuldade (em fração: 0.1 = 10%)
+const BONUS_BY_DIFFICULTY: Record<ProjectDifficultyKey, number> = {
+  none: 0,
+  facil: 0.1, // Fácil
+  media: 0.15, // Média
+  dificil: 0.2, // Difícil
+  expert: 0.25, // Expert
+};
+
 /**
  * Calcula o XP base total das missões de um projeto.
  * Ignora missões arquivadas.
  */
-function getProjectBaseXp(tasks: Task[]): number {
+export function getProjectBaseXp(tasks: Task[]): number {
   return tasks
     .filter((t) => !(t as any).archived)
     .reduce((sum, t) => sum + (t.xp || 0), 0);
+}
+
+/**
+ * Dado o número de missões ativas, retorna a dificuldade.
+ * (Mesma lógica que você usa na tela de listagem de projetos)
+ *
+ * 0 missões → "none" (sem bônus)
+ * 1–2 → fácil
+ * 3–4 → média
+ * 5–9 → difícil
+ * 10+ → expert
+ */
+function getDifficultyKeyFromTaskCount(
+  taskCount: number,
+): ProjectDifficultyKey {
+  if (taskCount <= 0) return 'none';
+  if (taskCount <= 2) return 'facil';
+  if (taskCount <= 4) return 'media';
+  if (taskCount <= 9) return 'dificil';
+  return 'expert';
+}
+
+/**
+ * Helper para UI: retorna quantas missões ativas o projeto tem,
+ * em qual dificuldade ele cai e qual o bônus de XP em % (0–100).
+ */
+export function getProjectDifficultyInfoForTasks(tasks: Task[]) {
+  const activeTasks = tasks.filter((t) => !(t as any).archived);
+  const totalTasks = activeTasks.length;
+  const key = getDifficultyKeyFromTaskCount(totalTasks);
+  const bonusFraction = BONUS_BY_DIFFICULTY[key] ?? 0;
+
+  return {
+    totalTasks,
+    difficultyKey: key,
+    bonusXpFraction: bonusFraction, // ex: 0.1
+    bonusXpPercent: Math.round(bonusFraction * 100), // ex: 10
+  };
 }
 
 /**
@@ -37,10 +92,19 @@ function areAllProjectTasksCompleted(tasks: Task[]): boolean {
 
 /**
  * Regra de bônus:
- * - Soma XP base de todas as missões do projeto
+ * - Soma XP base de todas as missões do projeto (ignorando arquivadas)
+ * - Descobre quantas missões ativas existem e, com isso, a dificuldade
  * - Se TODAS estiverem concluídas e o projeto ainda não recebeu recompensa:
- *   - Aplica +25% de XP extra (entra pelo xpService, então gera Gold normal)
- *   - Marca o projeto como `concluido` e `rewardGranted = true`
+ *   - Aplica bônus de XP com base na dificuldade:
+ *       Fácil    → +10%   (0.10)
+ *       Média    → +15%   (0.15)
+ *       Difícil  → +20%   (0.20)
+ *       Expert   → +25%   (0.25)
+ *   - Esse bônus é XP base → o Santuário multiplica em cima disso,
+ *     gerando Gold proporcional (0.5 por XP efetivo) dentro do xpService.
+ *
+ * - Depois marca o projeto como `concluido` e `rewardGranted = true`
+ *   para não dar o bônus duas vezes.
  */
 export async function checkAndApplyProjectCompletionBonus(
   projectId: number,
@@ -53,19 +117,35 @@ export async function checkAndApplyProjectCompletionBonus(
   // Já recebeu recompensa antes? Não repete.
   if (project.rewardGranted) return;
 
-  const tasks = await db.tasks.where('projectId').equals(projectId).toArray();
+  const allTasks = await db.tasks
+    .where('projectId')
+    .equals(projectId)
+    .toArray();
 
-  if (!areAllProjectTasksCompleted(tasks)) {
+  if (!areAllProjectTasksCompleted(allTasks)) {
     return;
   }
 
-  const baseXp = getProjectBaseXp(tasks);
+  // Só consideramos missões ativas para XP e dificuldade
+  const activeTasks = allTasks.filter((t) => !(t as any).archived);
+  if (activeTasks.length === 0) return;
+
+  const baseXp = getProjectBaseXp(activeTasks);
   if (baseXp <= 0) return;
 
-  const bonusXp = Math.floor(baseXp * 0.25);
+  const { bonusXpFraction, bonusXpPercent } =
+    getProjectDifficultyInfoForTasks(activeTasks);
 
-  // Aplica XP bônus (Gold vem automaticamente do xpService)
-  await xpService.addXp(bonusXp, null);
+  if (bonusXpFraction <= 0) {
+    // Projetos sem missões ou "none" não dão bônus
+    return;
+  }
+
+  // XP base de bônus pela dificuldade
+  const bonusXpBase = Math.floor(baseXp * bonusXpFraction);
+
+  // Aplica XP bônus (Gold e bônus do Santuário vêm automaticamente do xpService)
+  await xpService.addXp(bonusXpBase, null);
 
   // Marca projeto como concluído e com recompensa aplicada
   await db.projects.update(projectId, {
@@ -76,7 +156,7 @@ export async function checkAndApplyProjectCompletionBonus(
 
   // Feedback simples pro jogador (pode virar toast depois)
   if (browser) {
-    const message = `Projeto concluído! Você recebeu +${bonusXp} XP extra (bônus de 25%).`;
+    const message = `Projeto concluído! Bônus de dificuldade: +${bonusXpPercent}% sobre ${baseXp} XP base → +${bonusXpBase} XP (antes do Santuário).`;
     alert(message);
   }
 }
