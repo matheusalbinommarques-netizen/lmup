@@ -5,6 +5,7 @@
   let {
     item,
     owned = false,
+    equipped = false,
     buying = false,
     canAfford = true,
     onBuy = () => {},
@@ -12,10 +13,11 @@
   } = $props<{
     item: ShopItem;
     owned?: boolean;
+    equipped?: boolean;
     buying?: boolean;
     canAfford?: boolean;
     onBuy?: () => void;
-    onEquip?: () => void;
+    onEquip?: () => void; // toggle equip/desequipar
   }>();
 
   type RarityConfig = {
@@ -60,26 +62,35 @@
     },
   };
 
-  // 🔧 chave de raridade tipada (evita 'any' ao indexar o Record)
+  // chave de raridade tipada
   const rarityKey: Rarity = item.rarity as Rarity;
   const rCfg = $derived(rarityConfig[rarityKey]);
 
   const isSoon = $derived(item.status === 'soon');
+
   const buttonDisabled = $derived(isSoon || buying || (!owned && !canAfford));
+
+  // 🔧 AQUI estava o problema: agora é um expression, não função
   const buttonLabel = $derived(
-    owned
-      ? 'Equipar'
-      : isSoon
-        ? 'Em breve'
-        : buying
+    isSoon
+      ? 'Em breve'
+      : !owned
+        ? buying
           ? 'Comprando...'
-          : 'Comprar',
+          : 'Comprar'
+        : equipped
+          ? 'Desequipar'
+          : 'Equipar',
   );
 
   function handleClick() {
     if (buttonDisabled) return;
-    if (owned) onEquip();
-    else onBuy();
+    if (owned) {
+      // toggle equip/desequipar
+      onEquip();
+    } else {
+      onBuy();
+    }
   }
 </script>
 
@@ -104,7 +115,11 @@
         class="rounded-full border border-emerald-500/60 bg-emerald-500/15
                px-2 py-[2px] text-[0.65rem] text-emerald-300"
       >
-        Adquirido
+        {#if equipped}
+          Equipado
+        {:else}
+          Adquirido
+        {/if}
       </span>
     {:else if isSoon}
       <span

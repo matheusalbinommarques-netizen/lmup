@@ -7,19 +7,68 @@
     type InventoryItem,
     type Profile,
     type InventoryItemType,
+    type OwnedShopItem,
   } from '$services/db';
   import PageTitleCard from '$lib/PageTitleCard.svelte';
-
-  // Estado
-  let items = $state<InventoryItem[]>([]);
-  let profile = $state<Profile | null>(null);
+  import {
+    getHeroModifiersOnce,
+    invalidateHeroModifiersCache,
+  } from '$services/gearService';
+  import { getShopItemById } from '$lib/shop/types';
 
   // Filtros possíveis: "all" + os tipos reais do banco
   type InventoryFilter = 'all' | InventoryItemType;
 
+  // Item usado na UI (pode ter link para ownedShopItems)
+  type UIInventoryItem = InventoryItem & {
+    ownedShopItemId?: number;
+  };
+
+  let items = $state<UIInventoryItem[]>([]);
+  let profile = $state<Profile | null>(null);
   let activeFilter = $state<InventoryFilter>('all');
 
-  const inventoryQuery = liveQuery(() => db.inventory.toArray());
+  // ---- Capacidade de inventário (mochila) ----
+  const BASE_INVENTORY_SLOTS = 20;
+  let inventoryExtraSlots = $state(0);
+
+  // Inventário = cosméticos (inventory) + artefatos (ownedShopItems)
+  const inventoryQuery = liveQuery(async (): Promise<UIInventoryItem[]> => {
+    const [inv, ownedShop] = await Promise.all([
+      db.inventory.toArray(),
+      db.ownedShopItems.toArray(),
+    ]);
+
+    // Cosméticos visuais vindos direto da tabela inventory
+    const visualItems: UIInventoryItem[] = inv
+      .filter((it) => it.owned && it.type !== 'gear') // ignora gear legado
+      .map((it) => ({ ...it }));
+
+    // Artefatos de gameplay espelhados de ownedShopItems
+    const gearItems: UIInventoryItem[] = [];
+
+    for (const row of ownedShop as OwnedShopItem[]) {
+      const meta = getShopItemById(row.itemId);
+      if (!meta) continue;
+
+      gearItems.push({
+        id: row.id, // só pra chave do {#each}
+        key: meta.key,
+        type: 'gear',
+        name: meta.name,
+        description: meta.description,
+        owned: true,
+        equipped: row.equipped,
+        rarity: meta.rarity,
+        slot: undefined,
+        effects: undefined,
+        ownedShopItemId: row.id,
+      });
+    }
+
+    return [...visualItems, ...gearItems];
+  });
+
   const profileQuery = liveQuery(() =>
     db.profile.where('id').equals(1).first(),
   );
@@ -32,6 +81,20 @@
     const profSub = profileQuery.subscribe((p) => {
       profile = p ?? null;
     });
+
+    // Lê modificadores do herói (mochila lendária etc.)
+    (async () => {
+      try {
+        const mods = await getHeroModifiersOnce();
+        inventoryExtraSlots = mods.inventoryExtraSlots ?? 0;
+      } catch (error) {
+        console.error(
+          'Erro ao carregar modificadores de herói (inventário):',
+          error,
+        );
+        inventoryExtraSlots = 0;
+      }
+    })();
 
     return () => {
       invSub.unsubscribe();
@@ -52,6 +115,8 @@
         return 'Auras & Efeitos';
       case 'weapon-skin':
         return 'Skins de Arma';
+      case 'gear':
+        return 'Equipamentos & Utilidades';
       default:
         return type;
     }
@@ -71,21 +136,24 @@
         return 'Auras';
       case 'weapon-skin':
         return 'Armas';
+      case 'gear':
+        return 'Equipamentos';
+      default:
+        return 'Tudo';
     }
   }
 
   // Agrupamento por tipo sem usar Map (usa Record)
   type Group = {
     type: string;
-    items: InventoryItem[];
+    items: UIInventoryItem[];
   };
 
   const groups = $derived<Group[]>(
     (() => {
-      const acc: Record<string, InventoryItem[]> = {};
+      const acc: Record<string, UIInventoryItem[]> = {};
 
       for (const item of items) {
-        // só mostrar o que o jogador realmente possui
         if (!item.owned) continue;
 
         const key = item.type || 'outros';
@@ -107,15 +175,22 @@
   );
 
   const filteredGroups = $derived(
-    (() => {
-      if (activeFilter === 'all') return groups;
-      return groups.filter((g) => g.type === activeFilter);
-    })(),
+    activeFilter === 'all'
+      ? groups
+      : groups.filter((g) => g.type === activeFilter),
   );
 
   const totalOwned = $derived(items.filter((i) => i.owned).length);
   const totalEquipped = $derived(items.filter((i) => i.equipped).length);
   const gold = $derived(profile?.gold ?? 0);
+
+  // Capacidade efetiva = base + mochila
+  const maxSlots = $derived(BASE_INVENTORY_SLOTS + (inventoryExtraSlots || 0));
+
+  const isAtOrOverCapacity = $derived(totalOwned >= maxSlots);
+  const isNearCapacity = $derived(
+    !isAtOrOverCapacity && totalOwned >= Math.floor(maxSlots * 0.8),
+  );
 
   const filters: InventoryFilter[] = [
     'all',
@@ -124,34 +199,84 @@
     'background',
     'aura',
     'weapon-skin',
+    'gear',
   ];
 
-  function itemName(item: InventoryItem): string {
-    // você já tem "name" tipado no InventoryItem
+  function itemName(item: UIInventoryItem): string {
     return item.name || item.key;
   }
 
-  function equippedLabel(item: InventoryItem): string {
-    if (!item.equipped) return 'Equipar';
-
-    switch (item.type) {
-      case 'frame':
-        return 'Moldura ativa';
-      case 'avatar':
-        return 'Avatar ativo';
-      case 'background':
-        return 'Fundo ativo';
-      case 'aura':
-        return 'Aura ativa';
-      case 'weapon-skin':
-        return 'Arma ativa';
-      default:
-        return 'Ativo';
-    }
+  function equippedLabel(item: UIInventoryItem): string {
+    return item.equipped ? 'Desequipar' : 'Equipar';
   }
 
-  // Equipar / desequipar por tipo (apenas 1 equipado por tipo)
-  async function toggleEquip(item: InventoryItem) {
+  // -----------------------
+  // Equipar / desequipar
+  // Regra: só 1 item por SLOT (armor, weapon, amulet, ring, bag, helm).
+  // O último clique vence.
+  // -----------------------
+  async function toggleEquip(item: UIInventoryItem) {
+    // Artefatos de gameplay: mexe em ownedShopItems
+    if (item.type === 'gear') {
+      if (!item.ownedShopItemId) return;
+
+      const row = await db.ownedShopItems.get(item.ownedShopItemId);
+      if (!row || row.id == null || typeof row.itemId !== 'number') return;
+
+      const rowId = row.id as number;
+      const meta = getShopItemById(row.itemId);
+
+      // Se não achar meta ou slot, faz toggle simples
+      const slot = (meta as any)?.slot as string | undefined;
+      if (!meta || !slot) {
+        const newEquipped = !row.equipped;
+        await db.ownedShopItems.update(rowId, { equipped: newEquipped });
+        invalidateHeroModifiersCache();
+        const mods = await getHeroModifiersOnce();
+        inventoryExtraSlots = mods.inventoryExtraSlots ?? 0;
+        return;
+      }
+
+      // Se já está equipado, clique = só desequipar
+      if (row.equipped) {
+        await db.ownedShopItems.update(rowId, { equipped: false });
+        invalidateHeroModifiersCache();
+        const mods = await getHeroModifiersOnce();
+        inventoryExtraSlots = mods.inventoryExtraSlots ?? 0;
+        return;
+      }
+
+      // Vai equipar: garante exclusividade por SLOT
+      await db.transaction('rw', db.ownedShopItems, async () => {
+        const allOwned = await db.ownedShopItems.toArray();
+
+        for (const other of allOwned) {
+          if (typeof other.id !== 'number') continue;
+          if (!other.equipped) continue;
+          if (other.id === rowId) continue;
+          if (typeof other.itemId !== 'number') continue;
+
+          const otherMeta = getShopItemById(other.itemId);
+          const otherSlot = (otherMeta as any)?.slot as string | undefined;
+
+          if (!otherMeta || !otherSlot) continue;
+          if (otherSlot === slot) {
+            await db.ownedShopItems.update(other.id, { equipped: false });
+          }
+        }
+
+        // Por fim, equipa o item clicado
+        await db.ownedShopItems.update(rowId, { equipped: true });
+      });
+
+      invalidateHeroModifiersCache();
+      const mods = await getHeroModifiersOnce();
+      inventoryExtraSlots = mods.inventoryExtraSlots ?? 0;
+
+      return;
+    }
+
+    // Cosméticos visuais: mantém regra "1 equipado por tipo"
     if (!item.id) return;
 
     await db.transaction('rw', db.inventory, async () => {
@@ -186,15 +311,24 @@
         Visão geral
       </p>
       <p class="mt-1 text-xs text-slate-400">
-        Tudo que o seu herói já conquistou em termos de visuais e troféus.
+        Tudo que o seu herói já conquistou em termos de visuais, troféus e
+        artefatos equipáveis.
       </p>
     </div>
 
     <div class="grid grid-cols-3 gap-3 text-xs text-center md:text-right">
       <div>
-        <p class="text-slate-400">Itens possuídos</p>
-        <p class="mt-1 text-base font-semibold text-emerald-300">
-          {totalOwned}
+        <p class="text-slate-400">Slots ocupados</p>
+        <p
+          class={`mt-1 text-base font-semibold ${
+            isAtOrOverCapacity
+              ? 'text-red-300'
+              : isNearCapacity
+                ? 'text-amber-300'
+                : 'text-emerald-300'
+          }`}
+        >
+          {totalOwned} / {maxSlots}
         </p>
       </div>
       <div>
@@ -217,6 +351,16 @@
         </p>
       </div>
     </div>
+
+    {#if inventoryExtraSlots > 0}
+      <p class="mt-1 text-[0.7rem] text-emerald-300 md:text-right">
+        Mochila equipada: +{inventoryExtraSlots} slots extras (total {maxSlots}).
+      </p>
+    {:else}
+      <p class="mt-1 text-[0.7rem] text-slate-500 md:text-right">
+        Capacidade base de inventário: {BASE_INVENTORY_SLOTS} slots.
+      </p>
+    {/if}
   </section>
 
   <!-- Filtros -->
@@ -302,6 +446,8 @@
                       ✨
                     {:else if group.type === 'weapon-skin'}
                       ⚔️
+                    {:else if group.type === 'gear'}
+                      🎯
                     {:else}
                       🎁
                     {/if}

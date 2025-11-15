@@ -88,27 +88,39 @@ function reviveDatesDeep(data) {
  * EXPORT
  * ------------------------*/
 /**
- * Exporta TODO o banco (profile, areas, tasks, companions, unlockedCompanions, xpLogs)
- * para um .json. Sem dependência de file-saver.
+ * Exporta TODO o banco (profile, areas, tasks, companions, xpLogs,
+ * inventory, shopItems, ownedShopItems, projects) para um .json.
  */
 export async function exportData() {
   if (!browser) return;
 
   try {
-    const [profile, areas, tasks, companions, unlockedCompanions, xpLogs] =
-      await Promise.all([
-        db.profile.get(1),
-        db.areas.toArray(),
-        db.tasks.toArray(),
-        db.companions.toArray(),
-        db.unlockedCompanions.toArray(),
-        db.xpLogs.toArray(),
-      ]);
+    const [
+      profile,
+      areas,
+      tasks,
+      companions,
+      xpLogs,
+      inventory,
+      shopItems,
+      ownedShopItems,
+      projects,
+    ] = await Promise.all([
+      db.profile.get(1),
+      db.areas.toArray(),
+      db.tasks.toArray(),
+      db.companions.toArray(),
+      db.xpLogs.toArray(),
+      db.inventory.toArray(),
+      db.shopItems.toArray(),
+      db.ownedShopItems.toArray(),
+      db.projects.toArray(),
+    ]);
 
     const snapshot = {
       meta: {
         app: 'Level Me Up!',
-        formatVersion: 1,
+        formatVersion: 2, // novo formato com inventário/loja/projetos
         exportedAt: new Date().toISOString(),
       },
       data: {
@@ -116,8 +128,11 @@ export async function exportData() {
         areas,
         tasks,
         companions,
-        unlockedCompanions,
         xpLogs,
+        inventory,
+        shopItems,
+        ownedShopItems,
+        projects,
       },
     };
 
@@ -136,6 +151,8 @@ export async function exportData() {
  * ------------------------*/
 /**
  * Importa um backup gerado pelo exportData (substituição completa).
+ * Aceita tanto backups antigos (sem inventory/loja/projetos)
+ * quanto o formato novo.
  * @param {File} file
  */
 export async function importData(file) {
@@ -162,16 +179,27 @@ export async function importData(file) {
     // Reconstituir datas em profundidade
     const revived = reviveDatesDeep(parsed);
 
-    const { profile, areas, tasks, companions, unlockedCompanions, xpLogs } =
-      revived.data;
+    const {
+      profile,
+      areas,
+      tasks,
+      companions,
+      xpLogs,
+      inventory,
+      shopItems,
+      ownedShopItems,
+      projects,
+    } = revived.data;
 
     const areasArr = Array.isArray(areas) ? areas : [];
     const tasksArr = Array.isArray(tasks) ? tasks : [];
     const compArr = Array.isArray(companions) ? companions : [];
-    const unlockedArr = Array.isArray(unlockedCompanions)
-      ? unlockedCompanions
-      : [];
     const xpLogsArr = Array.isArray(xpLogs) ? xpLogs : [];
+
+    const invArr = Array.isArray(inventory) ? inventory : [];
+    const shopArr = Array.isArray(shopItems) ? shopItems : [];
+    const ownedArr = Array.isArray(ownedShopItems) ? ownedShopItems : [];
+    const projArr = Array.isArray(projects) ? projects : [];
 
     await db.transaction(
       'rw',
@@ -180,27 +208,36 @@ export async function importData(file) {
         db.areas,
         db.tasks,
         db.companions,
-        db.unlockedCompanions,
         db.xpLogs,
+        db.inventory,
+        db.shopItems,
+        db.ownedShopItems,
+        db.projects,
       ],
       async () => {
-        // Limpa tudo
+        // Limpa tudo relevante
         await Promise.all([
           db.xpLogs.clear(),
-          db.unlockedCompanions.clear(),
           db.companions.clear(),
           db.tasks.clear(),
           db.areas.clear(),
+          db.inventory.clear(),
+          db.shopItems.clear(),
+          db.ownedShopItems.clear(),
+          db.projects.clear(),
           db.profile.clear(),
         ]);
 
         // Reinsere em ordem
         if (areasArr.length) await db.areas.bulkPut(areasArr);
-        if (tasksArr.length) await db.tasks.bulkPut(tasksArr); // aceita props extras
+        if (tasksArr.length) await db.tasks.bulkPut(tasksArr);
         if (compArr.length) await db.companions.bulkPut(compArr);
-        if (unlockedArr.length)
-          await db.unlockedCompanions.bulkPut(unlockedArr);
         if (xpLogsArr.length) await db.xpLogs.bulkPut(xpLogsArr);
+
+        if (invArr.length) await db.inventory.bulkPut(invArr);
+        if (shopArr.length) await db.shopItems.bulkPut(shopArr);
+        if (ownedArr.length) await db.ownedShopItems.bulkPut(ownedArr);
+        if (projArr.length) await db.projects.bulkPut(projArr);
 
         // Profile: se veio no backup usa, senão default
         const prof = profile ?? {

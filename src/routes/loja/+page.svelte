@@ -2,95 +2,20 @@
 <script lang="ts">
   import ShopItemCard from '$lib/shop/ShopItemCard.svelte';
   import type { ShopItem, ShopCategory } from '$lib/shop/types';
+  import { SHOP_ITEMS, getShopItemById } from '$lib/shop/types';
   import { onMount } from 'svelte';
   import { liveQuery } from 'dexie';
   import { db, type OwnedShopItem } from '$services/db';
   import PageTitleCard from '$lib/PageTitleCard.svelte';
-  import { buyItem, equipItemById } from '$services/shopService';
+  import { buyItem } from '$services/shopService';
+  import { invalidateHeroModifiersCache } from '$services/gearService';
+  import { SvelteSet } from 'svelte/reactivity';
 
   // categoria selecionada
   let selectedCategory = $state<ShopCategory>('highlight');
 
-  // mock dos itens disponíveis na vitrine
-  const items: ShopItem[] = [
-    {
-      id: 1,
-      name: 'Tema "Noite Arcana"',
-      description:
-        'Transforma a taverna em um salão ainda mais místico, com brilhos sutis e runas animadas.',
-      price: 800,
-      rarity: 'epic',
-      category: 'theme',
-      tag: 'Visual',
-      status: 'available',
-    },
-    {
-      id: 2,
-      name: 'Pacote de Sons "Forja & Canecas"',
-      description:
-        'Adiciona sons imersivos de forja, canecas se chocando e páginas virando ao seus cliques.',
-      price: 600,
-      rarity: 'rare',
-      category: 'effect',
-      tag: 'Imersão',
-      status: 'available',
-    },
-    {
-      id: 3,
-      name: 'Moldura Lendária do Herói',
-      description:
-        'Uma moldura especial para o avatar, reservada apenas aos aventureiros verdadeiramente dedicados.',
-      price: 1500,
-      rarity: 'legendary',
-      category: 'profile',
-      tag: 'Perfil',
-      status: 'soon',
-    },
-    {
-      id: 4,
-      name: 'Slot Extra de Inventário',
-      description:
-        'Aumenta a capacidade de itens carregados, ideal para quem acumula artefatos.',
-      price: 300,
-      rarity: 'rare',
-      category: 'utility',
-      tag: 'Raro',
-      status: 'available',
-    },
-    {
-      id: 5,
-      name: 'Lembrete Mágico Diário',
-      description:
-        'Desbloqueia lembretes suaves para não deixar suas missões passarem em branco.',
-      price: 200,
-      rarity: 'common',
-      category: 'utility',
-      tag: 'Comum',
-      status: 'soon',
-    },
-    {
-      id: 6,
-      name: 'Efeito de Entrada na Taverna',
-      description:
-        'Um pequeno efeito visual quando você volta para a Taverna, mostrando sua presença.',
-      price: 600,
-      rarity: 'epic',
-      category: 'effect',
-      tag: 'Épico',
-      status: 'soon',
-    },
-    {
-      id: 7,
-      name: 'Tema "Aurora do Herói"',
-      description:
-        'Tema claro com auroras suaves e partículas de luz; perfeito para quem prefere um clima amanhecer.',
-      price: 900,
-      rarity: 'epic',
-      category: 'theme',
-      tag: 'Visual',
-      status: 'available',
-    },
-  ];
+  // agora usamos a lista oficial de itens
+  const items: ShopItem[] = SHOP_ITEMS;
 
   // ---------- saldo real de Gold ----------
   const goldQuery = liveQuery(async () => {
@@ -104,14 +29,29 @@
     return () => sub.unsubscribe();
   });
 
-  // ---------- itens já comprados (owned) ----------
-  let ownedSet = $state<Set<number>>(new Set());
+  // ---------- itens já comprados (owned) + equipados ----------
+  // SvelteSet já é reativo, então NADA de $state aqui
+  let ownedSet = new SvelteSet<number>();
+  let equippedSet = new SvelteSet<number>();
+
   const ownedQuery = liveQuery(() => db.ownedShopItems.toArray());
 
   onMount(() => {
     const sub = ownedQuery.subscribe((rows: OwnedShopItem[]) => {
-      ownedSet = new Set(rows.map((r) => r.itemId));
+      // atualiza sets reativos mutando diretamente
+      ownedSet.clear();
+      equippedSet.clear();
+
+      for (const r of rows) {
+        if (typeof r.itemId === 'number') {
+          ownedSet.add(r.itemId);
+          if (r.equipped) {
+            equippedSet.add(r.itemId);
+          }
+        }
+      }
     });
+
     return () => sub.unsubscribe();
   });
 
@@ -135,22 +75,70 @@
         else if (res.code === 'profile_missing')
           alert('Perfil não encontrado.');
         else alert('Não foi possível concluir a compra.');
-      } else if (res.code === 'already_owned') {
-        // idempotente — já possuído
-      } else {
-        // sucesso — liveQuery atualiza gold e ownedSet automaticamente
-        // opcional: auto-equip
-        // if (item.category === 'theme' || item.category === 'profile') {
-        //   await equipItemById(item.id);
-        // }
       }
+      // se der certo, o liveQuery atualiza gold / ownedSet / equippedSet automaticamente
     } finally {
       buyingId = null;
     }
   }
 
+  // Equipar com exclusividade por SLOT
   async function handleEquip(item: ShopItem) {
-    await equipItemById(item.id);
+    // só equipa se já for do jogador e não for "em breve"
+    if (item.status === 'soon') return;
+    if (!ownedSet.has(item.id)) return;
+
+    // id do item pode ser opcional no tipo, então garantimos que existe
+    if (item.id == null) return;
+    const itemId = item.id as number;
+
+    // Encontra o registro correspondente em ownedShopItems
+    const row = await db.ownedShopItems.where('itemId').equals(itemId).first();
+    if (!row || row.id == null) return;
+
+    const rowId = row.id as number;
+    const meta = getShopItemById(itemId);
+
+    const slot = (meta as any)?.slot as string | undefined;
+
+    // Se não tiver slot (não é gear), toggle simples
+    if (!meta || !slot) {
+      await db.ownedShopItems.update(rowId, { equipped: !row.equipped });
+      invalidateHeroModifiersCache();
+      return;
+    }
+
+    // Se já está equipado, clique = só desequipar
+    if (row.equipped) {
+      await db.ownedShopItems.update(rowId, { equipped: false });
+      invalidateHeroModifiersCache();
+      return;
+    }
+
+    // Vai equipar: garante exclusividade por SLOT
+    await db.transaction('rw', db.ownedShopItems, async () => {
+      const allOwned = await db.ownedShopItems.toArray();
+
+      for (const other of allOwned) {
+        if (typeof other.id !== 'number') continue;
+        if (!other.equipped) continue;
+        if (other.id === rowId) continue;
+        if (typeof other.itemId !== 'number') continue;
+
+        const otherMeta = getShopItemById(other.itemId);
+        const otherSlot = (otherMeta as any)?.slot as string | undefined;
+
+        if (!otherMeta || !otherSlot) continue;
+        if (otherSlot === slot) {
+          await db.ownedShopItems.update(other.id, { equipped: false });
+        }
+      }
+
+      // Por fim, equipa o item clicado
+      await db.ownedShopItems.update(rowId, { equipped: true });
+    });
+
+    invalidateHeroModifiersCache();
   }
 
   // ---------- filtro de itens ----------
@@ -162,6 +150,7 @@
 
   const categories: { id: ShopCategory; label: string }[] = [
     { id: 'highlight', label: 'Destaque' },
+    { id: 'gear', label: 'Artefatos' },
     { id: 'theme', label: 'Temas' },
     { id: 'utility', label: 'Utilidades' },
     { id: 'effect', label: 'Efeitos' },
@@ -184,7 +173,7 @@
   <main class="relative z-10 mx-auto max-w-6xl px-4 py-6 md:px-6 md:py-8">
     <PageTitleCard
       title="Loja da Taverna"
-      subtitle="Gaste seu Gold em itens exclusivos para personalizar sua experiência e aprimorar sua jornada."
+      subtitle="Gaste seu Gold em artefatos e cosméticos para personalizar sua experiência e aprimorar sua jornada."
       iconSrc="/art/icones/shop-icon.png"
       align="center"
     />
@@ -258,6 +247,7 @@
             <ShopItemCard
               {item}
               owned={ownedSet.has(item.id)}
+              equipped={equippedSet.has(item.id)}
               buying={buyingId === item.id}
               canAfford={gold >= item.price}
               onBuy={() => handleBuy(item)}

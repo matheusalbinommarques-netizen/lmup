@@ -2,6 +2,7 @@
 import { db, type HeroProject, type Task } from '$services/db';
 import { xpService } from '$services/xpService';
 import { browser } from '$app/environment';
+import { getHeroModifiersOnce } from '$services/gearService';
 
 export type HeroProjectStatus =
   | 'planejando'
@@ -39,13 +40,12 @@ export function getProjectBaseXp(tasks: Task[]): number {
 
 /**
  * Dado o número de missões ativas, retorna a dificuldade.
- * (Mesma lógica que você usa na tela de listagem de projetos)
  *
  * 0 missões → "none" (sem bônus)
- * 1–2 → fácil
- * 3–4 → média
- * 5–9 → difícil
- * 10+ → expert
+ * 1–2      → fácil
+ * 3–4      → média
+ * 5–9      → difícil
+ * 10+      → expert
  */
 function getDifficultyKeyFromTaskCount(
   taskCount: number,
@@ -95,16 +95,10 @@ function areAllProjectTasksCompleted(tasks: Task[]): boolean {
  * - Soma XP base de todas as missões do projeto (ignorando arquivadas)
  * - Descobre quantas missões ativas existem e, com isso, a dificuldade
  * - Se TODAS estiverem concluídas e o projeto ainda não recebeu recompensa:
- *   - Aplica bônus de XP com base na dificuldade:
- *       Fácil    → +10%   (0.10)
- *       Média    → +15%   (0.15)
- *       Difícil  → +20%   (0.20)
- *       Expert   → +25%   (0.25)
- *   - Esse bônus é XP base → o Santuário multiplica em cima disso,
- *     gerando Gold proporcional (0.5 por XP efetivo) dentro do xpService.
- *
- * - Depois marca o projeto como `concluido` e `rewardGranted = true`
- *   para não dar o bônus duas vezes.
+ *   - Aplica bônus de XP com base na dificuldade
+ *   - Soma bônus extra do elmo (projectBonusExtraFraction), se existir
+ *   - XP vai pro xpService, que cuida de Santuário e Gold
+ * - Marca projeto como `concluido` e `rewardGranted = true`
  */
 export async function checkAndApplyProjectCompletionBonus(
   projectId: number,
@@ -133,18 +127,27 @@ export async function checkAndApplyProjectCompletionBonus(
   const baseXp = getProjectBaseXp(activeTasks);
   if (baseXp <= 0) return;
 
-  const { bonusXpFraction, bonusXpPercent } =
-    getProjectDifficultyInfoForTasks(activeTasks);
+  const { bonusXpFraction } = getProjectDifficultyInfoForTasks(activeTasks);
 
+  // Sem dificuldade válida → sem bônus, mesmo com elmo
   if (bonusXpFraction <= 0) {
-    // Projetos sem missões ou "none" não dão bônus
     return;
   }
 
-  // XP base de bônus pela dificuldade
-  const bonusXpBase = Math.floor(baseXp * bonusXpFraction);
+  // Lê modificadores do gear (elmo lendário etc.)
+  const mods = await getHeroModifiersOnce();
+  const extraFraction = mods.projectBonusExtraFraction ?? 0;
 
-  // Aplica XP bônus (Gold e bônus do Santuário vêm automaticamente do xpService)
+  // bônus final = bônus da dificuldade + extra do elmo
+  const finalBonusFraction = bonusXpFraction + extraFraction;
+
+  if (finalBonusFraction <= 0) return;
+
+  // XP base de bônus pela dificuldade + gear
+  const bonusXpBase = Math.floor(baseXp * finalBonusFraction);
+  const finalBonusPercent = Math.round(finalBonusFraction * 100);
+
+  // Aplica XP bônus (Gold e bônus do Santuário vêm do xpService)
   await xpService.addXp(bonusXpBase, null);
 
   // Marca projeto como concluído e com recompensa aplicada
@@ -156,7 +159,62 @@ export async function checkAndApplyProjectCompletionBonus(
 
   // Feedback simples pro jogador (pode virar toast depois)
   if (browser) {
-    const message = `Projeto concluído! Bônus de dificuldade: +${bonusXpPercent}% sobre ${baseXp} XP base → +${bonusXpBase} XP (antes do Santuário).`;
+    const message = `Projeto concluído! Bônus de dificuldade: +${finalBonusPercent}% sobre ${baseXp} XP base → +${bonusXpBase} XP (antes do Santuário).`;
     alert(message);
   }
+}
+
+/* ------------------------------------------------------------------
+ * CRUD simples de projetos
+ * -----------------------------------------------------------------*/
+
+export type CreateHeroProjectInput = {
+  name: string;
+  vision?: string | null;
+  targetDate?: Date | string | null;
+  color?: string | null;
+  icon?: string | null;
+};
+
+/**
+ * Cria um novo projeto básico em estado "planejando".
+ */
+export async function createHeroProject(
+  input: CreateHeroProjectInput,
+): Promise<number> {
+  const now = new Date();
+
+  const payload: HeroProject = {
+    name: input.name.trim(),
+    vision: input.vision ?? null,
+    status: 'planejando',
+    createdAt: now,
+    updatedAt: now,
+    targetDate: input.targetDate ?? null,
+    color: input.color ?? null,
+    icon: input.icon ?? null,
+    rewardGranted: false,
+  };
+
+  const id = await db.projects.add(payload);
+  return id;
+}
+
+/**
+ * Exclui um projeto e desassocia suas missões (projectId = null).
+ * Não apaga as tarefas, só tira o vínculo.
+ */
+export async function deleteHeroProject(projectId: number): Promise<void> {
+  if (!projectId) return;
+
+  await db.transaction('rw', db.projects, db.tasks, async () => {
+    // solta o vínculo das tasks
+    await db.tasks
+      .where('projectId')
+      .equals(projectId)
+      .modify({ projectId: null } as Partial<Task>);
+
+    // remove o projeto
+    await db.projects.delete(projectId);
+  });
 }
