@@ -15,6 +15,7 @@ export interface Profile {
   totalXpEarned: number;
 
   gold: number; // usado no app inteiro
+  food?: number; // NOVO – recurso de comida para alimentar/evoluir pets (opcional p/ não quebrar fallbacks)
   avatarUrl?: string;
 
   // streak
@@ -205,6 +206,10 @@ export interface Companion {
   requiredLevel?: number;
   description?: string;
   createdAt?: string | Date;
+
+  // NOVO – evolução do pet e comida investida
+  evolutionStage?: number; // 1, 2, 3...
+  foodInvested?: number; // total de comida já gasta nesse pet
 }
 
 // ---------------------------------------------

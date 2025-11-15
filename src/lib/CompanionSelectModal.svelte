@@ -3,32 +3,31 @@
   import { db, type Companion } from '$services/db';
   import { liveQuery } from 'dexie';
   import { onMount } from 'svelte';
+  import { SvelteMap } from 'svelte/reactivity';
 
   // --- Props (Svelte 5 runes) ---
   let { close } = $props<{ close: () => void }>();
 
-  // Companion com metadados extras que o DB não exige mas a UI usa
-  type CompanionWithMeta = Companion & {
+  // Configuração base CANÔNICA dos pets (mesmo espírito do Bestiário)
+  type PetBaseInfo = {
+    id: number;
+    key: string;
+    name: string;
+    rarity: Companion['rarity'];
     type: string;
     imagePath: string;
-  };
-
-  type PetCard = CompanionWithMeta & {
     requiredLevel: number;
-    isUnlocked: boolean;
-    isActive: boolean;
   };
 
-  // --- Seed local (mesmo conjunto do Bestiário) ---
-  const PET_SEED: CompanionWithMeta[] = [
+  const PET_BASE: PetBaseInfo[] = [
     {
       id: 1,
       key: 'wolf',
       name: 'Lobo Etéreo',
       rarity: 'rare',
       type: 'Caçador das Sombras',
-      imagePath: '/art/pets/pet-wolf-final.png',
-      unlocked: false,
+      imagePath: '/art/pets/lobo-1.webp',
+      requiredLevel: 1,
     },
     {
       id: 2,
@@ -36,8 +35,8 @@
       name: 'Lorde Lich',
       rarity: 'epic',
       type: 'Mago Imortal',
-      imagePath: '/art/pets/pet-lich-final.png',
-      unlocked: false,
+      imagePath: '/art/pets/lich-1.webp',
+      requiredLevel: 5,
     },
     {
       id: 3,
@@ -45,8 +44,8 @@
       name: 'Dragão Ancião',
       rarity: 'legendary',
       type: 'Guardião de Chamas',
-      imagePath: '/art/pets/pet-dragon-final.png',
-      unlocked: false,
+      imagePath: '/art/pets/dragao-1.webp',
+      requiredLevel: 15,
     },
     {
       id: 4,
@@ -54,18 +53,103 @@
       name: 'Aberração Abissal',
       rarity: 'epic',
       type: 'Eco do Vazio',
-      imagePath: '/art/pets/pet-aberration-final.png',
-      unlocked: false,
+      imagePath: '/art/pets/aberracao-1.webp',
+      requiredLevel: 20,
     },
   ];
 
-  // Mesmo mapeamento de nível usado no Bestiário
-  const PET_LEVELS: { imagePath: string; requiredLevel: number }[] = [
-    { imagePath: '/art/pets/pet-wolf-final.png', requiredLevel: 1 },
-    { imagePath: '/art/pets/pet-lich-final.png', requiredLevel: 5 },
-    { imagePath: '/art/pets/pet-dragon-final.png', requiredLevel: 15 },
-    { imagePath: '/art/pets/pet-aberration-final.png', requiredLevel: 20 },
+  // ---- Evolução: mesmos thresholds do Bestiário/Taverna ----
+  const EVOLUTION_THRESHOLDS: number[] = [
+    0, // índice 0 não usado
+    0, // stage 1
+    100, // stage 2
+    300, // stage 3
   ];
+
+  function getEvolutionStageForFood(food: number): number {
+    if (food >= EVOLUTION_THRESHOLDS[3]) return 3;
+    if (food >= EVOLUTION_THRESHOLDS[2]) return 2;
+    return 1;
+  }
+
+  function getStageLabel(stage: number): string {
+    switch (stage) {
+      case 1:
+        return 'Forma Juvenil';
+      case 2:
+        return 'Forma Crescida';
+      case 3:
+        return 'Forma Lendária';
+      default:
+        return 'Forma Desconhecida';
+    }
+  }
+
+  // helper pra trocar lobo-1.webp -> lobo-2.webp / lobo-3.webp
+  function getStageImage(basePath: string, evolutionStage?: number): string {
+    const stage = Math.min(Math.max(evolutionStage ?? 1, 1), 3); // clamp 1..3
+    // espera padrão ...-1.webp, ...-2.webp, ...-3.webp
+    return basePath.replace(/-\d+(\.\w+)$/, `-${stage}$1`);
+  }
+
+  // Companion com metadados extras que o DB não exige mas a UI usa
+  type CompanionWithMeta = Companion & {
+    type?: string;
+    imagePath?: string;
+  };
+
+  type PetCard = CompanionWithMeta & {
+    key: string;
+    requiredLevel: number;
+    isUnlocked: boolean;
+    isActive: boolean;
+    imagePath: string;
+    type: string;
+    evolutionStage: number;
+    foodInvested: number;
+  };
+
+  // Texto do bônus mostrado no card, por pet + evolução
+  function getPetBonusDescription(pet: PetCard): string {
+    const stage = Math.min(Math.max(pet.evolutionStage || 1, 1), 3);
+
+    switch (pet.key) {
+      case 'wolf': {
+        if (stage === 1) return '+5% de XP ganho em missões.';
+        if (stage === 2) return '+10% de XP ganho em missões.';
+        return '+15% de XP ganho em missões.';
+      }
+      case 'lich': {
+        if (stage === 1) return '+5% de comida obtida (alimentação).';
+        if (stage === 2) return '+10% de comida obtida (alimentação).';
+        return '+15% de comida obtida (alimentação).';
+      }
+      case 'dragon': {
+        if (stage === 1) return '+5% de Gold ganho em missões.';
+        if (stage === 2) return '+10% de Gold ganho em missões.';
+        return '+15% de Gold ganho em missões.';
+      }
+      case 'aberration': {
+        if (stage === 1) return '+5% de XP, Gold e Comida.';
+        if (stage === 2) return '+10% de XP, Gold e Comida.';
+        // nível 3: reforça os 3 bônus + redução de tarefas
+        return '+15% de XP, Gold e Comida e redução na quantidade de tarefas exigidas em sistemas avançados.';
+      }
+      default:
+        return 'Bônus não definido.';
+    }
+  }
+
+  // Seed inicial pro Dexie (usa PET_BASE como fonte da verdade)
+  const PET_SEED: CompanionWithMeta[] = PET_BASE.map((base) => ({
+    id: base.id,
+    key: base.key,
+    name: base.name,
+    rarity: base.rarity,
+    type: base.type,
+    imagePath: base.imagePath,
+    unlocked: false,
+  }));
 
   // --- Estado do banco / herói ---
   let companions = $state<CompanionWithMeta[]>([]);
@@ -78,36 +162,58 @@
   async function ensureCompanionsSeeded() {
     const count = await db.companions.count();
     if (count === 0) {
-      // salva apenas o que o schema exige; extras (type/imagePath) também são guardados
       await db.companions.bulkAdd(PET_SEED);
     }
   }
 
-  function getRequiredLevelForImage(imagePath?: string): number {
-    if (!imagePath) return 1;
-    const cfg = PET_LEVELS.find((c) => c.imagePath === imagePath);
-    return cfg?.requiredLevel ?? 1;
+  function getRequiredLevelForId(id?: number): number {
+    if (!id) return 1;
+    const base = PET_BASE.find((p) => p.id === id);
+    return base?.requiredLevel ?? 1;
   }
 
-  // Lista derivada com gating por nível (igual ao Bestiário)
+  // Lista derivada com gating por nível + evolução
   let petCards = $derived.by<PetCard[]>(() => {
-    const list = companions.length > 0 ? companions : PET_SEED;
     const lvl = heroLevel ?? 1;
 
-    return list
-      .map((pet) => {
-        const requiredLevel = getRequiredLevelForImage(pet.imagePath);
-        const isUnlockedByLevel = lvl >= requiredLevel;
-        const isActive = pet.id === activeCompanionId;
+    // Indexa companions do DB por id pra mesclar (inclui nomes renomeados + evolução)
+    const byId = new SvelteMap<number, CompanionWithMeta>();
+    for (const c of companions) {
+      if (c.id != null) byId.set(c.id, c);
+    }
 
-        return {
-          ...pet,
-          requiredLevel,
-          isUnlocked: isUnlockedByLevel,
-          isActive,
-        };
-      })
-      .sort((a, b) => a.requiredLevel - b.requiredLevel);
+    return PET_BASE.map((base) => {
+      const dbPet = byId.get(base.id);
+
+      const name =
+        (dbPet && dbPet.name && dbPet.name.trim().length > 0
+          ? dbPet.name
+          : base.name) || base.name;
+
+      const requiredLevel = base.requiredLevel;
+      const isUnlocked = lvl >= requiredLevel;
+      const isActive = base.id === activeCompanionId;
+
+      const foodInvested = (dbPet as any)?.foodInvested ?? 0;
+      const evolutionStage =
+        (dbPet as any)?.evolutionStage ??
+        getEvolutionStageForFood(foodInvested);
+
+      const merged: PetCard = {
+        ...(dbPet || {}),
+        ...base,
+        name,
+        type: base.type,
+        requiredLevel,
+        isUnlocked,
+        isActive,
+        foodInvested,
+        evolutionStage,
+        imagePath: getStageImage(base.imagePath, evolutionStage),
+      } as PetCard;
+
+      return merged;
+    }).sort((a, b) => a.requiredLevel - b.requiredLevel);
   });
 
   let currentActivePet = $derived.by<PetCard | undefined>(() =>
@@ -183,8 +289,7 @@
   async function selectCompanion(pet: PetCard) {
     if (!pet.id) return;
 
-    const requiredLevel =
-      pet.requiredLevel ?? getRequiredLevelForImage(pet.imagePath);
+    const requiredLevel = pet.requiredLevel ?? getRequiredLevelForId(pet.id);
     if (heroLevel < requiredLevel) {
       // Segurança extra: nem tenta gravar se não tiver nível
       return;
@@ -303,6 +408,17 @@
                 {pet.name}
               </h3>
               <p class="text-[0.65rem] text-slate-400">{pet.type}</p>
+
+              <!-- Evolução atual -->
+              <p class="text-[0.65rem] text-emerald-300 mt-1">
+                Evolução: {getStageLabel(pet.evolutionStage)} (Nível {pet.evolutionStage})
+              </p>
+
+              <!-- BÔNUS DO PET -->
+              <p class="text-[0.65rem] text-amber-300 mt-0.5">
+                Bônus: {getPetBonusDescription(pet)}
+              </p>
+
               <p class="mt-1 text-[0.65rem]">
                 {#if pet.isUnlocked}
                   {#if pet.isActive}
@@ -310,7 +426,7 @@
                       Equipado
                     </span>
                   {:else}
-                    <span class="text-slate-400"> Clique para equipar </span>
+                    <span class="text-slate-400">Clique para equipar</span>
                   {/if}
                 {:else}
                   <span class="text-slate-500">

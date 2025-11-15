@@ -8,6 +8,71 @@
   import PageTitleCard from '$lib/PageTitleCard.svelte';
   import { getTitleForLevel } from '$services/xpService';
   import GearPanel from '$lib/GearPanel.svelte';
+  import { SvelteMap } from 'svelte/reactivity';
+
+  // -------------------------
+  // Configuração base CANÔNICA dos pets
+  // (mesma ideia do Bestiário)
+  // -------------------------
+  type PetBaseInfo = {
+    id: number;
+    name: string;
+    type: string;
+    imagePath: string;
+    requiredLevel: number;
+  };
+
+  const PET_BASE: PetBaseInfo[] = [
+    {
+      id: 1,
+      name: 'Lobo Etéreo',
+      type: 'Caçador das Sombras',
+      imagePath: '/art/pets/lobo-1.webp',
+      requiredLevel: 1,
+    },
+    {
+      id: 2,
+      name: 'Lorde Lich',
+      type: 'Mago Imortal',
+      imagePath: '/art/pets/lich-1.webp',
+      requiredLevel: 5,
+    },
+    {
+      id: 3,
+      name: 'Dragão Ancião',
+      type: 'Guardião de Chamas',
+      imagePath: '/art/pets/dragao-1.webp',
+      requiredLevel: 15,
+    },
+    {
+      id: 4,
+      name: 'Aberração Abissal',
+      type: 'Eco do Vazio',
+      imagePath: '/art/pets/aberracao-1.webp',
+      requiredLevel: 20,
+    },
+  ];
+
+  // ---- Evolução: thresholds de comida por estágio (mesmo do Bestiário) ----
+  const EVOLUTION_THRESHOLDS: number[] = [
+    0, // índice 0 não usado
+    0, // stage 1 começa em 0
+    100, // stage 2
+    300, // stage 3
+  ];
+
+  function getEvolutionStageForFood(food: number): number {
+    if (food >= EVOLUTION_THRESHOLDS[3]) return 3;
+    if (food >= EVOLUTION_THRESHOLDS[2]) return 2;
+    return 1;
+  }
+
+  // helper pra trocar lobo-1.webp -> lobo-2.webp / lobo-3.webp
+  function getStageImage(basePath: string, evolutionStage?: number): string {
+    const stage = Math.min(Math.max(evolutionStage ?? 1, 1), 3); // clamp 1..3
+    // espera padrão ...-1.webp, ...-2.webp, ...-3.webp
+    return basePath.replace(/-\d+(\.\w+)$/, `-${stage}$1`);
+  }
 
   // --- Estado do Herói (Fallback) ---
   const fallbackProfile: Profile = {
@@ -23,6 +88,7 @@
     lastCompletionDate: '',
     activeCompanionId: 1,
     gold: 0,
+    food: 0, // saldo inicial de comida no fallback
   };
 
   // --- Padrão Reativo Svelte 5 + Dexie ---
@@ -62,34 +128,55 @@
     hero.xpNext > 0 ? Math.min(100, (hero.xpCurrent / hero.xpNext) * 100) : 0,
   );
 
-  // Somente o que o template usa do companheiro (evita acoplar ao schema completo)
+  // Somente o que o template usa do companheiro
   type DisplayCompanion = {
-    id?: number;
+    id: number;
     name: string;
     type: string;
     imagePath: string;
   };
 
-  type MaybeWithImage = Companion & { imagePath?: string };
-
   const activePet = $derived.by<DisplayCompanion>(() => {
-    if (allCompanions.length === 0) {
+    // se por algum motivo não tiver configuração base, evita crash
+    if (PET_BASE.length === 0) {
       return {
         id: 0,
-        name: 'Carregando...',
-        type: '...',
-        imagePath: '/art/pets/pet-dragon-final.png',
+        name: 'Companheiro',
+        type: 'Companion',
+        imagePath: '/art/pets/lobo-1.webp',
       };
     }
-    const found =
-      allCompanions.find((c) => c.id === hero.activeCompanionId) ??
-      allCompanions[0];
-    const withImg = found as MaybeWithImage;
+
+    // mapeia companions do DB por id
+    const byId = new SvelteMap<number, Companion>();
+    for (const c of allCompanions) {
+      if (c.id != null) byId.set(c.id, c);
+    }
+
+    const activeId = hero.activeCompanionId ?? 1;
+
+    const base =
+      PET_BASE.find((p) => p.id === activeId) ??
+      PET_BASE.find((p) => p.id === 1)!;
+
+    const dbPet = byId.get(base.id);
+
+    // nome vem do DB se o usuário renomeou
+    const rawNameFromDb = dbPet?.name;
+    const name =
+      rawNameFromDb && rawNameFromDb.trim().length > 0
+        ? rawNameFromDb
+        : base.name;
+
+    const foodInvested = (dbPet as any)?.foodInvested ?? 0;
+    const evolutionStage =
+      (dbPet as any)?.evolutionStage ?? getEvolutionStageForFood(foodInvested);
+
     return {
-      id: (found as any).id,
-      name: (found as any).name ?? 'Companheiro',
-      type: (found as any).type ?? 'Companion',
-      imagePath: withImg.imagePath ?? '/art/pets/pet-dragon-final.png',
+      id: base.id,
+      name,
+      type: base.type,
+      imagePath: getStageImage(base.imagePath, evolutionStage),
     };
   });
 </script>
@@ -185,6 +272,41 @@
               class="h-full bg-gradient-to-r from-blue-600 to-cyan-400 transition-all duration-500"
               style={`width: ${xpPercentage}%;`}
             ></div>
+          </div>
+
+          <!-- Gold & Comida -->
+          <div class="mt-4 grid grid-cols-2 gap-4 text-xs">
+            <div class="flex items-center gap-2">
+              <img
+                src="/art/icones/gold-icon.png"
+                alt="Gold"
+                class="h-6 w-6 object-contain"
+              />
+              <div>
+                <p
+                  class="text-[0.65rem] uppercase tracking-[0.18em] text-amber-300/80"
+                >
+                  Gold
+                </p>
+                <p class="text-sm font-semibold text-amber-200">
+                  {hero.gold ?? 0}
+                </p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <span class="text-lg">🍖</span>
+              <div>
+                <p
+                  class="text-[0.65rem] uppercase tracking-[0.18em] text-emerald-300/80"
+                >
+                  Comida
+                </p>
+                <p class="text-sm font-semibold text-emerald-200">
+                  {hero.food ?? 0}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
