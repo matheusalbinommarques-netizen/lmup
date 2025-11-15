@@ -22,6 +22,7 @@
   // Item usado na UI (pode ter link para ownedShopItems)
   type UIInventoryItem = InventoryItem & {
     ownedShopItemId?: number;
+    iconSrc?: string; // <- ícone opcional para renderizar na UI
   };
 
   let items = $state<UIInventoryItem[]>([]);
@@ -42,7 +43,11 @@
     // Cosméticos visuais vindos direto da tabela inventory
     const visualItems: UIInventoryItem[] = inv
       .filter((it) => it.owned && it.type !== 'gear') // ignora gear legado
-      .map((it) => ({ ...it }));
+      .map((it) => {
+        // se seu InventoryItem já tiver algum campo de ícone, você pode
+        // puxar aqui via (it as any).iconSrc / imageSrc / etc
+        return { ...(it as InventoryItem), iconSrc: (it as any).iconSrc };
+      });
 
     // Artefatos de gameplay espelhados de ownedShopItems
     const gearItems: UIInventoryItem[] = [];
@@ -63,6 +68,7 @@
         slot: undefined,
         effects: undefined,
         ownedShopItemId: row.id,
+        iconSrc: meta.iconSrc, // <- PUXA O ÍCONE DA LOJA
       });
     }
 
@@ -434,9 +440,15 @@
                   class="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-2.5 text-xs"
                 >
                   <div
-                    class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800/70 text-lg"
+                    class="flex h-16 w-16 items-center justify-center rounded-full bg-slate-800/70 overflow-hidden"
                   >
-                    {#if group.type === 'frame'}
+                    {#if item.iconSrc}
+                      <img
+                        src={item.iconSrc}
+                        alt={itemName(item)}
+                        class="h-full w-full object-contain"
+                      />
+                    {:else if group.type === 'frame'}
                       🖼️
                     {:else if group.type === 'avatar'}
                       😃
