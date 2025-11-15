@@ -3,6 +3,7 @@
   import { db, type Area, type Task, type HeroProject } from '$services/db';
   import { liveQuery } from 'dexie';
   import { onMount } from 'svelte';
+  import { getHeroModifiersOnce } from '$services/gearService';
 
   // --- Props ---
   let { close, taskToEdit = null } = $props<{
@@ -24,6 +25,10 @@
   let projects = $state<HeroProject[]>([]);
   let subtasks = $state<string[]>(['']);
 
+  // Delta de raridade vindo do gear (espadas)
+  // 0 = sem espada; 1/2/3 = “subtarefas virtuais” a mais
+  let rarityThresholdDelta = $state(0);
+
   // modal não precisa reatividade na prop; ela não muda depois de aberto
   const isEditMode = taskToEdit !== null;
 
@@ -41,10 +46,21 @@
     legendary: 500,
   };
 
-  function rarityFromSubtaskCount(count: number): Rarity {
-    if (count >= 10) return 'legendary';
-    if (count >= 5) return 'epic';
-    if (count >= 3) return 'rare';
+  /**
+   * Calcula raridade a partir da quantidade de subtarefas
+   * aplicando o delta vindo da espada:
+   *
+   * - delta 0: thresholds normais
+   * - delta 1/2/3: cada ponto conta como uma subtarefa extra (fica mais fácil)
+   *
+   * Ex.: 7 subtarefas + espada lendária (delta 3) → 10 “efetivas” → Lendária.
+   */
+  function rarityFromSubtaskCount(count: number, delta: number): Rarity {
+    const adjusted = Math.max(0, count + Math.max(0, delta));
+
+    if (adjusted >= 10) return 'legendary';
+    if (adjusted >= 5) return 'epic';
+    if (adjusted >= 3) return 'rare';
     return 'common';
   }
 
@@ -53,7 +69,9 @@
     subtasks.map((s) => s.trim()).filter((s) => s.length > 0).length || 1,
   );
 
-  const autoRarity = $derived(rarityFromSubtaskCount(subtaskCount));
+  const autoRarity = $derived(
+    rarityFromSubtaskCount(subtaskCount, rarityThresholdDelta),
+  );
   const autoXp = $derived(rarityXp[autoRarity]);
 
   // ------------------------------------------------------------------
@@ -69,6 +87,17 @@
     const subProjects = projectsQuery.subscribe((dbProjects) => {
       projects = dbProjects ?? [];
     });
+
+    // Carrega modificadores do herói (gear equipado) uma vez
+    (async () => {
+      try {
+        const mods = await getHeroModifiersOnce();
+        rarityThresholdDelta = mods.rarityThresholdDelta ?? 0;
+      } catch (error) {
+        console.error('Erro ao carregar modificadores de herói:', error);
+        rarityThresholdDelta = 0;
+      }
+    })();
 
     if (isEditMode && taskToEdit) {
       title = taskToEdit.title;
@@ -127,7 +156,9 @@
       .filter((s) => s.length > 0);
 
     const count = finalSubtasks.length || 1;
-    const rarity: Rarity = rarityFromSubtaskCount(count);
+
+    // Usa o delta da espada na conta de raridade (buff = fica mais fácil)
+    const rarity: Rarity = rarityFromSubtaskCount(count, rarityThresholdDelta);
     const xp = rarityXp[rarity];
 
     const now = new Date();

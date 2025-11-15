@@ -30,7 +30,7 @@ export interface Profile {
   // usado no EcoPanel
   ecoGoldClaimedUpToStage?: number;
 
-  // NOVO: conquistas em destaque
+  // conquistas em destaque na sala de troféus
   highlightAchievementIds?: string[];
 }
 
@@ -104,8 +104,30 @@ export type InventoryItemType =
   | 'avatar'
   | 'background'
   | 'aura'
-  | 'weapon-skin';
+  | 'weapon-skin'
+  | 'gear'; // NOVO – itens com efeitos de gameplay
 
+// Raridade de itens da loja/gear
+export type ItemRarity = 'common' | 'rare' | 'epic' | 'legendary';
+
+// Slot de equipamento (um equipado por slot)
+export type GearSlot = 'armor' | 'weapon' | 'amulet' | 'ring' | 'bag' | 'helm';
+
+// Tipos de efeito possíveis
+export type GearEffectType =
+  | 'streak_protection_days' // armadura: dias de proteção de streak
+  | 'rarity_subtask_reduction' // espada: - subtarefas p/ raridade alta
+  | 'gold_multiplier' // amuleto: +% gold
+  | 'sanctuary_bonus_multiplier' // anel: +% absoluto ao bônus do santuário
+  | 'inventory_slots_bonus' // mochila: +slots de inventário
+  | 'project_bonus_multiplier'; // elmo: +% no bônus de projeto concluído
+
+export interface GearEffect {
+  type: GearEffectType;
+  value: number; // dias, %, slots etc. Ex.: 0.05 = 5% a mais
+}
+
+// Itens que já vão para o inventário (possuídos)
 export interface InventoryItem {
   id?: number;
   key: string;
@@ -114,8 +136,14 @@ export interface InventoryItem {
   description?: string;
   owned: boolean;
   equipped?: boolean;
+
+  // Só faz sentido para type === 'gear' (mas deixamos opcional)
+  rarity?: ItemRarity;
+  slot?: GearSlot;
+  effects?: GearEffect[];
 }
 
+// Itens disponíveis na loja
 export interface ShopItem {
   id?: number;
   key: string;
@@ -123,11 +151,38 @@ export interface ShopItem {
   name: string;
   description?: string;
   price: number;
+
+  // também podem ser gear na própria loja
+  rarity?: ItemRarity;
+  slot?: GearSlot;
+  effects?: GearEffect[];
 }
 
+// Relação “perfil X item comprado na loja”
+export type ShopItemRarity = 'common' | 'rare' | 'epic' | 'legendary';
+
+// se você já tiver um tipo de categoria em outro lugar, pode reaproveitar.
+// por enquanto vamos manter string mesmo pra não quebrar nada.
 export interface OwnedShopItem {
   id?: number;
+
+  // referência ao item da loja (ShopItem.id)
   itemId: number;
+
+  // metadados opcionais da compra – usados pra exibir em telas futuras
+  name?: string;
+  description?: string | null;
+  price?: number;
+
+  // raridade e categoria pro TS parar de reclamar
+  rarity?: ShopItemRarity;
+  category?: string;
+
+  // estado de uso
+  equipped: boolean;
+
+  // quando o jogador comprou
+  acquiredAt: string;
 }
 
 // ---------------------------------------------

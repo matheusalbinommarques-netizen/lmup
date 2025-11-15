@@ -7,6 +7,7 @@
   import CompanionSelectModal from '$lib/CompanionSelectModal.svelte';
   import PageTitleCard from '$lib/PageTitleCard.svelte';
   import { getTitleForLevel } from '$services/xpService';
+  import GearPanel from '$lib/GearPanel.svelte';
 
   // --- Estado do Herói (Fallback) ---
   const fallbackProfile: Profile = {
@@ -85,7 +86,7 @@
       allCompanions[0];
     const withImg = found as MaybeWithImage;
     return {
-      id: (found as any).id, // id pode não existir em alguns schemas; apenas repassamos se houver
+      id: (found as any).id,
       name: (found as any).name ?? 'Companheiro',
       type: (found as any).type ?? 'Companion',
       imagePath: withImg.imagePath ?? '/art/pets/pet-dragon-final.png',
@@ -147,7 +148,6 @@
             </span>
           </div>
         </div>
-
         <div
           class="flex-1 w-full text-center sm:text-left mt-4 sm:mt-0 relative"
         >
@@ -163,7 +163,6 @@
             </button>
           </div>
           <p class="text-[#ffb74d]/80 font-medium mb-4">{hero.title}</p>
-
           <div
             class="flex items-center justify-between text-xs text-slate-400 mb-1"
           >
@@ -216,6 +215,8 @@
         </button>
       </section>
     </div>
+
+    <GearPanel />
 
     <!-- Serviços da Taverna -->
     <div class="mt-6 flex justify-center">

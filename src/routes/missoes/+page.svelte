@@ -11,6 +11,8 @@
   import { onMount } from 'svelte';
   import { xpService } from '$services/xpService';
   import { checkAndApplyProjectCompletionBonus } from '$services/projectService';
+  import { registerTaskCompletionWithStreakProtection } from '$services/streakService';
+  import { getHeroModifiersOnce } from '$services/gearService';
   import AreaManager from '$lib/AreaManager.svelte';
   import AddTaskModal from '$lib/AddTaskModal.svelte';
   import XpByAreaChart from '$lib/XpByAreaChart.svelte';
@@ -22,6 +24,9 @@
   let areas = $state<Area[]>([]);
   let xpLogs = $state<XpLog[]>([]);
   let projects = $state<HeroProject[]>([]);
+
+  // multiplicador de gold vindo dos amuletos
+  let goldMultiplier = $state(1);
 
   type FilterTab = 'available' | 'todo' | 'completed';
   let filter = $state<FilterTab>('available');
@@ -72,6 +77,20 @@
     const projectsSub = projectsQuery.subscribe((rows) => {
       projects = rows ?? [];
     });
+
+    // Carrega multiplicador de gold dos amuletos uma vez
+    (async () => {
+      try {
+        const mods = await getHeroModifiersOnce();
+        goldMultiplier = mods.goldMultiplier ?? 1;
+      } catch (error) {
+        console.error(
+          'Erro ao carregar modificadores de gold (amuletos):',
+          error,
+        );
+        goldMultiplier = 1;
+      }
+    })();
 
     return () => {
       tasksSub.unsubscribe();
@@ -262,7 +281,10 @@
       }
     }
 
-    const gold = Math.floor(total * 0.5);
+    // Gold semanal aproximado, respeitando o multiplicador do amuleto
+    const gm = goldMultiplier || 1;
+    const gold = Math.floor(Math.max(0, total) * 0.5 * gm);
+
     return { missions, xp: total, gold };
   }
 
@@ -534,7 +556,6 @@
   );
 
   // Completar missão
-  // Completar missão
   async function toggleTask(id: number | undefined) {
     if (!id) return;
     const task = tasks.find((t) => t.id === id);
@@ -563,8 +584,9 @@
         reviewStartedAt: now,
       } as any);
 
-      // Para missões de revisão eu NÃO aciono o bônus de projeto,
-      // senão um projeto de revisão daria bônus infinito.
+      // conta para o streak também
+      await registerTaskCompletionWithStreakProtection();
+
       return;
     }
 
@@ -587,6 +609,9 @@
     if (projectId != null) {
       await checkAndApplyProjectCompletionBonus(projectId);
     }
+
+    // Atualiza o streak levando em conta a armadura equipada
+    await registerTaskCompletionWithStreakProtection();
   }
 
   // Marcar / desmarcar "A fazer"
@@ -1245,7 +1270,7 @@
                   class="h-6 w-6 object-contain"
                 />
                 <span class="font-semibold">
-                  +{Math.floor(task.xp * 0.5)} Gold
+                  +{Math.floor(task.xp * 0.5 * (goldMultiplier || 1))} Gold
                 </span>
               </div>
             </div>

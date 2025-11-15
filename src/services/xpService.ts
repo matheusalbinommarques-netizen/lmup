@@ -1,6 +1,7 @@
 // src/services/xpService.ts
 import { db, type Profile, type XpLog } from '$services/db';
 import { ECO_STAGES, getEcoStageForTotalXp } from '$services/ecoConfig';
+import { getHeroModifiersOnce } from '$services/gearService';
 
 /**
  * XP necessário para subir de N -> N+1.
@@ -137,7 +138,7 @@ const LEVEL_TITLES: string[] = [
   'Celestial', // 27
   'Semideus', // 28
   'Eterno', // 29
-  'O Criador', // 30+
+  'O Criador', // 30+,
 ];
 
 export function getTitleForLevel(level: number): string {
@@ -177,10 +178,13 @@ async function ensureProfile(): Promise<Profile> {
 
 /**
  * Aplica uma variação de XP (positiva ou negativa),
- * com bônus do Santuário, recalcula nível, XP atual, XP do próximo nível, gold
+ * com bônus do Santuário (ajustado pelo ANEL), recalcula nível,
+ * XP atual, XP do próximo nível, gold (ajustado pelo AMULETO)
  * e registra um XpLog com área.
  *
- * amount = XP base (antes do bônus do Santuário).
+ * amount = XP base (antes dos bônus).
+ *
+ * IMPORTANTE: Streak é tratado em streakService.ts (registerTaskCompletionWithStreakProtection).
  */
 async function applyXpDelta(
   amount: number,
@@ -191,6 +195,18 @@ async function applyXpDelta(
     return profile;
   }
 
+  // --- Modificadores do herói (gear equipado) ---
+  let goldMultiplier = 1;
+  let sanctuaryBonusExtraPercent = 0;
+
+  try {
+    const modifiers = await getHeroModifiersOnce();
+    goldMultiplier = modifiers.goldMultiplier ?? 1;
+    sanctuaryBonusExtraPercent = modifiers.sanctuaryBonusExtraPercent ?? 0;
+  } catch (error) {
+    console.error('Falha ao carregar HeroModifiers em xpService:', error);
+  }
+
   const now = new Date();
   const dateKey = toDateKey(now);
 
@@ -199,13 +215,21 @@ async function applyXpDelta(
 
   // --- Bônus do Santuário: multiplicador baseado no estágio atual (ANTES do ganho) ---
   const ecoStageBefore = getEcoStageForTotalXp(currentTotal);
-  const bonusMultiplier = ecoStageBefore.xpBonusMultiplier ?? 1;
+  const baseSanctuaryMultiplier = ecoStageBefore.xpBonusMultiplier ?? 1;
+
+  // bônus extra do ANEL (ex.: 10% = 0.10)
+  const extraFromRing =
+    sanctuaryBonusExtraPercent > 0 ? sanctuaryBonusExtraPercent / 100 : 0;
+
+  // Exemplo: 1.05 (5% base) + 0.10 (10% do anel) = 1.15 (15% total)
+  const effectiveSanctuaryMultiplier = baseSanctuaryMultiplier + extraFromRing;
+
   const isPositive = amount > 0;
 
-  // XP efetivo considerando o bônus de 5/10/20% (apenas para ganhos, não para perdas)
+  // XP efetivo considerando bônus do Santuário + Anel (apenas ganhos)
   const effectiveAmount =
-    isPositive && bonusMultiplier > 1
-      ? Math.round(amount * bonusMultiplier)
+    isPositive && effectiveSanctuaryMultiplier > 1
+      ? Math.round(amount * effectiveSanctuaryMultiplier)
       : amount;
 
   const newTotal = Math.max(0, currentTotal + effectiveAmount);
@@ -213,10 +237,12 @@ async function applyXpDelta(
   // --- Estado de nível baseado no XP total pós-bônus ---
   const { level, xpIntoLevel, xpForNext } = getLevelStateFromTotalXp(newTotal);
 
-  // --- Gold proporcional ao XP efetivo (0.5 por XP) ---
-  const goldDelta =
+  // --- Gold proporcional ao XP efetivo (0.5 por XP), ajustado pelo AMULETO ---
+  const goldBase =
     Math.floor(Math.abs(effectiveAmount) * 0.5) *
     (effectiveAmount >= 0 ? 1 : -1);
+
+  const goldDelta = Math.round(goldBase * goldMultiplier);
   const currentGold = profile.gold ?? 0;
 
   // --- Recompensas de Gold por avanço de estágio do Santuário ---
@@ -239,76 +265,13 @@ async function applyXpDelta(
 
   const newGold = Math.max(0, currentGold + goldDelta + extraGoldFromEco);
 
-  // --- Streak (só mexe quando ganha XP positivo efetivo) ---
-  let currentStreak = profile.currentStreak ?? 0;
-  let lastCompletionDate = profile.lastCompletionDate ?? null;
-
-  if (effectiveAmount > 0) {
-    const todayKey = dateKey; // "YYYY-MM-DD"
-
-    // Normaliza o que estiver salvo no perfil para uma date key estável
-    const normalizeToDateKey = (value: string | Date | null): string | null => {
-      if (!value) return null;
-
-      if (value instanceof Date) {
-        return toDateKey(value);
-      }
-
-      // já está no formato YYYY-MM-DD
-      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-        return value;
-      }
-
-      const parsed = new Date(value);
-      if (Number.isNaN(parsed.getTime())) {
-        return null;
-      }
-      return toDateKey(parsed);
-    };
-
-    const lastKey = normalizeToDateKey(lastCompletionDate as any);
-
-    if (!lastKey) {
-      // primeira missão com XP da vida
-      currentStreak = 1;
-    } else if (lastKey === todayKey) {
-      // já contamos streak hoje — NÃO mexe no currentStreak
-    } else {
-      // compara a diferença de dias entre o último dia com XP e hoje
-      const lastDate = new Date(
-        Number(lastKey.slice(0, 4)),
-        Number(lastKey.slice(5, 7)) - 1,
-        Number(lastKey.slice(8, 10)),
-      );
-      const todayDate = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-      );
-      const diffMs = todayDate.getTime() - lastDate.getTime();
-      const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-
-      if (diffDays === 1) {
-        // dia seguinte → continua sequência
-        currentStreak = (currentStreak || 0) + 1;
-      } else {
-        // pulou um ou mais dias → zera sequência e começa de 1
-        currentStreak = 1;
-      }
-    }
-
-    // qualquer ganho de XP positivo marca que hoje teve missão concluída
-    lastCompletionDate = todayKey;
-  }
-
+  // --- Atualiza perfil (sem mexer em streak aqui) ---
   const updated: Partial<Profile> = {
     level,
     xpCurrent: xpIntoLevel,
     xpNext: xpForNext,
     totalXpEarned: newTotal,
     gold: newGold,
-    currentStreak,
-    lastCompletionDate,
     title: getTitleForLevel(level),
     updatedAt: now,
   };
@@ -321,7 +284,7 @@ async function applyXpDelta(
   // --- Log de XP (positivo ou negativo) para estatísticas ---
   const log: XpLog = {
     date: dateKey,
-    amount: effectiveAmount, // loga o XP já com bônus aplicado
+    amount: effectiveAmount, // loga o XP já com bônus aplicado (Santuário + Anel)
     areaId,
     createdAt: now,
   };

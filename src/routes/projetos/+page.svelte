@@ -7,6 +7,7 @@
   import {
     getProjectBaseXp,
     getProjectDifficultyInfoForTasks,
+    deleteHeroProject,
   } from '$services/projectService';
   import { getEcoStageForTotalXp } from '$services/ecoConfig';
 
@@ -14,6 +15,16 @@
   let tasks = $state<Task[]>([]);
   let hero = $state<Profile | null>(null);
   let isLoading = $state(true);
+
+  // --- estado do modal de criação ---
+  let showCreateModal = $state(false);
+  let newProjectName = $state('');
+  let newProjectVision = $state('');
+  let newProjectTargetDate = $state(''); // yyyy-mm-dd
+  let isCreating = $state(false);
+
+  // --- exclusão ---
+  let isDeletingId = $state<number | null>(null);
 
   const projectsQuery = liveQuery(() => db.projects.toArray());
   const tasksQuery = liveQuery(() => db.tasks.toArray());
@@ -40,9 +51,70 @@
     };
   });
 
-  type ProjectStatus = HeroProject['status'];
+  // -------- Modal de criação --------
+  function openCreateModal() {
+    newProjectName = '';
+    newProjectVision = '';
+    newProjectTargetDate = '';
+    showCreateModal = true;
+  }
 
-  // --------- helpers de status / ordenação ---------
+  function closeCreateModal() {
+    if (isCreating) return;
+    showCreateModal = false;
+  }
+
+  async function confirmCreateProject(event: SubmitEvent) {
+    event.preventDefault();
+
+    const name = newProjectName.trim();
+    if (!name) return;
+
+    try {
+      isCreating = true;
+
+      await db.projects.add({
+        name,
+        vision: newProjectVision.trim() || null,
+        status: 'planejando',
+        createdAt: new Date(),
+        targetDate: newProjectTargetDate
+          ? new Date(newProjectTargetDate)
+          : null,
+      } as HeroProject);
+
+      newProjectName = '';
+      newProjectVision = '';
+      newProjectTargetDate = '';
+      showCreateModal = false;
+    } catch (error) {
+      console.error('Erro ao criar projeto:', error);
+      alert('Não foi possível criar o projeto.');
+    } finally {
+      isCreating = false;
+    }
+  }
+
+  // -------- Exclusão de projeto --------
+  async function handleDeleteProject(id?: number) {
+    if (!id) return;
+    const ok = confirm(
+      'Tem certeza de que deseja excluir este projeto? As missões continuarão existindo, mas sem vínculo com ele.',
+    );
+    if (!ok) return;
+
+    try {
+      isDeletingId = id;
+      await deleteHeroProject(id);
+    } catch (error) {
+      console.error('Erro ao excluir projeto:', error);
+      alert('Não foi possível excluir o projeto.');
+    } finally {
+      isDeletingId = null;
+    }
+  }
+
+  type ProjectStatus = HeroProject['status'];
 
   const STATUS_ORDER: Record<ProjectStatus, number> = {
     em_andamento: 0,
@@ -127,8 +199,8 @@
   type ProjectDifficultyInfoReturn = {
     totalTasks: number;
     difficultyKey: DifficultyKey;
-    bonusXpFraction: number; // 0.10 / 0.15 / 0.20 / 0.25
-    bonusXpPercent: number; // 10 / 15 / 20 / 25
+    bonusXpFraction: number;
+    bonusXpPercent: number;
   };
 
   function isTaskCompleted(task: Task): boolean {
@@ -148,7 +220,7 @@
     'pausado',
   ];
 
-  // --- Bônus do Santuário global (igual pra todos os projetos) ---
+  // --- Bônus do Santuário global ---
 
   const sanctuaryMultiplier = $derived(
     (() => {
@@ -236,7 +308,6 @@
         if (statusFilter === 'ativos') {
           return activeStatuses.includes(project.status);
         }
-        // concluídos
         return project.status === 'concluido';
       });
 
@@ -271,6 +342,15 @@
   <title>Projetos do Herói • Level Me Up</title>
 </svelte:head>
 
+<!-- fecha modal com ESC -->
+<svelte:window
+  onkeydown={(e) => {
+    if (e.key === 'Escape' && showCreateModal && !isCreating) {
+      showCreateModal = false;
+    }
+  }}
+/>
+
 <div class="flex flex-col gap-6">
   <PageTitleCard
     title="Projetos do Herói"
@@ -293,42 +373,51 @@
         </p>
       </div>
 
-      <!-- Filtros de status -->
-      <div
-        class="flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 p-1 text-[0.7rem]"
-      >
+      <div class="flex flex-col items-end gap-2">
+        <div
+          class="flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 p-1 text-[0.7rem]"
+        >
+          <button
+            type="button"
+            class={`rounded-full px-3 py-1 font-semibold transition-colors ${
+              statusFilter === 'ativos'
+                ? 'bg-emerald-500 text-slate-950'
+                : 'text-slate-300 hover:bg-slate-800'
+            }`}
+            onclick={() => (statusFilter = 'ativos')}
+          >
+            Ativos
+          </button>
+          <button
+            type="button"
+            class={`rounded-full px-3 py-1 font-semibold transition-colors ${
+              statusFilter === 'concluidos'
+                ? 'bg-[#ffb74d] text-slate-950'
+                : 'text-slate-300 hover:bg-slate-800'
+            }`}
+            onclick={() => (statusFilter = 'concluidos')}
+          >
+            Concluídos
+          </button>
+          <button
+            type="button"
+            class={`rounded-full px-3 py-1 font-semibold transition-colors ${
+              statusFilter === 'todos'
+                ? 'bg-slate-700 text-slate-100'
+                : 'text-slate-300 hover:bg-slate-800'
+            }`}
+            onclick={() => (statusFilter = 'todos')}
+          >
+            Todos
+          </button>
+        </div>
+
         <button
           type="button"
-          class={`rounded-full px-3 py-1 font-semibold transition-colors ${
-            statusFilter === 'ativos'
-              ? 'bg-emerald-500 text-slate-950'
-              : 'text-slate-300 hover:bg-slate-800'
-          }`}
-          onclick={() => (statusFilter = 'ativos')}
+          class="mt-1 inline-flex items-center rounded-full bg-emerald-500 px-4 py-1.5 text-xs font-semibold text-slate-950 hover:bg-emerald-400"
+          onclick={openCreateModal}
         >
-          Ativos
-        </button>
-        <button
-          type="button"
-          class={`rounded-full px-3 py-1 font-semibold transition-colors ${
-            statusFilter === 'concluidos'
-              ? 'bg-[#ffb74d] text-slate-950'
-              : 'text-slate-300 hover:bg-slate-800'
-          }`}
-          onclick={() => (statusFilter = 'concluidos')}
-        >
-          Concluídos
-        </button>
-        <button
-          type="button"
-          class={`rounded-full px-3 py-1 font-semibold transition-colors ${
-            statusFilter === 'todos'
-              ? 'bg-slate-700 text-slate-100'
-              : 'text-slate-300 hover:bg-slate-800'
-          }`}
-          onclick={() => (statusFilter = 'todos')}
-        >
-          Todos
+          Novo projeto
         </button>
       </div>
     </header>
@@ -345,7 +434,7 @@
       >
         <p>Nenhum projeto encontrado para este filtro.</p>
         <p class="text-xs text-slate-500">
-          Em breve você poderá criar novas Sagas diretamente por aqui.
+          Crie sua primeira Saga clicando em &quot;Novo projeto&quot;.
         </p>
       </div>
     {:else}
@@ -435,7 +524,6 @@
                 {/if}
               </p>
 
-              <!-- Resumo de bônus do projeto + Santuário -->
               {#if item.baseXp > 0}
                 <div class="mt-1 space-y-0.5 text-[0.65rem]">
                   <p>
@@ -480,12 +568,25 @@
             <footer
               class="mt-4 flex items-center justify-between gap-3 text-[0.7rem]"
             >
-              <a
-                href={`/projetos/${project.id}`}
-                class="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold text-slate-200 hover:border-emerald-400 hover:text-emerald-200"
-              >
-                Detalhes do projeto
-              </a>
+              <div class="flex items-center gap-2">
+                <a
+                  href={`/projetos/${project.id}`}
+                  class="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold text-slate-200 hover:border-emerald-400 hover:text-emerald-200"
+                >
+                  Detalhes do projeto
+                </a>
+
+                {#if project.id}
+                  <button
+                    type="button"
+                    class="rounded-lg border border-red-500/70 px-3 py-1.5 font-semibold text-red-200 hover:bg-red-500/10 disabled:opacity-60 disabled:cursor-not-allowed"
+                    onclick={() => handleDeleteProject(project.id)}
+                    disabled={isDeletingId === project.id}
+                  >
+                    {isDeletingId === project.id ? 'Excluindo...' : 'Excluir'}
+                  </button>
+                {/if}
+              </div>
 
               {#if project.id}
                 <a
@@ -501,4 +602,109 @@
       </div>
     {/if}
   </section>
+
+  {#if showCreateModal}
+    <div
+      class="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/80 px-4"
+      role="button"
+      tabindex="0"
+      onclick={(e) => {
+        // fecha só se clicar no fundo escuro, não no card
+        if (e.target === e.currentTarget) {
+          closeCreateModal();
+        }
+      }}
+      onkeydown={(e) => {
+        // fecha com Esc, Enter ou Espaço quando o foco está no overlay
+        if (e.target !== e.currentTarget) return;
+
+        if (e.key === 'Escape') {
+          closeCreateModal();
+        }
+
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          closeCreateModal();
+        }
+      }}
+    >
+      <div
+        class="w-full max-w-md rounded-2xl border border-emerald-500/70 bg-slate-950/95 px-5 py-4 shadow-[0_0_32px_rgba(16,185,129,0.55)]"
+      >
+        <h2 class="text-sm font-semibold text-slate-50">Criar novo projeto</h2>
+        <p class="mt-1 text-[0.75rem] text-slate-400">
+          Dê um nome para a sua nova Saga e, se quiser, já defina uma visão e
+          uma data-meta para ela.
+        </p>
+
+        <form
+          class="mt-3 space-y-3 text-[0.8rem]"
+          onsubmit={confirmCreateProject}
+        >
+          <div class="space-y-1">
+            <label
+              for="project-name"
+              class="block text-[0.7rem] font-semibold text-slate-200"
+            >
+              Nome do projeto
+            </label>
+            <input
+              id="project-name"
+              class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-emerald-400"
+              bind:value={newProjectName}
+              placeholder="Ex.: Projeto Ombro do Freeza"
+            />
+          </div>
+
+          <div class="space-y-1">
+            <label
+              for="project-vision"
+              class="block text-[0.7rem] font-semibold text-slate-200"
+            >
+              Visão (opcional)
+            </label>
+            <textarea
+              id="project-vision"
+              class="min-h-[70px] w-full resize-none rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-emerald-400"
+              bind:value={newProjectVision}
+              placeholder="Como você descreveria essa grande Saga?"
+            ></textarea>
+          </div>
+
+          <div class="space-y-1">
+            <label
+              for="project-target-date"
+              class="block text-[0.7rem] font-semibold text-slate-200"
+            >
+              Data-meta (opcional)
+            </label>
+            <input
+              id="project-target-date"
+              type="date"
+              class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-emerald-400"
+              bind:value={newProjectTargetDate}
+            />
+          </div>
+
+          <div class="mt-4 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              class="rounded-lg border border-slate-600 px-3 py-1.5 text-[0.75rem] font-semibold text-slate-200 hover:bg-slate-800"
+              onclick={closeCreateModal}
+              disabled={isCreating}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              class="rounded-lg bg-emerald-500 px-4 py-1.5 text-[0.75rem] font-semibold text-slate-950 hover:bg-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed"
+              disabled={isCreating}
+            >
+              {isCreating ? 'Criando...' : 'Criar projeto'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  {/if}
 </div>

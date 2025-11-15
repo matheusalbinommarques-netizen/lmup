@@ -8,6 +8,7 @@
     getEcoStageForTotalXp,
     getEcoProgressForTotalXp,
   } from '$services/ecoConfig';
+  import { getHeroModifiersOnce } from '$services/gearService';
 
   type TopArea = {
     areaId: number;
@@ -39,6 +40,9 @@
   let areas = $state<Area[]>([]);
   let xpLogs = $state<XpLog[]>([]);
 
+  // bônus extra vindo dos ANÉIS (sanctuaryBonusExtraPercent)
+  let sanctuaryBonusExtraPercent = $state(0);
+
   const heroQuery = liveQuery(() => db.profile.get(1));
   const areasQuery = liveQuery(() => db.areas.toArray());
   const xpLogsQuery = liveQuery(() => db.xpLogs.toArray());
@@ -56,6 +60,17 @@
       xpLogs = rows ?? [];
     });
 
+    // Carrega modificadores do herói (gear equipado) para saber o bônus extra do Santuário
+    (async () => {
+      try {
+        const mods = await getHeroModifiersOnce();
+        sanctuaryBonusExtraPercent = mods.sanctuaryBonusExtraPercent ?? 0;
+      } catch (error) {
+        console.error('Erro ao carregar HeroModifiers no EcoPanel:', error);
+        sanctuaryBonusExtraPercent = 0;
+      }
+    })();
+
     return () => {
       heroSub.unsubscribe();
       areasSub.unsubscribe();
@@ -70,9 +85,19 @@
   const ecoStage = $derived(getEcoStageForTotalXp(totalXp));
   const ecoProgress = $derived(getEcoProgressForTotalXp(totalXp));
 
-  const ecoBonusPercent = $derived(
+  // Bônus base do estágio (sem anel)
+  const baseEcoBonusPercent = $derived(
     Math.round(((ecoStage.xpBonusMultiplier ?? 1) - 1) * 100),
   );
+
+  const ecoBonusExtraFromGear = $derived(sanctuaryBonusExtraPercent || 0);
+
+  // Bônus total aplicado nas missões (estágio + anéis)
+  const ecoBonusTotalPercent = $derived(
+    Math.max(0, baseEcoBonusPercent + ecoBonusExtraFromGear),
+  );
+
+  const hasExtraEcoBonus = $derived(ecoBonusExtraFromGear > 0);
 
   // meta salvo no profile pelo xpService (opcional, via "any")
   const ecoGoldClaimedUpToStage = $derived.by<number>(() => {
@@ -224,7 +249,7 @@
 
         <p class="mt-1 text-[0.7rem] text-slate-400">
           Progresso dentro do estágio atual do Santuário. O bônus de XP aumenta
-          conforme você evolui.
+          conforme você evolui — e pode ser turbinado por anéis especiais.
         </p>
       </div>
     </div>
@@ -240,18 +265,32 @@
         >
           Bênçãos do Santuário
         </h3>
+
         <p class="text-[0.8rem] text-slate-200">
           Bônus permanente de XP:
           <span class="font-semibold text-emerald-300">
-            +{ecoBonusPercent}%
+            +{ecoBonusTotalPercent}%
           </span>
           em todas as missões.
         </p>
+
         <p class="text-[0.7rem] text-slate-400">
           O bônus é aplicado automaticamente sempre que você ganha XP. Ouro é
           calculado em cima do XP final, então o Santuário também turbina seu
           Gold.
         </p>
+
+        {#if hasExtraEcoBonus}
+          <p class="mt-1 text-[0.7rem] text-emerald-200/90">
+            Detalhe do bônus atual:
+            <br />
+            • Santuário (estágio): +{baseEcoBonusPercent}% XP
+            <br />
+            • Anéis equipados: +{ecoBonusExtraFromGear}% XP
+            <br />
+            • Total aplicado: +{ecoBonusTotalPercent}% XP
+          </p>
+        {/if}
 
         <div class="mt-2 space-y-1.5 text-[0.7rem]">
           {#each ECO_STAGES as stage (stage.id)}
@@ -274,7 +313,7 @@
                 </span>
               </div>
               <span class="text-slate-400">
-                +{Math.round((stage.xpBonusMultiplier - 1) * 100)}% XP
+                +{Math.round((stage.xpBonusMultiplier - 1) * 100)}% XP base
               </span>
             </div>
           {/each}
