@@ -2,10 +2,36 @@
 import { db, type Profile } from '$services/db';
 import { getHeroModifiersOnce } from '$services/gearService';
 
+/**
+ * Normaliza para uma data "só dia" no fuso local.
+ * Aceita:
+ *  - Date
+ *  - string "YYYY-MM-DD"
+ *  - string ISO completa
+ */
 function toDateOnly(d: Date | string): Date {
-  if (d instanceof Date)
+  if (d instanceof Date) {
     return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const parsed = new Date(d);
+  }
+
+  const s = d.toString().trim();
+  if (!s) {
+    // data inválida; devolve Invalid Date (tratamos depois)
+    return new Date(NaN);
+  }
+
+  // tenta primeiro "YYYY-MM-DD"
+  const [datePart] = s.split('T');
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(datePart);
+  if (m) {
+    const year = Number(m[1]);
+    const month = Number(m[2]);
+    const day = Number(m[3]);
+    return new Date(year, month - 1, day);
+  }
+
+  // fallback: deixa o JS parsear, mas ainda normaliza para dia local
+  const parsed = new Date(s);
   return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
 }
 
@@ -40,8 +66,13 @@ function computeStreakWithProtection(
   today: Date,
   streakProtectionDays: number,
 ): StreakUpdateResult {
-  const todayOnly = toDateOnly(today);
-  const todayStr = todayOnly.toISOString().slice(0, 10);
+  // normaliza hoje para "somente data"
+  const todayOnly = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+  );
+  const todayStr = todayOnly.toISOString().slice(0, 10); // "YYYY-MM-DD"
 
   // nunca completou nada
   if (!lastCompletionDate) {
@@ -52,6 +83,15 @@ function computeStreakWithProtection(
   }
 
   const lastDateOnly = toDateOnly(lastCompletionDate);
+
+  // data inválida no banco? trata como primeira conclusão
+  if (Number.isNaN(lastDateOnly.getTime())) {
+    return {
+      newStreak: 1,
+      newLastCompletionDate: todayStr,
+    };
+  }
+
   const diff = diffInDays(lastDateOnly, todayOnly);
 
   // mesmo dia → não mexe no streak
@@ -107,7 +147,7 @@ export async function registerTaskCompletionWithStreakProtection(): Promise<void
     profile.currentStreak ?? 0,
     profile.lastCompletionDate ?? null,
     new Date(),
-    mods.streakProtectionDays,
+    mods.streakProtectionDays ?? 0,
   );
 
   await db.profile.update(profile.id ?? 1, {

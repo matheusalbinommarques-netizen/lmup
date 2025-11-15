@@ -48,7 +48,7 @@ export const options = {
       message +
       '</h1>\n\t\t\t</div>\n\t\t</div>\n\t</body>\n</html>\n',
   },
-  version_hash: '5uue0r',
+  version_hash: '9r3flj',
 };
 
 export async function get_hooks() {
