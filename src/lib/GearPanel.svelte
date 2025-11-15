@@ -16,6 +16,7 @@
     slot: string;
     rarity: GearRarity;
     shortEffect: string;
+    iconSrc?: string; // 👈 novo
   };
 
   // Meta apenas para exibição no painel
@@ -27,6 +28,7 @@
       slot: 'Armadura',
       rarity: 'common',
       shortEffect: 'Permite falhar 1 dia sem quebrar o streak.',
+      iconSrc: '/art/items/cota-da-rotina.png',
     },
     {
       id: 102,
@@ -34,6 +36,7 @@
       slot: 'Armadura',
       rarity: 'rare',
       shortEffect: 'Permite falhar 2 dias sem quebrar o streak.',
+      iconSrc: '/art/items/guarda-peito-da-perseveranca.png',
     },
     {
       id: 103,
@@ -41,6 +44,7 @@
       slot: 'Armadura',
       rarity: 'epic',
       shortEffect: 'Permite falhar 3 dias sem quebrar o streak.',
+      iconSrc: '/art/items/armadura-do-foco-inabalável.png',
     },
     {
       id: 104,
@@ -48,6 +52,7 @@
       slot: 'Armadura',
       rarity: 'legendary',
       shortEffect: 'Permite falhar 5 dias sem quebrar o streak.',
+      iconSrc: '/art/items/placas-do-heroi-eterno.png',
     },
 
     // ESPADAS
@@ -58,6 +63,7 @@
       rarity: 'rare',
       shortEffect:
         'Reduz em 1 a quantidade de subtarefas para missões de alta raridade.',
+      iconSrc: '/art/items/espada-da-eficiencia.png',
     },
     {
       id: 106,
@@ -66,6 +72,7 @@
       rarity: 'epic',
       shortEffect:
         'Reduz em 2 a quantidade de subtarefas para missões de alta raridade.',
+      iconSrc: '/art/items/lamina-da-otimizacao.png',
     },
     {
       id: 107,
@@ -74,6 +81,7 @@
       rarity: 'legendary',
       shortEffect:
         'Reduz em 3 a quantidade de subtarefas para missões de alta raridade.',
+      iconSrc: '/art/items/lamina-do-tempo-dobrada.png',
     },
 
     // AMULETOS
@@ -83,6 +91,7 @@
       slot: 'Amuleto',
       rarity: 'common',
       shortEffect: '+5% de ouro recebido.',
+      iconSrc: '/art/items/amuleto-do-trocado.png',
     },
     {
       id: 109,
@@ -90,6 +99,7 @@
       slot: 'Amuleto',
       rarity: 'rare',
       shortEffect: '+10% de ouro recebido.',
+      iconSrc: '/art/items/amuleto-do-cambista.png',
     },
     {
       id: 110,
@@ -97,6 +107,7 @@
       slot: 'Amuleto',
       rarity: 'epic',
       shortEffect: '+15% de ouro recebido.',
+      iconSrc: '/art/items/amuleto-do-tesouro-vivo.png',
     },
     {
       id: 111,
@@ -104,6 +115,7 @@
       slot: 'Amuleto',
       rarity: 'legendary',
       shortEffect: '+20% de ouro recebido.',
+      iconSrc: '/art/items/reliquia-do-cofre-infinito.png',
     },
 
     // ANÉIS
@@ -113,6 +125,7 @@
       slot: 'Anel',
       rarity: 'common',
       shortEffect: '+1% ao bônus atual do Santuário.',
+      iconSrc: '/art/items/anel-da-brisa-serena.png',
     },
     {
       id: 113,
@@ -120,6 +133,7 @@
       slot: 'Anel',
       rarity: 'rare',
       shortEffect: '+3% ao bônus atual do Santuário.',
+      iconSrc: '/art/items/anel-da-cancao-silenciosa.png',
     },
     {
       id: 114,
@@ -127,6 +141,7 @@
       slot: 'Anel',
       rarity: 'epic',
       shortEffect: '+5% ao bônus atual do Santuário.',
+      iconSrc: '/art/items/anel-do-bosque-vivo.png',
     },
     {
       id: 115,
@@ -134,6 +149,7 @@
       slot: 'Anel',
       rarity: 'legendary',
       shortEffect: '+10% ao bônus atual do Santuário.',
+      iconSrc: '/art/items/anel-do-guardiao-ancestral.png',
     },
 
     // UTILITÁRIOS
@@ -143,6 +159,7 @@
       slot: 'Mochila',
       rarity: 'legendary',
       shortEffect: '+10 slots de inventário para itens visuais.',
+      iconSrc: '/art/items/mochila-do-aventureiro-sem-fundo.png',
     },
     {
       id: 117,
@@ -150,6 +167,7 @@
       slot: 'Elmo',
       rarity: 'legendary',
       shortEffect: '+15% de XP ao concluir um projeto.',
+      iconSrc: '/art/items/elmo-do-planejador-visionario.png',
     },
   ];
 
@@ -234,6 +252,16 @@
         return 'bg-slate-800 text-slate-100';
     }
   }
+
+  function slotEmoji(slot: string): string {
+    if (slot === 'Arma') return '⚔️';
+    if (slot === 'Anel') return '💍';
+    if (slot === 'Amuleto') return '🧿';
+    if (slot === 'Armadura') return '🛡️';
+    if (slot === 'Mochila') return '🎒';
+    if (slot === 'Elmo') return '🪖';
+    return '🎁';
+  }
 </script>
 
 <section
@@ -273,24 +301,25 @@
           <article
             class="flex items-start gap-3 rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-2.5 text-xs"
           >
-            <div
-              class="mt-[2px] flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800/70 text-lg"
-            >
-              {#if meta.slot === 'Arma'}
-                ⚔️
-              {:else if meta.slot === 'Anel'}
-                💍
-              {:else if meta.slot === 'Amuleto'}
-                🧿
-              {:else if meta.slot === 'Armadura'}
-                🛡️
-              {:else if meta.slot === 'Mochila'}
-                🎒
-              {:else if meta.slot === 'Elmo'}
-                🪖
-              {:else}
-                🎁
-              {/if}
+            <!-- Ícone do item -->
+            <div class="mt-[2px]">
+              <div
+                class="relative h-16 w-16 rounded-full border border-amber-400/70 bg-slate-900/90 overflow-hidden shadow-[0_0_10px_rgba(251,191,36,0.5)]"
+              >
+                {#if meta.iconSrc}
+                  <img
+                    src={meta.iconSrc}
+                    alt={meta.name}
+                    class="h-full w-full object-cover"
+                  />
+                {:else}
+                  <div
+                    class="flex h-full w-full items-center justify-center text-lg"
+                  >
+                    {slotEmoji(meta.slot)}
+                  </div>
+                {/if}
+              </div>
             </div>
 
             <div class="flex-1 min-w-0">

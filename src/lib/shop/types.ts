@@ -25,6 +25,7 @@ export type ShopItem = {
   category: Exclude<ShopCategory, 'highlight'>;
   tag?: string;
   status: ShopItemStatus;
+  iconSrc?: string;
 
   // slot de equipamento (usado pra garantir 1 item por slot)
   slot?: GearSlot;
@@ -45,6 +46,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     tag: 'Protege Streak',
     status: 'available',
     slot: 'armor',
+    iconSrc: '/art/items/cota-da-rotina.png',
   },
   {
     id: 102,
@@ -57,6 +59,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     tag: 'Protege Streak',
     status: 'available',
     slot: 'armor',
+    iconSrc: '/art/items/guarda-peito-da-perseveranca.png',
   },
   {
     id: 103,
@@ -69,6 +72,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     tag: 'Protege Streak',
     status: 'available',
     slot: 'armor',
+    iconSrc: '/art/items/armadura-do-foco-inabalável.png',
   },
   {
     id: 104,
@@ -81,6 +85,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     tag: 'Protege Streak',
     status: 'available',
     slot: 'armor',
+    iconSrc: '/art/items/placas-do-heroi-eterno.png',
   },
 
   // ---------- ESPADAS (EFICIÊNCIA / SUBTAREFAS) ----------
@@ -96,6 +101,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     tag: 'Subtarefas -1',
     status: 'available',
     slot: 'weapon',
+    iconSrc: '/art/items/espada-da-eficiencia.png',
   },
   {
     id: 106,
@@ -109,6 +115,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     tag: 'Subtarefas -2',
     status: 'available',
     slot: 'weapon',
+    iconSrc: '/art/items/lamina-da-otimizacao.png',
   },
   {
     id: 107,
@@ -122,6 +129,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     tag: 'Subtarefas -3',
     status: 'available',
     slot: 'weapon',
+    iconSrc: '/art/items/lamina-do-tempo-dobrada.png',
   },
 
   // ---------- AMULETOS (ECONOMIA / GOLD) ----------
@@ -136,6 +144,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     tag: '+5% Gold',
     status: 'available',
     slot: 'amulet',
+    iconSrc: '/art/items/amuleto-do-trocado.png',
   },
   {
     id: 109,
@@ -148,6 +157,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     tag: '+10% Gold',
     status: 'available',
     slot: 'amulet',
+    iconSrc: '/art/items/amuleto-do-cambista.png',
   },
   {
     id: 110,
@@ -160,6 +170,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     tag: '+15% Gold',
     status: 'available',
     slot: 'amulet',
+    iconSrc: '/art/items/amuleto-do-tesouro-vivo.png',
   },
   {
     id: 111,
@@ -172,6 +183,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     tag: '+20% Gold',
     status: 'available',
     slot: 'amulet',
+    iconSrc: '/art/items/reliquia-do-cofre-infinito.png',
   },
 
   // ---------- ANÉIS (BUFF DE SANTUÁRIO) ----------
@@ -186,6 +198,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     tag: '+1% Santuário',
     status: 'available',
     slot: 'ring',
+    iconSrc: '/art/items/anel-da-brisa-serena.png',
   },
   {
     id: 113,
@@ -198,6 +211,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     tag: '+3% Santuário',
     status: 'available',
     slot: 'ring',
+    iconSrc: '/art/items/anel-da-cancao-silenciosa.png',
   },
   {
     id: 114,
@@ -210,6 +224,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     tag: '+5% Santuário',
     status: 'available',
     slot: 'ring',
+    iconSrc: '/art/items/anel-do-bosque-vivo.png',
   },
   {
     id: 115,
@@ -222,6 +237,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     tag: '+10% Santuário',
     status: 'available',
     slot: 'ring',
+    iconSrc: '/art/items/anel-do-guardiao-ancestral.png',
   },
 
   // ---------- UTILITÁRIOS (MOCHILA & PROJETO) ----------
@@ -236,6 +252,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     tag: '+10 Slots',
     status: 'available',
     slot: 'bag',
+    iconSrc: '/art/items/mochila-do-aventureiro-sem-fundo.png',
   },
   {
     id: 117,
@@ -248,6 +265,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     tag: '+15% XP Projeto',
     status: 'available',
     slot: 'helm',
+    iconSrc: '/art/items/elmo-do-planejador-visionario.png',
   },
 ];
 
