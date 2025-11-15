@@ -232,11 +232,26 @@
     return `${y}-${m}-${day}`;
   }
 
+  // --- Conversão XP -> comida (deve bater com a lógica do xpService) ---
+  function getFoodRewardForXp(xp: number): number {
+    if (!xp || xp <= 0) return 0;
+
+    // Regras simples por faixa de XP:
+    if (xp <= 25) return 1;
+    if (xp <= 50) return 2;
+    if (xp <= 75) return 3;
+    if (xp <= 100) return 4;
+
+    // Acima de 100 XP, ganha 4 + 1 a cada 50 XP extras
+    return 4 + Math.floor((xp - 100) / 50);
+  }
+
   // --- Retrospectiva semanal (últimos 7 dias) — via xpLogs ---
   type WeeklyStats = {
     missions: number;
     xp: number;
     gold: number;
+    food: number;
   };
 
   function computeWeeklyStats(): WeeklyStats {
@@ -247,7 +262,7 @@
     }
 
     const today = new Date();
-    let total = 0;
+    let totalXp = 0;
 
     const start = new Date(
       today.getFullYear(),
@@ -263,10 +278,12 @@
       );
       const key = toDateKey(d);
       const dayXp = byDay[key] ?? 0;
-      total += dayXp;
+      totalXp += dayXp;
     }
 
     let missions = 0;
+    let food = 0;
+
     for (const log of xpLogs) {
       const d = parseYMD(log.date);
       if (!d) continue;
@@ -277,15 +294,20 @@
         today.getDate(),
       );
       if (dFloor >= start && dFloor <= todayFloor) {
-        if ((log.amount ?? 0) > 0) missions++;
+        const amount = log.amount ?? 0;
+        if (amount > 0) {
+          missions++;
+          // comida é considerada só para ganhos (não para logs negativos)
+          food += getFoodRewardForXp(amount);
+        }
       }
     }
 
     // Gold semanal aproximado, respeitando o multiplicador do amuleto
     const gm = goldMultiplier || 1;
-    const gold = Math.floor(Math.max(0, total) * 0.5 * gm);
+    const gold = Math.floor(Math.max(0, totalXp) * 0.5 * gm);
 
-    return { missions, xp: total, gold };
+    return { missions, xp: totalXp, gold, food };
   }
 
   const weeklyStats = $derived(computeWeeklyStats());
@@ -465,7 +487,7 @@
     rare: 'border-blue-500 text-blue-400 hover:bg-blue-950/40',
     epic: 'border-purple-500 text-purple-400 hover:bg-purple-950/40',
     legendary:
-      'border-[#ffb74d] text-[#ffb74d] hover:bg-[rgba(255,183,77,0.12)]',
+      'border-[#ffb74d] text-[#ffb74d] hover:bg[rgba(255,183,77,0.12)]',
   };
 
   function chipClass(r: Rarity): string {
@@ -956,7 +978,7 @@
     </div>
 
     <div
-      class="mt-2 grid grid-cols-3 gap-3 text-center text-xs md:mt-0 md:text-right"
+      class="mt-2 grid grid-cols-2 md:grid-cols-4 gap-3 text-center text-xs md:mt-0 md:text-right"
     >
       <div>
         <p class="text-slate-400">Missões concluídas</p>
@@ -981,6 +1003,15 @@
             alt="Gold"
             class="h-4 w-4 object-contain"
           />
+        </p>
+      </div>
+      <div>
+        <p class="text-slate-400">Comida ganha</p>
+        <p
+          class="mt-1 flex items-center justify-center gap-1 text-base font-semibold text-emerald-300 md:justify-end"
+        >
+          {weeklyStats.food}
+          <span class="text-sm">🍖</span>
         </p>
       </div>
     </div>
@@ -1252,7 +1283,7 @@
               </h3>
             </div>
 
-            <!-- Recompensas (XP + Gold) -->
+            <!-- Recompensas (XP + Gold + Comida) -->
             <div class="shrink-0 flex flex-col items-end gap-1 text-xs">
               <div class="flex items-center gap-1">
                 <img
@@ -1271,6 +1302,13 @@
                 />
                 <span class="font-semibold">
                   +{Math.floor(task.xp * 0.5 * (goldMultiplier || 1))} Gold
+                </span>
+              </div>
+
+              <div class="flex items-center gap-1 text-emerald-200">
+                <span class="text-sm">🍖</span>
+                <span class="font-semibold">
+                  +{getFoodRewardForXp(task.xp)} Comida
                 </span>
               </div>
             </div>

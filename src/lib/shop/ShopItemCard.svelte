@@ -62,7 +62,6 @@
     },
   };
 
-  // chave de raridade tipada
   const rarityKey: Rarity = item.rarity as Rarity;
   const rCfg = $derived(rarityConfig[rarityKey]);
 
@@ -70,7 +69,6 @@
 
   const buttonDisabled = $derived(isSoon || buying || (!owned && !canAfford));
 
-  // 🔧 AQUI estava o problema: agora é um expression, não função
   const buttonLabel = $derived(
     isSoon
       ? 'Em breve'
@@ -86,7 +84,6 @@
   function handleClick() {
     if (buttonDisabled) return;
     if (owned) {
-      // toggle equip/desequipar
       onEquip();
     } else {
       onBuy();
@@ -100,8 +97,8 @@
           ${rCfg.cardClass}`}
 >
   <!-- topo: nome + raridade + status -->
-  <div class="mb-2 flex items-start justify-between gap-2">
-    <div>
+  <div class="mb-2 flex items-start gap-2">
+    <div class="flex-1 text-center">
       <p class="text-[0.65rem] uppercase tracking-[0.18em] text-slate-500">
         {rCfg.label}
       </p>
@@ -130,6 +127,22 @@
       </span>
     {/if}
   </div>
+
+  <!-- Ícone do item (em cima do texto da descrição) -->
+  {#if item.iconSrc}
+    <div class="mb-3 flex justify-center">
+      <div
+        class="h-14 w-14 rounded-full border border-amber-400/70
+               bg-slate-950/90 overflow-hidden shadow-[0_0_10px_rgba(251,191,36,0.55)]"
+      >
+        <img
+          src={item.iconSrc}
+          alt={item.name}
+          class="h-full w-full object-cover"
+        />
+      </div>
+    </div>
+  {/if}
 
   <!-- descrição curta -->
   <p class="mb-3 line-clamp-2 text-[0.75rem] text-slate-400">

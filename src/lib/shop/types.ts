@@ -72,7 +72,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     tag: 'Protege Streak',
     status: 'available',
     slot: 'armor',
-    iconSrc: '/art/items/armadura-do-foco-inabalável.png',
+    iconSrc: '/art/items/armadura-do-foco-inabalavel.png',
   },
   {
     id: 104,

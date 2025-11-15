@@ -4,6 +4,7 @@
   import { liveQuery } from 'dexie';
   import { onMount } from 'svelte';
   import { getHeroModifiersOnce } from '$services/gearService';
+  import { getActiveCompanionBuffs } from '$services/companionService';
 
   // --- Props ---
   let { close, taskToEdit = null } = $props<{
@@ -29,6 +30,10 @@
   // 0 = sem espada; 1/2/3 = “subtarefas virtuais” a mais
   let rarityThresholdDelta = $state(0);
 
+  // Redução de subtarefa exigida vinda do pet (aberração)
+  // 0 = sem pet; 1/2/3 = “subtarefas virtuais” a mais
+  let petRarityReduction = $state(0);
+
   // modal não precisa reatividade na prop; ela não muda depois de aberto
   const isEditMode = taskToEdit !== null;
 
@@ -48,15 +53,15 @@
 
   /**
    * Calcula raridade a partir da quantidade de subtarefas
-   * aplicando o delta vindo da espada:
+   * aplicando o delta total:
+   *  totalDelta = delta da espada + redução do pet
    *
-   * - delta 0: thresholds normais
-   * - delta 1/2/3: cada ponto conta como uma subtarefa extra (fica mais fácil)
+   * adjusted = count + totalDelta
    *
-   * Ex.: 7 subtarefas + espada lendária (delta 3) → 10 “efetivas” → Lendária.
+   * Ex.: 4 subtarefas + espada (1) + pet (1) → adjusted = 6 → Épica.
    */
-  function rarityFromSubtaskCount(count: number, delta: number): Rarity {
-    const adjusted = Math.max(0, count + Math.max(0, delta));
+  function rarityFromSubtaskCount(count: number, totalDelta: number): Rarity {
+    const adjusted = Math.max(0, count + Math.max(0, totalDelta));
 
     if (adjusted >= 10) return 'legendary';
     if (adjusted >= 5) return 'epic';
@@ -69,8 +74,13 @@
     subtasks.map((s) => s.trim()).filter((s) => s.length > 0).length || 1,
   );
 
+  // espada + pet em um único delta
+  const totalRarityDelta = $derived(
+    (rarityThresholdDelta || 0) + (petRarityReduction || 0),
+  );
+
   const autoRarity = $derived(
-    rarityFromSubtaskCount(subtaskCount, rarityThresholdDelta),
+    rarityFromSubtaskCount(subtaskCount, totalRarityDelta),
   );
   const autoXp = $derived(rarityXp[autoRarity]);
 
@@ -96,6 +106,15 @@
       } catch (error) {
         console.error('Erro ao carregar modificadores de herói:', error);
         rarityThresholdDelta = 0;
+      }
+
+      // Carrega buffs do companheiro ativo (pet)
+      try {
+        const buffs = await getActiveCompanionBuffs();
+        petRarityReduction = buffs?.raritySubtaskReduction ?? 0;
+      } catch (error) {
+        console.error('Erro ao carregar buffs do companheiro na forja:', error);
+        petRarityReduction = 0;
       }
     })();
 
@@ -157,8 +176,8 @@
 
     const count = finalSubtasks.length || 1;
 
-    // Usa o delta da espada na conta de raridade (buff = fica mais fácil)
-    const rarity: Rarity = rarityFromSubtaskCount(count, rarityThresholdDelta);
+    // Usa delta da espada + redução do pet na conta de raridade
+    const rarity: Rarity = rarityFromSubtaskCount(count, totalRarityDelta);
     const xp = rarityXp[rarity];
 
     const now = new Date();

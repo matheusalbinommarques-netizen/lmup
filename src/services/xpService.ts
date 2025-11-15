@@ -2,6 +2,7 @@
 import { db, type Profile, type XpLog } from '$services/db';
 import { ECO_STAGES, getEcoStageForTotalXp } from '$services/ecoConfig';
 import { getHeroModifiersOnce } from '$services/gearService';
+import { getActiveCompanionBuffs } from '$services/companionService';
 
 /**
  * XP necessário para subir de N -> N+1.
@@ -149,6 +150,21 @@ export function getTitleForLevel(level: number): string {
   return LEVEL_TITLES[level] || LEVEL_TITLES[1];
 }
 
+/**
+ * Conversão XP base -> COMIDA (sem buffs, sem Santuário).
+ * Deve bater com o que é mostrado no Quadro de Missões.
+ */
+export function getFoodFromEffectiveXp(xpBase: number): number {
+  if (!xpBase || xpBase <= 0) return 0;
+
+  if (xpBase <= 25) return 1;
+  if (xpBase <= 50) return 2;
+  if (xpBase <= 75) return 3;
+  if (xpBase <= 100) return 4;
+
+  return 4 + Math.floor((xpBase - 100) / 50);
+}
+
 async function ensureProfile(): Promise<Profile> {
   let profile = await db.profile.get(1);
 
@@ -163,6 +179,7 @@ async function ensureProfile(): Promise<Profile> {
       xpNext: getXpForNextLevel(1),
       totalXpEarned: 0,
       gold: 0,
+      food: 0, // inicia sem comida
       avatarUrl: '',
       currentStreak: 0,
       lastCompletionDate: null,
@@ -171,6 +188,12 @@ async function ensureProfile(): Promise<Profile> {
       updatedAt: now,
     };
     await db.profile.add(profile);
+  } else {
+    // Garantir campo food mesmo em perfis antigos
+    if (typeof profile.food !== 'number') {
+      profile.food = 0;
+      await db.profile.update(profile.id!, { food: 0 });
+    }
   }
 
   return profile;
@@ -179,12 +202,12 @@ async function ensureProfile(): Promise<Profile> {
 /**
  * Aplica uma variação de XP (positiva ou negativa),
  * com bônus do Santuário (ajustado pelo ANEL), recalcula nível,
- * XP atual, XP do próximo nível, gold (ajustado pelo AMULETO)
+ * XP atual, XP do próximo nível,
+ * GOLD (0.5 por XP base, com buff de gold do pet + gear),
+ * COMIDA (em função do XP base da missão, com buff do companheiro),
  * e registra um XpLog com área.
  *
  * amount = XP base (antes dos bônus).
- *
- * IMPORTANTE: Streak é tratado em streakService.ts (registerTaskCompletionWithStreakProtection).
  */
 async function applyXpDelta(
   amount: number,
@@ -194,6 +217,8 @@ async function applyXpDelta(
   if (!amount || amount === 0) {
     return profile;
   }
+
+  const isPositive = amount > 0;
 
   // --- Modificadores do herói (gear equipado) ---
   let goldMultiplier = 1;
@@ -205,6 +230,31 @@ async function applyXpDelta(
     sanctuaryBonusExtraPercent = modifiers.sanctuaryBonusExtraPercent ?? 0;
   } catch (error) {
     console.error('Falha ao carregar HeroModifiers em xpService:', error);
+  }
+
+  // --- Buffs do companheiro ativo (XP / Gold / Comida / raridade) ---
+  let companionBuffs = {
+    xpBonusPercent: 0,
+    goldBonusPercent: 0,
+    foodBonusPercent: 0,
+    raritySubtaskReduction: 0,
+  };
+
+  try {
+    const buffs = await getActiveCompanionBuffs();
+    if (buffs) {
+      companionBuffs = {
+        xpBonusPercent: buffs.xpBonusPercent ?? 0,
+        goldBonusPercent: buffs.goldBonusPercent ?? 0,
+        foodBonusPercent: buffs.foodBonusPercent ?? 0,
+        raritySubtaskReduction: buffs.raritySubtaskReduction ?? 0,
+      };
+    }
+  } catch (error) {
+    console.error(
+      'Falha ao carregar buffs do companheiro em xpService:',
+      error,
+    );
   }
 
   const now = new Date();
@@ -222,28 +272,58 @@ async function applyXpDelta(
     sanctuaryBonusExtraPercent > 0 ? sanctuaryBonusExtraPercent / 100 : 0;
 
   // Exemplo: 1.05 (5% base) + 0.10 (10% do anel) = 1.15 (15% total)
-  const effectiveSanctuaryMultiplier = baseSanctuaryMultiplier + extraFromRing;
+  const sanctuaryMultiplier = baseSanctuaryMultiplier + extraFromRing;
 
-  const isPositive = amount > 0;
+  // --- Fator de buff do pet para XP (apenas ganhos) ---
+  const xpBuffFactor =
+    isPositive && companionBuffs.xpBonusPercent > 0
+      ? 1 + companionBuffs.xpBonusPercent / 100
+      : 1;
 
-  // XP efetivo considerando bônus do Santuário + Anel (apenas ganhos)
+  // XP efetivo considerando Santuário + Anel + Pet (apenas ganhos)
   const effectiveAmount =
-    isPositive && effectiveSanctuaryMultiplier > 1
-      ? Math.round(amount * effectiveSanctuaryMultiplier)
-      : amount;
+    isPositive && sanctuaryMultiplier > 1
+      ? Math.round(amount * sanctuaryMultiplier * xpBuffFactor)
+      : isPositive
+        ? Math.round(amount * xpBuffFactor)
+        : amount;
 
   const newTotal = Math.max(0, currentTotal + effectiveAmount);
 
   // --- Estado de nível baseado no XP total pós-bônus ---
   const { level, xpIntoLevel, xpForNext } = getLevelStateFromTotalXp(newTotal);
 
-  // --- Gold proporcional ao XP efetivo (0.5 por XP), ajustado pelo AMULETO ---
-  const goldBase =
-    Math.floor(Math.abs(effectiveAmount) * 0.5) *
-    (effectiveAmount >= 0 ? 1 : -1);
+  // --- Gold proporcional ao XP BASE da missão (0.5 por XP base) ---
+  // Isso garante que o valor mostrado na missão (ex: +125 Gold) seja o gold "base"
+  // antes dos buffs de pet/gear. Santuário não aumenta o gold direto.
+  const baseGoldFromXp =
+    Math.floor(Math.abs(amount) * 0.5) * (amount >= 0 ? 1 : -1);
 
-  const goldDelta = Math.round(goldBase * goldMultiplier);
+  // Buff do pet em gold (apenas ganhos)
+  const goldBuffFactor =
+    isPositive && companionBuffs.goldBonusPercent > 0
+      ? 1 + companionBuffs.goldBonusPercent / 100
+      : 1;
+
+  const goldDelta = Math.round(
+    baseGoldFromXp * goldMultiplier * goldBuffFactor,
+  );
   const currentGold = profile.gold ?? 0;
+
+  // --- Comida proporcional ao XP base da missão (sem Santuário / XP pet) ---
+  const currentFood = profile.food ?? 0;
+
+  // usa *amount* (XP bruto da missão) pra bater com a UI
+  const baseFoodDelta = isPositive ? getFoodFromEffectiveXp(amount) : 0;
+
+  const foodBuffFactor =
+    isPositive && companionBuffs.foodBonusPercent > 0
+      ? 1 + companionBuffs.foodBonusPercent / 100
+      : 1;
+
+  // arredonda pra refletir o buff do Lich/Aberração (ex.: 7 * 1.1 -> 8)
+  const foodDelta = Math.round(baseFoodDelta * foodBuffFactor);
+  const newFood = Math.max(0, currentFood + foodDelta);
 
   // --- Recompensas de Gold por avanço de estágio do Santuário ---
   const ecoMeta = profile as any;
@@ -272,6 +352,7 @@ async function applyXpDelta(
     xpNext: xpForNext,
     totalXpEarned: newTotal,
     gold: newGold,
+    food: newFood,
     title: getTitleForLevel(level),
     updatedAt: now,
   };
@@ -284,7 +365,7 @@ async function applyXpDelta(
   // --- Log de XP (positivo ou negativo) para estatísticas ---
   const log: XpLog = {
     date: dateKey,
-    amount: effectiveAmount, // loga o XP já com bônus aplicado (Santuário + Anel)
+    amount: effectiveAmount, // loga o XP já com bônus aplicado (Santuário + Anel + Pet)
     areaId,
     createdAt: now,
   };
@@ -309,7 +390,8 @@ async function removeXp(
   if (!amount || amount <= 0) {
     return ensureProfile();
   }
-  // remoção ignora bônus do santuário (amount é tratado como delta negativo)
+  // remoção ignora bônus do santuário e do pet (effectiveAmount cai no ramo negativo)
+  // e, por enquanto, não remove comida; apenas XP/Gold.
   return applyXpDelta(-amount, areaId ?? null);
 }
 
@@ -320,4 +402,5 @@ export const xpService = {
   getLevelStateFromTotalXp,
   getXpForNextLevel,
   getTitleForLevel,
+  getFoodFromEffectiveXp,
 };
