@@ -8,19 +8,12 @@ export const component = async () =>
 export { universal };
 export const universal_id = 'src/routes/+layout.ts';
 export const imports = [
-  '_app/immutable/nodes/0.zmJcXg7n.js',
-  '_app/immutable/chunks/C1kyYzkI.js',
-  '_app/immutable/chunks/BOOFhtRP.js',
-  '_app/immutable/chunks/B0kYkVBN.js',
-  '_app/immutable/chunks/Dt4_cxAB.js',
-  '_app/immutable/chunks/B0aBMHRA.js',
-  '_app/immutable/chunks/5aiaHk4R.js',
-  '_app/immutable/chunks/DG4W8TUH.js',
-  '_app/immutable/chunks/CUIkxFFA.js',
-  '_app/immutable/chunks/DXa1qAe1.js',
+  '_app/immutable/nodes/0.BDbb4ClV.js',
+  '_app/immutable/chunks/DsnmJJEf.js',
+  '_app/immutable/chunks/C4tos-D-.js',
+  '_app/immutable/chunks/BYKdWbGi.js',
+  '_app/immutable/chunks/B28y5Mvi.js',
+  '_app/immutable/chunks/BzcctPJO.js',
 ];
-export const stylesheets = [
-  '_app/immutable/assets/BottomNav.tn0RQdqM.css',
-  '_app/immutable/assets/0.Ca4sUYCK.css',
-];
+export const stylesheets = ['_app/immutable/assets/0.CEYHGvux.css'];
 export const fonts = [];

@@ -1,2 +1,4 @@
-const prerender = true;
-export { prerender };
+const load = () => {
+  return {};
+};
+export { load };

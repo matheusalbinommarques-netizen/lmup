@@ -11,11 +11,17 @@ const config = {
   },
 
   kit: {
-    adapter: adapter(),
+    adapter: adapter({
+      fallback: 'index.html',
+      strict: false,
+    }),
+
+    // ainda pode deixar o prerender entries, o adapter não vai mais quebrar
     prerender: {
       entries: ['*'],
     },
-    // CORREÇÃO: Alias para Services (o jeito SvelteKit)
+
+    // Alias para services
     alias: {
       $services: './src/services',
       '$services/*': './src/services/*',

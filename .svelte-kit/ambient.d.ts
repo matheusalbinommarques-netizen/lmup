@@ -50,6 +50,8 @@ declare module '$env/static/private' {
   export const LOGONSERVER: string;
   export const NODE: string;
   export const NODE_ENV: string;
+  export const NODE_EXE: string;
+  export const NPM_CLI_JS: string;
   export const npm_command: string;
   export const npm_config_cache: string;
   export const npm_config_globalconfig: string;
@@ -69,6 +71,8 @@ declare module '$env/static/private' {
   export const npm_package_json: string;
   export const npm_package_name: string;
   export const npm_package_version: string;
+  export const NPM_PREFIX_JS: string;
+  export const NPM_PREFIX_NPM_CLI_JS: string;
   export const NUMBER_OF_PROCESSORS: string;
   export const OneDrive: string;
   export const OneDriveCommercial: string;
@@ -93,6 +97,12 @@ declare module '$env/static/private' {
   export const SESSIONNAME: string;
   export const SystemDrive: string;
   export const SystemRoot: string;
+  export const TAURI_CLI_VERBOSITY: string;
+  export const TAURI_ENV_ARCH: string;
+  export const TAURI_ENV_FAMILY: string;
+  export const TAURI_ENV_PLATFORM: string;
+  export const TAURI_ENV_PLATFORM_VERSION: string;
+  export const TAURI_ENV_TARGET_TRIPLE: string;
   export const TEMP: string;
   export const TERM_PROGRAM: string;
   export const TERM_PROGRAM_VERSION: string;
@@ -163,6 +173,8 @@ declare module '$env/dynamic/private' {
     LOGONSERVER: string;
     NODE: string;
     NODE_ENV: string;
+    NODE_EXE: string;
+    NPM_CLI_JS: string;
     npm_command: string;
     npm_config_cache: string;
     npm_config_globalconfig: string;
@@ -182,6 +194,8 @@ declare module '$env/dynamic/private' {
     npm_package_json: string;
     npm_package_name: string;
     npm_package_version: string;
+    NPM_PREFIX_JS: string;
+    NPM_PREFIX_NPM_CLI_JS: string;
     NUMBER_OF_PROCESSORS: string;
     OneDrive: string;
     OneDriveCommercial: string;
@@ -206,6 +220,12 @@ declare module '$env/dynamic/private' {
     SESSIONNAME: string;
     SystemDrive: string;
     SystemRoot: string;
+    TAURI_CLI_VERBOSITY: string;
+    TAURI_ENV_ARCH: string;
+    TAURI_ENV_FAMILY: string;
+    TAURI_ENV_PLATFORM: string;
+    TAURI_ENV_PLATFORM_VERSION: string;
+    TAURI_ENV_TARGET_TRIPLE: string;
     TEMP: string;
     TERM_PROGRAM: string;
     TERM_PROGRAM_VERSION: string;

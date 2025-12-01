@@ -1,88 +1,47 @@
 import 'clsx';
-import '../../../chunks/db.js';
-import { z as attr_class, x as attr } from '../../../chunks/index.js';
+import {
+  y as attr_class,
+  x as attr,
+  G as clsx,
+} from '../../../chunks/index2.js';
 import { e as escape_html } from '../../../chunks/context.js';
-async function exportarDados() {
-  {
-    return;
-  }
-}
-function BaseCard($$renderer, $$props) {
-  $$renderer.component(($$renderer2) => {
-    const { $$slots, $$events, ...props } = $$props;
-    $$renderer2.push(
-      `<section${attr_class(`bg-card rounded-xl shadow-lg border border-border/60 p-6 md:p-8 space-y-4 ${props.class ?? ''}`)}>`,
-    );
-    if (props.title) {
-      $$renderer2.push('<!--[-->');
-      $$renderer2.push(
-        `<header class="flex items-center justify-between"><h2 class="text-xl font-semibold text-text">${escape_html(props.title)}</h2></header>`,
-      );
-    } else {
-      $$renderer2.push('<!--[!-->');
-    }
-    $$renderer2.push(`<!--]--> <div>`);
-    props.children?.($$renderer2);
-    $$renderer2.push(`<!----></div></section>`);
-  });
-}
-function BaseButton($$renderer, $$props) {
-  $$renderer.component(($$renderer2) => {
-    const { $$slots, $$events, ...props } = $$props;
-    const variants = {
-      primary: 'bg-primary hover:bg-primary/90 text-white',
-      secondary: 'bg-card hover:bg-card/80 text-text',
-      success: 'bg-green-600 hover:bg-green-700 text-white',
-      danger: 'bg-red-600 hover:bg-red-700 text-white',
-    };
-    const baseClasses =
-      'px-4 py-2 rounded-md font-semibold text-sm shadow-md transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50';
-    const currentVariant = props.variant ?? 'primary';
-    $$renderer2.push(
-      `<button${attr('type', props.type ?? 'button')}${attr_class(`${baseClasses} ${variants[currentVariant]}`)}${attr('disabled', props.disabled, true)}>`,
-    );
-    props.children?.($$renderer2);
-    $$renderer2.push(`<!----></button>`);
-  });
-}
 function SettingsManager($$renderer, $$props) {
   $$renderer.component(($$renderer2) => {
-    async function handleExportClick() {
-      await exportarDados();
+    let isExporting = false;
+    let isImporting = false;
+    let darkEnchantment = false;
+    let focusMode = false;
+    let largeText = false;
+    let lowStimulus = false;
+    function toggleButtonClasses(on) {
+      return [
+        'inline-flex items-center justify-center',
+        'h-9 w-9 rounded-full',
+        'transition-colors border',
+        'bg-slate-800 border-slate-600 hover:bg-slate-700',
+      ].join(' ');
     }
-    function handleImportClick() {}
-    BaseCard($$renderer2, {
-      title: 'Configurações & Backup',
-      children: ($$renderer3) => {
-        $$renderer3.push(
-          `<div class="space-y-6"><section class="space-y-2"><h3 class="text-lg font-semibold text-text">Backup de dados</h3> <p class="text-sm text-text-secondary">Exporte seus dados para um arquivo JSON ou importe um backup existente.</p> <div class="flex flex-wrap gap-3">`,
-        );
-        BaseButton($$renderer3, {
-          variant: 'secondary',
-          onclick: handleExportClick,
-          children: ($$renderer4) => {
-            $$renderer4.push(`<!---->Exportar dados`);
-          },
-          $$slots: { default: true },
-        });
-        $$renderer3.push(`<!----> `);
-        BaseButton($$renderer3, {
-          variant: 'secondary',
-          onclick: handleImportClick,
-          children: ($$renderer4) => {
-            $$renderer4.push(`<!---->Importar backup`);
-          },
-          $$slots: { default: true },
-        });
-        $$renderer3.push(
-          `<!----> <input type="file" accept="application/json" class="hidden"/></div></section></div>`,
-        );
-      },
-      $$slots: { default: true },
-    });
+    $$renderer2.push(`<section class="w-full mb-8"><div class="config-card mx-auto max-w-3xl overflow-hidden relative"><div class="pointer-events-none absolute -inset-px bg-[radial-gradient(circle_at_top,_rgba(168,85,247,0.35),_transparent_60%)] opacity-70" aria-hidden="true"></div> <div class="relative px-6 pt-6 pb-7 md:px-8 md:pt-8 md:pb-8"><header class="mb-6"><div class="relative rounded-2xl border border-violet-700/70 bg-gradient-to-r from-black via-slate-950 to-violet-950 px-4 py-4 md:px-6 md:py-5 shadow-[0_0_40px_rgba(76,29,149,0.85)]"><div class="pointer-events-none absolute inset-0 opacity-50" aria-hidden="true"><div class="absolute inset-[10px] rounded-2xl border border-violet-500/35"></div> <div class="absolute -top-10 left-1/3 h-28 w-28 rounded-full bg-violet-500/18 blur-3xl"></div> <div class="absolute -bottom-12 right-6 h-24 w-24 rounded-full bg-emerald-400/10 blur-3xl"></div></div> <div class="relative space-y-3 text-center"><h2 class="font-serif text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-violet-100 via-violet-300 to-emerald-300 bg-clip-text text-transparent drop-shadow-[0_0_22px_rgba(129,140,248,0.95)]">Cofre Arcano</h2> <div class="flex justify-center"><img src="/art/icones/icon-config.png" alt="Configurações" class="h-36 w-36 object-contain drop-shadow-[0_0_26px_rgba(139,92,246,0.9)]"/></div> <p class="mx-auto mt-1 max-w-xl text-xs text-slate-200/85">Guarde seu progresso em segurança, restaure seus dados quando
+              precisar e ative encantamentos para deixar a experiência mais
+              confortável — mesmo nas noites mais sombrias.</p></div></div></header> <div class="settings-subcard mb-6 flex flex-col gap-3 rounded-2xl border border-violet-500/60 bg-gradient-to-r from-violet-950 via-slate-900 to-slate-950 px-4 py-3 shadow-[0_0_40px_rgba(168,85,247,0.55)] md:flex-row md:items-center md:justify-between"><div class="flex items-start gap-3"><div class="mt-0.5 flex h-16 w-16 items-center justify-center rounded-full bg-violet-500/20 text-violet-200"><img src="/art/icones/encantamento-sombrio.png" alt="Encantamento sombrio" class="h-20 w-20 object-contain"/></div> <div><div class="flex items-center gap-2"><p class="text-sm font-semibold text-white">Encantamento sombrio</p> <span class="rounded-full border border-violet-400/60 bg-violet-500/10 px-2 py-[1px] text-[0.6rem] font-semibold uppercase tracking-widest text-violet-200">Visual</span></div> <p class="mt-1 text-xs text-slate-300/80 max-w-md">Uma camada extra de magia estética, deixando o reino ainda mais
+              imersivo. Por enquanto é apenas um encantamento visual interno.</p></div></div> <button type="button"${attr_class(clsx(toggleButtonClasses()))}${attr('aria-pressed', darkEnchantment)}><img src="/art/icones/oneoff.png" alt="Alternar encantamento sombrio" class="h-16 w-16 object-contain"/> <span class="sr-only">Alternar encantamento sombrio</span></button></div> <div class="space-y-4"><div class="settings-subcard flex flex-col gap-3 rounded-2xl border border-violet-500/60 bg-gradient-to-r from-violet-950 via-slate-900 to-slate-950 px-4 py-4 shadow-[0_0_40px_rgba(168,85,247,0.55)] md:flex-row md:items-center md:justify-between"><div class="flex items-start gap-3"><div class="mt-0.5 flex h-16 w-16 items-center justify-center rounded-full bg-violet-500/20 text-violet-200"><img src="/art/icones/grimorio-backup.png" alt="Grimório de backup" class="h-20 w-20 object-contain"/></div> <div><div class="flex items-center gap-2"><p class="text-sm font-semibold text-white">Grimório de backup</p> <span class="rounded-full border border-violet-400/60 bg-violet-500/10 px-2 py-[1px] text-[0.6rem] font-semibold uppercase tracking-widest text-violet-200">Raro</span></div> <p class="text-xs text-slate-300/80 max-w-md">Aprisiona as memórias do seu reino num grimório em <code>.json</code>, para que possa levar e restaurar em qualquer lugar.</p></div></div> <button type="button" class="rounded-full bg-violet-500 px-4 py-2 text-xs font-semibold text-white shadow-md hover:bg-violet-400 disabled:opacity-60"${attr('disabled', isExporting, true)}>${escape_html('Exportar dados')}</button></div> <div class="settings-subcard flex flex-col gap-3 rounded-2xl border border-emerald-500/60 bg-gradient-to-r from-emerald-900 via-emerald-800 to-slate-950 px-4 py-4 shadow-[0_0_40px_rgba(16,185,129,0.55)] md:flex-row md:items-center md:justify-between"><div class="flex items-start gap-3"><div class="mt-0.5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-200"><img src="/art/icones/ritual-restauracao.png" alt="Ritual de restauração" class="h-20 w-20 object-contain"/></div> <div><div class="flex items-center gap-2"><p class="text-sm font-semibold text-white">Ritual de restauração</p> <span class="rounded-full border border-emerald-400/60 bg-emerald-500/10 px-2 py-[1px] text-[0.6rem] font-semibold uppercase tracking-widest text-emerald-200">Épico</span></div> <p class="text-xs text-slate-300/80 max-w-md">Importe um grimório em <code>.json</code> criado por um herói, para
+                trazer de volta as memórias de seu reino, com suas áreas, missões
+                e XP.</p></div></div> <button type="button" class="rounded-full bg-emerald-500 px-4 py-2 text-xs font-semibold text-slate-950 shadow-md hover:bg-emerald-400 disabled:opacity-60"${attr('disabled', isImporting, true)}>${escape_html('Importar backup')}</button> <input type="file" accept="application/json" class="hidden"/></div> <div class="settings-subcard flex flex-col gap-3 rounded-2xl border border-sky-500/60 bg-gradient-to-r from-sky-950 via-slate-900 to-slate-950 px-4 py-4 shadow-[0_0_40px_rgba(56,189,248,0.55)] md:flex-row md:items-center md:justify-between"><div class="flex items-start gap-3"><div class="mt-0.5 flex h-16 w-16 items-center justify-center rounded-full bg-sky-500/25 text-sky-200"><img src="/art/icones/sincronia-estelar.png" alt="Sincronia estelar" class="h-20 w-20 object-contain"/></div> <div class="flex-1"><div class="flex items-center gap-2"><p class="text-sm font-semibold text-white">Sincronia estelar</p> <span class="rounded-full border border-sky-400/60 bg-sky-500/15 px-2 py-[1px] text-[0.6rem] font-semibold uppercase tracking-widest text-sky-200">Em breve</span></div> <p class="text-xs text-slate-200/85 max-w-md">Futuramente você poderá sincronizar seu reino com as estrelas e
+                o cosmos, para nunca perder o seu reino e legado de aprendizado
+                e desenvolvimento.</p></div></div> <button type="button" class="rounded-full bg-sky-500 px-4 py-2 text-xs font-semibold text-slate-950 shadow-md hover:bg-sky-400 disabled:opacity-60" disabled title="Sincronização com a nuvem será habilitada em breve">Sincronizar</button></div></div> <div class="mt-8 space-y-4"><div class="relative rounded-2xl border border-emerald-500/70 bg-gradient-to-r from-black via-emerald-950 to-slate-950 px-4 py-3 md:px-6 md:py-4 shadow-[0_0_32px_rgba(16,185,129,0.65)]"><div class="pointer-events-none absolute inset-0 opacity-40" aria-hidden="true"><div class="absolute inset-[8px] rounded-2xl border border-emerald-400/30"></div> <div class="absolute -top-8 left-1/4 h-20 w-20 rounded-full bg-emerald-400/15 blur-3xl"></div> <div class="absolute -bottom-10 right-4 h-20 w-20 rounded-full bg-lime-300/10 blur-3xl"></div></div> <div class="relative space-y-1 text-center"><h3 class="font-serif text-lg md:text-xl font-extrabold bg-gradient-to-r from-emerald-100 via-emerald-300 to-lime-300 bg-clip-text text-transparent drop-shadow-[0_0_18px_rgba(16,185,129,0.9)]">Neurodiversidade</h3> <p class="text-[0.7rem] text-slate-200/85">Ative modos especiais para reduzir estímulos, aumentar a
+              legibilidade e moldar o reino ao seu jeito.</p></div></div> <div class="space-y-3"><div class="settings-subcard flex items-center justify-between gap-3 rounded-2xl border border-emerald-500/60 bg-gradient-to-r from-emerald-900 via-slate-900 to-slate-950 px-4 py-3"><div class="space-y-1"><p class="text-[1rem] font-semibold uppercase tracking-[0.18em] bg-gradient-to-r from-emerald-100 via-emerald-300 to-lime-200 bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(16,185,129,0.8)]">Modo foco</p> <p class="text-xs text-slate-300/90 max-w-xs">Reduz distrações e animações, deixando a interface mais calma
+                para longas sessões.</p></div> <button type="button"${attr_class(clsx(toggleButtonClasses()))}${attr('aria-pressed', focusMode)}><img src="/art/icones/oneoff.png" alt="Alternar modo foco" class="h-20 w-20 object-contain"/> <span class="sr-only">Alternar modo foco</span></button></div> <div class="settings-subcard flex items-center justify-between gap-3 rounded-2xl border border-sky-500/60 bg-gradient-to-r from-sky-950 via-slate-900 to-slate-950 px-4 py-3"><div class="space-y-1"><p class="text-[1rem] font-semibold uppercase tracking-[0.18em] bg-gradient-to-r from-sky-100 via-sky-300 to-cyan-200 bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(56,189,248,0.85)]">Texto maior</p> <p class="text-xs text-slate-300/90 max-w-xs">Aumenta a legibilidade dos textos principais e labels
+                importantes pelo reino.</p></div> <button type="button"${attr_class(clsx(toggleButtonClasses()))}${attr('aria-pressed', largeText)}><img src="/art/icones/oneoff.png" alt="Alternar texto maior" class="h-20 w-20 object-contain"/> <span class="sr-only">Alternar texto maior</span></button></div> <div class="settings-subcard flex items-center justify-between gap-3 rounded-2xl border border-purple-500/60 bg-gradient-to-r from-purple-950 via-slate-900 to-slate-950 px-4 py-3"><div class="space-y-1"><p class="text-[1rem] font-semibold uppercase tracking-[0.18em] bg-gradient-to-r from-fuchsia-100 via-fuchsia-300 to-purple-200 bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(192,132,252,0.9)]">Estímulos suaves</p> <p class="text-xs text-slate-300/90 max-w-xs">Diminui brilhos e efeitos mais intensos, deixando o reino mais
+                gentil aos sentidos.</p></div> <button type="button"${attr_class(clsx(toggleButtonClasses()))}${attr('aria-pressed', lowStimulus)}><img src="/art/icones/oneoff.png" alt="Alternar estímulos suaves" class="h-20 w-20 object-contain"/> <span class="sr-only">Alternar estímulos suaves</span></button></div></div></div></div></div></section>`);
   });
 }
 function _page($$renderer) {
+  $$renderer.push(
+    `<div class="min-h-full lmup-bg-config bg-slate-950/60"><section class="space-y-4">`,
+  );
   SettingsManager($$renderer);
+  $$renderer.push(`<!----> <section class="mt-4 rounded-2xl border border-red-900/60 bg-slate-950/95 p-4 text-xs text-slate-200 shadow-2xl"><div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><div><p class="text-[0.7rem] font-semibold uppercase tracking-[0.25em] text-red-400/80">Deletar Progresso</p> <p class="mt-1 text-[0.8rem] text-slate-200/90">Aqui você joga <strong>todo</strong> o progresso salvo neste navegador
+            (perfil, áreas, missões, streak… tudo) na lata do lixo. Use apenas se
+            quiser recomeçar o seu reino do zero.</p></div> <button type="button"><img src="art/icones/trash-icon.png" alt="Lata de Lixo" class="h-20 w-20 object-contain"/></button></div></section></section></div>`);
 }
 export { _page as default };

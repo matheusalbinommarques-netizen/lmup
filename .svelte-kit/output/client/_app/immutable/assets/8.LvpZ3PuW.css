@@ -1,0 +1,7 @@
+.no-scrollbar.svelte-3ics1j::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar.svelte-3ics1j {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

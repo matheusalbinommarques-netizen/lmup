@@ -5,13 +5,31 @@ export const nodes = [
   () => import('./nodes/1'),
   () => import('./nodes/2'),
   () => import('./nodes/3'),
+  () => import('./nodes/4'),
+  () => import('./nodes/5'),
+  () => import('./nodes/6'),
+  () => import('./nodes/7'),
+  () => import('./nodes/8'),
+  () => import('./nodes/9'),
+  () => import('./nodes/10'),
+  () => import('./nodes/11'),
+  () => import('./nodes/12'),
 ];
 
 export const server_loads = [];
 
 export const dictionary = {
   '/': [2],
-  '/config': [3],
+  '/bestiario': [3],
+  '/cla': [4],
+  '/config': [5],
+  '/inventario': [6],
+  '/loja': [7],
+  '/missoes': [8],
+  '/projetos': [9],
+  '/projetos/[id]': [10],
+  '/santuario': [11],
+  '/trofeus': [12],
 };
 
 export const hooks = {

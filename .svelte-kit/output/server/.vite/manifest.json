@@ -6,23 +6,14 @@
     "isEntry": true,
     "imports": ["_internal.js", "_environment.js"]
   },
-  "_BottomNav.js": {
-    "file": "chunks/BottomNav.js",
-    "name": "BottomNav",
-    "imports": ["_index.js", "_index2.js", "_context.js"],
-    "css": ["_app/immutable/assets/BottomNav.tn0RQdqM.css"]
-  },
-  "_BottomNav.tn0RQdqM.css": {
-    "file": "_app/immutable/assets/BottomNav.tn0RQdqM.css",
-    "src": "_BottomNav.tn0RQdqM.css"
+  "_PageTitleCard.js": {
+    "file": "chunks/PageTitleCard.js",
+    "name": "PageTitleCard",
+    "imports": ["_index2.js", "_context.js"]
   },
   "_context.js": {
     "file": "chunks/context.js",
     "name": "context"
-  },
-  "_db.js": {
-    "file": "chunks/db.js",
-    "name": "db"
   },
   "_environment.js": {
     "file": "chunks/environment.js",
@@ -34,32 +25,64 @@
   },
   "_exports.js": {
     "file": "chunks/exports.js",
-    "name": "exports",
-    "imports": ["_equality.js"]
+    "name": "exports"
+  },
+  "_index-server.js": {
+    "file": "chunks/index-server.js",
+    "name": "index-server"
   },
   "_index.js": {
     "file": "chunks/index.js",
     "name": "index",
-    "imports": ["_context.js"]
+    "imports": ["_utils2.js", "_equality.js"]
   },
   "_index2.js": {
     "file": "chunks/index2.js",
     "name": "index",
-    "imports": ["_equality.js", "_exports.js", "_utils.js", "_context.js"]
+    "imports": ["_context.js"]
   },
   "_internal.js": {
     "file": "chunks/internal.js",
     "name": "internal",
-    "imports": ["_index.js", "_environment.js", "_equality.js", "_context.js"]
+    "imports": [
+      "_index2.js",
+      "_environment.js",
+      "_utils2.js",
+      "_equality.js",
+      "_context.js"
+    ]
+  },
+  "_projectService.js": {
+    "file": "chunks/projectService.js",
+    "name": "projectService",
+    "imports": ["_PageTitleCard.js", "_xpService.js"]
   },
   "_shared.js": {
     "file": "chunks/shared.js",
     "name": "shared",
     "imports": ["_utils.js"]
   },
+  "_state.svelte.js": {
+    "file": "chunks/state.svelte.js",
+    "name": "state.svelte",
+    "imports": ["_utils2.js"]
+  },
+  "_types.js": {
+    "file": "chunks/types.js",
+    "name": "types"
+  },
   "_utils.js": {
     "file": "chunks/utils.js",
     "name": "utils"
+  },
+  "_utils2.js": {
+    "file": "chunks/utils2.js",
+    "name": "utils"
+  },
+  "_xpService.js": {
+    "file": "chunks/xpService.js",
+    "name": "xpService",
+    "imports": ["_PageTitleCard.js"]
   },
   "node_modules/@sveltejs/kit/src/runtime/app/server/remote/index.js": {
     "file": "remote-entry.js",
@@ -73,7 +96,13 @@
     "name": "entries/fallbacks/error.svelte",
     "src": "node_modules/@sveltejs/kit/src/runtime/components/svelte-5/error.svelte",
     "isEntry": true,
-    "imports": ["_context.js", "_index2.js"]
+    "imports": [
+      "_context.js",
+      "_state.svelte.js",
+      "_exports.js",
+      "_utils.js",
+      "_index.js"
+    ]
   },
   "node_modules/@sveltejs/kit/src/runtime/server/index.js": {
     "file": "index.js",
@@ -84,6 +113,7 @@
       "_environment.js",
       "_exports.js",
       "_utils.js",
+      "_index.js",
       "_internal.js",
       "_shared.js"
     ]
@@ -93,8 +123,14 @@
     "name": "entries/pages/_layout.svelte",
     "src": "src/routes/+layout.svelte",
     "isEntry": true,
-    "imports": ["_BottomNav.js"],
-    "css": ["_app/immutable/assets/_layout.Ca4sUYCK.css"]
+    "imports": [
+      "_index2.js",
+      "_exports.js",
+      "_utils.js",
+      "_state.svelte.js",
+      "_context.js"
+    ],
+    "css": ["_app/immutable/assets/_layout.CqjZlegI.css"]
   },
   "src/routes/+layout.ts": {
     "file": "entries/pages/_layout.ts.js",
@@ -107,13 +143,115 @@
     "name": "entries/pages/_page.svelte",
     "src": "src/routes/+page.svelte",
     "isEntry": true,
-    "imports": ["_index.js", "_context.js", "_db.js", "_BottomNav.js"]
+    "imports": [
+      "_index2.js",
+      "_PageTitleCard.js",
+      "_xpService.js",
+      "_index-server.js",
+      "_context.js"
+    ]
+  },
+  "src/routes/bestiario/+page.svelte": {
+    "file": "entries/pages/bestiario/_page.svelte.js",
+    "name": "entries/pages/bestiario/_page.svelte",
+    "src": "src/routes/bestiario/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index2.js",
+      "_PageTitleCard.js",
+      "_index-server.js",
+      "_context.js"
+    ]
+  },
+  "src/routes/cla/+page.svelte": {
+    "file": "entries/pages/cla/_page.svelte.js",
+    "name": "entries/pages/cla/_page.svelte",
+    "src": "src/routes/cla/+page.svelte",
+    "isEntry": true,
+    "imports": ["_index2.js", "_PageTitleCard.js", "_context.js"]
   },
   "src/routes/config/+page.svelte": {
     "file": "entries/pages/config/_page.svelte.js",
     "name": "entries/pages/config/_page.svelte",
     "src": "src/routes/config/+page.svelte",
     "isEntry": true,
-    "imports": ["_db.js", "_index.js", "_context.js"]
+    "imports": ["_index2.js", "_context.js"]
+  },
+  "src/routes/inventario/+page.svelte": {
+    "file": "entries/pages/inventario/_page.svelte.js",
+    "name": "entries/pages/inventario/_page.svelte",
+    "src": "src/routes/inventario/+page.svelte",
+    "isEntry": true,
+    "imports": ["_index2.js", "_PageTitleCard.js", "_types.js", "_context.js"]
+  },
+  "src/routes/loja/+page.svelte": {
+    "file": "entries/pages/loja/_page.svelte.js",
+    "name": "entries/pages/loja/_page.svelte",
+    "src": "src/routes/loja/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index2.js",
+      "_context.js",
+      "_types.js",
+      "_PageTitleCard.js",
+      "_index-server.js"
+    ]
+  },
+  "src/routes/missoes/+page.svelte": {
+    "file": "entries/pages/missoes/_page.svelte.js",
+    "name": "entries/pages/missoes/_page.svelte",
+    "src": "src/routes/missoes/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index2.js",
+      "_PageTitleCard.js",
+      "_xpService.js",
+      "_context.js"
+    ],
+    "css": ["_app/immutable/assets/_page.LvpZ3PuW.css"]
+  },
+  "src/routes/projetos/+page.svelte": {
+    "file": "entries/pages/projetos/_page.svelte.js",
+    "name": "entries/pages/projetos/_page.svelte",
+    "src": "src/routes/projetos/+page.svelte",
+    "isEntry": true,
+    "imports": ["_index2.js", "_PageTitleCard.js", "_projectService.js"]
+  },
+  "src/routes/projetos/[id]/+page.svelte": {
+    "file": "entries/pages/projetos/_id_/_page.svelte.js",
+    "name": "entries/pages/projetos/_id_/_page.svelte",
+    "src": "src/routes/projetos/[id]/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index2.js",
+      "_PageTitleCard.js",
+      "_projectService.js",
+      "_context.js"
+    ]
+  },
+  "src/routes/projetos/[id]/+page.ts": {
+    "file": "entries/pages/projetos/_id_/_page.ts.js",
+    "name": "entries/pages/projetos/_id_/_page.ts",
+    "src": "src/routes/projetos/[id]/+page.ts",
+    "isEntry": true
+  },
+  "src/routes/santuario/+page.svelte": {
+    "file": "entries/pages/santuario/_page.svelte.js",
+    "name": "entries/pages/santuario/_page.svelte",
+    "src": "src/routes/santuario/+page.svelte",
+    "isEntry": true,
+    "imports": ["_index2.js", "_PageTitleCard.js", "_context.js"]
+  },
+  "src/routes/trofeus/+page.svelte": {
+    "file": "entries/pages/trofeus/_page.svelte.js",
+    "name": "entries/pages/trofeus/_page.svelte",
+    "src": "src/routes/trofeus/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index2.js",
+      "_PageTitleCard.js",
+      "_xpService.js",
+      "_context.js"
+    ]
   }
 }
