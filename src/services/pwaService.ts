@@ -50,12 +50,18 @@ function ask(
 }
 async function inspectWaiting() {
   waitingWorker = registration?.waiting ?? null;
-  if (!waitingWorker) {
+  const worker = waitingWorker;
+  if (!worker || worker.state !== 'installed') {
     patch({ waiting: false });
     return;
   }
   try {
-    const meta = await ask(waitingWorker, { type: 'LMU_META' });
+    const meta = await ask(worker, { type: 'LMU_META' });
+    if (registration?.waiting !== worker || worker.state !== 'installed') {
+      waitingWorker = null;
+      patch({ waiting: false });
+      return;
+    }
     patch({
       waiting: true,
       compatible:
@@ -63,7 +69,10 @@ async function inspectWaiting() {
       version: meta.version,
     });
   } catch {
-    patch({ waiting: true, compatible: false });
+    const stillWaiting =
+      registration?.waiting === worker && worker.state === 'installed';
+    patch({ waiting: stillWaiting, compatible: !stillWaiting });
+    if (!stillWaiting) waitingWorker = null;
   }
 }
 export async function applyUpdate() {
@@ -189,7 +198,10 @@ export function initializePwa() {
   };
   const changed = () => {
     if (get(updateLocked)) location.reload();
-    else void confirmActive();
+    else {
+      void confirmActive();
+      void inspectWaiting();
+    }
   };
   navigator.serviceWorker?.addEventListener('message', message);
   navigator.serviceWorker?.addEventListener('controllerchange', changed);
@@ -204,7 +216,8 @@ export function initializePwa() {
         const observe = (worker: ServiceWorker | null) => {
           if (!worker) return;
           const state = () => {
-            if (worker.state === 'installed') void inspectWaiting();
+            if (worker.state === 'installed' || worker.state === 'activated')
+              void inspectWaiting();
             if (worker.state === 'redundant')
               patch({
                 message:

@@ -259,6 +259,12 @@ test('manifesto e controles de instalação oferecem caminho suportado e proteç
   await expect(
     page.getByText(/O conteúdo essencial está disponível offline/),
   ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Atualizar agora', exact: true }),
+  ).not.toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Atualizar aplicativo', exact: true }),
+  ).not.toBeVisible();
   await page.evaluate(() => {
     const event = new Event('beforeinstallprompt', { cancelable: true });
     Object.assign(event, {
