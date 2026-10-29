@@ -16,6 +16,7 @@
   const extras = [
     { href: '/perfil', label: 'Perfil e equipamentos' },
     { href: '/config', label: 'Configurações e backup' },
+    { href: '/revisoes', label: 'Revisões e sessões' },
     { href: '/arquivo/missoes', label: 'Organização avançada de missões' },
     { href: '/santuario', label: 'Santuário' },
     { href: '/bestiario', label: 'Companheiros' },
@@ -28,7 +29,11 @@
     const path = page.url.pathname;
     if (href === '/') return path === '/' || path.startsWith('/missao/');
     if (href === '/missoes')
-      return path.startsWith('/missoes') || path.startsWith('/arquivo/missoes');
+      return (
+        path.startsWith('/missoes') ||
+        path.startsWith('/arquivo/missoes') ||
+        path === '/revisoes'
+      );
     if (href === '/refugio')
       return [
         '/refugio',

@@ -66,8 +66,7 @@
       name: 'Espada da Eficiência',
       slot: 'Arma',
       rarity: 'rare',
-      shortEffect:
-        'Reduz em 1 a quantidade de subtarefas para missões de alta raridade.',
+      shortEffect: '+5% de XP em missões e revisões.',
       iconSrc: '/art/items/espada-da-eficiencia.png',
     },
     {
@@ -75,8 +74,7 @@
       name: 'Lâmina da Otimização',
       slot: 'Arma',
       rarity: 'epic',
-      shortEffect:
-        'Reduz em 2 a quantidade de subtarefas para missões de alta raridade.',
+      shortEffect: '+10% de XP em missões e revisões.',
       iconSrc: '/art/items/lamina-da-otimizacao.png',
     },
     {
@@ -84,8 +82,7 @@
       name: 'Lâmina do Tempo Dobrada',
       slot: 'Arma',
       rarity: 'legendary',
-      shortEffect:
-        'Reduz em 3 a quantidade de subtarefas para missões de alta raridade.',
+      shortEffect: '+15% de XP em missões e revisões.',
       iconSrc: '/art/items/lamina-do-tempo-dobrada.png',
     },
 
@@ -171,7 +168,7 @@
       name: 'Elmo do Planejador Visionário',
       slot: 'Elmo',
       rarity: 'legendary',
-      shortEffect: '+15% de XP ao concluir um projeto.',
+      shortEffect: 'Bônus de projeto: 10% → 25% (mais 15 pontos percentuais).',
       iconSrc: '/art/items/elmo-do-planejador-visionario.png',
     },
   ];
@@ -248,10 +245,10 @@
         return '+15% de Gold ganho em missões.';
       }
       case 4: {
-        // Aberração → XP + Gold + Comida + redução de tasks no lvl 3
+        // Aberração → XP + Gold + Comida
         if (stage === 1) return '+5% de XP, Gold e Comida.';
         if (stage === 2) return '+10% de XP, Gold e Comida.';
-        return '+15% de XP, Gold e Comida e redução na quantidade de tarefas exigidas em sistemas avançados.';
+        return '+20% de XP e +15% de Gold e Comida.';
       }
       default:
         return 'Bônus não definido.';
@@ -580,17 +577,12 @@
           </li>
         {/if}
 
-        {#if modifiers.rarityThresholdDelta > 0}
-          <li>
-            • Missões precisam de
-            <span class="font-semibold text-emerald-300">
-              menos {modifiers.rarityThresholdDelta} passo(s)
-            </span>
-            para subir de raridade (facilita chegar em épico/lendário).
-          </li>
-        {/if}
+        {#if (modifiers.taskXpBonusPercent ?? 0) > 0}<li>
+            • Missões e revisões recebem +{modifiers.taskXpBonusPercent}% de XP.
+            Os passos continuam sendo apenas organização.
+          </li>{/if}
 
-        {#if !(modifiers.streakProtectionDays > 0 || modifiers.goldMultiplier !== 1 || modifiers.sanctuaryBonusExtraPercent > 0 || modifiers.projectBonusExtraFraction > 0 || modifiers.rarityThresholdDelta > 0)}
+        {#if !(modifiers.streakProtectionDays > 0 || modifiers.goldMultiplier !== 1 || modifiers.sanctuaryBonusExtraPercent > 0 || modifiers.projectBonusExtraFraction > 0 || (modifiers.taskXpBonusPercent ?? 0) > 0)}
           <li class="text-slate-400">
             Nenhum bônus especial ativo no momento. Experimente comprar e
             equipar artefatos na Loja.

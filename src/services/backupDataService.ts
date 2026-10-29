@@ -9,6 +9,8 @@ import {
 } from './db';
 import { createDefaultProfile, initializeJourney } from './profileService';
 import { invalidateHeroModifiersCache } from './gearService';
+import { calendarDate } from './calendar';
+import { effortDefinition, type Effort } from './effort';
 
 export const BACKUP_LIMIT = 25 * 1024 * 1024;
 const tableNames = [...Object.keys(LEGACY_STORES), 'activityEvents'];
@@ -20,6 +22,16 @@ export interface JourneyBackup {
 
 function fail(message: string): never {
   throw new Error(`Backup inválido: ${message}`);
+}
+function calendar(value: unknown, label: string) {
+  if (value == null) return;
+  if (typeof value !== 'string' && !(value instanceof Date))
+    fail(`${label} inválida.`);
+  try {
+    calendarDate(value as string | Date);
+  } catch {
+    fail(`${label} inválida.`);
+  }
 }
 function object(value: unknown, label: string): Row {
   if (
@@ -156,6 +168,25 @@ export function validateBackup(input: unknown): JourneyBackup {
       integer(task.completionRevision, 'tasks.completionRevision');
     if (task.notesRevision != null)
       integer(task.notesRevision, 'tasks.notesRevision');
+    if (task.definitionRevision != null)
+      integer(task.definitionRevision, 'tasks.definitionRevision');
+    for (const key of ['reviewDueDate', 'lastReviewDate'])
+      calendar(task[key], `tasks.${key}`);
+    if (task.effort != null) {
+      if (!['small', 'medium', 'large', 'deep'].includes(task.effort))
+        fail('esforço inválido.');
+      const definition = effortDefinition(task.effort as Effort);
+      if (task.xp !== definition.xp || task.rarity !== definition.rarity)
+        fail('esforço e recompensa não correspondem.');
+    }
+    if (task.projectStageId != null) {
+      const project = lists.projects.find((item) => item.id === task.projectId);
+      if (
+        !Array.isArray(project?.stages) ||
+        !project.stages.some((stage: Row) => stage.id === task.projectStageId)
+      )
+        fail('etapa de projeto inexistente.');
+    }
     if (
       task.executionNotes != null &&
       (typeof task.executionNotes !== 'string' ||
@@ -182,7 +213,12 @@ export function validateBackup(input: unknown): JourneyBackup {
         task.creationKey.length > 100)
     )
       fail('identificador de criação inválido.');
-    date(task.reviewSession, 'tasks.reviewSession', true);
+    if (
+      task.reviewSession != null &&
+      (typeof task.reviewSession !== 'string' ||
+        task.reviewSession.length > 160)
+    )
+      fail('identificador de sessão inválido.');
     if (
       task.completedSubtasks != null &&
       (!Array.isArray(task.completedSubtasks) ||
@@ -213,6 +249,30 @@ export function validateBackup(input: unknown): JourneyBackup {
     )
       fail('status de projeto inválido.');
     date(project.targetDate, 'projects.targetDate', true);
+    calendar(project.targetDate, 'projects.targetDate');
+    if (project.revision != null)
+      integer(project.revision, 'projects.revision');
+    if (project.rewardPolicy != null && project.rewardPolicy !== 'effort-v1')
+      fail('política de projeto desconhecida.');
+    if (
+      project.creationKey != null &&
+      (typeof project.creationKey !== 'string' ||
+        !project.creationKey ||
+        project.creationKey.length > 100)
+    )
+      fail('identificador de projeto inválido.');
+    if (project.stages != null) {
+      if (!Array.isArray(project.stages) || project.stages.length > 50)
+        fail('etapas inválidas.');
+      const ids = new Set();
+      for (const raw of project.stages) {
+        const stage = object(raw, 'etapa');
+        text(stage.id, 'etapa.id');
+        text(stage.title, 'etapa.title');
+        if (ids.has(stage.id)) fail('etapas duplicadas.');
+        ids.add(stage.id);
+      }
+    }
     if (
       project.rewardGranted != null &&
       typeof project.rewardGranted !== 'boolean'
@@ -281,6 +341,34 @@ export function validateBackup(input: unknown): JourneyBackup {
     date(event.occurredAt, 'activityEvents.occurredAt');
     date(event.date, 'activityEvents.date');
     date(event.reversedAt, 'activityEvents.reversedAt', true);
+    if (
+      event.reviewOutcome != null &&
+      !['recalled', 'partial', 'again'].includes(event.reviewOutcome)
+    )
+      fail('resultado da revisão inválido.');
+    if (event.reviewStateBefore != null) {
+      const state = object(event.reviewStateBefore, 'reviewStateBefore');
+      if (typeof state.completed !== 'boolean')
+        fail('estado anterior da revisão inválido.');
+      if (
+        state.status != null &&
+        !['available', 'todo', 'completed'].includes(state.status)
+      )
+        fail('status anterior inválido.');
+      for (const key of ['completedAt', 'reviewStartedAt'])
+        date(state[key], `reviewStateBefore.${key}`, true);
+      for (const key of ['reviewDueDate', 'lastReviewDate'])
+        calendar(state[key], `reviewStateBefore.${key}`);
+      if (state.completionEventId != null) {
+        const prior = byId.get(state.completionEventId);
+        if (
+          !prior ||
+          prior.taskId !== event.taskId ||
+          !['task', 'review'].includes(prior.kind)
+        )
+          fail('origem anterior da revisão inválida.');
+      }
+    }
     if (!Number.isSafeInteger(event.baseXp))
       fail('XP base de evento inválido.');
     const reward = object(event.reward, 'activityEvents.reward');

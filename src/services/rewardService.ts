@@ -54,7 +54,7 @@ export async function grantReward(input: {
     const mods = await buildHeroModifiersFromOwned();
     const buffs = await getActiveCompanionBuffs();
     const { xp, gold, food, total, modifiers, awarded, ecoClaimedBefore } =
-      calculateReward(input.baseXp, profile, mods, buffs);
+      calculateReward(input.baseXp, profile, mods, buffs, input.kind);
     const now = new Date();
     const isExecution = input.kind === 'task' || input.kind === 'review';
     const event: ActivityEvent = {
@@ -283,6 +283,7 @@ export function calculateReward(
   profile: Profile,
   mods: HeroModifiers,
   buffs: CompanionBuffs | null,
+  kind: ActivityKind = 'task',
 ) {
   if (!Number.isSafeInteger(baseXp) || baseXp <= 0)
     throw new Error('A recompensa precisa ter XP inteiro e positivo.');
@@ -292,7 +293,10 @@ export function calculateReward(
   const modifiers = {
     xpMultiplier:
       (sanctuary + mods.sanctuaryBonusExtraPercent / 100) *
-      (1 + (buffs?.xpBonusPercent ?? 0) / 100),
+      (1 + (buffs?.xpBonusPercent ?? 0) / 100) *
+      (kind === 'task' || kind === 'review'
+        ? 1 + (mods.taskXpBonusPercent ?? 0) / 100
+        : 1),
     goldMultiplier:
       mods.goldMultiplier * (1 + (buffs?.goldBonusPercent ?? 0) / 100),
     foodMultiplier: 1 + (buffs?.foodBonusPercent ?? 0) / 100,

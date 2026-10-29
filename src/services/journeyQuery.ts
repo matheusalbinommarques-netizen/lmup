@@ -1,3 +1,4 @@
+import { isAvailable } from './journeyService';
 import { db } from './db';
 import { liveQuery } from 'dexie';
 import { buildHeroModifiersFromOwned } from './gearService';
@@ -24,7 +25,8 @@ export async function readJourneySnapshot() {
         ? eventsById.get(task.completionEventId)
         : undefined;
       const recorded = candidate?.reversedAt ? undefined : candidate;
-      if (recorded && task.completed) rewards[task.id!] = recorded.reward;
+      if (recorded && task.completed && !isAvailable(task))
+        rewards[task.id!] = recorded.reward;
       else if (profile) {
         try {
           rewards[task.id!] = calculateReward(task.xp, profile, mods, buffs);
@@ -33,7 +35,17 @@ export async function readJourneySnapshot() {
         }
       }
     }
-    return { profile, tasks, areas, projects, events, companion, rewards };
+    return {
+      profile,
+      tasks,
+      areas,
+      projects,
+      events,
+      companion,
+      rewards,
+      mods,
+      buffs,
+    };
   });
 }
 export function journeyQuery() {

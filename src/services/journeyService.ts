@@ -1,7 +1,7 @@
 import { db, type Task } from './db';
 import { dateKey } from './rewardService';
-import { buildHeroModifiersFromOwned } from './gearService';
-import { getActiveCompanionBuffs } from './companionService';
+import { saveTaskDefinition } from './taskDefinitionService';
+import { reviewDueDate } from './reviewRules';
 
 export function taskSteps(task: Task) {
   return (task.subtasks ?? [])
@@ -12,14 +12,8 @@ export function isAvailable(task: Task, now = new Date()): boolean {
   if (task.archived) return false;
   if (!task.reviewEnabled)
     return !task.completed && task.status !== 'completed';
-  const base = new Date(task.reviewStartedAt ?? task.createdAt);
   return (
-    now >=
-    new Date(
-      base.getFullYear(),
-      base.getMonth(),
-      base.getDate() + (task.reviewIntervalDays ?? 7),
-    )
+    task.lastReviewDate !== dateKey(now) && reviewDueDate(task) <= dateKey(now)
   );
 }
 export function selectNext(tasks: Task[], today = dateKey()) {
@@ -72,83 +66,7 @@ async function editable(id: number) {
   return task;
 }
 
-export async function createQuickTask(input: {
-  title: string;
-  requestId: string;
-  steps?: string[];
-  description?: string;
-  projectId?: number | null;
-  areaId?: number;
-  planToday?: boolean;
-  heroName?: string;
-}): Promise<number> {
-  const title = input.title.trim();
-  if (!input.requestId || input.requestId.length > 100)
-    throw new Error('Identificador de criação inválido. Reabra o formulário.');
-  if (!title || title.length > 160)
-    throw new Error('Escreva um título de até 160 caracteres.');
-  const steps = (input.steps ?? []).map((step) => step.trim()).filter(Boolean);
-  if (steps.length > 100 || steps.some((step) => step.length > 500))
-    throw new Error('Use até 100 passos, com até 500 caracteres cada.');
-  if ((input.description?.length ?? 0) > 10000)
-    throw new Error('A descrição precisa ter até 10 mil caracteres.');
-  return db.transaction(
-    'rw',
-    [
-      db.tasks,
-      db.profile,
-      db.projects,
-      db.areas,
-      db.ownedShopItems,
-      db.companions,
-    ],
-    async () => {
-      const previous = await db.tasks
-        .filter((task) => task.creationKey === input.requestId)
-        .first();
-      if (previous?.id) return previous.id;
-      if (input.projectId && !(await db.projects.get(input.projectId)))
-        throw new Error('O projeto não está mais disponível.');
-      if (input.areaId && !(await db.areas.get(input.areaId)))
-        throw new Error('A área não está mais disponível.');
-      const mods = await buildHeroModifiersFromOwned();
-      const buffs = await getActiveCompanionBuffs();
-      const count =
-        Math.max(1, steps.length) +
-        mods.rarityThresholdDelta +
-        (buffs?.raritySubtaskReduction ?? 0);
-      const rarity =
-        count >= 10
-          ? 'legendary'
-          : count >= 5
-            ? 'epic'
-            : count >= 3
-              ? 'rare'
-              : 'common';
-      const now = new Date();
-      const id = await db.tasks.add({
-        title,
-        subtasks: steps,
-        description: input.description?.trim() ?? '',
-        xp: { common: 50, rare: 100, epic: 250, legendary: 500 }[rarity],
-        rarity,
-        areaId: input.areaId ?? 0,
-        projectId: input.projectId ?? null,
-        completed: false,
-        status: 'available',
-        createdAt: now,
-        updatedAt: now,
-        creationKey: input.requestId,
-        plannedDate: input.planToday ? dateKey() : null,
-      });
-      if (input.heroName?.trim())
-        await db.profile.update(1, {
-          name: input.heroName.trim().slice(0, 80),
-        });
-      return id;
-    },
-  );
-}
+export const createQuickTask = saveTaskDefinition;
 export async function planTask(id: number, selected: boolean) {
   await db.transaction('rw', db.tasks, async () => {
     await editable(id);
@@ -172,14 +90,21 @@ export async function beginTask(id: number) {
       throw new Error(
         'Esta missão já foi concluída ou a revisão ainda não está disponível.',
       );
-    const session = new Date(
-      task.reviewStartedAt ?? task.createdAt,
-    ).toISOString();
+    const base = new Date(task.reviewStartedAt ?? task.createdAt).toISOString();
+    const session = `${base}:${task.completionRevision ?? 0}`;
+    const legacyInProgress =
+      task.reviewSession === base &&
+      ['active', 'paused'].includes(task.executionState ?? '');
     await db.tasks.update(id, {
       executionState: 'active',
       updatedAt: new Date(),
-      ...(task.reviewEnabled && task.reviewSession !== session
-        ? { completedSubtasks: [], reviewSession: session }
+      ...(task.reviewEnabled
+        ? {
+            ...(task.reviewSession !== session && !legacyInProgress
+              ? { completedSubtasks: [] }
+              : {}),
+            reviewSession: session,
+          }
         : {}),
     });
   });

@@ -185,7 +185,7 @@
         // Aberração → 3 recursos + redução de tasks no lvl 3
         if (stage === 1) return '+5% de XP, Gold e Comida.';
         if (stage === 2) return '+10% de XP, Gold e Comida.';
-        return '+15% de XP, Gold e Comida e redução na quantidade de tarefas exigidas em sistemas avançados.';
+        return '+20% de XP e +15% de Gold e Comida.';
       }
       default:
         return 'Bônus não definido.';

@@ -9,7 +9,8 @@ export type HeroModifiers = {
   sanctuaryBonusExtraPercent: number; // bônus extra (%) no multiplicador do Santuário
   inventoryExtraSlots: number; // slots extras no inventário visual
   projectBonusExtraFraction: number; // fração extra (0.1 = +10%) em bônus de projeto
-  rarityThresholdDelta: number; // desloca limiares de raridade por subtarefas
+  rarityThresholdDelta: number; // campo legado, mantido em zero
+  taskXpBonusPercent?: number;
 };
 
 const BASE_MODIFIERS: HeroModifiers = {
@@ -19,6 +20,7 @@ const BASE_MODIFIERS: HeroModifiers = {
   inventoryExtraSlots: 0,
   projectBonusExtraFraction: 0,
   rarityThresholdDelta: 0,
+  taskXpBonusPercent: 0,
 };
 
 /**
@@ -41,15 +43,15 @@ function applyItem(mods: HeroModifiers, item: ShopItem): void {
       mods.streakProtectionDays += 5;
       break;
 
-    // ----- ESPADAS: redução de subtarefas para raridade alta -----
+    // ----- ESPADAS: XP em missões e revisões -----
     case 'gear-sword-efficiency':
-      mods.rarityThresholdDelta += 1;
+      mods.taskXpBonusPercent = 5;
       break;
     case 'gear-sword-optimization':
-      mods.rarityThresholdDelta += 2;
+      mods.taskXpBonusPercent = 10;
       break;
     case 'gear-sword-time-bent':
-      mods.rarityThresholdDelta += 3;
+      mods.taskXpBonusPercent = 15;
       break;
 
     // ----- AMULETOS: bônus de Gold -----
@@ -88,7 +90,7 @@ function applyItem(mods: HeroModifiers, item: ShopItem): void {
     // ----- ELMO (bônus de projeto) -----
     // AQUI é onde o Elmo do Planejador Visionário entra:
     case 'gear-helm-visionary-planner':
-      // +15% em cima do bônus de projeto da dificuldade
+      // +15 pontos percentuais no bônus base de projeto
       mods.projectBonusExtraFraction += 0.15;
       break;
 

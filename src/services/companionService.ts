@@ -292,11 +292,6 @@ export type CompanionBuffs = {
   xpBonusPercent?: number;
   goldBonusPercent?: number;
   foodBonusPercent?: number;
-  /**
-   * Número de "subtarefas virtuais" extras
-   * usadas para calcular a raridade das missões.
-   */
-  raritySubtaskReduction?: number;
 };
 
 /**
@@ -334,16 +329,14 @@ function getCompanionBuffsForState(
 
     case 'aberration': {
       // Aberração:
-      //  - lvl 1 → 5% xp/gold/comida, 0 redução
-      //  - lvl 2 → 10% xp/gold/comida, 0 redução
-      //  - lvl 3 → 15% xp/gold/comida, 1 subtask a menos
-      const rarityReduction = stage === 3 ? 1 : 0;
+      //  - lvl 1 → 5% xp/gold/comida
+      //  - lvl 2 → 10% xp/gold/comida
+      //  - lvl 3 → 20% xp e 15% gold/comida
 
       return {
-        xpBonusPercent: percent,
+        xpBonusPercent: percent + (stage === 3 ? 5 : 0),
         goldBonusPercent: percent,
         foodBonusPercent: percent,
-        raritySubtaskReduction: rarityReduction,
       };
     }
 

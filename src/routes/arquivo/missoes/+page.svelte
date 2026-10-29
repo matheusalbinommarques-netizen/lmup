@@ -10,6 +10,9 @@
   import { liveQuery } from 'dexie';
   import { onMount } from 'svelte';
   import { completeTask, undoTask } from '$services/taskService';
+  import ReviewForm from '$lib/journey/ReviewForm.svelte';
+  import { reviewDueDate } from '$services/reviewRules';
+  import { isAvailable } from '$services/journeyService';
   import { buildHeroModifiersFromOwned } from '$services/gearService';
   import { getActiveCompanionBuffs } from '$services/companionService';
   import { calculateReward } from '$services/rewardService';
@@ -336,58 +339,15 @@
     nextReviewDate: Date;
   };
 
-  const REVIEW_PRESETS = [1, 3, 7, 14, 30];
-
   let reviewConfigTask = $state<Task | null>(null);
-  let reviewIntervalDraft = $state<number>(7);
-
-  function isReviewEnabled(task: Task | null | undefined): boolean {
-    if (!task) return false;
-    return (task as any).reviewEnabled === true;
+  let reviewDialogOpen = $state(false);
+  function isReviewEnabled(task: Task | null | undefined) {
+    return !!task?.reviewEnabled;
   }
-
   function openReviewConfig(task: Task) {
     reviewConfigTask = task;
-    const anyTask = task as any;
-    const currentInterval = Number(anyTask.reviewIntervalDays ?? 7);
-    reviewIntervalDraft = REVIEW_PRESETS.includes(currentInterval)
-      ? currentInterval
-      : 7;
+    reviewDialogOpen = true;
   }
-
-  function closeReviewConfig() {
-    reviewConfigTask = null;
-  }
-
-  async function confirmReviewConfig() {
-    if (!reviewConfigTask?.id) {
-      reviewConfigTask = null;
-      return;
-    }
-
-    const now = new Date();
-
-    await db.tasks.update(reviewConfigTask.id, {
-      reviewEnabled: true,
-      reviewIntervalDays: reviewIntervalDraft,
-      reviewStartedAt: now,
-    } as any);
-
-    reviewConfigTask = null;
-  }
-
-  async function clearReview(task: Task | null) {
-    if (!task?.id) return;
-
-    await db.tasks.update(task.id, {
-      reviewEnabled: false,
-      reviewIntervalDays: null,
-      reviewStartedAt: null,
-    } as any);
-
-    reviewConfigTask = null;
-  }
-
   function computeReviewMissions(): ReviewMission[] {
     const list: ReviewMission[] = [];
 
@@ -399,18 +359,8 @@
       const interval = Number(anyTask.reviewIntervalDays ?? 0);
       if (!interval || interval <= 0) continue;
 
-      const startedRaw = anyTask.reviewStartedAt ?? task.createdAt;
-      if (!startedRaw) continue;
-
-      const started =
-        startedRaw instanceof Date ? startedRaw : new Date(startedRaw as any);
-      if (isNaN(started.getTime())) continue;
-
-      const nextReview = new Date(
-        started.getFullYear(),
-        started.getMonth(),
-        started.getDate() + interval,
-      );
+      const [year, month, day] = reviewDueDate(task).split('-').map(Number);
+      const nextReview = new Date(year, month - 1, day);
 
       list.push({
         task,
@@ -439,12 +389,6 @@
     if (!snapshot.length) return;
 
     const today = new Date();
-    const todayFloor = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate(),
-    );
-
     for (const task of snapshot) {
       if (!task.id) continue;
       const anyTask = task as any;
@@ -454,21 +398,10 @@
       const interval = Number(anyTask.reviewIntervalDays ?? 0);
       if (!interval || interval <= 0) continue;
 
-      const baseRaw = anyTask.reviewStartedAt ?? task.createdAt;
-      if (!baseRaw) continue;
-      const base = baseRaw instanceof Date ? baseRaw : new Date(baseRaw as any);
-      if (isNaN(base.getTime())) continue;
-
-      const due = new Date(
-        base.getFullYear(),
-        base.getMonth(),
-        base.getDate() + interval,
-      );
-
       const status = getTaskStatus(task);
       if (status === 'todo') continue;
 
-      if (due <= todayFloor && status === 'available') {
+      if (isAvailable(task, today) && status === 'available') {
         await db.tasks.update(task.id, {
           status: 'todo',
         } as any);
@@ -771,87 +704,10 @@
   <AddTaskModal {taskToEdit} close={closeModal} />
 {/if}
 
-<!-- Modal de configuração de revisão -->
-{#if reviewConfigTask}
-  <div
-    class="fixed inset-0 z-40 flex items-center justify-center bg-black/60 px-4"
-  >
-    <div
-      class="w-full max-w-sm rounded-2xl border border-sky-500/70 bg-slate-950 px-4 py-4 shadow-[0_0_28px_rgba(56,189,248,0.7)]"
-    >
-      <header class="mb-3 flex items-start justify-between gap-3">
-        <div>
-          <p class="text-[0.65rem] uppercase tracking-[0.22em] text-sky-300/80">
-            Configurar revisão
-          </p>
-          <h3 class="mt-1 text-sm font-semibold text-slate-100 line-clamp-2">
-            {reviewConfigTask.title}
-          </h3>
-        </div>
-        <button
-          type="button"
-          class="rounded-full p-1 text-slate-400 hover:text-slate-100 hover:bg-slate-800"
-          onclick={closeReviewConfig}
-          aria-label="Fechar"
-        >
-          ✕
-        </button>
-      </header>
-
-      <p class="text-xs text-slate-400 mb-3">
-        De quanto em quanto tempo você quer revisar esta missão?
-      </p>
-
-      <div class="mb-4 flex flex-wrap gap-2">
-        {#each REVIEW_PRESETS as days (days)}
-          <button
-            type="button"
-            class={`rounded-full px-3 py-1.5 text-xs border transition-colors ${
-              reviewIntervalDraft === days
-                ? 'border-sky-400 bg-sky-500/20 text-sky-100'
-                : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-sky-400/80 hover:text-sky-100'
-            }`}
-            onclick={() => (reviewIntervalDraft = days)}
-          >
-            {days}
-            {days === 1 ? ' dia' : ' dias'}
-          </button>
-        {/each}
-      </div>
-
-      <div class="flex items-center justify-between gap-2 text-xs">
-        {#if isReviewEnabled(reviewConfigTask)}
-          <button
-            type="button"
-            class="text-[0.7rem] text-slate-500 hover:text-red-400"
-            onclick={() => clearReview(reviewConfigTask)}
-          >
-            Remover revisão
-          </button>
-        {:else}
-          <span></span>
-        {/if}
-
-        <div class="flex gap-2">
-          <button
-            type="button"
-            class="rounded-lg px-3 py-1.5 bg-slate-800 text-slate-200 hover:bg-slate-700"
-            onclick={closeReviewConfig}
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            class="rounded-lg px-3 py-1.5 bg-sky-500 text-slate-950 font-semibold hover:bg-sky-400"
-            onclick={confirmReviewConfig}
-          >
-            Salvar
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-{/if}
+{#if reviewConfigTask}<ReviewForm
+    bind:open={reviewDialogOpen}
+    task={reviewConfigTask}
+  />{/if}
 
 <div class="flex flex-col gap-6">
   <PageTitleCard

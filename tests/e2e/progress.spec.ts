@@ -22,8 +22,10 @@ test('primeiro acesso cria perfil; duas abas não duplicam conclusão; estorno p
     page.getByRole('heading', { name: 'Quadro de Missões', exact: true }),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Nova Missão' }).click();
-  await page.getByLabel('Título da Missão').fill('Missão concorrente');
+  await page.getByLabel('O que você quer fazer?').fill('Missão concorrente');
   await page.getByRole('button', { name: 'Criar missão', exact: true }).click();
+  await expect(page).toHaveURL(/\/missao\/\d+$/);
+  await page.goto('/arquivo/missoes');
   await expect(
     page.getByRole('button', { name: 'Completar missão', exact: true }),
   ).toBeVisible();

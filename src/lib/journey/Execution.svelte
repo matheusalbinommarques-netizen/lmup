@@ -1,5 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import type { Task } from '$services/db';
+  import QuickCreate from './QuickCreate.svelte';
+  import ReviewForm from './ReviewForm.svelte';
+  import ReviewHistory from './ReviewHistory.svelte';
   import { beforeNavigate, goto } from '$app/navigation';
   import { journeyQuery, type JourneySnapshot } from '$services/journeyQuery';
   import {
@@ -17,8 +21,27 @@
   let { id }: { id: number } = $props();
   let data = $state<JourneySnapshot>();
   let error = $state('');
+  let editOpen = $state(false),
+    reviewOpen = $state(false),
+    revealNotes = $state(false);
+  let reviewOutcome = $state<'' | 'recalled' | 'partial' | 'again'>('');
   let busy = $state(false);
-  let started = false;
+  let startedToken = '';
+  function startCurrent(current: Task) {
+    if (!isAvailable(current)) return;
+    const token = current.reviewEnabled
+      ? `review:${current.id}:${String(current.reviewStartedAt ?? current.createdAt)}:${current.completionRevision ?? 0}`
+      : `task:${current.id}:${current.completionRevision ?? 0}`;
+    if (startedToken === token) return;
+    startedToken = token;
+    beginTask(id).catch((cause) => {
+      error =
+        cause instanceof Error
+          ? cause.message
+          : 'Não foi possível iniciar. Tente novamente.';
+      startedToken = '';
+    });
+  }
   let notes = $state('');
   let dirty = $state(false);
   let saves = $state(0);
@@ -63,16 +86,7 @@
           notes = current.executionNotes ?? '';
           revision = current.notesRevision ?? 0;
         }
-        if (current && !started && isAvailable(current)) {
-          started = true;
-          beginTask(id).catch((cause) => {
-            error =
-              cause instanceof Error
-                ? cause.message
-                : 'Não foi possível iniciar. Tente novamente.';
-            started = false;
-          });
-        }
+        if (current) startCurrent(current);
       },
       error: () => {
         error =
@@ -85,9 +99,14 @@
         event.returnValue = '';
       }
     };
+    const refresh = () => {
+      if (task) startCurrent(task);
+    };
+    window.addEventListener('focus', refresh);
     window.addEventListener('beforeunload', protect);
     return () => {
       subscription.unsubscribe();
+      window.removeEventListener('focus', refresh);
       window.removeEventListener('beforeunload', protect);
     };
   });
@@ -147,7 +166,7 @@
     busy = true;
     error = '';
     try {
-      await completeTask(id);
+      await completeTask(id, { reviewOutcome: reviewOutcome || undefined });
     } catch (cause) {
       error =
         cause instanceof Error
@@ -184,7 +203,6 @@
     error = '';
     try {
       await undoTask(id);
-      started = false;
     } catch (cause) {
       error =
         cause instanceof Error ? cause.message : 'Não foi possível desfazer.';
@@ -221,7 +239,7 @@
       <p class="lmu-eyebrow">
         {projectEvent
           ? 'Um projeto ganhou seu marco'
-          : task.reviewEnabled
+          : event?.kind === 'review'
             ? 'Revisão realizada'
             : 'Missão concluída'}
       </p>
@@ -249,7 +267,9 @@
       <a class="lmu-button lmu-button--primary" href="/"
         >Voltar para hoje<Icon name="arrow" size={18} /></a
       >{#if event}<Button variant="quiet" disabled={busy} onclick={undo}
-          >Desfazer conclusão</Button
+          >{event.kind === 'review'
+            ? 'Desfazer última sessão'
+            : 'Desfazer conclusão'}</Button
         >{/if}{#if notes}<Card
           ><h3>Suas notas</h3>
           <p style="white-space: pre-wrap; text-align: left">{notes}</p></Card
@@ -299,33 +319,53 @@
             Conclua quando terminar esta atividade.
           </p>{/if}</Card
       >
-      <section class="journey-notes">
-        <label class="journey-label" for="execution-notes" id="notes-label"
-          >Notas da missão<textarea
-            id="execution-notes"
-            value={notes}
-            oninput={(event) => persist(event.currentTarget.value)}
-            maxlength="20000"
-            rows="5"
-            placeholder="Guarde uma descoberta ou de onde quer retomar."
-          ></textarea></label
-        >
-        <p class="journey-save-status" role="status" aria-live="polite">
-          {noteError
-            ? 'Notas ainda não salvas'
-            : saves
-              ? 'Salvando notas…'
-              : dirty
-                ? 'Há alterações para salvar'
-                : 'Tudo salvo neste navegador'}
+      {#if task.reviewEnabled}<p class="journey-banner">
+          Tente explicar o que lembra antes de consultar as notas. Sua avaliação
+          registra a prática; não altera o intervalo automaticamente.
         </p>
-        {#if noteError}<p role="alert" class="journey-error">{noteError}</p>
-          <Button variant="secondary" onclick={() => persist(notes, true)}
-            >Usar minhas notas e tentar salvar</Button
-          ><Button variant="quiet" onclick={leaveUnsaved}
-            >Voltar sem salvar notas</Button
-          >{/if}
-      </section>
+        <label class="journey-label"
+          >Como foi lembrar? (opcional)<select bind:value={reviewOutcome}
+            ><option value="">Não registrar avaliação</option><option
+              value="recalled">Lembrei bem</option
+            ><option value="partial">Lembrei em parte</option><option
+              value="again">Quero praticar mais</option
+            ></select
+          ></label
+        >{/if}
+      {#if !task.reviewEnabled || revealNotes || dirty || noteError}
+        <section class="journey-notes">
+          <label class="journey-label" for="execution-notes" id="notes-label"
+            >Notas da missão<textarea
+              id="execution-notes"
+              value={notes}
+              oninput={(event) => persist(event.currentTarget.value)}
+              maxlength="20000"
+              rows="5"
+              placeholder="Guarde uma descoberta ou de onde quer retomar."
+            ></textarea></label
+          >
+          <p class="journey-save-status" role="status" aria-live="polite">
+            {noteError
+              ? 'Notas ainda não salvas'
+              : saves
+                ? 'Salvando notas…'
+                : dirty
+                  ? 'Há alterações para salvar'
+                  : 'Tudo salvo neste navegador'}
+          </p>
+          {#if noteError}<p role="alert" class="journey-error">{noteError}</p>
+            <Button variant="secondary" onclick={() => persist(notes, true)}
+              >Usar minhas notas e tentar salvar</Button
+            ><Button variant="quiet" onclick={leaveUnsaved}
+              >Voltar sem salvar notas</Button
+            >{/if}
+        </section>
+      {:else}<Button
+          variant="secondary"
+          onclick={() => {
+            revealNotes = true;
+          }}>Consultar e editar notas</Button
+        >{/if}
       <div class="journey-actions">
         <Button variant="secondary" disabled={busy || saves > 0} onclick={pause}
           ><Icon name="pause" size={18} />Pausar e voltar</Button
@@ -371,4 +411,24 @@
         >Voltar sem salvar notas</Button
       >
     </section>{/if}
+  {#if task && data}<div class="journey-actions">
+      <Button
+        variant="secondary"
+        disabled={busy || saves > 0 || dirty}
+        onclick={() => {
+          editOpen = true;
+        }}>Editar missão</Button
+      ><Button
+        variant="secondary"
+        disabled={busy || saves > 0 || dirty}
+        onclick={() => {
+          reviewOpen = true;
+        }}>Configurar revisão</Button
+      >
+    </div>
+    <ReviewHistory {task} events={data.events} /><QuickCreate
+      bind:open={editOpen}
+      snapshot={data}
+      editTask={task}
+    /><ReviewForm bind:open={reviewOpen} {task} />{/if}
 </div>

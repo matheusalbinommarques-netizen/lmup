@@ -10,6 +10,9 @@
   } from '$services/journeyService';
   import { completeTask, undoTask } from '$services/taskService';
   import { dateKey } from '$services/rewardService';
+  import { reviewDueDate } from '$services/reviewRules';
+  import { formatCalendar } from '$services/calendar';
+  import type { Task } from '$services/db';
   import QuickCreate from './QuickCreate.svelte';
   import Button from '$lib/ui/Button.svelte';
   import Field from '$lib/ui/Field.svelte';
@@ -46,6 +49,9 @@
       window.removeEventListener('focus', refreshDay);
     };
   });
+  function available(task: Task) {
+    return isAvailable(task, new Date(`${today}T12:00:00`));
+  }
   const visible = $derived(
     data?.tasks
       .filter(
@@ -58,8 +64,8 @@
           (filter === 'today'
             ? task.plannedDate === today
             : filter === 'completed'
-              ? !!task.completed
-              : isAvailable(task)),
+              ? !!task.completed && !available(task)
+              : available(task)),
       )
       .sort(
         (a, b) =>
@@ -162,10 +168,13 @@
                   task.completedSubtasks?.includes(step.index),
                 ).length}/{taskSteps(task).length} passos{/if}{#if data.rewards[task.id!]}
                 · +{data.rewards[task.id!].xp} XP{/if}{#if task.pinned}
-                · Fixada{/if}
+                · Fixada{/if}{#if task.reviewEnabled}
+                · {available(task)
+                  ? 'Revisão disponível'
+                  : `Próxima revisão: ${formatCalendar(reviewDueDate(task))}`}{/if}
             </div>
             <div class="journey-actions">
-              {#if isAvailable(task)}<Button
+              {#if available(task)}<Button
                   variant="secondary"
                   disabled={pending.includes(task.id!)}
                   onclick={() =>
@@ -200,7 +209,12 @@
                       task.id!,
                       () => undoTask(task.id!),
                       'Conclusão desfeita e recompensa estornada.',
-                    )}>Voltar para disponível</Button
+                    )}
+                  >{data.events.find(
+                    (event) => event.id === task.completionEventId,
+                  )?.kind === 'review'
+                    ? 'Desfazer última sessão'
+                    : 'Voltar para disponível'}</Button
                 >{/if}
             </div>
           </li>{/each}
@@ -218,10 +232,8 @@
         >
       </div>{/if}</Card
   >
+  <a class="journey-link" href="/revisoes">Revisões e suas sessões</a>
   <a class="journey-link" href="/arquivo/missoes"
-    >Áreas, revisões, edição e organização avançada<Icon
-      name="arrow"
-      size={18}
-    /></a
+    >Áreas e organização avançada<Icon name="arrow" size={18} /></a
   ><QuickCreate bind:open snapshot={data} />
 {/if}

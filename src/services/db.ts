@@ -68,6 +68,11 @@ export interface Task {
   executionNotes?: string;
   notesRevision?: number;
   reviewSession?: string;
+  effort?: 'small' | 'medium' | 'large' | 'deep';
+  definitionRevision?: number;
+  projectStageId?: string | null;
+  reviewDueDate?: string | null;
+  lastReviewDate?: string | null;
 
   areaId?: number;
 
@@ -269,6 +274,10 @@ export interface HeroProject {
   rewardGranted?: boolean;
   rewardEventId?: string | null;
   rewardRevision?: number;
+  stages?: { id: string; title: string }[];
+  revision?: number;
+  creationKey?: string;
+  rewardPolicy?: 'effort-v1';
 }
 
 export type ActivityKind =
@@ -288,6 +297,16 @@ export interface ActivityEvent {
   projectId?: number;
   sourceEventId?: string;
   baseXp: number;
+  reviewOutcome?: 'recalled' | 'partial' | 'again';
+  reviewStateBefore?: {
+    completed: boolean;
+    status?: TaskStatus;
+    completionEventId?: string | null;
+    completedAt?: string | Date | null;
+    reviewStartedAt?: string | Date | null;
+    reviewDueDate?: string | null;
+    lastReviewDate?: string | null;
+  };
   reward: { xp: number; gold: number; food: number };
   modifiers: {
     xpMultiplier: number;
