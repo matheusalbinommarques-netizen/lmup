@@ -105,7 +105,7 @@ export function buildLedger(data: ReportInput): LedgerRow[] {
       });
   return rows.sort(
     (a, b) =>
-      b.occurredAt.localeCompare(a.occurredAt) ||
+      new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime() ||
       (b.event?.sequence ?? 0) - (a.event?.sequence ?? 0),
   );
 }

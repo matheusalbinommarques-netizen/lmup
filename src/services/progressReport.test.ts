@@ -228,3 +228,21 @@ describe('relatório de progresso pelos registros', () => {
     expect(input).toEqual(original);
   });
 });
+
+it('ordena movimentos pelo instante real quando um backup usa fusos ISO diferentes', () => {
+  const input = data();
+  input.events = [event('task', { occurredAt: '2026-10-29T15:00:00Z' })];
+  input.owned = [
+    {
+      id: 1,
+      itemId: 105,
+      price: 500,
+      equipped: false,
+      acquiredAt: '2026-10-29T13:00:00-03:00',
+    },
+  ];
+  expect(buildLedger(input).map((row) => row.kind)).toEqual([
+    'purchase',
+    'task',
+  ]);
+});
