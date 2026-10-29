@@ -113,10 +113,15 @@ test('projeto com objetivo, datas e etapas mantém a próxima missão clara', as
   await expect(
     page.getByRole('button', { name: 'Reabrir e estornar bônus', exact: true }),
   ).not.toBeVisible();
-  await page
-    .getByRole('button', { name: 'Concluir projeto', exact: true })
-    .click();
-  await expect(page.getByRole('alert')).toContainText('etapas vazias');
+  await expect(
+    page.getByRole('button', { name: 'Concluir projeto', exact: true }),
+  ).not.toBeVisible();
+  await expect(
+    page.getByRole('progressbar', { name: 'Etapas concluídas', exact: true }),
+  ).toHaveAttribute('value', '1');
+  await expect(
+    page.getByRole('progressbar', { name: 'Etapas concluídas', exact: true }),
+  ).toHaveAttribute('max', '2');
   await page
     .getByRole('button', { name: 'Editar projeto', exact: true })
     .click();
