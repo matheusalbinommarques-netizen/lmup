@@ -9,10 +9,10 @@
   } from '$services/db';
   import { liveQuery } from 'dexie';
   import { onMount } from 'svelte';
-  import { xpService } from '$services/xpService';
-  import { checkAndApplyProjectCompletionBonus } from '$services/projectService';
-  import { registerTaskCompletionWithStreakProtection } from '$services/streakService';
-  import { getHeroModifiersOnce } from '$services/gearService';
+  import { completeTask, undoTask } from '$services/taskService';
+  import { buildHeroModifiersFromOwned } from '$services/gearService';
+  import { getActiveCompanionBuffs } from '$services/companionService';
+  import { calculateReward } from '$services/rewardService';
   import AreaManager from '$lib/AreaManager.svelte';
   import AddTaskModal from '$lib/AddTaskModal.svelte';
   import XpByAreaChart from '$lib/XpByAreaChart.svelte';
@@ -27,6 +27,9 @@
 
   // multiplicador de gold vindo dos amuletos
   let goldMultiplier = $state(1);
+  let rewardPreviews = $state<
+    Record<number, { xp: number; gold: number; food: number }>
+  >({});
 
   type FilterTab = 'available' | 'todo' | 'completed';
   let filter = $state<FilterTab>('available');
@@ -54,6 +57,26 @@
   const xpLogsQuery = liveQuery(() => db.xpLogs.toArray());
   const projectsQuery = liveQuery(() => db.projects.toArray());
 
+  const rewardsQuery = liveQuery(async () => {
+    const profile = await db.profile.get(1);
+    const mods = await buildHeroModifiersFromOwned();
+    const buffs = await getActiveCompanionBuffs();
+    const events = await db.activityEvents.toArray();
+    const result: Record<number, { xp: number; gold: number; food: number }> =
+      {};
+    for (const task of await db.tasks.toArray()) {
+      if (!task.id || !profile) continue;
+      const recorded =
+        task.completed && !task.reviewEnabled
+          ? events.find((event) => event.id === task.completionEventId)
+          : null;
+      if (recorded) result[task.id] = recorded.reward;
+      else if (Number.isSafeInteger(task.xp) && task.xp > 0)
+        result[task.id] = calculateReward(task.xp, profile, mods, buffs);
+    }
+    return { previews: result, goldMultiplier: mods.goldMultiplier };
+  });
+
   onMount(() => {
     // Pré-aplica filtro de projeto vindo de /missoes?projectId=123
     if (typeof window !== 'undefined') {
@@ -78,21 +101,15 @@
       projects = rows ?? [];
     });
 
-    // Carrega multiplicador de gold dos amuletos uma vez
-    (async () => {
-      try {
-        const mods = await getHeroModifiersOnce();
-        goldMultiplier = mods.goldMultiplier ?? 1;
-      } catch (error) {
-        console.error(
-          'Erro ao carregar modificadores de gold (amuletos):',
-          error,
-        );
-        goldMultiplier = 1;
-      }
-    })();
+    const rewardsSub = rewardsQuery.subscribe(
+      ({ previews, goldMultiplier: multiplier }) => {
+        rewardPreviews = previews;
+        goldMultiplier = multiplier;
+      },
+    );
 
     return () => {
+      rewardsSub.unsubscribe();
       tasksSub.unsubscribe();
       areasSub.unsubscribe();
       logsSub.unsubscribe();
@@ -580,60 +597,15 @@
   // Completar missão
   async function toggleTask(id: number | undefined) {
     if (!id) return;
-    const task = tasks.find((t) => t.id === id);
-    if (!task) return;
-
-    const anyTask = task as any;
-    const now = new Date();
-
-    // Missão ligada a projeto? Guarda o id antes de atualizar
-    const projectId: number | null =
-      typeof anyTask.projectId === 'number' ? anyTask.projectId : null;
-
-    // Missão com revisão espaçada:
-    // - ganha XP/Gold
-    // - registra log
-    // - volta para "disponível"
-    // - "completed" serve apenas para estatísticas históricas
-    if (anyTask.reviewEnabled) {
-      await xpService.addXp(task.xp, task.areaId ?? null);
-
-      await db.tasks.update(id, {
-        completed: true,
-        status: 'available',
-        completedAt: now,
-        updatedAt: now,
-        reviewStartedAt: now,
-      } as any);
-
-      // conta para o streak também
-      await registerTaskCompletionWithStreakProtection();
-
-      return;
+    try {
+      await completeTask(id);
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível concluir a missão. Tente novamente.',
+      );
     }
-
-    // Missão normal: só marca como concluída uma vez
-    if (task.completed) {
-      // Já concluída — usar botão "Voltar" se quiser desfazer
-      return;
-    }
-
-    await db.tasks.update(id, {
-      completed: true,
-      status: 'completed',
-      completedAt: now,
-      updatedAt: now,
-    } as any);
-
-    await xpService.addXp(task.xp, task.areaId ?? null);
-
-    // Se essa missão pertence a um projeto, verifica se o projeto fechou
-    if (projectId != null) {
-      await checkAndApplyProjectCompletionBonus(projectId);
-    }
-
-    // Atualiza o streak levando em conta a armadura equipada
-    await registerTaskCompletionWithStreakProtection();
   }
 
   // Marcar / desmarcar "A fazer"
@@ -738,37 +710,18 @@
     taskToEdit = null;
   }
 
-  // Voltar missão concluída para disponível
-  // - Missão normal: perde XP + gold da conclusão
-  // - Missão espaçada: NÃO perde XP nem gold (só volta pro fluxo)
+  // O estorno usa os valores efetivamente registrados na conclusão.
   async function revertCompletedToAvailable(task: Task) {
     if (!task.id) return;
-    const anyTask = task as any;
-
-    const status = getTaskStatus(task);
-    if (status !== 'completed') return;
-
-    const isReview = anyTask.reviewEnabled === true;
-    const now = new Date();
-
-    if (!isReview && task.xp && task.xp > 0) {
-      // remove XP e gold da conclusão (xpService.removeXp já gera log negativo)
-      await xpService.removeXp(task.xp, task.areaId ?? null);
+    try {
+      await undoTask(task.id);
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível desfazer. Seus dados foram preservados.',
+      );
     }
-
-    const update: any = {
-      status: 'available',
-      archived: false,
-      updatedAt: now,
-    };
-
-    if (!isReview) {
-      // Para missões normais, remoção real da conclusão
-      update.completed = false;
-      update.completedAt = null;
-    }
-
-    await db.tasks.update(task.id, update);
   }
 
   // Excluir missão (soft delete): NÃO tira XP nem gold, continua nas estatísticas
@@ -947,7 +900,7 @@
         <span
           class="inline-flex items-center gap-1 rounded-full bg-amber-400/20 px-3 py-1 text-[0.7rem] font-semibold text-emerald-100"
         >
-          +{task.xp} XP
+          +{rewardPreviews[task.id!]?.xp ?? task.xp} XP
         </span>
 
         <button
@@ -1301,14 +1254,14 @@
                   class="h-6 w-6 object-contain"
                 />
                 <span class="font-semibold">
-                  +{Math.floor(task.xp * 0.5 * (goldMultiplier || 1))} Gold
+                  +{rewardPreviews[task.id!]?.gold ?? 0} Gold
                 </span>
               </div>
 
               <div class="flex items-center gap-1 text-emerald-200">
                 <span class="text-sm">🍖</span>
                 <span class="font-semibold">
-                  +{getFoodRewardForXp(task.xp)} Comida
+                  +{rewardPreviews[task.id!]?.food ?? 0} Comida
                 </span>
               </div>
             </div>
@@ -1364,7 +1317,7 @@
                   onclick={() => revertCompletedToAvailable(task)}
                   class="w-8 h-8 flex items-center justify-center rounded-lg text-amber-300 hover:text-amber-200 hover:bg-slate-800"
                   aria-label="Voltar para disponível"
-                  title="Voltar para disponível (perde XP/Gold, exceto missões de revisão)"
+                  title="Desfazer conclusão e estornar a recompensa recebida"
                 >
                   ↩
                 </button>

@@ -14,6 +14,7 @@
   // estados locais (runes)
   let isExporting = $state(false);
   let isImporting = $state(false);
+  let hasRecovery = $state(false);
 
   // Encantamento sombrio – por enquanto só visual (não mexe em CSS global)
   let darkEnchantment = $state(false);
@@ -52,6 +53,13 @@
 
   onMount(() => {
     if (!browser) return;
+    import('$services/backupService')
+      .then(async ({ hasRecoveryData }) => {
+        hasRecovery = await hasRecoveryData();
+      })
+      .catch(() => {
+        hasRecovery = false;
+      });
 
     const raw = localStorage.getItem(NEURO_KEY);
     if (raw) {
@@ -114,6 +122,23 @@
     }
   }
 
+  async function handleExportRecovery() {
+    if (isExporting) return;
+    isExporting = true;
+    try {
+      const { exportRecoveryData } = await import('$services/backupService');
+      await exportRecoveryData();
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível exportar a recuperação.',
+      );
+    } finally {
+      isExporting = false;
+    }
+  }
+
   async function handleFileSelected(event: Event) {
     if (!browser) return;
 
@@ -124,8 +149,18 @@
     isImporting = true;
 
     try {
-      const { importData } = await import('$services/backupService');
+      const { importData, inspectBackup } = await import(
+        '$services/backupService'
+      );
+      const summary = await inspectBackup(file);
+      if (
+        !confirm(
+          `Substituir os dados atuais pelo backup de "${summary.name}"?\n\n${summary.tasks} missões, ${summary.projects} projetos e ${summary.events} eventos.\n\nUma cópia local do estado atual será guardada antes da substituição.`,
+        )
+      )
+        return;
       await importData(file);
+      hasRecovery = true;
       input.value = '';
       alert(
         'Backup importado com sucesso! Recarregue a página para ver as mudanças.',
@@ -133,7 +168,9 @@
     } catch (err) {
       console.error(err);
       alert(
-        'Erro ao importar backup. Verifique o arquivo .json e tente novamente.',
+        err instanceof Error
+          ? err.message
+          : 'Não foi possível importar. Seus dados atuais foram preservados.',
       );
     } finally {
       isImporting = false;
@@ -305,6 +342,16 @@
           >
             {isExporting ? 'Gerando...' : 'Exportar dados'}
           </button>
+          {#if hasRecovery}
+            <button
+              type="button"
+              onclick={handleExportRecovery}
+              disabled={isExporting}
+              class="rounded-full border border-violet-300/60 px-4 py-2 text-xs font-semibold text-violet-100 disabled:opacity-60"
+            >
+              Exportar cópia de recuperação
+            </button>
+          {/if}
         </div>
 
         <!-- Linha 2: Ritual de restauração -->

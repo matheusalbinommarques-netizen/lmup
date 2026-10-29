@@ -70,7 +70,7 @@ describe('xpService com IndexedDB em memória', () => {
     expect(result).toMatchObject({ totalXpEarned: 0, gold: 0, level: 1 });
     expect(await db.xpLogs.toArray()).toEqual([
       expect.objectContaining({ amount: 50 }),
-      expect.objectContaining({ amount: -100 }),
+      expect.objectContaining({ amount: -50 }),
     ]);
   });
 

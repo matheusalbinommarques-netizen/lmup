@@ -5,6 +5,7 @@
   import { onMount } from 'svelte';
   import PageTitleCard from '$lib/PageTitleCard.svelte';
   import { SvelteMap } from 'svelte/reactivity';
+  import { feedCompanion } from '$services/companionService';
 
   // Configuração base CANÔNICA dos pets (arte + level de desbloqueio)
   type PetBaseInfo = {
@@ -323,26 +324,17 @@
     const petId = petToFeed.id;
 
     try {
-      // Atualiza comida do herói
-      await db.profile.update(1, {
-        food: availableFood - spend,
-      });
-
-      // Recarrega o pet direto do DB
-      const dbPet = await db.companions.get(petId);
-      const currentFoodInvested = (dbPet as any)?.foodInvested ?? 0;
-      const newFoodInvested = currentFoodInvested + spend;
-      const newStage = getEvolutionStageForFood(newFoodInvested);
-
-      await db.companions.update(petId, {
-        foodInvested: newFoodInvested,
-        evolutionStage: newStage,
-      });
+      await feedCompanion(petId, spend);
 
       // zera input, mantém modal
       foodToSpend = 0;
     } catch (err) {
       console.error('Erro ao alimentar/evoluir companheiro:', err);
+      alert(
+        err instanceof Error
+          ? err.message
+          : 'Não foi possível alimentar. Tente novamente.',
+      );
     }
   }
 

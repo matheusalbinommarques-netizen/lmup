@@ -103,7 +103,7 @@ function applyItem(mods: HeroModifiers, item: ShopItem): void {
  * A exclusividade já é garantida por SLOT na loja/inventário,
  * então aqui basta aplicar o efeito de cada item equipado.
  */
-async function buildHeroModifiersFromOwned(): Promise<HeroModifiers> {
+export async function buildHeroModifiersFromOwned(): Promise<HeroModifiers> {
   const allOwned: OwnedShopItem[] = await db.ownedShopItems.toArray();
 
   const equippedRows = allOwned.filter(

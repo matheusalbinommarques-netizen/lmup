@@ -2,7 +2,7 @@
 
 Aplicativo pessoal para organizar missões e projetos, acompanhar progresso e evoluir um herói e seus companheiros. Feito com SvelteKit, TypeScript e Dexie/IndexedDB.
 
-O produto está sendo evoluído por etapas. A base reproduzível de E1 está descrita em [docs/E1-base-reproduzivel.md](docs/E1-base-reproduzivel.md). Os problemas de progresso e o redesenho de experiência ainda pertencem às próximas etapas; esta versão não deve ser apresentada como o redesenho concluído.
+O produto está sendo evoluído por etapas. A base reproduzível está descrita em [E1](docs/E1-base-reproduzivel.md), e os contratos de progresso, migração e recuperação em [E2](docs/E2-progresso-confiavel.md). O redesenho de experiência pertence às próximas etapas.
 
 ## Requisitos e instalação
 
@@ -60,7 +60,7 @@ $env:LMU_BROWSER_CHANNEL = 'chrome'
 npm run test:e2e
 ```
 
-Os testes verificam as dez telas principais e a criação/abertura/recarga de projeto local em desktop e viewport móvel. Não certificam ainda a experiência offline completa ou aparelhos físicos.
+Os testes verificam as dez telas principais, a criação/abertura/recarga de projeto, conclusão simultânea em duas abas, estorno e recusa de backup inválido em desktop e viewport móvel. Não certificam ainda a experiência offline completa ou aparelhos físicos.
 
 ## Build e hospedagem estática
 
@@ -91,6 +91,8 @@ JavaScript é necessário para acessar o progresso local. `npm run preview` é p
 
 ## Dados e segurança
 
-O banco atual se chama `LevelMeUpDB`. Exportações podem conter nomes, notas e histórico pessoal; mantenha seus backups em local confiável. As melhorias de validação/importação/reset estão previstas em E2, portanto evite testar importações sobre a única cópia de dados importantes.
+O banco atual se chama `LevelMeUpDB`, versão 5. A migração preserva os dados v4 e guarda uma cópia local de recuperação. Conclusões novas registram recompensas efetivas; conclusões anteriores sem evento não permitem estorno exato. Importações são validadas antes da substituição e guardam o estado anterior. Reiniciar limpa toda a jornada e preserva somente nome e avatar. Configurações permite exportar a recuperação mais recente.
+
+As cinco recuperações recentes e a cópia da migração ficam no próprio navegador. Apagar dados do site remove essas cópias; exporte um backup externo. Exportações podem conter nomes, notas e histórico pessoal; mantenha seus backups em local confiável.
 
 Os avisos de dependências restantes e seu alcance estão documentados em [E1](docs/E1-base-reproduzivel.md). Não use `npm audit fix --force` sem revisar as migrações propostas e repetir as verificações pertinentes.

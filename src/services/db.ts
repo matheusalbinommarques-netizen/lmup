@@ -56,7 +56,11 @@ export interface Task {
   id?: number;
 
   title: string;
-  description?: string;
+  description?: string | null;
+  subtasks?: string[];
+  completedSubtasks?: number[];
+  completionRevision?: number;
+  completionEventId?: string | null;
 
   areaId?: number;
 
@@ -93,6 +97,12 @@ export interface XpLog {
   areaId?: number | null;
   type?: 'gain' | 'spend';
   reason?: string;
+  eventId?: string;
+  kind?: ActivityKind;
+  taskId?: number;
+  projectId?: number;
+  goldDelta?: number;
+  foodDelta?: number;
 
   createdAt?: string | Date;
 }
@@ -250,7 +260,60 @@ export interface HeroProject {
 
   // pra Fase 4 (bônus de XP)
   rewardGranted?: boolean;
+  rewardEventId?: string | null;
+  rewardRevision?: number;
 }
+
+export type ActivityKind =
+  | 'task'
+  | 'review'
+  | 'project'
+  | 'adjustment'
+  | 'reversal';
+
+export interface ActivityEvent {
+  id: string;
+  kind: ActivityKind;
+  sequence: number;
+  occurredAt: string;
+  date: string;
+  taskId?: number;
+  projectId?: number;
+  sourceEventId?: string;
+  baseXp: number;
+  reward: { xp: number; gold: number; food: number };
+  modifiers: {
+    xpMultiplier: number;
+    goldMultiplier: number;
+    foodMultiplier: number;
+  };
+  awardedStages: number[];
+  ecoClaimedBefore: number;
+  protectionDays: number;
+  streakBefore?: { currentStreak: number; lastCompletionDate: string | null };
+  reversedAt?: string;
+}
+
+export interface RecoverySnapshot {
+  id: string;
+  reason: 'migration-v4' | 'before-import' | 'before-reset';
+  createdAt: string;
+  data: Record<string, unknown[]>;
+}
+
+export const LEGACY_STORES = {
+  profile: '++id',
+  tasks:
+    '++id, areaId, projectId, status, completed, archived, createdAt, completedAt, reviewEnabled',
+  xpLogs: '++id, date, areaId, createdAt',
+  areas: '++id',
+  inventory: '++id, key, type, owned, equipped',
+  shopItems: '++id, key, type, price',
+  ownedShopItems: '++id, itemId',
+  companions: '++id, key, rarity, unlocked',
+  items: '++id, areaId',
+  projects: '++id, status, createdAt, targetDate',
+};
 
 // ---------------------------------------------
 // BANCO DEXIE
@@ -270,9 +333,11 @@ export class LevelMeUpDB extends Dexie {
   items!: Table<LegacyItem, number>; // legado
 
   projects!: Table<HeroProject, number>; // Fase 2
+  activityEvents!: Table<ActivityEvent, string>;
+  recoverySnapshots!: Table<RecoverySnapshot, string>;
 
-  constructor() {
-    super('LevelMeUpDB');
+  constructor(name = 'LevelMeUpDB') {
+    super(name);
 
     // versão 4 (já estávamos nela, não muda o schema aqui)
     this.version(4).stores({
@@ -295,6 +360,29 @@ export class LevelMeUpDB extends Dexie {
 
       projects: '++id, status, createdAt, targetDate',
     });
+
+    this.version(5)
+      .stores({
+        ...LEGACY_STORES,
+        xpLogs: '++id, date, areaId, createdAt, eventId',
+        activityEvents:
+          'id, sequence, kind, taskId, projectId, sourceEventId, date',
+        recoverySnapshots: 'id, createdAt, reason',
+      })
+      .upgrade(async (transaction) => {
+        const data: Record<string, unknown[]> = {};
+        for (const name of Object.keys(LEGACY_STORES)) {
+          data[name] = await transaction.table(name).toArray();
+        }
+        if (Object.values(data).some((rows) => rows.length)) {
+          await transaction.table('recoverySnapshots').add({
+            id: 'migration-v4',
+            reason: 'migration-v4',
+            createdAt: new Date().toISOString(),
+            data,
+          });
+        }
+      });
   }
 }
 

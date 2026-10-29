@@ -25,27 +25,31 @@ const PET_EVOLUTIONS: PetEvolutionConfig[] = [
     key: 'wolf',
     stages: [
       { stage: 1, imagePath: '/art/pets/lobo-1.webp', totalFoodRequired: 0 },
-      { stage: 2, imagePath: '/art/pets/lobo-2.webp', totalFoodRequired: 40 },
-      { stage: 3, imagePath: '/art/pets/lobo-3.webp', totalFoodRequired: 120 },
+      { stage: 2, imagePath: '/art/pets/lobo-2.webp', totalFoodRequired: 100 },
+      { stage: 3, imagePath: '/art/pets/lobo-3.webp', totalFoodRequired: 300 },
     ],
   },
   {
     key: 'lich',
     stages: [
       { stage: 1, imagePath: '/art/pets/lich-1.webp', totalFoodRequired: 0 },
-      { stage: 2, imagePath: '/art/pets/lich-2.webp', totalFoodRequired: 50 },
-      { stage: 3, imagePath: '/art/pets/lich-3.webp', totalFoodRequired: 150 },
+      { stage: 2, imagePath: '/art/pets/lich-2.webp', totalFoodRequired: 100 },
+      { stage: 3, imagePath: '/art/pets/lich-3.webp', totalFoodRequired: 300 },
     ],
   },
   {
     key: 'dragon',
     stages: [
       { stage: 1, imagePath: '/art/pets/dragao-1.webp', totalFoodRequired: 0 },
-      { stage: 2, imagePath: '/art/pets/dragao-2.webp', totalFoodRequired: 60 },
+      {
+        stage: 2,
+        imagePath: '/art/pets/dragao-2.webp',
+        totalFoodRequired: 100,
+      },
       {
         stage: 3,
         imagePath: '/art/pets/dragao-3.webp',
-        totalFoodRequired: 180,
+        totalFoodRequired: 300,
       },
     ],
   },
@@ -60,12 +64,12 @@ const PET_EVOLUTIONS: PetEvolutionConfig[] = [
       {
         stage: 2,
         imagePath: '/art/pets/aberracao-2.webp',
-        totalFoodRequired: 60,
+        totalFoodRequired: 100,
       },
       {
         stage: 3,
         imagePath: '/art/pets/aberracao-3.webp',
-        totalFoodRequired: 180,
+        totalFoodRequired: 300,
       },
     ],
   },
@@ -166,7 +170,12 @@ export type EvolveResult =
     }
   | {
       ok: false;
-      reason: 'not_found' | 'max_stage' | 'not_enough_food' | 'no_config';
+      reason:
+        | 'not_found'
+        | 'max_stage'
+        | 'not_enough_food'
+        | 'no_config'
+        | 'locked';
     };
 
 /**
@@ -174,84 +183,77 @@ export type EvolveResult =
  * - Respeita a config de estágios (totalFoodRequired)
  * - Atualiza profile.food e Companion.evolutionStage/foodInvested
  */
+export async function feedCompanion(
+  companionId: number,
+  amount: number,
+): Promise<Companion> {
+  if (!Number.isSafeInteger(amount) || amount <= 0)
+    throw new Error('Quantidade de comida inválida.');
+  return db.transaction('rw', db.profile, db.companions, async () => {
+    const profile = await db.profile.get(1);
+    const companion = await db.companions.get(companionId);
+    const required =
+      companion?.requiredLevel ??
+      { 1: 1, 2: 5, 3: 15, 4: 20 }[companionId] ??
+      Infinity;
+    if (!profile || !companion || profile.level < required)
+      throw new Error('Este companheiro ainda não está disponível.');
+    if ((profile.food ?? 0) < amount)
+      throw new Error('Você não tem comida suficiente.');
+    const invested = (companion.foodInvested ?? 0) + amount;
+    if (!Number.isSafeInteger(invested))
+      throw new Error('O investimento ultrapassa o limite permitido.');
+    const stage = Math.max(
+      companion.evolutionStage ?? 1,
+      invested >= 300 ? 3 : invested >= 100 ? 2 : 1,
+    );
+    const updated = {
+      ...companion,
+      foodInvested: invested,
+      evolutionStage: stage,
+    };
+    await db.profile.update(1, {
+      food: (profile.food ?? 0) - amount,
+      updatedAt: new Date(),
+    });
+    await db.companions.put(updated);
+    return updated;
+  });
+}
+
 export async function evolveCompanion(
   companionId: number,
 ): Promise<EvolveResult> {
-  const [profile, companion] = await Promise.all([
-    db.profile.get(1),
-    db.companions.get(companionId),
-  ]);
-
-  if (!profile) {
-    return { ok: false, reason: 'not_found' };
-  }
-
-  if (!companion || !companion.id) {
-    return { ok: false, reason: 'not_found' };
-  }
-
-  const evoState = getCompanionEvolutionState(companion);
-  if (!evoState) {
-    return { ok: false, reason: 'no_config' };
-  }
-
-  const { currentStage, nextStage, foodInvested } = evoState;
-
-  if (!nextStage) {
-    // Já está no último estágio
-    return { ok: false, reason: 'max_stage' };
-  }
-
-  const currentStageTotal = currentStage.totalFoodRequired;
-  const nextStageTotal = nextStage.totalFoodRequired;
-
-  // comida já investida pode ser maior que o total do estágio atual se você mudar
-  // as configs no futuro — garantimos que não fique negativa
-  const safeFoodInvested = Math.max(foodInvested, currentStageTotal);
-
-  // custo adicional pra chegar no próximo estágio
-  const additionalCost = Math.max(0, nextStageTotal - safeFoodInvested);
-
-  const currentFood = profile.food ?? 0;
-  if (currentFood < additionalCost) {
-    return { ok: false, reason: 'not_enough_food' };
-  }
-
-  const newFood = currentFood - additionalCost;
-  const newFoodInvested = safeFoodInvested + additionalCost;
-
-  const now = new Date();
-
-  await db.transaction('rw', db.profile, db.companions, async () => {
-    await db.profile.update(profile.id!, {
-      food: newFood,
-      updatedAt: now,
-    });
-
-    await db.companions.update(companion.id!, {
-      evolutionStage: nextStage.stage,
-      foodInvested: newFoodInvested,
-    } as any);
+  return db.transaction('rw', db.profile, db.companions, async () => {
+    const profile = await db.profile.get(1);
+    const companion = await db.companions.get(companionId);
+    if (!profile || !companion) return { ok: false, reason: 'not_found' };
+    const required =
+      companion.requiredLevel ??
+      { 1: 1, 2: 5, 3: 15, 4: 20 }[companionId] ??
+      Infinity;
+    if (profile.level < required) return { ok: false, reason: 'locked' };
+    const state = getCompanionEvolutionState(companion);
+    if (!state) return { ok: false, reason: 'no_config' };
+    if (!state.nextStage) return { ok: false, reason: 'max_stage' };
+    const amount = Math.max(
+      0,
+      state.nextStage.totalFoodRequired - (companion.foodInvested ?? 0),
+    );
+    if ((profile.food ?? 0) < amount)
+      return { ok: false, reason: 'not_enough_food' };
+    if (amount > 0) await feedCompanion(companionId, amount);
+    else
+      await db.companions.update(companionId, {
+        evolutionStage: state.nextStage.stage,
+      });
+    return {
+      ok: true,
+      profile: (await db.profile.get(1))!,
+      companion: (await db.companions.get(companionId))!,
+      newStage: state.nextStage.stage,
+    };
   });
-
-  const updatedProfile: Profile = {
-    ...profile,
-    food: newFood,
-    updatedAt: now,
-  };
-
-  const updatedCompanion: Companion = {
-    ...companion,
-    evolutionStage: nextStage.stage,
-    foodInvested: newFoodInvested,
-  };
-
-  return {
-    ok: true,
-    profile: updatedProfile,
-    companion: updatedCompanion,
-    newStage: nextStage.stage,
-  };
 }
 
 /**

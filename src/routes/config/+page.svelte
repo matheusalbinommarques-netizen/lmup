@@ -4,7 +4,7 @@
   async function handleClearData() {
     if (
       !confirm(
-        'TEM CERTEZA? Isso apagará TODO o seu progresso deste navegador para sempre!',
+        'Reiniciar a jornada? Missões, projetos, histórico, itens e progresso dos companheiros serão zerados. Nome e avatar serão preservados. Uma cópia local de recuperação será guardada; exporte um backup externo se quiser uma cópia independente.',
       )
     ) {
       return;
@@ -40,9 +40,9 @@
             Deletar Progresso
           </p>
           <p class="mt-1 text-[0.8rem] text-slate-200/90">
-            Aqui você joga <strong>todo</strong> o progresso salvo neste navegador
-            (perfil, áreas, missões, streak… tudo) na lata do lixo. Use apenas se
-            quiser recomeçar o seu reino do zero.
+            Reinicia missões, projetos, histórico, itens e companheiros. Seu
+            nome e avatar são preservados. Uma cópia local de recuperação fica
+            disponível no Grimório; ela não substitui um backup externo.
           </p>
         </div>
 
