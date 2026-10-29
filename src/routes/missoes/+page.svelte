@@ -1244,7 +1244,9 @@
                   alt="XP"
                   class="h-6 w-6 object-contain"
                 />
-                <span class="text-[#eec39a] font-bold">+{task.xp} XP</span>
+                <span class="text-[#eec39a] font-bold"
+                  >+{rewardPreviews[task.id!]?.xp ?? task.xp} XP</span
+                >
               </div>
 
               <div class="flex items-center gap-1 text-amber-200">

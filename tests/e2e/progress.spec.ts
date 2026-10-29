@@ -27,7 +27,7 @@ test('primeiro acesso cria perfil; duas abas não duplicam conclusão; estorno p
   await expect(
     page.getByRole('button', { name: 'Completar missão', exact: true }),
   ).toBeVisible();
-  await expect(page.getByText('+53 XP', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('+53 XP', { exact: true })).toHaveCount(2);
   const other = await context.newPage();
   await other.goto('/missoes');
   await expect(
