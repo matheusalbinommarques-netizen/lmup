@@ -78,14 +78,11 @@ test('backup inválido é recusado na interface sem substituir o perfil', async 
   page,
 }) => {
   const original = await backup(page);
-  const dialog = page.waitForEvent('dialog');
   await page.locator('input[type=file]').setInputFiles({
     name: 'invalido.json',
     mimeType: 'application/json',
     buffer: Buffer.from('{"data":{}}'),
   });
-  const alert = await dialog;
-  expect(alert.message()).toContain('Backup inválido');
-  await alert.accept();
+  await expect(page.getByRole('alert')).toContainText('Backup inválido');
   expect((await backup(page)).data).toEqual(original.data);
 });

@@ -218,8 +218,9 @@ export async function undoTask(taskId: number): Promise<void> {
       }
     }
     await revokeRewards(ids);
-    const started =
-      before?.reviewStartedAt ?? previous?.occurredAt ?? task.createdAt;
+    const started = before
+      ? (before.reviewStartedAt ?? task.createdAt)
+      : (previous?.occurredAt ?? task.createdAt);
     await db.tasks.update(taskId, {
       completed: !!remainsCompleted,
       status: 'available',
@@ -243,7 +244,10 @@ export async function undoTask(taskId: number): Promise<void> {
                 reviewDueDate: null,
                 reviewStartedAt: started,
               }),
-            lastReviewDate: before?.lastReviewDate ?? previous?.date ?? null,
+            lastReviewDate: before
+              ? (before.lastReviewDate ?? null)
+              : (history.find((event) => event.kind === 'review')?.date ??
+                null),
           }
         : {}),
       updatedAt: new Date(),

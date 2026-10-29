@@ -192,7 +192,7 @@
         <p class="lmu-muted">
           {data.profile?.totalXpEarned ?? 0} XP na sua jornada
         </p>
-        <a class="journey-link" href="/perfil">Ver perfil e progresso</a></Card
+        <a class="journey-link" href="/progresso">Ver meu progresso</a></Card
       >
     </aside>
   </div>

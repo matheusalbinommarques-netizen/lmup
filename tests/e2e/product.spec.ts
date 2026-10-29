@@ -1,3 +1,4 @@
+import { confirmBackupImport } from './backup-ui';
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 async function createProject(
@@ -391,11 +392,6 @@ test('datas de projeto novas e legadas não mudam entre fusos', async ({
       '2026-12-10',
     );
     await tab.keyboard.press('Escape');
-    const messages: string[] = [];
-    tab.on('dialog', async (dialog) => {
-      messages.push(dialog.message());
-      await dialog.accept();
-    });
     await tab.goto('/config');
     const legacy = {
       meta: {
@@ -425,9 +421,7 @@ test('datas de projeto novas e legadas não mudam entre fusos', async ({
       mimeType: 'application/json',
       buffer: Buffer.from(JSON.stringify(legacy)),
     });
-    await expect
-      .poll(() => messages.some((message) => message.includes('sucesso')))
-      .toBe(true);
+    await confirmBackupImport(tab);
     await tab.goto('/projetos/77');
     await expect(tab.getByText('10/12/2026', { exact: true })).toBeVisible();
     await context.close();

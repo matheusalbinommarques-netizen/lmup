@@ -348,3 +348,63 @@
   svg[aria-hidden='true'] {
   opacity: 1 !important;
 }
+
+/* E7: comfort applies from the root, including direct route visits. */
+:root[data-reduced-motion='true'] *,
+:root[data-neuro-low-stimulus='true'] * {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+:root[data-reduced-motion='true'],
+:root[data-neuro-low-stimulus='true'] {
+  scroll-behavior: auto !important;
+}
+:root[data-neuro-low-stimulus='true'] .lmu-design {
+  --lmu-motion: 0ms;
+}
+:root[data-neuro-focus='true'] .collection-scene > img,
+:root[data-neuro-focus='true'] .collection-scene > .lmu-art-fallback,
+:root[data-neuro-focus='true'] .collection-card-art > img,
+:root[data-neuro-focus='true'] .collection-item-art > img,
+:root[data-neuro-focus='true'] .collection-companion-feature > img,
+:root[data-neuro-focus='true'] .journey-feature > img {
+  display: none;
+}
+:root[data-neuro-focus='true'] .collection-scene-copy {
+  position: static;
+  padding: 1.25rem;
+}
+:root[data-neuro-focus='true'] .collection-scene:after {
+  display: none;
+}
+:root[data-neuro-focus='true'] .collection-card-art,
+:root[data-neuro-focus='true'] .collection-item-art {
+  height: auto;
+  min-height: 60px;
+  background: var(--lmu-surface);
+}
+:root[data-neuro-focus='true'] .collection-companion-feature {
+  grid-template-columns: 1fr;
+}
+:root[data-neuro-focus='true'] .collection-badge {
+  position: static;
+  margin: 1rem;
+  display: inline-block;
+}
+@media (prefers-reduced-motion: reduce) {
+  html,
+  html * {
+    scroll-behavior: auto !important;
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+:root[data-neuro-focus='true'] .journey-world > img,
+:root[data-neuro-focus='true'] .journey-pet > img {
+  display: none;
+}
+:root[data-neuro-focus='true'] .journey-world-copy {
+  position: static;
+}

@@ -15,6 +15,7 @@ export async function readJourneySnapshot() {
     const inventory = await db.inventory.toArray();
     const projects = await db.projects.toArray();
     const events = await db.activityEvents.toArray();
+    const logs = await db.xpLogs.toArray();
     const eventsById = new Map(events.map((event) => [event.id, event]));
     const companion = profile?.activeCompanionId
       ? await db.companions.get(profile.activeCompanionId)
@@ -47,6 +48,7 @@ export async function readJourneySnapshot() {
       areas,
       projects,
       events,
+      logs,
       companion,
       rewards,
       mods,

@@ -1,3 +1,4 @@
+import { confirmBackupImport } from './backup-ui';
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 
@@ -198,11 +199,6 @@ test('falha de gravação preserva o rascunho e permite tentar salvar novamente'
 test('backup antigo abre na nova jornada com saldos preservados e passos legados executáveis', async ({
   page,
 }) => {
-  const messages: string[] = [];
-  page.on('dialog', async (dialog) => {
-    messages.push(dialog.message());
-    await dialog.accept();
-  });
   await page.goto('/config');
   const fixture = {
     meta: {
@@ -256,9 +252,7 @@ test('backup antigo abre na nova jornada com saldos preservados e passos legados
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(fixture)),
   });
-  await expect
-    .poll(() => messages.some((message) => message.includes('sucesso')))
-    .toBe(true);
+  await confirmBackupImport(page);
   await page.goto('/');
   await expect(
     page.getByText('Meu herói antigo', { exact: true }),

@@ -14,6 +14,7 @@
     { href: '/refugio', label: 'Refúgio', icon: 'world' },
   ];
   const extras = [
+    { href: '/progresso', label: 'Meu progresso e histórico' },
     { href: '/perfil', label: 'Perfil e equipamentos' },
     { href: '/config', label: 'Configurações e backup' },
     { href: '/revisoes', label: 'Revisões e sessões' },

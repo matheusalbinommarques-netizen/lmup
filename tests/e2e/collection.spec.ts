@@ -1,3 +1,4 @@
+import { confirmBackupImport } from './backup-ui';
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 async function backup(page: Page) {
@@ -10,21 +11,12 @@ async function backup(page: Page) {
 }
 async function restore(page: Page, data: any) {
   await page.goto('/config');
-  const messages: string[] = [];
-  const accept = async (dialog: any) => {
-    messages.push(dialog.message());
-    await dialog.accept();
-  };
-  page.on('dialog', accept);
   await page.locator('input[type=file]').setInputFiles({
     name: 'colecao.json',
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(data)),
   });
-  await expect
-    .poll(() => messages.some((m) => m.includes('sucesso')))
-    .toBe(true);
-  page.off('dialog', accept);
+  await confirmBackupImport(page);
 }
 async function seed(
   page: Page,

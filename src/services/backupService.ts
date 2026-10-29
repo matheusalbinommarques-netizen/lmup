@@ -3,6 +3,7 @@ import {
   BACKUP_LIMIT,
   createJourneyBackup,
   inspectJourneyBackup,
+  validateBackup,
   latestRecoveryBackup,
   resetJourney,
   restoreJourneyBackup,
@@ -21,7 +22,7 @@ function download(data: unknown, prefix: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-async function parseFile(file: File): Promise<unknown> {
+export async function parseBackupFile(file: File): Promise<unknown> {
   if (!file || file.size > BACKUP_LIMIT || typeof file.text !== 'function')
     throw new Error('Selecione um backup JSON de até 25 MB.');
   try {
@@ -32,15 +33,22 @@ async function parseFile(file: File): Promise<unknown> {
 }
 
 export async function exportData(): Promise<void> {
-  if (browser) download(await createJourneyBackup(), 'lmup-backup');
+  if (browser) {
+    download(await createJourneyBackup(), 'lmup-backup');
+    try {
+      localStorage.setItem('lmup:last-export', new Date().toISOString());
+    } catch {
+      /* Export remains usable without preference storage. */
+    }
+  }
 }
 
 export async function inspectBackup(file: File) {
-  return inspectJourneyBackup(await parseFile(file));
+  return inspectJourneyBackup(await parseBackupFile(file));
 }
 
 export async function importData(file: File): Promise<void> {
-  if (browser) await restoreJourneyBackup(await parseFile(file));
+  if (browser) await restoreJourneyBackup(await parseBackupFile(file));
 }
 
 export async function clearAllData(): Promise<void> {
@@ -58,4 +66,9 @@ export async function exportRecoveryData(): Promise<void> {
       'Ainda não há cópia local de recuperação. Exporte seus dados para criar um backup externo.',
     );
   if (browser) download(backup, 'lmup-recuperacao');
+}
+
+export async function prepareBackup(file: File) {
+  const backup = validateBackup(await parseBackupFile(file));
+  return { backup, summary: inspectJourneyBackup(backup) };
 }

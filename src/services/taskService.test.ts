@@ -1,3 +1,6 @@
+import { configureReview } from './reviewService';
+import { isAvailable } from './journeyService';
+import { dateKey } from './rewardService';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import Dexie from 'dexie';
 import { db, LevelMeUpDB, LEGACY_STORES, type Task } from './db';
@@ -280,4 +283,32 @@ describe('migração conservadora', () => {
       await migrated.delete();
     }
   });
+});
+
+it('desfazer a primeira revisão após conclusão normal restaura a prática no mesmo dia', async () => {
+  const id = await mission();
+  await completeTask(id);
+  await configureReview(id, {
+    enabled: true,
+    intervalDays: 1,
+    dueDate: dateKey(),
+  });
+  await completeTask(id);
+  await undoTask(id);
+  const restored = (await db.tasks.get(id))!;
+  expect(restored.completed).toBe(true);
+  expect(restored.lastReviewDate).toBeNull();
+  expect(isAvailable(restored)).toBe(true);
+  expect((await db.profile.get(1))?.totalXpEarned).toBe(53);
+  expect(
+    (await db.activityEvents.toArray()).filter(
+      (event) => event.kind === 'review' && !event.reversedAt,
+    ),
+  ).toHaveLength(0);
+  await completeTask(id);
+  expect(
+    (await db.activityEvents.toArray()).filter(
+      (event) => event.kind === 'review' && !event.reversedAt,
+    ),
+  ).toHaveLength(1);
 });

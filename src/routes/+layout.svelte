@@ -4,6 +4,7 @@
   import '$lib/journey/journey.css';
   import { page } from '$app/state';
   import { onMount, type Snippet } from 'svelte';
+  import { initializeComfort } from '$services/comfortService';
   import { initializeJourney } from '$services/profileService';
   import AppShell from '$lib/journey/AppShell.svelte';
   import Button from '$lib/ui/Button.svelte';
@@ -25,7 +26,9 @@
   }
   // The laboratory remains independent of the personal database, including client navigation.
   onMount(() => {
+    const cleanupComfort = initializeComfort();
     if (!page.url.pathname.startsWith('/laboratorio')) void initialize();
+    return cleanupComfort;
   });
   $effect(() => {
     if (!page.url.pathname.startsWith('/laboratorio') && !ready && !failed)
