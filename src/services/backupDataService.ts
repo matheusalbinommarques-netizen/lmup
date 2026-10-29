@@ -154,6 +154,35 @@ export function validateBackup(input: unknown): JourneyBackup {
       fail('passos inválidos.');
     if (task.completionRevision != null)
       integer(task.completionRevision, 'tasks.completionRevision');
+    if (task.notesRevision != null)
+      integer(task.notesRevision, 'tasks.notesRevision');
+    if (
+      task.executionNotes != null &&
+      (typeof task.executionNotes !== 'string' ||
+        task.executionNotes.length > 20000)
+    )
+      fail('notas de execução inválidas.');
+    if (
+      task.executionState != null &&
+      !['idle', 'active', 'paused'].includes(task.executionState)
+    )
+      fail('estado de execução inválido.');
+    if (task.pinned != null && typeof task.pinned !== 'boolean')
+      fail('destaque inválido.');
+    if (
+      task.plannedDate != null &&
+      (typeof task.plannedDate !== 'string' ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(task.plannedDate))
+    )
+      fail('data do plano inválida.');
+    if (
+      task.creationKey != null &&
+      (typeof task.creationKey !== 'string' ||
+        !task.creationKey ||
+        task.creationKey.length > 100)
+    )
+      fail('identificador de criação inválido.');
+    date(task.reviewSession, 'tasks.reviewSession', true);
     if (
       task.completedSubtasks != null &&
       (!Array.isArray(task.completedSubtasks) ||

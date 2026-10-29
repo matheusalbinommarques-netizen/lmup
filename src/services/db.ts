@@ -61,6 +61,13 @@ export interface Task {
   completedSubtasks?: number[];
   completionRevision?: number;
   completionEventId?: string | null;
+  creationKey?: string;
+  plannedDate?: string | null;
+  pinned?: boolean;
+  executionState?: 'idle' | 'active' | 'paused';
+  executionNotes?: string;
+  notesRevision?: number;
+  reviewSession?: string;
 
   areaId?: number;
 

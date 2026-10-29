@@ -2,9 +2,11 @@
 
 Aplicativo pessoal para organizar missões e projetos, acompanhar progresso e evoluir um herói e seus companheiros. Feito com SvelteKit, TypeScript e Dexie/IndexedDB.
 
-O produto está sendo evoluído por etapas. A base reproduzível está descrita em [E1](docs/E1-base-reproduzivel.md), e os contratos de progresso, migração e recuperação em [E2](docs/E2-progresso-confiavel.md). O redesenho de experiência pertence às próximas etapas.
+O produto está sendo evoluído por etapas. A base reproduzível está descrita em [E1](docs/E1-base-reproduzivel.md), os contratos de progresso e recuperação em [E2](docs/E2-progresso-confiavel.md), e a jornada diária com dados reais em [E4](docs/E4-jornada-real.md).
 
-O sistema visual e o piloto navegável de E3 estão em [docs/E3-sistema-visual.md](docs/E3-sistema-visual.md). Acesse `/laboratorio` para experimentar Hoje → execução → conclusão e as artes; `/laboratorio?view=componentes` mostra componentes e estados. A prévia usa dados de exemplo em memória, sem abrir o banco pessoal. As rotas atuais continuam sendo a experiência funcional até a integração por etapas.
+O aplicativo abre em Hoje, com Missões, Projetos e Refúgio na navegação principal. Criação rápida, passos, notas, pausa, retomada, conclusão e desfazimento usam os dados reais do navegador. O organizador anterior está em `/arquivo/missoes`; o antigo início, com perfil e equipamentos, em `/perfil`. As demais funções continuam acessíveis por Perfil e mais.
+
+O sistema visual e o piloto original estão em [E3](docs/E3-sistema-visual.md). `/laboratorio` e `/laboratorio?view=componentes` continuam sendo prévias com dados de exemplo em memória; não substituem a jornada real e não abrem o banco pessoal.
 
 ## Requisitos e instalação
 

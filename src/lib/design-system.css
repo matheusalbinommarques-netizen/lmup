@@ -108,6 +108,9 @@
   background: var(--lmu-action);
   color: var(--lmu-on-action);
 }
+.lmu-design a.lmu-button--primary {
+  color: var(--lmu-on-action);
+}
 .lmu-button--primary:hover:enabled {
   background: var(--lmu-action-hover);
 }
@@ -342,6 +345,6 @@
 /* Neutralize legacy blanket aria-hidden opacity for functional new icons. */
 :root:is([data-neuro-focus='true'], [data-neuro-low-stimulus='true'])
   .lmu-design
-  [aria-hidden='true'] {
+  svg[aria-hidden='true'] {
   opacity: 1 !important;
 }

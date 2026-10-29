@@ -1,8 +1,11 @@
 import { expect, test } from '@playwright/test';
 
 const routes = [
-  ['/', 'Taverna do Herói'],
-  ['/missoes', 'Quadro de Missões'],
+  ['/', 'Um passo de cada vez.'],
+  ['/missoes', 'Missões'],
+  ['/arquivo/missoes', 'Quadro de Missões'],
+  ['/perfil', 'Taverna do Herói'],
+  ['/refugio', 'Refúgio'],
   ['/projetos', 'Projetos do Herói'],
   ['/cla', 'Salão do Clã'],
   ['/santuario', 'Santuário da Natureza'],

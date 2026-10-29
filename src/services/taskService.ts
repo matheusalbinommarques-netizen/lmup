@@ -1,5 +1,6 @@
 import { db, type ActivityEvent } from './db';
 import { initializeJourney } from './profileService';
+import { taskSteps } from './journeyService';
 import {
   grantReward,
   progressTransaction,
@@ -57,6 +58,14 @@ export async function completeTask(
     if (!task || task.archived)
       throw new Error('Esta missão não está disponível.');
     if (task.completed && !task.reviewEnabled) return null;
+    if (
+      taskSteps(task).some(
+        (step) => !task.completedSubtasks?.includes(step.index),
+      )
+    )
+      throw new Error(
+        'Conclua os passos da missão antes de receber a recompensa.',
+      );
     const now = new Date();
     const base = new Date(task.reviewStartedAt ?? task.createdAt);
     if (task.reviewEnabled) {
@@ -92,6 +101,7 @@ export async function completeTask(
       completionEventId: result.event.id,
       completedAt: now,
       updatedAt: now,
+      executionState: 'idle',
       ...(task.reviewEnabled ? { reviewStartedAt: now } : {}),
     });
     if (task.projectId) await completeProjectIfReady(task.projectId);
@@ -130,6 +140,7 @@ export async function undoTask(taskId: number): Promise<void> {
       status: 'available',
       archived: false,
       completionRevision: (task.completionRevision ?? 0) + 1,
+      executionState: 'paused',
       completionEventId: previous?.id ?? null,
       completedAt: previous?.occurredAt ?? null,
       ...(task.reviewEnabled

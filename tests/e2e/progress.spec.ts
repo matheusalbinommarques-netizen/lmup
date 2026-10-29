@@ -17,7 +17,7 @@ test('primeiro acesso cria perfil; duas abas não duplicam conclusão; estorno p
 }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto('/missoes');
+  await page.goto('/arquivo/missoes');
   await expect(
     page.getByRole('heading', { name: 'Quadro de Missões', exact: true }),
   ).toBeVisible();
@@ -29,7 +29,7 @@ test('primeiro acesso cria perfil; duas abas não duplicam conclusão; estorno p
   ).toBeVisible();
   await expect(page.getByText('+53 XP', { exact: true })).toHaveCount(2);
   const other = await context.newPage();
-  await other.goto('/missoes');
+  await other.goto('/arquivo/missoes');
   await expect(
     other.getByRole('button', { name: 'Completar missão', exact: true }),
   ).toBeVisible();
@@ -51,7 +51,7 @@ test('primeiro acesso cria perfil; duas abas não duplicam conclusão; estorno p
     gold: 25,
     food: 2,
   });
-  await page.goto('/missoes');
+  await page.goto('/arquivo/missoes');
   await page.getByRole('button', { name: 'Concluídas', exact: true }).click();
   await page
     .getByRole('button', { name: 'Voltar para disponível', exact: true })

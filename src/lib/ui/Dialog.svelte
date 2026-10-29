@@ -7,11 +7,13 @@
     title,
     description = '',
     children,
+    dismissible = true,
   }: {
     open?: boolean;
     title: string;
     description?: string;
     children: Snippet;
+    dismissible?: boolean;
   } = $props();
   let element: HTMLDialogElement;
   function containFocus(event: KeyboardEvent) {
@@ -59,8 +61,9 @@
   class="lmu-dialog"
   aria-labelledby={`${uid}-title`}
   aria-describedby={description ? `${uid}-description` : undefined}
-  oncancel={() => {
-    open = false;
+  oncancel={(event) => {
+    if (!dismissible) event.preventDefault();
+    else open = false;
   }}
   onclose={() => {
     open = false;
@@ -70,6 +73,7 @@
     <h2 id={`${uid}-title`}>{title}</h2>
     <Button
       variant="quiet"
+      disabled={!dismissible}
       aria-label="Fechar diálogo"
       onclick={() => {
         open = false;

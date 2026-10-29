@@ -206,7 +206,21 @@
 
     try {
       if (isEditMode && taskToEdit?.id) {
-        await db.tasks.update(taskToEdit.id, taskData);
+        const id = taskToEdit.id;
+        await db.transaction('rw', db.tasks, async () => {
+          const current = await db.tasks.get(id);
+          if (!current || current.archived)
+            throw new Error('Esta missão não está mais disponível.');
+          delete taskData.completed;
+          delete taskData.status;
+          delete taskData.createdAt;
+          if (
+            JSON.stringify(current.subtasks ?? []) !==
+            JSON.stringify(finalSubtasks)
+          )
+            taskData.completedSubtasks = [];
+          await db.tasks.update(id, taskData);
+        });
       } else {
         await db.tasks.add(taskData);
       }
@@ -319,6 +333,10 @@
       </div>
 
       <!-- Raridade / XP auto -->
+      {#if isEditMode}<p class="text-xs text-slate-300">
+          Alterar a lista de passos reinicia suas marcações. Notas e recompensas
+          recebidas são preservadas.
+        </p>{/if}
       <div
         class="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2"
       >
