@@ -1,3 +1,4 @@
+import { sanctuaryContent } from '$lib/content/world';
 // src/services/ecoConfig.ts
 
 export type EcoStageId = 1 | 2 | 3 | 4;
@@ -35,8 +36,8 @@ export interface EcoStageConfig {
 export const ECO_STAGES: EcoStageConfig[] = [
   {
     id: 1,
-    label: 'Semente',
-    image: '/art/bg/eco-stage-1-seed.webp',
+    label: sanctuaryContent[1].label,
+    image: sanctuaryContent[1].image,
     minXp: 0,
     maxXp: 2500,
     xpBonusMultiplier: 1.0,
@@ -44,8 +45,8 @@ export const ECO_STAGES: EcoStageConfig[] = [
   },
   {
     id: 2,
-    label: 'Brotinho',
-    image: '/art/bg/eco-stage-2-sprout.webp',
+    label: sanctuaryContent[2].label,
+    image: sanctuaryContent[2].image,
     minXp: 2500,
     maxXp: 7500,
     xpBonusMultiplier: 1.05,
@@ -53,8 +54,8 @@ export const ECO_STAGES: EcoStageConfig[] = [
   },
   {
     id: 3,
-    label: 'Árvore Jovem',
-    image: '/art/bg/eco-stage-3-tree.webp',
+    label: sanctuaryContent[3].label,
+    image: sanctuaryContent[3].image,
     minXp: 7500,
     maxXp: 12000,
     xpBonusMultiplier: 1.1,
@@ -62,8 +63,8 @@ export const ECO_STAGES: EcoStageConfig[] = [
   },
   {
     id: 4,
-    label: 'Floresta Anciã',
-    image: '/art/bg/eco-stage-4-forest.webp',
+    label: sanctuaryContent[4].label,
+    image: sanctuaryContent[4].image,
     minXp: 12000,
     maxXp: null,
     xpBonusMultiplier: 1.2,

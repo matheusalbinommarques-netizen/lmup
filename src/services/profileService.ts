@@ -1,3 +1,4 @@
+import { companionContent } from '$lib/content/world';
 import { db, type Profile, type Companion } from './db';
 import { getTitleForLevel, getXpForNextLevel } from './progression';
 
@@ -42,34 +43,34 @@ const companions: Companion[] = [
   {
     id: 1,
     key: 'wolf',
-    name: 'Lobo Etéreo',
-    type: 'Caçador das Sombras',
+    name: companionContent.wolf.name,
+    type: companionContent.wolf.type,
     requiredLevel: 1,
-    imagePath: '/art/pets/lobo-1.webp',
+    imagePath: companionContent.wolf.images[0],
   },
   {
     id: 2,
     key: 'lich',
-    name: 'Lorde Lich',
-    type: 'Mago Imortal',
+    name: companionContent.lich.name,
+    type: companionContent.lich.type,
     requiredLevel: 5,
-    imagePath: '/art/pets/lich-1.webp',
+    imagePath: companionContent.lich.images[0],
   },
   {
     id: 3,
     key: 'dragon',
-    name: 'Dragão Ancião',
-    type: 'Guardião de Chamas',
+    name: companionContent.dragon.name,
+    type: companionContent.dragon.type,
     requiredLevel: 15,
-    imagePath: '/art/pets/dragao-1.webp',
+    imagePath: companionContent.dragon.images[0],
   },
   {
     id: 4,
     key: 'aberration',
-    name: 'Aberração Abissal',
-    type: 'Eco do Vazio',
+    name: companionContent.aberration.name,
+    type: companionContent.aberration.type,
     requiredLevel: 20,
-    imagePath: '/art/pets/aberracao-1.webp',
+    imagePath: companionContent.aberration.images[0],
   },
 ];
 

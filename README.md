@@ -4,6 +4,8 @@ Aplicativo pessoal para organizar missões e projetos, acompanhar progresso e ev
 
 O produto está sendo evoluído por etapas. A base reproduzível está descrita em [E1](docs/E1-base-reproduzivel.md), e os contratos de progresso, migração e recuperação em [E2](docs/E2-progresso-confiavel.md). O redesenho de experiência pertence às próximas etapas.
 
+O sistema visual e o piloto navegável de E3 estão em [docs/E3-sistema-visual.md](docs/E3-sistema-visual.md). Acesse `/laboratorio` para experimentar Hoje → execução → conclusão e as artes; `/laboratorio?view=componentes` mostra componentes e estados. A prévia usa dados de exemplo em memória, sem abrir o banco pessoal. As rotas atuais continuam sendo a experiência funcional até a integração por etapas.
+
 ## Requisitos e instalação
 
 Node.js 22.12+ ou 24.x. O desenvolvimento local desta entrega foi verificado com Node 24 e npm 11. A integração contínua está configurada para Node 22/24.

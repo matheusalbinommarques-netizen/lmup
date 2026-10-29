@@ -56,6 +56,9 @@ test('primeiro acesso cria perfil; duas abas não duplicam conclusão; estorno p
   await page
     .getByRole('button', { name: 'Voltar para disponível', exact: true })
     .click();
+  await expect(
+    page.getByRole('button', { name: 'Voltar para disponível', exact: true }),
+  ).not.toBeVisible();
   await page.reload();
   const reversed = await backup(page);
   expect(reversed.data.profile).toMatchObject({

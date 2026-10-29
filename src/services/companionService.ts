@@ -1,3 +1,4 @@
+import { companionContent } from '$lib/content/world';
 // src/services/companionService.ts
 import { db, type Companion, type Profile } from '$services/db';
 
@@ -24,31 +25,59 @@ const PET_EVOLUTIONS: PetEvolutionConfig[] = [
   {
     key: 'wolf',
     stages: [
-      { stage: 1, imagePath: '/art/pets/lobo-1.webp', totalFoodRequired: 0 },
-      { stage: 2, imagePath: '/art/pets/lobo-2.webp', totalFoodRequired: 100 },
-      { stage: 3, imagePath: '/art/pets/lobo-3.webp', totalFoodRequired: 300 },
+      {
+        stage: 1,
+        imagePath: companionContent.wolf.images[0],
+        totalFoodRequired: 0,
+      },
+      {
+        stage: 2,
+        imagePath: companionContent.wolf.images[1],
+        totalFoodRequired: 100,
+      },
+      {
+        stage: 3,
+        imagePath: companionContent.wolf.images[2],
+        totalFoodRequired: 300,
+      },
     ],
   },
   {
     key: 'lich',
     stages: [
-      { stage: 1, imagePath: '/art/pets/lich-1.webp', totalFoodRequired: 0 },
-      { stage: 2, imagePath: '/art/pets/lich-2.webp', totalFoodRequired: 100 },
-      { stage: 3, imagePath: '/art/pets/lich-3.webp', totalFoodRequired: 300 },
+      {
+        stage: 1,
+        imagePath: companionContent.lich.images[0],
+        totalFoodRequired: 0,
+      },
+      {
+        stage: 2,
+        imagePath: companionContent.lich.images[1],
+        totalFoodRequired: 100,
+      },
+      {
+        stage: 3,
+        imagePath: companionContent.lich.images[2],
+        totalFoodRequired: 300,
+      },
     ],
   },
   {
     key: 'dragon',
     stages: [
-      { stage: 1, imagePath: '/art/pets/dragao-1.webp', totalFoodRequired: 0 },
+      {
+        stage: 1,
+        imagePath: companionContent.dragon.images[0],
+        totalFoodRequired: 0,
+      },
       {
         stage: 2,
-        imagePath: '/art/pets/dragao-2.webp',
+        imagePath: companionContent.dragon.images[1],
         totalFoodRequired: 100,
       },
       {
         stage: 3,
-        imagePath: '/art/pets/dragao-3.webp',
+        imagePath: companionContent.dragon.images[2],
         totalFoodRequired: 300,
       },
     ],
@@ -58,17 +87,17 @@ const PET_EVOLUTIONS: PetEvolutionConfig[] = [
     stages: [
       {
         stage: 1,
-        imagePath: '/art/pets/aberracao-1.webp',
+        imagePath: companionContent.aberration.images[0],
         totalFoodRequired: 0,
       },
       {
         stage: 2,
-        imagePath: '/art/pets/aberracao-2.webp',
+        imagePath: companionContent.aberration.images[1],
         totalFoodRequired: 100,
       },
       {
         stage: 3,
-        imagePath: '/art/pets/aberracao-3.webp',
+        imagePath: companionContent.aberration.images[2],
         totalFoodRequired: 300,
       },
     ],
