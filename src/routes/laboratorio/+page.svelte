@@ -483,6 +483,7 @@
           <Artwork
             src={sanctuaryContent[stage].pilot}
             alt={`Paisagem no estágio ${sanctuaryContent[stage].label}`}
+            sizes="(max-width: 760px) 100vw, (max-width: 1600px) calc(100vw - 20rem), 1100px"
             eager
           />
           <div class="world-showcase-caption">
@@ -1423,8 +1424,8 @@
       gap: 1rem;
     }
     .completion-wrap :global(.completion-companion) {
-      height: 10rem;
-      width: 10rem;
+      height: 7rem;
+      width: 7rem;
     }
     .world-showcase :global(img) {
       aspect-ratio: 3 / 2;
