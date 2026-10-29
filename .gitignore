@@ -8,6 +8,11 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+.svelte-kit/
+build/
+coverage/
+playwright-report/
+test-results/
 dist
 dist-ssr
 *.local

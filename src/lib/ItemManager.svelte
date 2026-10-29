@@ -48,7 +48,6 @@
 
     const taskData: Task = {
       title: nome,
-      description: null,
       areaId,
       xp,
       rarity: 'common',

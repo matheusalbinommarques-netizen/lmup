@@ -1,93 +1,85 @@
-// src/services/xpService.test.ts
-import { describe, test, expect, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { db } from './db';
+import { invalidateHeroModifiersCache } from './gearService';
+import { xpService } from './xpService';
 
-// Mock do DB com transaction “no-op”
-vi.mock('$services/db', () => {
-  const profile = {
-    data: {
-      id: 1,
-      name: 'Seu herói',
-      title: 'Aprendiz',
-      level: 1,
-      xpCurrent: 0,
-      xpNext: 100,
-      totalXpEarned: 0,
-      currentStreak: 0,
-      lastCompletionDate: '',
-      activeCompanionId: 1,
-      gold: 0,
-    },
-    async get() {
-      return this.data;
-    },
-    async update(_id: number, changes: any) {
-      Object.assign(this.data, changes);
-      return 1;
-    },
-    async put(obj: any) {
-      this.data = obj;
-      return 1;
-    },
-  };
-
-  const xpLogs = {
-    rows: [] as any[],
-    async add(row: any) {
-      this.rows.push(row);
-      return this.rows.length;
-    },
-  };
-
-  const db = {
-    profile,
-    xpLogs,
-    // Suporta as assinaturas do Dexie:
-    // transaction(mode, ...tables, callback)  ou  transaction(mode, callback)
-    async transaction(_mode: any, ...rest: any[]) {
-      // pega o último argumento que for função
-      let cb: any = rest.at(-1);
-      if (typeof cb !== 'function') {
-        for (let i = rest.length - 1; i >= 0; i--) {
-          if (typeof rest[i] === 'function') {
-            cb = rest[i];
-            break;
-          }
-        }
-      }
-      if (typeof cb === 'function') {
-        // executa o callback; não precisamos passar tx real
-        return await cb({});
-      }
-    },
-  };
-
-  return { db } as any;
+beforeEach(async () => {
+  await db.transaction('rw', db.tables, async () => {
+    await Promise.all(db.tables.map((table) => table.clear()));
+  });
+  invalidateHeroModifiersCache();
 });
 
-// Importa o serviço (funciona se exportar default, objeto xpService, ou funções soltas)
-const mod: any = await import('./xpService');
-const api: any = mod.xpService ?? mod.default ?? mod;
-
-describe('xpService – smoke', () => {
-  test('carrega e expõe ao menos uma função', () => {
-    expect(api).toBeTruthy();
-    expect(Object.values(api).some((v: any) => typeof v === 'function')).toBe(
-      true,
-    );
+describe('xpService com IndexedDB em memória', () => {
+  it('cria um único perfil com a curva atual de progressão', async () => {
+    const first = await xpService.ensureProfile();
+    const second = await xpService.ensureProfile();
+    expect(first).toMatchObject({
+      id: 1,
+      level: 1,
+      xpNext: 250,
+      gold: 0,
+      food: 0,
+    });
+    expect(second.id).toBe(first.id);
+    expect(await db.profile.count()).toBe(1);
   });
 
-  test('getXpForNextLevel (se existir) retorna número > 0', () => {
-    if (typeof api.getXpForNextLevel === 'function') {
-      expect(api.getXpForNextLevel(1)).toBeGreaterThan(0);
-    }
+  it('persiste ganho, saldo e log com a mesma quantidade de XP', async () => {
+    const result = await xpService.addXp(50, 7);
+    expect(result).toMatchObject({ totalXpEarned: 50, gold: 25, food: 2 });
+    expect(await db.profile.get(1)).toMatchObject(result);
+    expect(await db.xpLogs.toArray()).toEqual([
+      expect.objectContaining({ amount: 50, areaId: 7 }),
+    ]);
   });
 
-  test('add/remove XP (se existirem) não lançam erro', async () => {
-    if (typeof api.addXp === 'function') {
-      await expect(api.addXp(50)).resolves.toBeUndefined();
-    }
-    if (typeof api.removeXp === 'function') {
-      await expect(api.removeXp(10)).resolves.toBeUndefined();
-    }
+  it('atravessa o limite de nível sem perder XP excedente', async () => {
+    const result = await xpService.addXp(275);
+    expect(result).toMatchObject({ level: 2, xpCurrent: 25, xpNext: 300 });
+  });
+
+  it('aplica o bônus do companheiro ativo ao ganho de XP', async () => {
+    await xpService.ensureProfile();
+    await db.companions.put({
+      id: 1,
+      key: 'wolf',
+      name: 'Lobo Etéreo',
+      unlocked: true,
+      evolutionStage: 1,
+    });
+    const result = await xpService.addXp(50);
+    expect(result).toMatchObject({ totalXpEarned: 53, gold: 25, food: 2 });
+    expect(await db.xpLogs.toArray()).toEqual([
+      expect.objectContaining({ amount: 53 }),
+    ]);
+  });
+
+  it('concede o baú do Santuário uma vez ao cruzar o estágio', async () => {
+    await xpService.ensureProfile();
+    await db.profile.update(1, { totalXpEarned: 2499 });
+    const crossed = await xpService.addXp(50);
+    expect(crossed).toMatchObject({ totalXpEarned: 2549, gold: 225 });
+    const next = await xpService.addXp(50);
+    expect(next).toMatchObject({ totalXpEarned: 2602, gold: 250 });
+  });
+
+  it('registra redução de XP e Gold sem saldo negativo', async () => {
+    await xpService.addXp(50);
+    const result = await xpService.removeXp(100);
+    expect(result).toMatchObject({ totalXpEarned: 0, gold: 0, level: 1 });
+    expect(await db.xpLogs.toArray()).toEqual([
+      expect.objectContaining({ amount: 50 }),
+      expect.objectContaining({ amount: -100 }),
+    ]);
+  });
+
+  it('uma operação sem ganho devolve o perfil sem criar log', async () => {
+    expect(await xpService.addXp(0)).toMatchObject({ id: 1, totalXpEarned: 0 });
+    expect(await xpService.removeXp(0)).toMatchObject({
+      id: 1,
+      totalXpEarned: 0,
+    });
+    expect(await db.xpLogs.count()).toBe(0);
   });
 });

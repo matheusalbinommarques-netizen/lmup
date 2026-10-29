@@ -1,43 +1,96 @@
-# Svelte + Vite
+# Level Me Up
 
-This template should help get you started developing with Svelte in Vite.
+Aplicativo pessoal para organizar missões e projetos, acompanhar progresso e evoluir um herói e seus companheiros. Feito com SvelteKit, TypeScript e Dexie/IndexedDB.
 
-## Recommended IDE Setup
+O produto está sendo evoluído por etapas. A base reproduzível de E1 está descrita em [docs/E1-base-reproduzivel.md](docs/E1-base-reproduzivel.md). Os problemas de progresso e o redesenho de experiência ainda pertencem às próximas etapas; esta versão não deve ser apresentada como o redesenho concluído.
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode).
+## Requisitos e instalação
 
-## Need an official Svelte framework?
+Node.js 22.12+ ou 24.x. O desenvolvimento local desta entrega foi verificado com Node 24 e npm 11. A integração contínua está configurada para Node 22/24.
 
-Check out [SvelteKit](https://github.com/sveltejs/kit#readme), which is also powered by Vite. Deploy anywhere with its serverless-first approach and adapt to various platforms, with out of the box support for TypeScript, SCSS, and Less, and easily-added support for mdsvex, GraphQL, PostCSS, Tailwind CSS, and more.
-
-## Technical considerations
-
-**Why use this over SvelteKit?**
-
-- It brings its own routing solution which might not be preferable for some users.
-- It is first and foremost a framework that just happens to use Vite under the hood, not a Vite app.
-
-This template contains as little as possible to get started with Vite + Svelte, while taking into account the developer experience with regards to HMR and intellisense. It demonstrates capabilities on par with the other `create-vite` templates and is a good starting point for beginners dipping their toes into a Vite + Svelte project.
-
-Should you later need the extended capabilities and extensibility provided by SvelteKit, the template has been structured similarly to SvelteKit so that it is easy to migrate.
-
-**Why include `.vscode/extensions.json`?**
-
-Other templates indirectly recommend extensions via the README, but this file allows VS Code to prompt the user to install the recommended extension upon opening the project.
-
-**Why enable `checkJs` in the JS template?**
-
-It is likely that most cases of changing variable types in runtime are likely to be accidental, rather than deliberate. This provides advanced typechecking out of the box. Should you like to take advantage of the dynamically-typed nature of JavaScript, it is trivial to change the configuration.
-
-**Why is HMR not preserving my local component state?**
-
-HMR state preservation comes with a number of gotchas! It has been disabled by default in both `svelte-hmr` and `@sveltejs/vite-plugin-svelte` due to its often surprising behavior. You can read the details [here](https://github.com/sveltejs/svelte-hmr/tree/master/packages/svelte-hmr#preservation-of-local-state).
-
-If you have state that's important to retain within a component, consider creating an external store which would not be replaced by HMR.
-
-```js
-// store.js
-// An extremely simple external store
-import { writable } from 'svelte/store';
-export default writable(0);
+```sh
+npm ci
 ```
+
+Usar o lockfile versionado. `npm ci` executa a preparação do Husky para os hooks locais; em ambientes de verificação sem hooks é possível usar `npm ci --ignore-scripts` e depois executar explicitamente as verificações abaixo.
+
+## Desenvolvimento
+
+```sh
+npm run dev -- --host 127.0.0.1 --port 5174 --strictPort
+```
+
+Abrir `http://127.0.0.1:5174`. Manter essa origem estável ao acompanhar o desenvolvimento: navegador, protocolo, host e porta definem onde os dados locais são armazenados.
+
+Antes de trocar de navegador, origem ou computador, exporte um backup pelo aplicativo. O LMU atual não sincroniza os dados com a nuvem. Não use o perfil pessoal do navegador nos testes automatizados.
+
+## Verificações
+
+```sh
+npm run verify
+npm run audit:security
+```
+
+`verify` executa lint, checagem de tipos/Svelte, testes sem modo de observação e build. Para rodar separadamente:
+
+```sh
+npm run lint
+npm run check
+npm run test:run
+npm run build
+```
+
+Os testes de serviço usam IndexedDB em memória e não acessam o banco do usuário. `npm test` mantém o modo de observação para desenvolvimento.
+
+## Testes da versão de produção
+
+Depois de `npm run build`:
+
+```sh
+npx playwright install chromium
+npm run test:e2e
+```
+
+Os testes iniciam e encerram um servidor de arquivos na porta 4174, servindo somente `build/`, sem o runtime do SvelteKit. A instância de desenvolvimento na porta 5174 permanece separada. São usados contextos descartáveis e dados sintéticos, sem sincronização ou limpeza do perfil pessoal.
+
+No Windows, para usar o Chrome já instalado em vez de baixar o Chromium:
+
+```powershell
+$env:LMU_BROWSER_CHANNEL = 'chrome'
+npm run test:e2e
+```
+
+Os testes verificam as dez telas principais e a criação/abertura/recarga de projeto local em desktop e viewport móvel. Não certificam ainda a experiência offline completa ou aparelhos físicos.
+
+## Build e hospedagem estática
+
+```sh
+npm run build
+npm run preview -- --host 127.0.0.1 --port 4174 --strictPort
+```
+
+A saída está em `build/`. As rotas fixas têm shell pré-renderizado. Projetos são criados no navegador; seus IDs não existem durante o build. O host precisa servir `200.html` para caminhos que não correspondem a arquivos, preservando a URL solicitada.
+
+Para verificar exclusivamente os arquivos estáticos com o fallback previsto, use `npm run serve:build` em vez do preview. Esse servidor de teste escuta apenas em `127.0.0.1:4174` e não é destinado à exposição pública. Não devolve HTML para assets inexistentes.
+
+Exemplo de regra para hosts que suportam arquivo `_redirects`: `/* /200.html 200`. Configure a regra equivalente no host escolhido; não publique sem testar um acesso direto a `/projetos/1` e sua recarga.
+
+JavaScript é necessário para acessar o progresso local. `npm run preview` é para verificação, não um servidor de produção público. Nenhum instalador `.exe` é produzido por esses comandos.
+
+## Estrutura
+
+- `src/routes`: telas e carregamento de rotas.
+- `src/lib`: componentes de interface.
+- `src/services`: banco e regras de progresso, equipamentos, projetos e backup.
+- `src/test`: preparação do banco em memória.
+- `tests/e2e`: verificações de produção com Playwright.
+- `static`: artes e ícones de instalação.
+- `docs`: decisões, evidências resumidas e limitações por etapa.
+
+`.svelte-kit/`, `build/`, relatórios e dependências são gerados localmente e não devem ser versionados.
+
+## Dados e segurança
+
+O banco atual se chama `LevelMeUpDB`. Exportações podem conter nomes, notas e histórico pessoal; mantenha seus backups em local confiável. As melhorias de validação/importação/reset estão previstas em E2, portanto evite testar importações sobre a única cópia de dados importantes.
+
+Os avisos de dependências restantes e seu alcance estão documentados em [E1](docs/E1-base-reproduzivel.md). Não use `npm audit fix --force` sem revisar as migrações propostas e repetir as verificações pertinentes.
