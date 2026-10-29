@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { artVariants } from '$lib/content/art';
   import Icon from './Icon.svelte';
   let {
     src,
@@ -13,6 +14,7 @@
     eager?: boolean;
     sizes?: string;
   } = $props();
+  const variant = $derived(artVariants(src));
   let failedSource = $state('');
 </script>
 
@@ -22,11 +24,13 @@
   </div>
 {:else}
   <img
-    {src}
+    src={variant?.['160'] ?? src}
     {alt}
-    srcset={src.includes('/scene-')
-      ? `${src.replace('.webp', '-small.webp')} 600w, ${src} 1200w`
-      : undefined}
+    srcset={variant
+      ? variant['160'] + ' 160w, ' + variant['320'] + ' 320w'
+      : src.includes('/scene-')
+        ? `${src.replace('.webp', '-small.webp')} 600w, ${src} 1200w`
+        : undefined}
     {sizes}
     class={className}
     loading={eager ? 'eager' : 'lazy'}

@@ -21,10 +21,10 @@ Usar o lockfile versionado. `npm ci` executa a preparação do Husky para os hoo
 ## Desenvolvimento
 
 ```sh
-npm run dev -- --host 127.0.0.1 --port 5174 --strictPort
+npm run dev -- --host 127.0.0.1 --port 5175 --strictPort
 ```
 
-Abrir `http://127.0.0.1:5174`. Manter essa origem estável ao acompanhar o desenvolvimento: navegador, protocolo, host e porta definem onde os dados locais são armazenados.
+Abrir `http://127.0.0.1:5175` para desenvolvimento. A instância acompanhada pelo usuário serve o build de produção em `http://127.0.0.1:5174`; não use Vite nessa origem depois de ativar o cache PWA. Manter a origem estável para cada finalidade: navegador, protocolo, host e porta definem onde os dados locais são armazenados.
 
 Antes de trocar de navegador, origem ou computador, exporte um backup pelo aplicativo. O LMU atual não sincroniza os dados com a nuvem. Não use o perfil pessoal do navegador nos testes automatizados.
 
@@ -55,7 +55,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Os testes iniciam e encerram um servidor de arquivos na porta 4174, servindo somente `build/`, sem o runtime do SvelteKit. A instância de desenvolvimento na porta 5174 permanece separada. São usados contextos descartáveis e dados sintéticos, sem sincronização ou limpeza do perfil pessoal.
+Os testes iniciam e encerram um servidor de arquivos na porta 4174, servindo somente `build/`, sem o runtime do SvelteKit. A instância do usuário na porta 5174 permanece separada. São usados contextos descartáveis e dados sintéticos, sem sincronização ou limpeza do perfil pessoal.
 
 No Windows, para usar o Chrome já instalado em vez de baixar o Chromium:
 
@@ -64,7 +64,7 @@ $env:LMU_BROWSER_CHANNEL = 'chrome'
 npm run test:e2e
 ```
 
-Os testes verificam as rotas principais, projetos com etapas, criação/edição/recarga, conclusão simultânea em duas abas, estorno, notas, revisões em dias distintos, datas em três fusos, esforço, coleção, compra concorrente, equipamento, cuidado, evolução e recusa de backup inválido em desktop e viewport móvel. Não certificam ainda a experiência offline completa ou aparelhos físicos.
+Os testes verificam as rotas principais, projetos com etapas, criação/edição/recarga, conclusão simultânea em duas abas, estorno, notas, revisões em dias distintos, datas em três fusos, esforço, coleção, compra concorrente, equipamento, cuidado, evolução e recusa de backup inválido em desktop e viewport móvel. A suíte separada `npm run test:pwa` usa service workers reais na porta 4274 e confere offline e atualização entre abas. Não certifica aparelhos físicos ou instalação nativa no sistema operacional.
 
 ## Build e hospedagem estática
 
@@ -100,3 +100,7 @@ O banco atual se chama `LevelMeUpDB`, versão 5. A migração preserva os dados 
 As cinco recuperações recentes e a cópia da migração ficam no próprio navegador. Apagar dados do site remove essas cópias; exporte um backup externo. Exportações podem conter nomes, notas e histórico pessoal; mantenha seus backups em local confiável.
 
 Os avisos de dependências restantes e seu alcance estão documentados em [E1](docs/E1-base-reproduzivel.md). Não use `npm audit fix --force` sem revisar as migrações propostas e repetir as verificações pertinentes.
+
+## Offline e instalação
+
+A [entrega E8](docs/E8-offline-producao.md) descreve cache, atualização e limitações. `npm run build` gera também `sw.js`, manifesto e `release.json`. Configurações mostra preparação offline, atualização, instalação quando oferecida pelo navegador e proteção opcional do armazenamento. A primeira preparação precisa de rede. Instalar não sincroniza nem substitui backup externo.

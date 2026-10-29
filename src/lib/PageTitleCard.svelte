@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { optimizedArt } from '$lib/content/art';
   type Align = 'left' | 'center';
 
   let {
@@ -56,7 +57,7 @@
                  shadow-[0_0_18px_rgba(251,191,36,0.6)] p-1.5"
         >
           <img
-            src={iconSrc}
+            src={optimizedArt(iconSrc)}
             alt={iconAlt || title}
             class="h-32 w-32 object-contain"
           />

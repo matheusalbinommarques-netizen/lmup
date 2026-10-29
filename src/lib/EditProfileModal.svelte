@@ -1,5 +1,7 @@
 <!-- src/lib/EditProfileModal.svelte -->
 <script lang="ts">
+  import { guardUpdates } from '$lib/journey/guardUpdates';
+  guardUpdates(() => true);
   import { db, type Profile } from '$services/db';
   import { onMount } from 'svelte';
   import { getXpForNextLevel, getTitleForLevel } from '$services/xpService';

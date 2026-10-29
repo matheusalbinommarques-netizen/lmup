@@ -1,5 +1,6 @@
 <!-- src/lib/GearPanel.svelte -->
 <script lang="ts">
+  import { optimizedArt } from '$lib/content/art';
   import { companionBonusLabel } from '$services/companionService';
   import { onMount } from 'svelte';
   import { liveQuery } from 'dexie';
@@ -438,7 +439,7 @@
               >
                 {#if meta.iconSrc}
                   <img
-                    src={meta.iconSrc}
+                    src={optimizedArt(meta.iconSrc)}
                     alt={meta.name}
                     class="h-full w-full object-cover"
                   />

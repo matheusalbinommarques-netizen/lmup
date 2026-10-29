@@ -1,5 +1,7 @@
 <!-- src/lib/CompanionSelectModal.svelte -->
 <script lang="ts">
+  import { guardUpdates } from '$lib/journey/guardUpdates';
+  guardUpdates(() => true);
   import {
     companionBonusLabel,
     selectCompanion as saveCompanion,

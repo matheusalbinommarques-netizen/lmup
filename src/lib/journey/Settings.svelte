@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PwaPanel from './PwaPanel.svelte';
   import { onMount } from 'svelte';
   import {
     comfort,
@@ -194,6 +195,7 @@
     {error}
   </p>{/if}
 <section class="journey-stack">
+  <PwaPanel />
   <Card
     ><div class="journey-stack">
       <div>

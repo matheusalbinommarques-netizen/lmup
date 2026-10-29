@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { guardUpdates } from './guardUpdates';
   import { onMount } from 'svelte';
   import { journeyQuery, type JourneySnapshot } from '$services/journeyQuery';
   import { projectProgress } from '$services/projectRules';
@@ -20,6 +21,7 @@
     busy = $state(false),
     archiveOpen = $state(false);
   let selected = $state<HeroProject>();
+  guardUpdates(() => !data || busy);
   onMount(() => {
     const sub = journeyQuery().subscribe({
       next: (value) => {

@@ -1,4 +1,5 @@
 import { onMount } from 'svelte';
+import { registerUpdateGuard } from '$services/updateSafety';
 import { beforeNavigate } from '$app/navigation';
 export function protectMutation(pending: () => boolean, notify: () => void) {
   beforeNavigate(({ cancel }) => {
@@ -8,6 +9,7 @@ export function protectMutation(pending: () => boolean, notify: () => void) {
     }
   });
   onMount(() => {
+    const removeGuard = registerUpdateGuard(pending);
     const protect = (event: BeforeUnloadEvent) => {
       if (pending()) {
         event.preventDefault();
@@ -15,6 +17,9 @@ export function protectMutation(pending: () => boolean, notify: () => void) {
       }
     };
     window.addEventListener('beforeunload', protect);
-    return () => window.removeEventListener('beforeunload', protect);
+    return () => {
+      removeGuard();
+      window.removeEventListener('beforeunload', protect);
+    };
   });
 }

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { guardUpdates } from './guardUpdates';
   import { untrack } from 'svelte';
   import type { HeroProject } from '$services/db';
   import { saveHeroProject } from '$services/projectService';
@@ -23,6 +24,7 @@
   let stages = $state<{ id: string; title: string }[]>([]);
   let revision = 0,
     requestId = '';
+  guardUpdates(() => open || busy);
   $effect(() => {
     if (open)
       untrack(() => {

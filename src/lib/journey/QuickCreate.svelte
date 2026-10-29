@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { guardUpdates } from './guardUpdates';
   import { goto } from '$app/navigation';
   import { untrack } from 'svelte';
   import type { Task } from '$services/db';
@@ -37,6 +38,7 @@
   let effort = $state<Effort | 'legacy'>('small');
   let requestId = '',
     definitionRevision = 0;
+  guardUpdates(() => open || busy);
   $effect(() => {
     if (open)
       untrack(() => {

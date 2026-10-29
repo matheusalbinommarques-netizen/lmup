@@ -1,5 +1,6 @@
 // src/services/db.ts
 import Dexie, { type Table } from 'dexie';
+import { trackWrite } from './updateSafety';
 
 // ---------------------------------------------
 // PROFILE (herói)
@@ -416,6 +417,21 @@ export class LevelMeUpDB extends Dexie {
           });
         }
       });
+    for (const table of this.tables) {
+      table.hook('reading', (value) => {
+        if (Dexie.currentTransaction) trackWrite(Dexie.currentTransaction);
+        return value;
+      });
+      table.hook('creating', (_key, _value, transaction) => {
+        trackWrite(transaction);
+      });
+      table.hook('updating', (_changes, _key, _value, transaction) => {
+        trackWrite(transaction);
+      });
+      table.hook('deleting', (_key, _value, transaction) => {
+        trackWrite(transaction);
+      });
+    }
   }
 }
 

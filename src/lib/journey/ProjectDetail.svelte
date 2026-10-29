@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { guardUpdates } from './guardUpdates';
   import { onMount } from 'svelte';
   import { journeyQuery, type JourneySnapshot } from '$services/journeyQuery';
   import { formatCalendar } from '$services/calendar';
@@ -28,6 +29,7 @@
     busy = $state(false),
     stageId = $state(''),
     taskId = $state('');
+  guardUpdates(() => !data || busy);
   onMount(() => {
     const sub = journeyQuery().subscribe({
       next: (value) => {

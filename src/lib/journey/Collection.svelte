@@ -164,7 +164,7 @@
         class={'collection-item ' +
           (owned?.equipped ? 'collection-selected' : '')}
         ><div class="collection-item-art">
-          <Artwork src={item.iconSrc ?? ''} alt="" /><span
+          <Artwork src={item.iconSrc ?? ''} sizes="120px" alt="" /><span
             class="collection-badge"
             >{owned?.equipped
               ? 'Equipado'

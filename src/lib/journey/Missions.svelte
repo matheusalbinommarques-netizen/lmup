@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { guardUpdates } from './guardUpdates';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { journeyQuery, type JourneySnapshot } from '$services/journeyQuery';
@@ -27,6 +28,7 @@
   let pending = $state<number[]>([]);
   let project = $state('');
   let today = $state(dateKey());
+  guardUpdates(() => !data || pending.length > 0);
   onMount(() => {
     project = new URLSearchParams(location.search).get('projectId') ?? '';
     const sub = journeyQuery().subscribe({

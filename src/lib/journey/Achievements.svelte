@@ -94,7 +94,7 @@
   <Field label="Buscar conquista" type="search" bind:value={search} />
   <div class="collection-grid collection-achievements">
     {#each rows as item (item.id)}<Card
-        ><Artwork src={item.icon} alt="" />
+        ><Artwork src={item.icon} sizes="80px" alt="" />
         <div class="journey-stack">
           <p class="lmu-eyebrow">
             {item.future

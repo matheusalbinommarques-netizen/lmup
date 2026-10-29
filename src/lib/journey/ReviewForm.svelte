@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { guardUpdates } from './guardUpdates';
   import { untrack } from 'svelte';
   import type { Task } from '$services/db';
   import { configureReview } from '$services/reviewService';
@@ -15,6 +16,7 @@
     due = $state(''),
     error = $state(''),
     busy = $state(false);
+  guardUpdates(() => open || busy);
   $effect(() => {
     if (open)
       untrack(() => {

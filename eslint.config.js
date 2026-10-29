@@ -20,6 +20,10 @@ export default [
     ],
   },
 
+  {
+    files: ['pwa/worker.js'],
+    languageOptions: { globals: globals.serviceworker },
+  },
   // 2) Globals de browser + node (SvelteKit)
   {
     languageOptions: {

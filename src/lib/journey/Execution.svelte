@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { guardUpdates } from './guardUpdates';
+  import { isUpdateLocked } from '$services/updateSafety';
+  import { storageError } from '$services/storageErrors';
   import { onMount } from 'svelte';
   import type { Task } from '$services/db';
   import QuickCreate from './QuickCreate.svelte';
@@ -27,20 +30,27 @@
   let reviewOutcome = $state<'' | 'recalled' | 'partial' | 'again'>('');
   let busy = $state(false);
   let startedToken = '';
+  let starting = $state(0);
+  guardUpdates(() => !data || dirty || saves > 0 || busy || starting > 0);
   function startCurrent(current: Task) {
-    if (!isAvailable(current)) return;
+    if (isUpdateLocked() || !isAvailable(current)) return;
     const token = current.reviewEnabled
       ? `review:${current.id}:${String(current.reviewStartedAt ?? current.createdAt)}:${current.completionRevision ?? 0}`
       : `task:${current.id}:${current.completionRevision ?? 0}`;
     if (startedToken === token) return;
     startedToken = token;
-    beginTask(id).catch((cause) => {
-      error =
-        cause instanceof Error
-          ? cause.message
-          : 'Não foi possível iniciar. Tente novamente.';
-      startedToken = '';
-    });
+    starting++;
+    beginTask(id)
+      .catch((cause) => {
+        error =
+          cause instanceof Error
+            ? cause.message
+            : 'Não foi possível iniciar. Tente novamente.';
+        startedToken = '';
+      })
+      .finally(() => {
+        starting--;
+      });
   }
   let notes = $state('');
   let dirty = $state(false);
@@ -130,10 +140,11 @@
           noteError = '';
           if (notes === value) dirty = false;
         } catch (cause) {
-          noteError =
-            cause instanceof Error
-              ? cause.message
-              : 'Não foi possível salvar. Seu texto foi mantido.';
+          noteError = storageError(
+            cause,
+            'Não foi possível salvar. Seu texto foi mantido.',
+            true,
+          );
         }
       })
       .finally(() => {
