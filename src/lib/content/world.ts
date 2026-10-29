@@ -1,3 +1,5 @@
+import { destinations, homeCopy, executionCopy } from './experience';
+
 // Presentation catalog. Keys and numeric progression IDs remain stable when lore changes.
 export const companionContent = {
   wolf: {
@@ -67,11 +69,8 @@ export const sanctuaryContent = {
 } as const;
 
 export const journeyCopy = {
-  today: 'Hoje',
-  missions: 'Missões',
-  projects: 'Projetos',
-  world: 'Refúgio',
-  welcome: 'Um passo de cada vez.',
-  companionMessage: 'Seu companheiro segue com você. No seu ritmo.',
-  completion: 'Esse passo é seu.',
+  ...destinations,
+  welcome: homeCopy.title,
+  companionMessage: homeCopy.companion,
+  completion: executionCopy.completion,
 };

@@ -104,3 +104,7 @@ Os avisos de dependências restantes e seu alcance estão documentados em [E1](d
 ## Offline e instalação
 
 A [entrega E8](docs/E8-offline-producao.md) descreve cache, atualização e limitações. `npm run build` gera também `sw.js`, manifesto e `release.json`. Configurações mostra preparação offline, atualização, instalação quando oferecida pelo navegador e proteção opcional do armazenamento. A primeira preparação precisa de rede. Instalar não sincroniza nem substitui backup externo.
+
+## Beta e personalidade provisória
+
+A [rodada inicial da E9](docs/E9-personalidade-beta.md) aplica voz compartilhada e exemplos opcionais à primeira missão. Um exemplo abre um rascunho editável; cancelar não cria dados. A tela Hoje distingue retomada, revisão futura e ausência de missões ativas. A Beta ainda aguarda sessões reais com participantes e os ajustes decorrentes delas.

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { guardUpdates } from './guardUpdates';
+  import type { MissionStarter } from '$lib/content/experience';
   import { goto } from '$app/navigation';
   import { untrack } from 'svelte';
   import type { Task } from '$services/db';
@@ -17,7 +18,9 @@
     editTask,
     defaultProjectId,
     defaultStageId,
+    starter,
   }: {
+    starter?: MissionStarter;
     open?: boolean;
     snapshot: JourneySnapshot;
     oncreated?: (id: number) => void;
@@ -36,14 +39,16 @@
   let today = $state(true),
     busy = $state(false);
   let effort = $state<Effort | 'legacy'>('small');
+  let detailsOpen = $state(false);
   let requestId = '',
     definitionRevision = 0;
   guardUpdates(() => open || busy);
   $effect(() => {
     if (open)
       untrack(() => {
-        title = editTask?.title ?? '';
-        steps = (editTask?.subtasks ?? []).join('\n');
+        detailsOpen = !!starter && !editTask;
+        title = editTask?.title ?? starter?.title ?? '';
+        steps = (editTask?.subtasks ?? starter?.steps ?? []).join('\n');
         description = editTask?.description ?? '';
         error = '';
         project = String(editTask?.projectId ?? defaultProjectId ?? '');
@@ -149,7 +154,7 @@
         preservadas. Desfaça a conclusão antes de mover uma missão concluída
         para outro projeto.
       </p>{/if}
-    <details>
+    <details bind:open={detailsOpen}>
       <summary>Passos e outros detalhes</summary>
       <div class="journey-form-details">
         <label class="journey-label"

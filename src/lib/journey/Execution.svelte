@@ -1,5 +1,6 @@
 <script lang="ts">
   import { guardUpdates } from './guardUpdates';
+  import { executionCopy } from '$lib/content/experience';
   import { isUpdateLocked } from '$services/updateSafety';
   import { storageError } from '$services/storageErrors';
   import { onMount } from 'svelte';
@@ -254,7 +255,7 @@
             ? 'Revisão realizada'
             : 'Missão concluída'}
       </p>
-      <h1>Esse passo é seu.</h1>
+      <h1>{executionCopy.completion}</h1>
       <h2>{task.title}</h2>
       {#if event}<div class="journey-reward" aria-label="Recompensa recebida">
           <span>+{event.reward.xp} XP</span><span
@@ -274,7 +275,7 @@
           Esta conclusão é anterior ao histórico detalhado. Seu progresso foi
           preservado.
         </p>{/if}
-      <p class="lmu-muted">Agora você pode continuar ou ficar por aqui hoje.</p>
+      <p class="lmu-muted">{executionCopy.afterCompletion}</p>
       <a class="lmu-button lmu-button--primary" href="/"
         >Voltar para hoje<Icon name="arrow" size={18} /></a
       >{#if event}<Button variant="quiet" disabled={busy} onclick={undo}

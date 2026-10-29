@@ -7,6 +7,7 @@
     getEcoProgressForTotalXp,
   } from '$services/ecoConfig';
   import { sanctuaryContent } from '$lib/content/world';
+  import { identity, destinations, refugeCopy } from '$lib/content/experience';
   import {
     companionBonusLabel,
     getCompanionStageImage,
@@ -37,12 +38,12 @@
   const content = $derived(sanctuaryContent[stage.id]);
 </script>
 
-<svelte:head><title>Refúgio · Level Me Up</title></svelte:head>
+<svelte:head><title>{destinations.world} · {identity.name}</title></svelte:head>
 <header class="journey-heading collection-heading">
   <div>
-    <p class="lmu-eyebrow">O que sua jornada construiu</p>
-    <h1>Refúgio</h1>
-    <p>Um lugar para reconhecer o caminho que você já fez.</p>
+    <p class="lmu-eyebrow">{refugeCopy.eyebrow}</p>
+    <h1>{destinations.world}</h1>
+    <p>{refugeCopy.description}</p>
   </div>
 </header>
 <CollectionNav />

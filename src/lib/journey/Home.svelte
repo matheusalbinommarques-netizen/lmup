@@ -1,8 +1,18 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import {
+    identity,
+    destinations,
+    homeCopy,
+    missionStarters,
+    refugeCopy,
+    type MissionStarter,
+  } from '$lib/content/experience';
   import { journeyQuery, type JourneySnapshot } from '$services/journeyQuery';
   import { selectNext, isAvailable, taskSteps } from '$services/journeyService';
   import { dateKey } from '$services/rewardService';
+  import { reviewDueDate } from '$services/reviewRules';
+  import { formatCalendar } from '$services/calendar';
   import { getEcoStageForTotalXp } from '$services/ecoConfig';
   import { sanctuaryContent, companionContent } from '$lib/content/world';
   import { getCompanionStageImage } from '$services/companionService';
@@ -14,6 +24,11 @@
   let data = $state<JourneySnapshot>();
   let error = $state('');
   let open = $state(false);
+  let starter = $state<MissionStarter>();
+  function createMission(example?: MissionStarter) {
+    starter = example;
+    open = true;
+  }
   let today = $state(dateKey());
   onMount(() => {
     const subscription = journeyQuery().subscribe({
@@ -38,6 +53,25 @@
     };
   });
   const next = $derived(data ? selectNext(data.tasks, today) : null);
+  const hasVisibleTasks = $derived(
+    data?.tasks.some((task) => !task.archived) ?? false,
+  );
+  const waitingReview = $derived(
+    !next &&
+      (data?.tasks.some((task) => !task.archived && task.reviewEnabled) ??
+        false),
+  );
+  const introduction = $derived(
+    !data
+      ? ''
+      : !data.tasks.length
+        ? homeCopy.first
+        : next
+          ? next.reason === 'Em andamento'
+            ? homeCopy.resume
+            : homeCopy.next
+          : homeCopy.clear,
+  );
   const plan = $derived(
     data?.tasks.filter(
       (task) => !task.archived && task.plannedDate === today,
@@ -49,22 +83,18 @@
   const reward = $derived(next ? data?.rewards[next.task.id!] : null);
 </script>
 
-<svelte:head><title>Hoje · Level Me Up</title></svelte:head>
+<svelte:head><title>{destinations.today} · {identity.name}</title></svelte:head>
 <header class="journey-heading">
   <div>
-    <p class="lmu-eyebrow">Seu tempo. Sua jornada.</p>
-    <h1>Um passo de cada vez.</h1>
-    <p>
-      {data?.tasks.length
-        ? 'Seu próximo passo está aqui.'
-        : 'Escolha uma atividade pequena para começar.'}
-    </p>
+    <p class="lmu-eyebrow">{homeCopy.eyebrow}</p>
+    <h1>{homeCopy.title}</h1>
+    <p>{introduction}</p>
   </div>
   {#if data}<Button
       variant="secondary"
       aria-label="Nova missão"
       onclick={() => {
-        open = true;
+        createMission();
       }}
       ><Icon name="plus" size={18} /><span class="journey-create-label"
         >Nova missão</span
@@ -107,18 +137,26 @@
           ><div class="journey-empty">
             <Icon name="today" size={36} />
             <h2>
-              {data.tasks.length
-                ? 'Você está em dia.'
-                : 'Toda jornada começa pequena.'}
+              {!data.tasks.length
+                ? homeCopy.firstTitle
+                : waitingReview
+                  ? homeCopy.waitingTitle
+                  : hasVisibleTasks
+                    ? homeCopy.clearTitle
+                    : homeCopy.archivedTitle}
             </h2>
             <p class="lmu-muted">
-              {data.tasks.length
-                ? 'Você pode encerrar por aqui ou escolher algo novo, quando fizer sentido.'
-                : 'Pode ser ler uma página, praticar uma ideia ou dar o primeiro passo em um projeto.'}
+              {!data.tasks.length
+                ? homeCopy.firstDescription
+                : waitingReview
+                  ? homeCopy.waitingDescription
+                  : hasVisibleTasks
+                    ? homeCopy.clearDescription
+                    : homeCopy.archivedDescription}
             </p>
             <Button
               onclick={() => {
-                open = true;
+                createMission();
               }}
               >{data.tasks.length
                 ? 'Criar outra missão'
@@ -127,6 +165,17 @@
                 size={18}
               /></Button
             >
+            {#if !data.tasks.length}<details class="journey-starters">
+                <summary>{homeCopy.examplesTitle}</summary>
+                <p class="lmu-hint">{homeCopy.examplesHint}</p>
+                <div class="journey-starter-list">
+                  {#each missionStarters as example (example.key)}<Button
+                      variant="secondary"
+                      onclick={() => createMission(example)}
+                      >{example.label}<Icon name="arrow" size={18} /></Button
+                    >{/each}
+                </div>
+              </details>{/if}
           </div></Card
         >{/if}
       <section aria-labelledby="plan-title">
@@ -142,7 +191,10 @@
                     >{isAvailable(task)
                       ? 'Escolhida por você para hoje'
                       : task.reviewEnabled
-                        ? 'Revisão já realizada'
+                        ? task.lastReviewDate === today
+                          ? 'Revisão realizada hoje'
+                          : 'Próxima revisão: ' +
+                            formatCalendar(reviewDueDate(task))
                         : 'Concluída'}</span
                   >
                 </li>{/each}
@@ -167,7 +219,7 @@
           <h2>{sanctuaryContent[stage].label}</h2>
           <p class="lmu-muted">{sanctuaryContent[stage].description}</p>
           <a class="journey-link" href="/refugio"
-            >Visitar refúgio<Icon name="arrow" size={18} /></a
+            >{refugeCopy.visit}<Icon name="arrow" size={18} /></a
           >
         </div></Card
       >{#if data.companion}<div class="journey-pet">
@@ -184,7 +236,7 @@
           <div>
             <p class="lmu-eyebrow">Boa companhia</p>
             <p>{data.companion.name}</p>
-            <p class="lmu-hint">Segue com você. No seu ritmo.</p>
+            <p class="lmu-hint">{homeCopy.companion}</p>
           </div>
         </div>{/if}<Card
         ><p class="lmu-eyebrow">{data.profile?.name}</p>
@@ -196,5 +248,5 @@
       >
     </aside>
   </div>
-  <QuickCreate bind:open snapshot={data} />
+  <QuickCreate bind:open snapshot={data} {starter} />
 {/if}

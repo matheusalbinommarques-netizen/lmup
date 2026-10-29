@@ -957,3 +957,23 @@
 .pwa-lock p {
   max-width: 50ch;
 }
+
+.journey-starters {
+  width: 100%;
+  margin-top: 1rem;
+  text-align: left;
+}
+.journey-starters summary {
+  cursor: pointer;
+  color: var(--lmu-action);
+  padding: 0.75rem 0;
+}
+.journey-starter-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+.journey-starter-list button {
+  justify-content: space-between;
+  text-align: left;
+}

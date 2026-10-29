@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state';
+  import { identity, destinations } from '$lib/content/experience';
   import type { Snippet } from 'svelte';
   import { afterNavigate } from '$app/navigation';
   import Icon, { type IconName } from '$lib/ui/Icon.svelte';
@@ -8,10 +9,10 @@
   let { children }: { children: Snippet } = $props();
   let menu = $state(false);
   const links: { href: string; label: string; icon: IconName }[] = [
-    { href: '/', label: 'Hoje', icon: 'today' },
-    { href: '/missoes', label: 'Missões', icon: 'missions' },
-    { href: '/projetos', label: 'Projetos', icon: 'projects' },
-    { href: '/refugio', label: 'Refúgio', icon: 'world' },
+    { href: '/', label: destinations.today, icon: 'today' },
+    { href: '/missoes', label: destinations.missions, icon: 'missions' },
+    { href: '/projetos', label: destinations.projects, icon: 'projects' },
+    { href: '/refugio', label: destinations.world, icon: 'world' },
   ];
   const extras = [
     { href: '/progresso', label: 'Meu progresso e histórico' },
@@ -20,10 +21,10 @@
     { href: '/revisoes', label: 'Revisões e sessões' },
     { href: '/arquivo/missoes', label: 'Organização avançada de missões' },
     { href: '/santuario', label: 'Santuário' },
-    { href: '/bestiario', label: 'Companheiros' },
+    { href: '/bestiario', label: destinations.companions },
     { href: '/loja', label: 'Loja' },
     { href: '/inventario', label: 'Inventário' },
-    { href: '/trofeus', label: 'Troféus' },
+    { href: '/trofeus', label: destinations.achievements },
     { href: '/cla', label: 'Clã (demonstração)' },
   ];
   function active(href: string) {
@@ -56,7 +57,7 @@
   <aside class="journey-sidebar">
     <a href="/" class="journey-brand"
       ><Icon name="spark" size={28} /><span
-        >Level Me Up<small>A sua próxima conquista.</small></span
+        >{identity.name}<small>{identity.tagline}</small></span
       ></a
     >
     <nav aria-label="Navegação principal">
@@ -78,7 +79,7 @@
   <div class="journey-content">
     <header class="journey-mobile-header">
       <a href="/" class="journey-brand"
-        ><Icon name="spark" size={24} />Level Me Up</a
+        ><Icon name="spark" size={24} />{identity.name}</a
       ><Button
         variant="quiet"
         aria-label="Perfil e mais"
