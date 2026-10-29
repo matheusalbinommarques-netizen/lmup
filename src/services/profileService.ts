@@ -1,3 +1,4 @@
+import { repairEquipmentSlots } from './shopService';
 import { companionContent } from '$lib/content/world';
 import { db, type Profile, type Companion } from './db';
 import { getTitleForLevel, getXpForNextLevel } from './progression';
@@ -75,26 +76,33 @@ const companions: Companion[] = [
 ];
 
 export async function initializeJourney(): Promise<void> {
-  await db.transaction('rw', db.profile, db.companions, async () => {
-    const profile = await ensureProfile();
-    for (const base of companions) {
-      const existing = await db.companions.get(base.id!);
-      if (!existing) {
-        await db.companions.add({
-          ...base,
-          unlocked: profile.level >= base.requiredLevel!,
-          evolutionStage: 1,
-          foodInvested: 0,
-        });
-      } else {
-        const patch: Partial<Companion> = {};
-        if (!existing.key) patch.key = base.key;
-        if (!existing.requiredLevel) patch.requiredLevel = base.requiredLevel;
-        if (!existing.unlocked && profile.level >= base.requiredLevel!)
-          patch.unlocked = true;
-        if (Object.keys(patch).length)
-          await db.companions.update(base.id!, patch);
+  await db.transaction(
+    'rw',
+    db.profile,
+    db.companions,
+    db.ownedShopItems,
+    async () => {
+      await repairEquipmentSlots();
+      const profile = await ensureProfile();
+      for (const base of companions) {
+        const existing = await db.companions.get(base.id!);
+        if (!existing) {
+          await db.companions.add({
+            ...base,
+            unlocked: profile.level >= base.requiredLevel!,
+            evolutionStage: 1,
+            foodInvested: 0,
+          });
+        } else {
+          const patch: Partial<Companion> = {};
+          if (!existing.key) patch.key = base.key;
+          if (!existing.requiredLevel) patch.requiredLevel = base.requiredLevel;
+          if (!existing.unlocked && profile.level >= base.requiredLevel!)
+            patch.unlocked = true;
+          if (Object.keys(patch).length)
+            await db.companions.update(base.id!, patch);
+        }
       }
-    }
-  });
+    },
+  );
 }

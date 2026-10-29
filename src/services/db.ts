@@ -231,6 +231,13 @@ export interface Companion {
 
   // NOVO – evolução do pet e comida investida
   evolutionStage?: number; // 1, 2, 3...
+  careHistory?: {
+    id: string;
+    occurredAt: string;
+    amount: number;
+    fromStage: number;
+    toStage: number;
+  }[];
   foodInvested?: number; // total de comida já gasta nesse pet
 }
 

@@ -1,5 +1,6 @@
 <!-- src/lib/GearPanel.svelte -->
 <script lang="ts">
+  import { companionBonusLabel } from '$services/companionService';
   import { onMount } from 'svelte';
   import { liveQuery } from 'dexie';
   import {
@@ -223,36 +224,7 @@
     petId: number | undefined,
     evolutionStage: number | undefined,
   ): string {
-    const stage = Math.min(Math.max(evolutionStage || 1, 1), 3);
-
-    switch (petId) {
-      case 1: {
-        // Lobo → XP
-        if (stage === 1) return '+5% de XP ganho em missões.';
-        if (stage === 2) return '+10% de XP ganho em missões.';
-        return '+15% de XP ganho em missões.';
-      }
-      case 2: {
-        // Lich → Comida
-        if (stage === 1) return '+5% de comida obtida (alimentação).';
-        if (stage === 2) return '+10% de comida obtida (alimentação).';
-        return '+15% de comida obtida (alimentação).';
-      }
-      case 3: {
-        // Dragão → Gold
-        if (stage === 1) return '+5% de Gold ganho em missões.';
-        if (stage === 2) return '+10% de Gold ganho em missões.';
-        return '+15% de Gold ganho em missões.';
-      }
-      case 4: {
-        // Aberração → XP + Gold + Comida
-        if (stage === 1) return '+5% de XP, Gold e Comida.';
-        if (stage === 2) return '+10% de XP, Gold e Comida.';
-        return '+20% de XP e +15% de Gold e Comida.';
-      }
-      default:
-        return 'Bônus não definido.';
-    }
+    return companionBonusLabel({ id: petId, name: '', evolutionStage });
   }
 
   type ActivePetView = Companion & {

@@ -1,5 +1,9 @@
 <!-- src/lib/CompanionSelectModal.svelte -->
 <script lang="ts">
+  import {
+    companionBonusLabel,
+    selectCompanion as saveCompanion,
+  } from '$services/companionService';
   import { db, type Companion } from '$services/db';
   import { liveQuery } from 'dexie';
   import { onMount } from 'svelte';
@@ -111,33 +115,7 @@
 
   // Texto do bônus mostrado no card, por pet + evolução
   function getPetBonusDescription(pet: PetCard): string {
-    const stage = Math.min(Math.max(pet.evolutionStage || 1, 1), 3);
-
-    switch (pet.key) {
-      case 'wolf': {
-        if (stage === 1) return '+5% de XP ganho em missões.';
-        if (stage === 2) return '+10% de XP ganho em missões.';
-        return '+15% de XP ganho em missões.';
-      }
-      case 'lich': {
-        if (stage === 1) return '+5% de comida obtida (alimentação).';
-        if (stage === 2) return '+10% de comida obtida (alimentação).';
-        return '+15% de comida obtida (alimentação).';
-      }
-      case 'dragon': {
-        if (stage === 1) return '+5% de Gold ganho em missões.';
-        if (stage === 2) return '+10% de Gold ganho em missões.';
-        return '+15% de Gold ganho em missões.';
-      }
-      case 'aberration': {
-        if (stage === 1) return '+5% de XP, Gold e Comida.';
-        if (stage === 2) return '+10% de XP, Gold e Comida.';
-        // nível 3: reforça os 3 bônus + redução de tarefas
-        return '+20% de XP e +15% de Gold e Comida.';
-      }
-      default:
-        return 'Bônus não definido.';
-    }
+    return companionBonusLabel(pet);
   }
 
   // Seed inicial pro Dexie (usa PET_BASE como fonte da verdade)
@@ -297,8 +275,7 @@
 
     try {
       // Atualiza perfil e marca esse pet como desbloqueado
-      await db.profile.update(1, { activeCompanionId: pet.id });
-      await db.companions.update(pet.id, { unlocked: true });
+      await saveCompanion(pet.id);
 
       activeCompanionId = pet.id;
       close();

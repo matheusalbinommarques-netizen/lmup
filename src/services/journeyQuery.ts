@@ -10,6 +10,9 @@ export async function readJourneySnapshot() {
     const profile = await db.profile.get(1);
     const tasks = await db.tasks.toArray();
     const areas = await db.areas.toArray();
+    const companions = await db.companions.toArray();
+    const owned = await db.ownedShopItems.toArray();
+    const inventory = await db.inventory.toArray();
     const projects = await db.projects.toArray();
     const events = await db.activityEvents.toArray();
     const eventsById = new Map(events.map((event) => [event.id, event]));
@@ -37,6 +40,9 @@ export async function readJourneySnapshot() {
     }
     return {
       profile,
+      companions,
+      owned,
+      inventory,
       tasks,
       areas,
       projects,

@@ -105,22 +105,26 @@ function applyItem(mods: HeroModifiers, item: ShopItem): void {
  * A exclusividade já é garantida por SLOT na loja/inventário,
  * então aqui basta aplicar o efeito de cada item equipado.
  */
-export async function buildHeroModifiersFromOwned(): Promise<HeroModifiers> {
-  const allOwned: OwnedShopItem[] = await db.ownedShopItems.toArray();
-
+export function modifiersForOwned(allOwned: OwnedShopItem[]): HeroModifiers {
   const equippedRows = allOwned.filter(
     (row) => row.equipped && typeof row.itemId === 'number',
   );
 
   const mods: HeroModifiers = { ...BASE_MODIFIERS };
 
-  for (const row of equippedRows) {
+  const slots = new Set<string>();
+  for (const row of equippedRows.sort((a, b) => b.itemId - a.itemId)) {
     const item = getShopItemById(row.itemId as number);
-    if (!item) continue;
+    if (!item?.slot || slots.has(item.slot)) continue;
+    slots.add(item.slot);
     applyItem(mods, item);
   }
 
   return mods;
+}
+
+export async function buildHeroModifiersFromOwned(): Promise<HeroModifiers> {
+  return modifiersForOwned(await db.ownedShopItems.toArray());
 }
 
 // cache simples pra não recalcular toda hora

@@ -9,12 +9,12 @@ const routes = [
   ['/projetos', 'Projetos'],
   ['/revisoes', 'Revisões'],
   ['/cla', 'Salão do Clã'],
-  ['/santuario', 'Santuário da Natureza'],
+  ['/santuario', 'Refúgio'],
   ['/config', 'Cofre Arcano'],
-  ['/loja', 'Loja da Taverna'],
-  ['/inventario', 'Inventário'],
-  ['/bestiario', 'Bestiário de Companheiros'],
-  ['/trofeus', 'Sala de Troféus'],
+  ['/loja', 'Loja'],
+  ['/inventario', 'Minha coleção'],
+  ['/bestiario', 'Companheiros'],
+  ['/trofeus', 'Conquistas'],
 ];
 
 test('asset ausente retorna 404 sem receber o shell HTML', async ({

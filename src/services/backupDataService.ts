@@ -283,6 +283,29 @@ export function validateBackup(input: unknown): JourneyBackup {
   }
   for (const pet of lists.companions) {
     text(pet.name, 'companions.name');
+    if (pet.careHistory != null) {
+      if (!Array.isArray(pet.careHistory) || pet.careHistory.length > 10000)
+        fail('histórico de cuidado inválido.');
+      const ids = new Set();
+      let invested = 0;
+      for (const raw of pet.careHistory) {
+        const entry = object(raw, 'cuidado');
+        text(entry.id, 'cuidado.id');
+        date(entry.occurredAt, 'cuidado.data');
+        integer(entry.amount, 'cuidado.comida', 1);
+        if (
+          ids.has(entry.id) ||
+          ![1, 2, 3].includes(entry.fromStage) ||
+          ![1, 2, 3].includes(entry.toStage) ||
+          entry.toStage < entry.fromStage
+        )
+          fail('recibo de cuidado inválido.');
+        ids.add(entry.id);
+        invested += entry.amount;
+      }
+      if (invested > (pet.foodInvested ?? 0))
+        fail('histórico excede investimento do companheiro.');
+    }
     if (pet.foodInvested != null)
       integer(pet.foodInvested, 'companions.foodInvested');
     if (pet.evolutionStage != null && ![1, 2, 3].includes(pet.evolutionStage))

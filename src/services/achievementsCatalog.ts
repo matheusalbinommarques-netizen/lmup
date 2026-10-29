@@ -28,6 +28,9 @@ export type AchievementStats = {
   hasDragon: boolean;
   allCompanionsUnlocked: boolean;
   companionInteractions: number;
+  purchaseCount: number;
+  savedGold: number;
+  equipmentSlots: number;
 };
 
 export type AchievementDef = {
@@ -72,6 +75,9 @@ export function createAchievementStats(
     hasDragon: false,
     allCompanionsUnlocked: false,
     companionInteractions: 0,
+    purchaseCount: 0,
+    savedGold: 0,
+    equipmentSlots: 0,
     ...partial,
   };
 }
@@ -416,48 +422,43 @@ export const ALL_ACHIEVEMENTS: AchievementDef[] = [
     icon: '/art/badge-icons/primeira-compra.png',
     rarity: 'comum',
     category: 'economia',
-    condition: () => false,
-    future: true,
+    condition: ({ purchaseCount }) => purchaseCount >= 1,
   },
   {
     id: 'cliente-fiel',
     title: 'Cliente Fiel',
-    description: 'Gaste 1.000 moedas na Loja.',
+    description: 'Compre 10 equipamentos diferentes na Loja.',
     icon: '/art/badge-icons/cliente-fiel.png',
     rarity: 'raro',
     category: 'economia',
-    condition: () => false,
-    future: true,
+    condition: ({ purchaseCount }) => purchaseCount >= 10,
   },
   {
     id: 'pao-duro',
     title: 'Pão-Duro',
-    description: 'Acumule 5.000 moedas.',
+    description: 'Mantenha um saldo de pelo menos 5.000 Gold.',
     icon: '/art/badge-icons/pao-duro.png',
     rarity: 'raro',
     category: 'economia',
-    condition: () => false,
-    future: true,
+    condition: ({ savedGold }) => savedGold >= 5000,
   },
   {
     id: 'magnata',
     title: 'Magnata',
-    description: 'Acumule 50.000 moedas.',
+    description: 'Mantenha um saldo de pelo menos 50.000 Gold.',
     icon: '/art/badge-icons/magnata.png',
     rarity: 'épico',
     category: 'economia',
-    condition: () => false,
-    future: true,
+    condition: ({ savedGold }) => savedGold >= 50000,
   },
   {
     id: 'arsenal-completo',
     title: 'Arsenal Completo',
-    description: 'Possua 10 itens diferentes no inventário.',
+    description: 'Possua um equipamento para cada um dos seis espaços.',
     icon: '/art/badge-icons/arsenal-completo.png',
     rarity: 'raro',
     category: 'economia',
-    condition: () => false,
-    future: true,
+    condition: ({ equipmentSlots }) => equipmentSlots >= 6,
   },
 ];
 

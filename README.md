@@ -2,9 +2,9 @@
 
 Aplicativo pessoal para organizar missões e projetos, acompanhar progresso e evoluir um herói e seus companheiros. Feito com SvelteKit, TypeScript e Dexie/IndexedDB.
 
-O produto está sendo evoluído por etapas. A base reproduzível está descrita em [E1](docs/E1-base-reproduzivel.md), os contratos de progresso e recuperação em [E2](docs/E2-progresso-confiavel.md), a jornada diária com dados reais em [E4](docs/E4-jornada-real.md), e projetos, revisões e esforço em [E5](docs/E5-projetos-revisoes.md).
+O produto está sendo evoluído por etapas. A base reproduzível está descrita em [E1](docs/E1-base-reproduzivel.md), os contratos de progresso e recuperação em [E2](docs/E2-progresso-confiavel.md), a jornada diária com dados reais em [E4](docs/E4-jornada-real.md), projetos, revisões e esforço em [E5](docs/E5-projetos-revisoes.md), e Refúgio, companheiros e coleção em [E6](docs/E6-refugio-colecao.md).
 
-O aplicativo abre em Hoje, com Missões, Projetos e Refúgio na navegação principal. Criação rápida, passos, notas, pausa, retomada, conclusão e desfazimento usam os dados reais do navegador. O organizador anterior está em `/arquivo/missoes`; o antigo início, com perfil e equipamentos, em `/perfil`. Projetos têm objetivo e etapas; revisões têm sessões e histórico em `/revisoes`. O esforço escolhido define o XP base, independentemente da quantidade de passos. As demais funções continuam acessíveis por Perfil e mais.
+O aplicativo abre em Hoje, com Missões, Projetos e Refúgio na navegação principal. Criação rápida, passos, notas, pausa, retomada, conclusão e desfazimento usam os dados reais do navegador. O organizador anterior está em `/arquivo/missoes`; o antigo início, com perfil e equipamentos, em `/perfil`. Projetos têm objetivo e etapas; revisões têm sessões e histórico em `/revisoes`. O esforço escolhido define o XP base, independentemente da quantidade de passos. O Refúgio reúne ambiente, companheiros, coleção, loja e conquistas. Compra e cuidado têm prévia e confirmação; equipamentos são exclusivos por espaço. As demais funções continuam acessíveis por Perfil e mais.
 
 O sistema visual e o piloto original estão em [E3](docs/E3-sistema-visual.md). `/laboratorio` e `/laboratorio?view=componentes` continuam sendo prévias com dados de exemplo em memória; não substituem a jornada real e não abrem o banco pessoal.
 
@@ -64,7 +64,7 @@ $env:LMU_BROWSER_CHANNEL = 'chrome'
 npm run test:e2e
 ```
 
-Os testes verificam as rotas principais, projetos com etapas, criação/edição/recarga, conclusão simultânea em duas abas, estorno, notas, revisões em dias distintos, datas em três fusos, esforço e recusa de backup inválido em desktop e viewport móvel. Não certificam ainda a experiência offline completa ou aparelhos físicos.
+Os testes verificam as rotas principais, projetos com etapas, criação/edição/recarga, conclusão simultânea em duas abas, estorno, notas, revisões em dias distintos, datas em três fusos, esforço, coleção, compra concorrente, equipamento, cuidado, evolução e recusa de backup inválido em desktop e viewport móvel. Não certificam ainda a experiência offline completa ou aparelhos físicos.
 
 ## Build e hospedagem estática
 
