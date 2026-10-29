@@ -99,6 +99,18 @@
           disabled={busy}
           onclick={persist}>Solicitar proteção dos dados locais</Button
         >{/if}{/if}{#if message}<p role="status">{message}</p>{/if}
+    <details>
+      <summary>Sobre esta versão</summary>
+      <p class="lmu-hint">
+        Beta local · Revisão em uso: <code style="overflow-wrap: anywhere"
+          >{$pwaState.activeVersion || 'não confirmada neste acesso'}</code
+        >
+      </p>
+      <p class="lmu-hint">
+        Esta identificação corresponde à versão que está rodando nesta janela.
+        Use-a ao relatar um problema.
+      </p>
+    </details>
     <p class="lmu-hint">
       Offline e instalação não são sincronização nem backup. Apagar os dados do
       site remove a jornada e suas recuperações locais. O primeiro acesso e a

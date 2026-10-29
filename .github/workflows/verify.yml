@@ -28,3 +28,5 @@ jobs:
         run: npm run test:e2e
       - if: matrix.node == 24
         run: npm run test:pwa
+      - if: matrix.node == 24
+        run: npm run test:package

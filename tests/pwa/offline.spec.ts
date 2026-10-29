@@ -241,11 +241,19 @@ test('revisão incompatível orienta backup e não força ativação', async ({
     page.getByText(/Esta versão requer uma transição de dados/),
   ).toBeVisible();
   expect((await metadata(page)).version).toBe(original);
+  await page.getByText('Sobre esta versão', { exact: true }).click();
+  await expect(
+    page
+      .locator('details')
+      .filter({ hasText: 'Revisão em uso:' })
+      .locator('code'),
+  ).toHaveText(original);
 });
 test('manifesto e controles de instalação oferecem caminho suportado e proteção opcional', async ({
   page,
 }) => {
   await ready(page);
+  const activeRevision = (await metadata(page)).version;
   const client = await page.context().newCDPSession(page);
   const result = await client.send('Page.getAppManifest');
   expect(result.errors).toEqual([]);
@@ -265,6 +273,13 @@ test('manifesto e controles de instalação oferecem caminho suportado e proteç
   await expect(
     page.getByRole('button', { name: 'Atualizar aplicativo', exact: true }),
   ).not.toBeVisible();
+  await page.getByText('Sobre esta versão', { exact: true }).click();
+  await expect(
+    page
+      .locator('details')
+      .filter({ hasText: 'Revisão em uso:' })
+      .locator('code'),
+  ).toHaveText(activeRevision);
   await page.evaluate(() => {
     const event = new Event('beforeinstallprompt', { cancelable: true });
     Object.assign(event, {
@@ -424,6 +439,12 @@ test('cache opcional respeita limite e configuração cabe em 320px com texto am
   await expect(
     page.getByRole('heading', { name: 'Configurações', exact: true }),
   ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.getByText('Sobre esta versão', { exact: true }).click();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,

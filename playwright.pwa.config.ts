@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests/pwa',
+  outputDir: 'test-results-pwa',
   fullyParallel: false,
   workers: 1,
   retries: 0,

@@ -163,6 +163,9 @@ test('exemplo é rascunho editável: cancelar não cria missão e salvar permite
   await page
     .getByRole('button', { name: 'Desfazer conclusão', exact: true })
     .click();
+  await expect(
+    page.getByRole('button', { name: 'Concluir missão', exact: true }),
+  ).toBeEnabled();
   await page.reload();
   await expect(page.getByLabel('Notas da missão')).toHaveValue(
     'Ainda posso mudar esta ideia.',

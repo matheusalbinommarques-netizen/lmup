@@ -108,3 +108,9 @@ A [entrega E8](docs/E8-offline-producao.md) descreve cache, atualização e limi
 ## Beta e personalidade provisória
 
 A [rodada inicial da E9](docs/E9-personalidade-beta.md) aplica voz compartilhada e exemplos opcionais à primeira missão. Um exemplo abre um rascunho editável; cancelar não cria dados. A tela Hoje distingue retomada, revisão futura e ausência de missões ativas. A Beta ainda aguarda sessões reais com participantes e os ajustes decorrentes delas.
+
+## Candidato técnico local
+
+Depois de `npm run build`, execute `npm run package:beta` para gerar uma pasta em `dist/` com os arquivos estáticos, servidor local, guia e manifesto de integridade. A identidade do pacote considera revisão, origem do código e hashes dos arquivos. `npm run test:package` confere o pacote e recusa alterações, arquivos ausentes, extras e caminhos inválidos. A conferência detecta corrupção; não é assinatura digital.
+
+O [guia da Beta](docs/GUIA-DA-BETA.md) explica instalação, atualização, backup e recuperação. A pasta gerada contém `iniciar.mjs`; executar `node iniciar.mjs` mantém a origem `127.0.0.1:5174`. Não inicie um segundo servidor nessa porta se a instância já estiver aberta. Não há dependências npm dentro do pacote, mas Node.js é necessário para o servidor local incluído. A avaliação com participantes continua pendente.

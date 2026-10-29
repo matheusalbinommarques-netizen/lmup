@@ -14,6 +14,7 @@ export const pwaState = writable({
   installable: false,
   message: '',
   version: '',
+  activeVersion: '',
 });
 let registration: ServiceWorkerRegistration | undefined,
   installEvent: any,
@@ -187,6 +188,7 @@ export function initializePwa() {
       const meta = await ask(controller, { type: 'LMU_META' }, 2500);
       patch({
         ready: meta.protocol === UPDATE_PROTOCOL && meta.schema === APP_SCHEMA,
+        activeVersion: meta.version,
       });
     } catch {
       patch({

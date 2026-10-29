@@ -243,6 +243,8 @@
             <button
               type="button"
               onclick={() => (isProfileModalOpen = true)}
+              aria-label="Editar perfil"
+              disabled={hero.level < 1}
               class="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:text-primary hover:bg-slate-800 transition-colors"
               title="Editar Perfil"
             >

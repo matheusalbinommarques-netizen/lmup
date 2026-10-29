@@ -62,7 +62,7 @@
     },
   };
 
-  const rarityKey: Rarity = item.rarity as Rarity;
+  const rarityKey = $derived(item.rarity as Rarity);
   const rCfg = $derived(rarityConfig[rarityKey]);
 
   const isSoon = $derived(item.status === 'soon');

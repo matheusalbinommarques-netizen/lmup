@@ -19,7 +19,10 @@
     "lint": "eslint .",
     "check": "svelte-kit sync && svelte-check",
     "verify": "npm run lint && npm run check && npm run test:run && npm run build",
-    "test:pwa": "playwright test --config playwright.pwa.config.ts"
+    "test:pwa": "playwright test --config playwright.pwa.config.ts",
+    "package:beta": "node scripts/package-release.mjs",
+    "verify:package": "node scripts/verify-package.mjs",
+    "test:package": "node scripts/test-package.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

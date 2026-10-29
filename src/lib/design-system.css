@@ -198,7 +198,7 @@
   color: var(--lmu-text);
   border: 1px solid var(--lmu-border);
   border-radius: 1.25rem;
-  padding: 1.5rem;
+  padding: clamp(0.75rem, 4vw, 1.5rem);
   width: min(32rem, calc(100% - 2rem));
   max-height: calc(100dvh - 2rem);
   overflow: auto;
@@ -407,4 +407,8 @@
 }
 :root[data-neuro-focus='true'] .journey-world-copy {
   position: static;
+}
+
+.lmu-dialog header .lmu-button {
+  padding: 0.25em;
 }
