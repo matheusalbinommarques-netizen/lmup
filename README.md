@@ -126,3 +126,7 @@ A [rodada de marcos e paisagens](docs/E9-refugio-marcos.md) separa ambiente alca
 Veja também [os cuidados e prévias dos companheiros](docs/E9-companheiros-cuidados.md).
 
 A Beta tem [escopo congelado para avaliação](docs/CONGELAMENTO-DA-BETA.md), com lista fechada de acabamento e critérios para correções.
+
+## Estado da versão publicada
+
+Consulte o [estado da Beta](docs/BETA-ATUAL.md), o [roadmap](docs/planejamento/ROADMAP-Level-Me-Up.md) e o [backlog](docs/planejamento/BACKLOG-Level-Me-Up.md). O escopo funcional está congelado para avaliação; a V1 ainda não foi encerrada.
