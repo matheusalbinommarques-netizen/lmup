@@ -15,6 +15,7 @@
     { href: '/refugio', label: destinations.world, icon: 'world' },
   ];
   const extras = [
+    { href: '/aventura', label: 'Aventura (experimento)' },
     { href: '/progresso', label: 'Meu progresso e histórico' },
     { href: '/perfil', label: 'Perfil e equipamentos' },
     { href: '/config', label: 'Configurações e backup' },
