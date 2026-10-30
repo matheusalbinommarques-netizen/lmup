@@ -118,6 +118,15 @@ export function validateBackup(input: unknown): JourneyBackup {
     if (profile.food != null) integer(profile.food, 'profile.food');
     if (profile.avatarUrl != null && typeof profile.avatarUrl !== 'string')
       fail('avatar inválido.');
+    if (profile.rpgPilot != null) {
+      const pilot = object(profile.rpgPilot, 'profile.rpgPilot');
+      integer(pilot.scene, 'profile.rpgPilot.scene');
+      if (pilot.scene > 6) fail('cena do piloto inválida.');
+      if (pilot.choice != null && !['help', 'follow'].includes(pilot.choice))
+        fail('escolha do piloto inválida.');
+      if (pilot.scene === 6 && !pilot.choice)
+        fail('piloto concluído sem decisão.');
+    }
     date(profile.lastCompletionDate, 'profile.lastCompletionDate', true);
     if (profile.ecoGoldClaimedUpToStage != null) {
       integer(
