@@ -24,7 +24,7 @@ test('história inteira sem interrupção, escolha persistente e capítulo segui
   }
   await page.getByRole('button', { name: 'Ajudar o guarda' }).click();
   await expect(page.getByRole('heading', { name: 'A promessa feita ao guarda' })).toBeVisible();
-  await expect(page.getByRole('progressbar', { name: 'XP conquistado depois do capítulo 1' })).toHaveAttribute('value','0');
+  await expect(page.locator('#rpg-xp')).toHaveAttribute('value', '0');
 
   await page.reload();
   await expect(page.getByRole('heading', { name: 'A promessa feita ao guarda' })).toBeVisible();
@@ -45,4 +45,18 @@ test('história inteira sem interrupção, escolha persistente e capítulo segui
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Uma lembrança inesperada' })).toBeVisible();
   expect(errors).toEqual([]);
+});
+
+test('aventura ocupa a janela e mantém controles acessíveis sem barra do organizador', async ({page}) => {
+  await page.goto('/aventura');
+  await expect(page.locator('.rpg-theater')).toBeVisible();
+  const viewport = page.viewportSize()!;
+  const rect = await page.locator('.rpg-theater').boundingBox();
+  expect(rect).not.toBeNull();
+  expect(rect!.width).toBeGreaterThanOrEqual(viewport.width - 2);
+  expect(rect!.height).toBeGreaterThanOrEqual(viewport.height - 2);
+  await expect(page.locator('.journey-sidebar')).toBeHidden();
+  await expect(page.getByRole('link', {name:'Voltar para Hoje'})).toBeVisible();
+  await expect(page.getByRole('button', {name:'Próxima cena'})).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 });
