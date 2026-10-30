@@ -1235,3 +1235,28 @@
 .companion-summary p {
   margin: 0.4rem 0;
 }
+
+
+/* The RPG is an opt-in, full-viewport experience, not a card in the task manager.
+   Navigation remains inside the adventure itself. All other routes are unchanged. */
+.journey-shell.journey-adventure {
+  display: block;
+  min-height: 100dvh;
+  background: #080d13;
+}
+.journey-adventure .journey-sidebar,
+.journey-adventure .journey-mobile-header,
+.journey-adventure .journey-bottom-nav {
+  display: none;
+}
+.journey-adventure #journey-main {
+  max-width: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  min-height: 100dvh;
+}
+.journey-adventure .journey-content {
+  min-width: 0;
+  min-height: 100dvh;
+}
