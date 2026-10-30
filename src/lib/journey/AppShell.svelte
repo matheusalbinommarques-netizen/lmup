@@ -53,7 +53,7 @@
   });
 </script>
 
-<div class="lmu-design journey-shell">
+<div class="lmu-design journey-shell" class:journey-adventure={page.url.pathname === '/aventura'}>
   <a class="lmu-skip" href="#journey-main">Pular para o conteúdo</a>
   <aside class="journey-sidebar">
     <a href="/" class="journey-brand"
