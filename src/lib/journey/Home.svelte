@@ -178,6 +178,7 @@
               </details>{/if}
           </div></Card
         >{/if}
+      <Card><p class="lmu-eyebrow">Experiência RPG experimental</p><h2>O outro lado da ponte</h2><p class="lmu-muted">Uma pequena história que avança com o que você realiza fora do aplicativo. Você controla as cenas.</p><a class="lmu-button lmu-button--secondary" href="/aventura">Entrar na aventura</a></Card>
       <section aria-labelledby="plan-title">
         <div class="journey-section-heading">
           <h2 id="plan-title">Seu plano de hoje</h2>
