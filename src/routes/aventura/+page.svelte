@@ -245,7 +245,7 @@
     </nav>
   </header>
 
-  <main class="rpg-story-area" aria-label="Cena atual">
+  <div class="rpg-story-area" role="region" aria-label="Cena atual">
     {#if error}<p class="rpg-message" role="alert">{error}</p>{/if}
     {#if !ready}
       <p role="status" class="rpg-message">Preparando a aventura…</p>
@@ -311,7 +311,7 @@
         <p class="rpg-caption">{scene.caption}</p>
       </div>
     {/if}
-  </main>
+  </div>
 
   <footer class="rpg-theater-bottom">
     <div class="rpg-bottom-meta">
