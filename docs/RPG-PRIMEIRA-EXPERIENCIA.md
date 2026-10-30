@@ -1,49 +1,54 @@
-# LMUP — primeira experiência RPG (experimento não canônico)
+# LMUP — piloto de capítulos RPG (não canônico)
 
-**Base:** branch `codex/beta-redesign`, congelada para avaliação. Esta implementação vive numa branch própria.
+**Base:** `codex/beta-redesign`. Desenvolvimento isolado em `feat/rpg-first-experience`.
 
-## Hipótese
+## Objetivo
 
-O usuário deve conseguir realizar uma tarefa real e, em seguida, perceber que seu progresso também abriu espaço para uma aventura. Isso deve acontecer sem interromper o planejamento, sem narrativas automáticas e sem cobrar presença diária.
+Validar se capítulos narrativos curtos e completos são um incentivo adicional a realizar atividades reais. A produtividade continua funcionando sem a aventura.
 
-## Fluxo de demonstração
+## Como funciona nesta versão
 
-1. O usuário entra em **Aventura** pela página Hoje ou por Perfil e mais.
-2. Vê uma cena curta situada provisoriamente em Védria, com avanço **somente por botão**.
-3. Encontra uma pausa natural: a próxima cena só fica disponível se houver ao menos um evento ativo de conclusão de missão ou revisão real.
-4. Pode sair, cadastrar e concluir qualquer missão de sua escolha e voltar; o capítulo aguarda.
-5. Uma cena apresenta duas decisões. A decisão é salva no perfil e altera o encerramento do piloto.
-6. A tela final oferece retorno à jornada de produtividade, sem criar recompensa adicional.
+1. **Capítulo 1 — O outro lado da ponte:** seis cenas e uma escolha; sem qualquer interrupção por tarefas.
+2. Ao terminar, o aplicativo salva a escolha e a quantidade de XP já acumulada naquele momento.
+3. **Capítulo 2 — Ecos da passagem:** pequena continuação experimental desbloqueada quando o jogador ganhar **150 XP novos após concluir o Capítulo 1**. Esse XP não é gasto.
+4. A pessoa decide quando iniciar o próximo capítulo. Não há prazo, punição por ausência, obrigação de criar uma missão específica nem autoplay.
+5. O capítulo seguinte tem três cenas curtas para testar navegação e progressão, não para apresentar uma campanha definitiva.
+6. Existe a opção de **rever o Capítulo 1** sem mudar a escolha original nem reiniciar o progresso.
+7. Em navegadores compatíveis, há um botão para **ouvir o texto com a voz do próprio dispositivo**. É voz sintética do navegador, não dublagem produzida ou IA em nuvem. Não toca automaticamente.
 
-## Regras de produto
+## Compatibilidade com quem terminou o piloto anterior
 
-- **Não é cânone definitivo.** Personagens, incidente e diálogos são material experimental, fácil de substituir.
-- **Sem IA, rede externa nem dependências novas.** Reutiliza SvelteKit, Dexie e artes já disponíveis.
-- **Sem autoplay.** Progresso e escolhas apenas por ações explícitas.
-- **Sem bloqueio da produtividade.** O usuário pode ignorar Aventura, fechar a tela ou retornar a qualquer momento.
-- **Sem exploração de XP.** A aventura só consulta eventos reais não estornados; não recalcula recompensas nem cria novas.
-- **Persistência:** estado de um único piloto em campo opcional do perfil, incluído nos backups existentes; sem migração de banco. Este é um contrato temporário para validar a experiência, não o motor completo de campanhas.
-- **Sem punição por ausência.** Tempo real não afeta história ou companheiros.
-- **Acessibilidade:** cena legível sem som, controles de avanço manuais, animação decorativa suave e respeito a movimento reduzido.
+Na primeira versão experimental, o jogador precisava concluir uma missão no meio de uma cena. Quem já concluiu essa versão mantém `scene: 6` e a escolha. Ao reabrir a aventura, vê o desfecho salvo e pode rever todas as cenas sem interrupção.
 
-## O que não está implementado
+Para não contar XP antigo como novidade, existe um botão **Começar a contar XP para o próximo capítulo**. Ele marca o XP daquele momento como ponto de partida. A ação é explícita e não altera o saldo, compras, tarefas ou resultados prévios.
 
-- Seleção de três origens, avatar completo, cena ilustrada específica, roteiro final, narração ou trilha licenciada.
-- Combate, exploração geográfica, eventos e condições narrativas gerais, relações de NPCs, companheiros com histórias e evolução por decisões.
-- Conteúdo gerado automaticamente, sistema de capítulos completos, temporadas ou desbloqueio de mundo por XP.
-- Validação com usuários e medição real de engajamento.
+## Arquitetura, economia e dados
 
-## Critérios de aceite do piloto
+- O catálogo de cenas vive em `src/lib/content/pilot.ts`. O fluxo do capítulo e suas decisões vivem em `src/services/rpgPilotService.ts`. A tela fica em `src/routes/aventura/+page.svelte`.
+- O progresso tem armazenamento opcional no perfil: `scene`, `choice`, `chapterOneEndXp`, `chapterTwoUnlocked`, `chapterTwoScene`. Não foi preciso adicionar tabelas ou migrar o schema v5.
+- `totalXpEarned` é a medida já registrada pela economia existente. O desbloqueio não cria eventos, não concede XP e não gasta ouro nem comida.
+- Se o XP recebido depois do capítulo for estornado **antes de liberar a continuação**, deixa de contribuir para o limiar. Depois do desbloqueio, a história permanece acessível.
+- O backup existente transporta os campos do perfil, e a validação rejeita estados de capítulo malformados.
+- Conteúdo e cenas são provisórios; o sistema não depende de nomes definitivos da lore.
+- A rota /aventura está incluída no fallback offline do PWA.
 
-- Uma instalação sem missões chega à pausa narrativa sem sofrer bloqueio para cadastrar tarefas.
-- Concluir uma missão real libera a continuação; apenas criar, iniciar, pausar ou preencher passos não libera.
-- Um evento estornado não conta para destravar a cena, se ainda não tiver sido destravada.
-- Reabrir a rota e atualizar a página preserva a cena e a decisão.
-- Cliques repetidos ou abas simultâneas não pulam múltiplos passos.
-- O backup preserva o campo de piloto sem afetar os saldos.
-- A navegação principal mantém Hoje, Missões, Projetos e Refúgio como caminhos prioritários.
-- Rota /aventura abre no build e offline após cache inicial.
+## Critérios a avaliar
 
-## Próximo corte
+- O capítulo pode ser concluído sem abrir uma tarefa.
+- Uma conclusão antiga não acelera imediatamente o Capítulo 2.
+- Uma atividade real nova aumenta o progresso, independentemente do tipo de atividade.
+- Desfazer uma conclusão antes de destravar o capítulo reduz o progresso correspondente.
+- O jogador pode fechar, voltar, recarregar e rever a aventura sem perder escolha.
+- Diálogos ficam legíveis sem som. Botões de voz são opcionais e não interferem com o avanço manual.
+- A experiência ainda funciona mesmo que a pessoa ignore totalmente o RPG.
+- A avaliação mede envolvimento e clareza; testes automatizados não demonstram melhoria de retenção.
 
-Primeiro avaliar esta experiência com a pessoa autora. Só depois autorizar uma narrativa canônica e um motor de storylets em tabela própria, com migração e testes de backup/recovery.
+## Fora de escopo
+
+Roteiro e personagens definitivos, ilustrações originais por cena, dublagem humana, trilha sonora licenciada, sistema geral de capítulos, customização completa do protagonista, combate, mapas exploráveis, oito pets narrativos, múltiplas origens e live service. Essas coisas só avançam após validar a interação central.
+
+## Testes
+
+`src/services/rpgPilotService.test.ts` verifica a continuidade do capítulo 1, o desbloqueio por XP recente, estorno, compatibilidade com a versão anterior, idempotência e backup.
+
+Conferir via `npm run verify`, `npm run test:e2e` e `npm run test:pwa` na branch. Também testar manualmente voz disponível/indisponível, 320px e texto ampliado. Os testes de navegador existentes não são evidência de avaliação com usuários.
