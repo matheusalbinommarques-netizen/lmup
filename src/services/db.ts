@@ -19,7 +19,13 @@ export interface Profile {
   food?: number; // NOVO – recurso de comida para alimentar/evoluir pets (opcional p/ não quebrar fallbacks)
   avatarUrl?: string;
   /** Optional non-canonical narrative pilot. Stored with profile for existing backup compatibility. */
-  rpgPilot?: { scene: number; choice?: 'help' | 'follow' };
+  rpgPilot?: {
+    scene: number;
+    choice?: 'help' | 'follow';
+    chapterOneEndXp?: number;
+    chapterTwoUnlocked?: boolean;
+    chapterTwoScene?: number;
+  };
 
   // streak
   currentStreak: number;
