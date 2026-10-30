@@ -85,3 +85,36 @@ export const refugeCopy = {
   visit: 'Visitar refúgio',
   explore: 'Explorar o Refúgio',
 };
+
+export const milestoneRewardCopy = {
+  initial: {
+    label: 'Ponto de partida',
+    description:
+      'Sua jornada começa nesta paisagem. Este estágio não concede Gold.',
+  },
+  recorded: {
+    label: 'Recompensa registrada',
+    description:
+      'Um recibo ativo registra este marco. Ver a paisagem novamente não concede outro prêmio.',
+  },
+  legacy: {
+    label: 'Marcado como recebido',
+    description:
+      'Os dados anteriores marcam este prêmio como recebido. Não há um recibo ativo detalhado para ele.',
+  },
+  reversed: {
+    label: 'Registro estornado',
+    description:
+      'A ação de origem foi desfeita. A recompensa desse registro não está ativa.',
+  },
+  pending: {
+    label: 'Sem recompensa registrada',
+    description:
+      'Seu XP alcançou este marco, mas o prêmio ainda não consta como recebido. O cálculo de uma próxima ação válida considera os marcos pendentes; visitar esta tela não credita Gold.',
+  },
+  locked: {
+    label: 'Ainda por alcançar',
+    description:
+      'A paisagem acompanha seu XP. A recompensa é registrada na ação que alcançar o marco.',
+  },
+};

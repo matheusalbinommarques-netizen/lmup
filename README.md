@@ -118,3 +118,7 @@ O [guia da Beta](docs/GUIA-DA-BETA.md) explica instalação, atualização, back
 ## Perfil integrado
 
 A [rodada de Perfil e equipamentos](docs/E9-perfil-integrado.md) substitui a Taverna em `/perfil`, preservando a rota, os dados e os atalhos. Equipamentos e bônus são lidos de forma reativa, usando as regras canônicas. A companhia inicial compartilha a ilustração de Hoje; o restante da evolução usa as artes existentes. A validação final com participantes permanece pendente.
+
+## Marcos do Refúgio
+
+A [rodada de marcos e paisagens](docs/E9-refugio-marcos.md) separa ambiente alcançado de prêmio recebido, mantém recibos de estorno e permite explorar prévias sem alterar a jornada. `/santuario` continua como acesso ao mesmo Refúgio. Importações incoerentes entre recibos de marco e contador de prêmio são recusadas antes da substituição dos dados.

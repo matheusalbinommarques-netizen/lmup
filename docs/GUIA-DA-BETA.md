@@ -23,6 +23,8 @@ Instalar pelo menu do navegador cria o acesso do app. A primeira preparação of
 3. Ao pausar, deixe uma nota e aguarde a confirmação de salvamento. Depois, use Continuar missão.
 4. Conclua quando terminar. Você pode desfazer uma conclusão e corrigir um registro. Não é necessário manter o app aberto para preservar progresso já salvo.
 
+No Refúgio, use Ver paisagem para explorar os quatro ambientes sem mudar o progresso. O cartão do marco distingue o que foi alcançado pelo XP do que tem prêmio registrado, estornado ou marcado como recebido em dados antigos. Ver registro deste marco mostra o recibo da ação quando ele existe.
+
 ## Atualizar e identificar a revisão
 
 Em Configurações, use Verificar atualização. Quando houver uma revisão pronta, conclua formulários e gravações nas abas abertas e use Atualizar aplicativo ou Atualizar agora. A troca aguarda as outras abas; uma aba antiga sem resposta pode precisar ser fechada. Não apague dados do site para atualizar.
@@ -40,6 +42,8 @@ Isso verifica arquivos ausentes, extras ou alterados. Não é uma assinatura dig
 Em Configurações, use Exportar dados e confira o arquivo na pasta de downloads. Guarde uma cópia externa antes de trocar de computador, navegador ou origem. Navegador, protocolo, host e porta definem o espaço dos dados: localhost e 127.0.0.1 não são o mesmo endereço para esse fim. Instalação e uso offline não sincronizam nem substituem backup.
 
 Para trazer dados a outra instalação, use Importar backup, confira o resumo e confirme a substituição apenas se for o arquivo desejado. A importação guarda uma recuperação local do estado anterior. Para voltar a esse estado, na área Recuperação local use Exportar recuperação mais recente. Depois importe esse arquivo, confira o resumo e confirme a substituição da jornada.
+
+Uma importação com recibos de marcos incompatíveis com o contador de prêmios é recusada antes de substituir a jornada. O estado atual permanece disponível; conserve o arquivo para conferência e use um backup válido para restaurar.
 
 Recuperações ficam no mesmo navegador e também são removidas se os dados do site forem apagados. Se o navegador negar armazenamento ou faltar espaço, mantenha o rascunho aberto, copie suas notas e use o backup que estiver disponível. O app preserva dados anteriores quando uma operação falha; texto ainda não salvo na aba pode ser perdido ao fechá-la.
 

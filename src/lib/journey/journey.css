@@ -1107,3 +1107,77 @@
     height: 3rem;
   }
 }
+
+.refuge-bonuses {
+  margin: 1.5rem 0 2rem;
+}
+.refuge-bonus-summary {
+  color: var(--lmu-positive);
+  font-size: 1.125rem;
+}
+.refuge-milestone {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: stretch;
+}
+.refuge-milestone > .lmu-button {
+  margin-top: auto;
+}
+.refuge-milestone-status {
+  font-weight: 600;
+  color: var(--lmu-positive);
+}
+.refuge-milestone-status[data-reward-status='reversed'] {
+  color: var(--lmu-danger);
+}
+.refuge-milestone-status[data-reward-status='legacy'],
+.refuge-milestone-status[data-reward-status='pending'] {
+  color: var(--lmu-action);
+}
+.refuge-milestone-status[data-reward-status='locked'] {
+  color: var(--lmu-muted);
+}
+.refuge-preview-art img,
+.refuge-preview-art .lmu-art-fallback {
+  width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+  margin: 1rem 0;
+}
+
+.collection-milestones {
+  align-items: start;
+}
+.refuge-stage-thumbnail {
+  aspect-ratio: 3 / 2;
+  width: 100%;
+  max-height: 160px;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: var(--lmu-raised);
+}
+.refuge-stage-thumbnail img,
+.refuge-stage-thumbnail .lmu-art-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.refuge-milestone details p {
+  margin-top: 0.75rem;
+}
+
+@media (max-width: 600px) {
+  .collection-scene > img,
+  .collection-scene > .lmu-art-fallback {
+    height: clamp(180px, 50vw, 300px);
+  }
+  .collection-scene-copy {
+    position: relative;
+    inset: auto;
+    padding: 1rem;
+  }
+  .collection-scene:after {
+    display: none;
+  }
+}

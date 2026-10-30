@@ -81,12 +81,40 @@ test('abre URLs não visitadas, cria e salva notas com a rede desligada', async 
     ['/progresso', 'Meu progresso'],
     ['/bestiario', 'Companheiros'],
     ['/config', 'Configurações'],
+    ['/refugio', 'Refúgio'],
+    ['/santuario', 'Refúgio'],
   ]) {
     await page.goto(route);
     await expect(
       page.getByRole('heading', { name: title, level: 1, exact: true }),
     ).toBeVisible();
   }
+  await page
+    .getByRole('button', {
+      name: 'Ver paisagem de Floresta Anciã',
+      exact: true,
+    })
+    .click();
+  const preview = page.getByRole('dialog', {
+    name: 'Prévia: Floresta Anciã',
+    exact: true,
+  });
+  await expect(
+    preview.getByText(
+      'Prévia visual. Não altera o ambiente ativo, XP ou Gold.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      preview
+        .locator('img')
+        .evaluate((image: HTMLImageElement) => image.naturalWidth),
+    )
+    .toBeGreaterThan(0);
+  await preview
+    .getByRole('button', { name: 'Fechar prévia', exact: true })
+    .click();
   const url = await mission(page);
   await page
     .getByLabel('Notas da missão')

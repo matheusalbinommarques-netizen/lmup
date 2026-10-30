@@ -29,7 +29,7 @@ export interface Profile {
   createdAt?: string | Date;
   updatedAt?: string | Date;
 
-  // usado no EcoPanel
+  // último marco de ambiente com recompensa já contabilizada
   ecoGoldClaimedUpToStage?: number;
 
   // conquistas em destaque na sala de troféus

@@ -90,6 +90,7 @@ self.addEventListener('fetch', (event) => {
       const cache = await caches.open(ART),
         cached = await cache.match(request);
       const fresh = fetch(request).then((response) => {
+        if (!response.ok) throw new Error('Artwork unavailable');
         event.waitUntil(storeArt(request, response.clone()));
         return response;
       });

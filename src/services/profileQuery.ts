@@ -8,7 +8,7 @@ import {
 import { getShopItemById } from '$lib/shop/types';
 import { calculateReward } from './rewardService';
 import { getEcoStageForTotalXp } from './ecoConfig';
-export function readProfileSnapshot() {
+export function readIdentitySnapshot() {
   return db.transaction(
     'r',
     db.profile,
@@ -40,7 +40,21 @@ export function readProfileSnapshot() {
           (row) => row.equipped && !getShopItemById(row.itemId)?.slot,
         ).length,
         sanctuary: getEcoStageForTotalXp(profile.totalXpEarned),
-        preview: calculateReward(100, profile, mods, buffs),
+      };
+    },
+  );
+}
+export function readProfileSnapshot() {
+  return db.transaction(
+    'r',
+    db.profile,
+    db.companions,
+    db.ownedShopItems,
+    async () => {
+      const view = await readIdentitySnapshot();
+      return {
+        ...view,
+        preview: calculateReward(100, view.profile, view.mods, view.buffs),
       };
     },
   );

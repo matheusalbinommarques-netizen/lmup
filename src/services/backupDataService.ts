@@ -433,6 +433,18 @@ export function validateBackup(input: unknown): JourneyBackup {
           fail('estorno difere da recompensa original.');
     }
   }
+  const paidUpTo = events
+    .filter((event) => event.kind !== 'reversal' && !event.reversedAt)
+    .reduce(
+      (max, event) =>
+        event.awardedStages.reduce(
+          (highest: number, stage: number) => Math.max(highest, stage),
+          max,
+        ),
+      1,
+    );
+  if ((profile?.ecoGoldClaimedUpToStage ?? 1) < paidUpTo)
+    fail('marcos recebidos não correspondem ao perfil.');
   const reversals = events.filter((event) => event.kind === 'reversal');
   if (
     new Set(reversals.map((event) => event.sourceEventId)).size !==
