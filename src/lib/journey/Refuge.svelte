@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { companionArtwork } from './companionArtwork';
   import { onMount } from 'svelte';
   import { journeyQuery, type JourneySnapshot } from '$services/journeyQuery';
   import {
@@ -8,10 +9,7 @@
   } from '$services/ecoConfig';
   import { sanctuaryContent } from '$lib/content/world';
   import { identity, destinations, refugeCopy } from '$lib/content/experience';
-  import {
-    companionBonusLabel,
-    getCompanionStageImage,
-  } from '$services/companionService';
+  import { companionBonusLabel } from '$services/companionService';
   import { discoveryRows, slotLabels } from '$services/collectionRules';
   import { getShopItemById } from '$lib/shop/types';
   import Artwork from '$lib/ui/Artwork.svelte';
@@ -87,8 +85,7 @@
         >
       </div>
       {#if data.companion}<Artwork
-          src={getCompanionStageImage(data.companion) ??
-            '/art/pilot/companion.webp'}
+          src={companionArtwork(data.companion)}
           alt={data.companion.name}
         />{/if}</Card
     >

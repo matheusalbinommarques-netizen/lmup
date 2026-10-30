@@ -24,7 +24,7 @@ O iniciador mantém 127.0.0.1:5174 por padrão. O processo local precisa estar r
 
 Os testes do perfil cobrem duas abas editando o mesmo nome, alteração de avatar em outra aba, XP ganho durante a edição, falha de quota seguida de nova tentativa, nome inválido e foco/leitura em 320px com texto de 200%. Serviços usam IndexedDB em memória; navegador usa contextos descartáveis. Artefatos das suítes de PWA e jornada agora têm diretórios separados para evitar disputa pelos arquivos de diagnóstico.
 
-A captura visual complementa as medidas automáticas: largura válida por si só não garante que um botão esteja legível. A tela de perfil ainda contém o layout legado da Taverna; a modernização desta rodada é do formulário de identidade, não uma reconstrução de toda essa tela.
+A captura visual complementa as medidas automáticas: largura válida por si só não garante que um botão esteja legível. Na entrega técnica original, a modernização abrangia o formulário de identidade. A reconstrução posterior da tela completa está documentada em E9-perfil-integrado.md.
 
 Verificação local concluída: lint e Svelte/tipos sem erros nem avisos; 132 testes de serviços, 118 cenários da jornada, 20 cenários PWA e cinco verificações funcionais de integridade do pacote passaram. As evidências completas ficam em entregas/E9-tecnica, fora do código. Android/iOS físicos e pesquisa de engajamento continuam sem validação. A matriz de Node 22/24 está configurada no GitHub; a execução local desta rodada usa Windows/Node 24.
 

@@ -114,3 +114,7 @@ A [rodada inicial da E9](docs/E9-personalidade-beta.md) aplica voz compartilhada
 Depois de `npm run build`, execute `npm run package:beta` para gerar uma pasta em `dist/` com os arquivos estáticos, servidor local, guia e manifesto de integridade. A identidade do pacote considera revisão, origem do código e hashes dos arquivos. `npm run test:package` confere o pacote e recusa alterações, arquivos ausentes, extras e caminhos inválidos. A conferência detecta corrupção; não é assinatura digital.
 
 O [guia da Beta](docs/GUIA-DA-BETA.md) explica instalação, atualização, backup e recuperação. A pasta gerada contém `iniciar.mjs`; executar `node iniciar.mjs` mantém a origem `127.0.0.1:5174`. Não inicie um segundo servidor nessa porta se a instância já estiver aberta. Não há dependências npm dentro do pacote, mas Node.js é necessário para o servidor local incluído. A avaliação com participantes continua pendente.
+
+## Perfil integrado
+
+A [rodada de Perfil e equipamentos](docs/E9-perfil-integrado.md) substitui a Taverna em `/perfil`, preservando a rota, os dados e os atalhos. Equipamentos e bônus são lidos de forma reativa, usando as regras canônicas. A companhia inicial compartilha a ilustração de Hoje; o restante da evolução usa as artes existentes. A validação final com participantes permanece pendente.

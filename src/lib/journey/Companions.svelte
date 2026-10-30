@@ -1,11 +1,11 @@
 <script lang="ts">
+  import { companionArtwork } from './companionArtwork';
   import { protectMutation } from './protectMutation';
   import { onMount } from 'svelte';
   import { journeyQuery, type JourneySnapshot } from '$services/journeyQuery';
   import {
     companionAvailable,
     getCompanionEvolutionState,
-    getCompanionStageImage,
     companionBonusLabel,
     careQuote,
     feedCompanion,
@@ -136,10 +136,8 @@
       )}{@const active = data.profile.activeCompanionId === pet.id}
       <Card class={'collection-pet ' + (active ? 'collection-selected' : '')}
         ><div class="collection-card-art">
-          <Artwork
-            src={getCompanionStageImage(pet) ?? pet.imagePath ?? ''}
-            alt={pet.name}
-          /><span class="collection-badge"
+          <Artwork src={companionArtwork(pet)} alt={pet.name} /><span
+            class="collection-badge"
             >{!available
               ? 'Nível ' + pet.requiredLevel
               : active

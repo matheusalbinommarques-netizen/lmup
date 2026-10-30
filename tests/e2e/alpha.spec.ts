@@ -405,7 +405,7 @@ test('plano e fixação são explícitos; navegação secundária preserva acess
     .getByRole('link', { name: 'Perfil e equipamentos', exact: true })
     .click();
   await expect(
-    page.getByRole('heading', { name: 'Taverna do Herói', exact: true }),
+    page.getByRole('heading', { name: 'Perfil e equipamentos', exact: true }),
   ).toBeVisible();
   await page.goto(url);
   await page

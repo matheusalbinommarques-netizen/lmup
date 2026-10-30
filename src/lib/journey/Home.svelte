@@ -14,8 +14,8 @@
   import { reviewDueDate } from '$services/reviewRules';
   import { formatCalendar } from '$services/calendar';
   import { getEcoStageForTotalXp } from '$services/ecoConfig';
-  import { sanctuaryContent, companionContent } from '$lib/content/world';
-  import { getCompanionStageImage } from '$services/companionService';
+  import { sanctuaryContent } from '$lib/content/world';
+  import { companionArtwork } from './companionArtwork';
   import Button from '$lib/ui/Button.svelte';
   import Card from '$lib/ui/Card.svelte';
   import Icon from '$lib/ui/Icon.svelte';
@@ -224,12 +224,7 @@
         </div></Card
       >{#if data.companion}<div class="journey-pet">
           <Artwork
-            src={data.companion.key === 'wolf' &&
-            (data.companion.evolutionStage ?? 1) === 1
-              ? companionContent.wolf.pilot
-              : (getCompanionStageImage(data.companion) ??
-                data.companion.imagePath ??
-                '')}
+            src={companionArtwork(data.companion)}
             alt={data.companion.name}
             class="lmu-decorative"
           />

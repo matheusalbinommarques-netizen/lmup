@@ -4,7 +4,7 @@ const routes = [
   ['/', 'Um passo de cada vez.'],
   ['/missoes', 'Missões'],
   ['/arquivo/missoes', 'Quadro de Missões'],
-  ['/perfil', 'Taverna do Herói'],
+  ['/perfil', 'Perfil e equipamentos'],
   ['/refugio', 'Refúgio'],
   ['/projetos', 'Projetos'],
   ['/revisoes', 'Revisões'],

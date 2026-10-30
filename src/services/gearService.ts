@@ -101,25 +101,25 @@ function applyItem(mods: HeroModifiers, item: ShopItem): void {
 }
 
 /**
- * Constrói os modificadores do herói a partir dos itens equipados.
- * A exclusividade já é garantida por SLOT na loja/inventário,
- * então aqui basta aplicar o efeito de cada item equipado.
+ * Resolve os itens ativos usados tanto pela apresentação quanto pelo cálculo.
+ * Loja/inventário garantem exclusividade; dados legados com duplicidade
+ * mantêm a prioridade anterior por ID, sem somar efeitos no mesmo espaço.
  */
-export function modifiersForOwned(allOwned: OwnedShopItem[]): HeroModifiers {
-  const equippedRows = allOwned.filter(
-    (row) => row.equipped && typeof row.itemId === 'number',
-  );
-
-  const mods: HeroModifiers = { ...BASE_MODIFIERS };
-
+export function equippedItemsForOwned(allOwned: OwnedShopItem[]) {
   const slots = new Set<string>();
-  for (const row of equippedRows.sort((a, b) => b.itemId - a.itemId)) {
-    const item = getShopItemById(row.itemId as number);
-    if (!item?.slot || slots.has(item.slot)) continue;
-    slots.add(item.slot);
-    applyItem(mods, item);
-  }
-
+  return allOwned
+    .filter((row) => row.equipped && typeof row.itemId === 'number')
+    .sort((a, b) => b.itemId - a.itemId)
+    .flatMap((owned) => {
+      const item = getShopItemById(owned.itemId);
+      if (!item?.slot || slots.has(item.slot)) return [];
+      slots.add(item.slot);
+      return [{ item, owned }];
+    });
+}
+export function modifiersForOwned(allOwned: OwnedShopItem[]): HeroModifiers {
+  const mods: HeroModifiers = { ...BASE_MODIFIERS };
+  for (const { item } of equippedItemsForOwned(allOwned)) applyItem(mods, item);
   return mods;
 }
 
