@@ -37,7 +37,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 const route =
-  /^\/(?:$|missoes\/?$|progresso\/?$|config\/?$|refugio\/?$|bestiario\/?$|inventario\/?$|loja\/?$|trofeus\/?$|perfil\/?$|santuario\/?$|revisoes\/?$|cla\/?$|arquivo\/missoes\/?$|laboratorio\/?$|(?:missao|projetos)\/\d+\/?$|projetos\/?$)/;
+  /^\/(?:$|missoes\/?$|progresso\/?$|config\/?$|refugio\/?$|aventura\/?$|bestiario\/?$|inventario\/?$|loja\/?$|trofeus\/?$|perfil\/?$|santuario\/?$|revisoes\/?$|cla\/?$|arquivo\/missoes\/?$|laboratorio\/?$|(?:missao|projetos)\/\d+\/?$|projetos\/?$)/;
 async function storeArt(request, response) {
   try {
     if (
