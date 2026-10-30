@@ -18,6 +18,8 @@ export interface Profile {
   gold: number; // usado no app inteiro
   food?: number; // NOVO – recurso de comida para alimentar/evoluir pets (opcional p/ não quebrar fallbacks)
   avatarUrl?: string;
+  /** Optional non-canonical narrative pilot. Stored with profile for existing backup compatibility. */
+  rpgPilot?: { scene: number; choice?: 'help' | 'follow' };
 
   // streak
   currentStreak: number;
