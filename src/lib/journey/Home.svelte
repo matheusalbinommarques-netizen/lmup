@@ -178,7 +178,20 @@
               </details>{/if}
           </div></Card
         >{/if}
-      <Card><p class="lmu-eyebrow">Experiência RPG experimental</p><h2>O outro lado da ponte</h2><p class="lmu-muted">Uma pequena história que avança com o que você realiza fora do aplicativo. Você controla as cenas.</p><a class="lmu-button lmu-button--secondary" href="/aventura">Entrar na aventura</a></Card>
+      <Card>
+        <p class="lmu-eyebrow">Aventura experimental</p>
+        <h2>O outro lado da ponte</h2>
+        <p class="lmu-muted">
+          Jogue o capítulo inteiro no seu ritmo. Seu progresso real ajuda a liberar
+          a próxima história, sem interromper as cenas.
+        </p>
+        {#if data.profile?.rpgPilot?.scene === 6 && !data.profile?.rpgPilot?.chapterTwoUnlocked}
+          <p class="lmu-hint">Capítulo 1 concluído · próximo capítulo por XP.</p>
+        {/if}
+        <a class="lmu-button lmu-button--secondary" href="/aventura">
+          {data.profile?.rpgPilot?.scene === 6 ? 'Ver meus capítulos' : 'Entrar na aventura'}
+        </a>
+      </Card>
       <section aria-labelledby="plan-title">
         <div class="journey-section-heading">
           <h2 id="plan-title">Seu plano de hoje</h2>
