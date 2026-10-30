@@ -101,6 +101,18 @@ self.addEventListener('fetch', (event) => {
       try {
         return await fresh;
       } catch {
+        if (
+          /^\/art\/companions-v2\/(?:wolf|lich|dragon|aberration)-[1-3](?:-(?:160|320))?\.webp$/.test(
+            url.pathname,
+          )
+        ) {
+          const compact = url.pathname.replace(
+            /(?:-(?:160|320))?\.webp$/,
+            '-160.webp',
+          );
+          const fallback = await caches.match(url.origin + compact);
+          if (fallback) return fallback;
+        }
         if (/\/scene-\d\.webp$/.test(url.pathname)) {
           const small = await caches.match(
             url.origin + url.pathname.replace('.webp', '-small.webp'),

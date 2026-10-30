@@ -77,6 +77,23 @@ test('evoluções de companhia bloqueada podem ser exploradas sem gastar nem sel
   await expect(dialog.locator('.companion-evolution')).toHaveCount(3);
   await expect(dialog.getByText('+15% Gold', { exact: true })).toBeVisible();
   await expect(dialog.locator('img')).toHaveCount(3);
+  await expect
+    .poll(() =>
+      dialog
+        .locator('img')
+        .evaluateAll(
+          (images) =>
+            images.length === 3 &&
+            images.every(
+              (image) =>
+                (image as HTMLImageElement).naturalWidth > 0 &&
+                (image as HTMLImageElement).currentSrc.includes(
+                  '/art/companions-v2/dragon-',
+                ),
+            ),
+        ),
+    )
+    .toBe(true);
   await capture(page, 'previa-dragao', info.project.name, false);
   await page.keyboard.press('Escape');
   await expect(trigger).toBeFocused();
@@ -272,4 +289,54 @@ test('prévia e confirmação cabem em 320px com texto ampliado e arte ausente',
   );
   await capture(page, '320-confirmacao', info.project.name, false);
   await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click();
+});
+
+test('jornada antiga usa arte nova sem substituir caminhos legados, saldo ou investimento', async ({
+  page,
+}, info) => {
+  const saved = await backup(page);
+  Object.assign(saved.data.profile, { gold: 123, food: 77 });
+  const names = ['lobo', 'lich', 'dragao', 'aberracao'];
+  for (const row of saved.data.companions) {
+    row.imagePath = '/art/pets/' + names[row.id - 1] + '-1.webp';
+    delete row.key;
+  }
+  Object.assign(saved.data.companions[0], {
+    foodInvested: 100,
+    evolutionStage: 2,
+  });
+  await restore(page, saved);
+  const before = await backup(page);
+  await page.goto('/bestiario');
+  const wolf = pet(page);
+  await expect(
+    wolf.getByText('Evolução 2 de 3 · +10% XP', { exact: true }),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      wolf
+        .locator('.collection-card-art img')
+        .evaluate(
+          (image: HTMLImageElement) =>
+            image.naturalWidth > 0 &&
+            image.currentSrc.includes('/art/companions-v2/wolf-2'),
+        ),
+    )
+    .toBe(true);
+  await page
+    .getByRole('button', { name: 'Ver evoluções de Lobo Etéreo', exact: true })
+    .click();
+  const dialog = page.getByRole('dialog', {
+    name: 'Evoluções: Lobo Etéreo',
+    exact: true,
+  });
+  await expect(dialog.locator('img')).toHaveCount(3);
+  await capture(page, 'legado-artes-novas', info.project.name, false);
+  await dialog
+    .getByRole('button', { name: 'Fechar prévia', exact: true })
+    .click();
+  expect((await backup(page)).data).toEqual(before.data);
+  expect(before.data.companions[0].imagePath).toBe('/art/pets/lobo-1.webp');
+  expect(before.data.profile.gold).toBe(123);
+  expect(before.data.profile.food).toBe(77);
 });

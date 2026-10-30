@@ -1,13 +1,6 @@
 import type { Companion } from '$services/db';
-import {
-  getCompanionEvolutionState,
-  getCompanionStageImage,
-} from '$services/companionService';
-import { companionContent } from '$lib/content/world';
-// Presentation choice only; evolution and availability remain in the service.
+import { getCompanionStageImage } from '$services/companionService';
+// All stages use the same presentation catalog, including legacy records.
 export function companionArtwork(companion: Companion | null | undefined) {
-  const state = getCompanionEvolutionState(companion);
-  return state?.key === 'wolf' && state.currentStage.stage === 1
-    ? companionContent.wolf.pilot
-    : (getCompanionStageImage(companion) ?? companion?.imagePath ?? '');
+  return getCompanionStageImage(companion) ?? companion?.imagePath ?? '';
 }

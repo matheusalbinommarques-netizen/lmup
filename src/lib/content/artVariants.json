@@ -330,5 +330,53 @@
   "/art/icones/trophy-icon.png": {
     "160": "/art/optimized/icones-trophy-icon-160.webp",
     "320": "/art/optimized/icones-trophy-icon-320.webp"
+  },
+  "/art/companions-v2/wolf-1.webp": {
+    "160": "/art/companions-v2/wolf-1-160.webp",
+    "320": "/art/companions-v2/wolf-1-320.webp"
+  },
+  "/art/companions-v2/wolf-2.webp": {
+    "160": "/art/companions-v2/wolf-2-160.webp",
+    "320": "/art/companions-v2/wolf-2-320.webp"
+  },
+  "/art/companions-v2/wolf-3.webp": {
+    "160": "/art/companions-v2/wolf-3-160.webp",
+    "320": "/art/companions-v2/wolf-3-320.webp"
+  },
+  "/art/companions-v2/lich-1.webp": {
+    "160": "/art/companions-v2/lich-1-160.webp",
+    "320": "/art/companions-v2/lich-1-320.webp"
+  },
+  "/art/companions-v2/lich-2.webp": {
+    "160": "/art/companions-v2/lich-2-160.webp",
+    "320": "/art/companions-v2/lich-2-320.webp"
+  },
+  "/art/companions-v2/lich-3.webp": {
+    "160": "/art/companions-v2/lich-3-160.webp",
+    "320": "/art/companions-v2/lich-3-320.webp"
+  },
+  "/art/companions-v2/dragon-1.webp": {
+    "160": "/art/companions-v2/dragon-1-160.webp",
+    "320": "/art/companions-v2/dragon-1-320.webp"
+  },
+  "/art/companions-v2/dragon-2.webp": {
+    "160": "/art/companions-v2/dragon-2-160.webp",
+    "320": "/art/companions-v2/dragon-2-320.webp"
+  },
+  "/art/companions-v2/dragon-3.webp": {
+    "160": "/art/companions-v2/dragon-3-160.webp",
+    "320": "/art/companions-v2/dragon-3-320.webp"
+  },
+  "/art/companions-v2/aberration-1.webp": {
+    "160": "/art/companions-v2/aberration-1-160.webp",
+    "320": "/art/companions-v2/aberration-1-320.webp"
+  },
+  "/art/companions-v2/aberration-2.webp": {
+    "160": "/art/companions-v2/aberration-2-160.webp",
+    "320": "/art/companions-v2/aberration-2-320.webp"
+  },
+  "/art/companions-v2/aberration-3.webp": {
+    "160": "/art/companions-v2/aberration-3-160.webp",
+    "320": "/art/companions-v2/aberration-3-320.webp"
   }
 }

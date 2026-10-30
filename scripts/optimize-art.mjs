@@ -10,11 +10,15 @@ let before = 0,
 await mkdir('static/art/optimized', { recursive: true });
 try {
   await page.goto(origin);
-  for (const category of ['items', 'badge-icons', 'icones'])
+  for (const category of ['items', 'badge-icons', 'icones', 'companions-v2'])
     for (const file of await readdir('static/art/' + category)) {
-      if (!file.endsWith('.png')) continue;
+      if (
+        !file.endsWith('.png') &&
+        !(category === 'companions-v2' && /-[1-3]\.webp$/.test(file))
+      )
+        continue;
       const src = '/art/' + category + '/' + file,
-        key = category + '-' + file.slice(0, -4);
+        key = category + '-' + file.replace(/\.[^.]+$/, '');
       const variants = {};
       for (const width of [160, 320]) {
         const encoded = await page.evaluate(
@@ -39,7 +43,14 @@ try {
           { src, width },
         );
         const buffer = Buffer.from(encoded.base64, 'base64'),
-          target = '/art/optimized/' + key + '-' + width + '.webp';
+          target =
+            category === 'companions-v2'
+              ? '/art/companions-v2/' +
+                file.replace(/\.[^.]+$/, '') +
+                '-' +
+                width +
+                '.webp'
+              : '/art/optimized/' + key + '-' + width + '.webp';
         await writeFile(resolve('static' + target), buffer);
         variants[width] = target;
         after += buffer.length;

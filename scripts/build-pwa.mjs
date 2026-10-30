@@ -12,6 +12,7 @@ const { manifestEntries, count, size, warnings } = await getManifest({
     'favicon-shield.ico',
     'art/pilot/scene-*-small.webp',
     'art/pilot/companion.webp',
+    'art/companions-v2/*-160.webp',
   ],
   maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
 });
