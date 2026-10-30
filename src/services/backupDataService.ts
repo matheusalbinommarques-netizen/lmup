@@ -126,6 +126,22 @@ export function validateBackup(input: unknown): JourneyBackup {
         fail('escolha do piloto inválida.');
       if (pilot.scene === 6 && !pilot.choice)
         fail('piloto concluído sem decisão.');
+      if (pilot.chapterOneEndXp != null)
+        integer(pilot.chapterOneEndXp, 'profile.rpgPilot.chapterOneEndXp');
+      if (
+        pilot.chapterTwoUnlocked != null &&
+        typeof pilot.chapterTwoUnlocked !== 'boolean'
+      )
+        fail('desbloqueio de capítulo inválido.');
+      if (pilot.chapterTwoScene != null) {
+        integer(pilot.chapterTwoScene, 'profile.rpgPilot.chapterTwoScene');
+        if (pilot.chapterTwoScene > 3) fail('cena do capítulo 2 inválida.');
+        if (!pilot.chapterTwoUnlocked)
+          fail('capítulo 2 avançado sem desbloqueio.');
+      }
+      if (pilot.chapterTwoUnlocked && pilot.chapterOneEndXp == null)
+        fail('capítulo 2 sem marco de XP.');
+
     }
     date(profile.lastCompletionDate, 'profile.lastCompletionDate', true);
     if (profile.ecoGoldClaimedUpToStage != null) {
