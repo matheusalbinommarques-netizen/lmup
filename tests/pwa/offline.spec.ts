@@ -115,6 +115,27 @@ test('abre URLs não visitadas, cria e salva notas com a rede desligada', async 
   await preview
     .getByRole('button', { name: 'Fechar prévia', exact: true })
     .click();
+  await page.goto('/bestiario');
+  await page
+    .getByRole('button', { name: 'Ver evoluções de Lobo Etéreo', exact: true })
+    .click();
+  const evolutions = page.getByRole('dialog', {
+    name: 'Evoluções: Lobo Etéreo',
+    exact: true,
+  });
+  await expect(evolutions.locator('.companion-evolution')).toHaveCount(3);
+  await expect
+    .poll(() =>
+      evolutions
+        .locator('img')
+        .evaluateAll((images) =>
+          images.every((image) => (image as HTMLImageElement).naturalWidth > 0),
+        ),
+    )
+    .toBe(true);
+  await evolutions
+    .getByRole('button', { name: 'Fechar prévia', exact: true })
+    .click();
   const url = await mission(page);
   await page
     .getByLabel('Notas da missão')

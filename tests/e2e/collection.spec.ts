@@ -200,11 +200,21 @@ test('prévia de cuidado aberta em duas abas não gasta duas vezes', async ({
     .getByRole('dialog', { name: 'Confirmar cuidado', exact: true })
     .getByRole('button', { name: 'Confirmar · 100 Comida', exact: true })
     .click();
-  await other
-    .getByRole('dialog', { name: 'Confirmar cuidado', exact: true })
-    .getByRole('button', { name: 'Confirmar · 100 Comida', exact: true })
-    .click();
   await expect(other.getByRole('alert')).toContainText('outra aba');
+  await expect(
+    other
+      .getByRole('dialog', { name: 'Confirmar cuidado', exact: true })
+      .getByRole('button', { name: 'Confirmar · 100 Comida', exact: true }),
+  ).toBeDisabled();
+  await other
+    .getByRole('button', { name: 'Atualizar prévia', exact: true })
+    .click();
+  await expect(
+    other
+      .getByRole('dialog', { name: 'Confirmar cuidado', exact: true })
+      .getByRole('button', { name: 'Confirmar · 200 Comida', exact: true }),
+  ).toBeEnabled();
+  await other.getByRole('button', { name: 'Cancelar', exact: true }).click();
   const saved = await backup(page);
   expect(saved.data.profile.food).toBe(400);
   expect(saved.data.companions[0].careHistory).toHaveLength(1);

@@ -215,16 +215,20 @@ export type EvolveResult =
  * - Respeita a config de estágios (totalFoodRequired)
  * - Atualiza profile.food e Companion.evolutionStage/foodInvested
  */
+export function companionRequiredLevel(companion: Companion): number {
+  return (
+    companion.requiredLevel ??
+    { 1: 1, 2: 5, 3: 15, 4: 20 }[companion.id ?? 0] ??
+    Infinity
+  );
+}
 export function companionAvailable(
   companion: Companion,
   level: number,
 ): boolean {
   return (
     !!getCompanionEvolutionState(companion) &&
-    level >=
-      (companion.requiredLevel ??
-        { 1: 1, 2: 5, 3: 15, 4: 20 }[companion.id ?? 0] ??
-        Infinity)
+    level >= companionRequiredLevel(companion)
   );
 }
 export function careQuote(companion: Companion, amount: number) {

@@ -52,3 +52,5 @@ O perfil mantém um rascunho enquanto está aberto. Se outra aba mudar o mesmo n
 ## Limitações desta Beta
 
 PC com Chrome e viewports móveis têm verificações automatizadas; a instalação no PC foi confirmada pelo autor. Android/iOS físicos, suspensão e pressão real de armazenamento não foram certificados. A narrativa ainda será revisada e as sessões com participantes estão pendentes. O Clã é demonstrativo, sem conexão social ativa. Não há instalador Windows próprio ou hospedagem pública incluídos.
+
+Na tela de Companheiros, Ver evoluções abre uma prévia sem gasto ou troca de seleção. A confirmação de cuidado mostra o saldo restante; se investimento ou saldo mudar em outra aba, confira a prévia atualizada antes de confirmar. Cuidar de uma companhia não a torna ativa automaticamente.

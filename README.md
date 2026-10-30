@@ -122,3 +122,5 @@ A [rodada de Perfil e equipamentos](docs/E9-perfil-integrado.md) substitui a Tav
 ## Marcos do Refúgio
 
 A [rodada de marcos e paisagens](docs/E9-refugio-marcos.md) separa ambiente alcançado de prêmio recebido, mantém recibos de estorno e permite explorar prévias sem alterar a jornada. `/santuario` continua como acesso ao mesmo Refúgio. Importações incoerentes entre recibos de marco e contador de prêmio são recusadas antes da substituição dos dados.
+
+Veja também [os cuidados e prévias dos companheiros](docs/E9-companheiros-cuidados.md).

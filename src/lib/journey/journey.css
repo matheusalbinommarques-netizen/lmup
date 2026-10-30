@@ -1181,3 +1181,57 @@
     display: none;
   }
 }
+
+.companion-summary {
+  margin-top: 1.25rem;
+}
+.companion-summary h2 {
+  margin: 0.25rem 0;
+}
+.companion-grid {
+  align-items: start;
+}
+.companion-evolutions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+.companion-evolution {
+  min-width: 0;
+  border: 1px solid var(--lmu-border);
+  border-radius: 12px;
+  padding: 0.75rem;
+}
+.companion-evolution h3 {
+  font-size: 1.1rem;
+  margin: 0.75rem 0;
+}
+.companion-evolution-art {
+  height: 130px;
+  display: flex;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, #314947, #142528);
+  border-radius: 8px;
+}
+.companion-evolution-art img,
+.companion-evolution-art .lmu-art-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+@media (max-width: 600px) {
+  .companion-evolutions {
+    grid-template-columns: 1fr;
+  }
+}
+
+.companion-grid .journey-stack {
+  gap: 0.85rem;
+}
+.companion-grid .journey-stack > p {
+  margin: 0;
+}
+.companion-summary p {
+  margin: 0.4rem 0;
+}
