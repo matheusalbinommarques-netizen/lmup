@@ -5,7 +5,6 @@
     destinations,
     homeCopy,
     missionStarters,
-    refugeCopy,
     type MissionStarter,
   } from '$lib/content/experience';
   import { journeyQuery, type JourneySnapshot } from '$services/journeyQuery';
@@ -17,10 +16,16 @@
   import { sanctuaryContent } from '$lib/content/world';
   import { companionArtwork } from './companionArtwork';
   import Button from '$lib/ui/Button.svelte';
-  import Card from '$lib/ui/Card.svelte';
   import Icon from '$lib/ui/Icon.svelte';
   import Artwork from '$lib/ui/Artwork.svelte';
   import QuickCreate from './QuickCreate.svelte';
+  import HeroIdentity from './HeroIdentity.svelte';
+  import WorldProgress from './WorldProgress.svelte';
+  import { chapterTwoProgress, sanitizePilot } from '$services/rpgPilotService';
+  import { chapterTwoScenes } from '$lib/content/pilot';
+  import './home.css';
+  import { collectionStats } from '$services/collectionRules';
+  import { ALL_ACHIEVEMENTS } from '$services/achievementsCatalog';
   let data = $state<JourneySnapshot>();
   let error = $state('');
   let open = $state(false);
@@ -81,62 +86,156 @@
     getEcoStageForTotalXp(data?.profile?.totalXpEarned ?? 0).id,
   );
   const reward = $derived(next ? data?.rewards[next.task.id!] : null);
+  const achievementStats = $derived(
+    data?.profile
+      ? collectionStats(data.profile, data.tasks, data.companions, data.owned)
+      : null,
+  );
+  const achievements = $derived(
+    ALL_ACHIEVEMENTS.filter(
+      (item) =>
+        !item.future && achievementStats && item.condition(achievementStats),
+    ),
+  );
+  const completed = $derived(
+    data?.tasks.filter(
+      (task) =>
+        !task.archived && (task.completed || task.status === 'completed'),
+    ) ?? [],
+  );
+  const projects = $derived(
+    data?.projects.filter((project) =>
+      ['planejando', 'em_andamento', 'pausado'].includes(project.status),
+    ) ?? [],
+  );
+  const pilot = $derived(sanitizePilot(data?.profile?.rpgPilot));
+  const chapter = $derived(
+    chapterTwoProgress(pilot, data?.profile?.totalXpEarned ?? 0),
+  );
+  const adventureStatus = $derived(
+    pilot.scene < 6
+      ? pilot.scene === 0
+        ? 'Capítulo 1 · ainda por descobrir'
+        : `Capítulo 1 · cena ${pilot.scene + 1} de 6`
+      : pilot.chapterTwoUnlocked
+        ? (pilot.chapterTwoScene ?? 0) >= chapterTwoScenes.length
+          ? 'Demonstração concluída'
+          : `Capítulo 2 · cena ${(pilot.chapterTwoScene ?? 0) + 1} de ${chapterTwoScenes.length}`
+        : pilot.chapterOneEndXp === undefined
+          ? 'Capítulo 1 concluído · ative o próximo marco na aventura'
+          : chapter.available
+            ? 'Capítulo 2 disponível'
+            : `Capítulo 1 concluído · faltam ${chapter.remaining} XP para o capítulo 2`,
+  );
 </script>
 
 <svelte:head><title>{destinations.today} · {identity.name}</title></svelte:head>
-<header class="journey-heading">
-  <div>
-    <p class="lmu-eyebrow">{homeCopy.eyebrow}</p>
-    <h1>{homeCopy.title}</h1>
-    <p>{introduction}</p>
-  </div>
-  {#if data}<Button
-      variant="secondary"
-      aria-label="Nova missão"
-      onclick={() => {
-        createMission();
-      }}
-      ><Icon name="plus" size={18} /><span class="journey-create-label"
-        >Nova missão</span
-      ></Button
-    >{/if}
-</header>
-{#if error}<div role="alert" class="journey-error">
-    {error}<a class="journey-link" href="/" data-sveltekit-reload
-      >Tentar novamente</a
-    >
-  </div>{:else if !data}<p role="status">Abrindo sua jornada…</p>{:else}
-  <div class="journey-grid">
-    <div class="journey-stack">
-      {#if next}<Card variant="featured" class="journey-feature"
-          ><p class="journey-status">{next.reason}</p>
-          <h2>{next.task.title}</h2>
-          <p class="lmu-muted journey-selection-reason">{next.explanation}</p>
-          {#if taskSteps(next.task).length}<progress
-              max={taskSteps(next.task).length}
-              value={taskSteps(next.task).filter((step) =>
-                next.task.completedSubtasks?.includes(step.index),
-              ).length}
-              aria-label="Passos da próxima missão"
-            ></progress>
-            <p class="lmu-muted">
-              {taskSteps(next.task).find(
-                (step) => !next.task.completedSubtasks?.includes(step.index),
-              )?.label ?? 'Pronta para concluir'}
-            </p>{/if}{#if reward}<p class="lmu-hint">
-              Prévia: +{reward.xp} XP
-            </p>{/if}<a
-            class="lmu-button lmu-button--primary"
-            href={`/missao/${next.task.id}`}
-            >{next.reason === 'Em andamento'
-              ? 'Continuar missão'
-              : 'Começar missão'}<Icon name="arrow" size={18} /></a
-          ></Card
+<div class="home-world">
+  <header class="home-heading">
+    <div>
+      <p class="lmu-eyebrow">O registro da sua jornada</p>
+      <h1>Hoje, no seu mundo.</h1>
+    </div>
+    {#if data && !error}<Button
+        aria-label="Nova missão"
+        onclick={() => createMission()}
+        ><Icon name="plus" size={18} /><span class="home-create-label"
+          >Nova missão</span
+        ></Button
+      >{/if}
+  </header>
+  {#if error}
+    <div role="alert" class="journey-error">
+      {error}<a class="journey-link" href="/" data-sveltekit-reload
+        >Tentar novamente</a
+      >
+    </div>
+  {:else if !data}
+    <div class="home-loading" role="status">
+      <Icon name="world" size={32} />
+      <p>Abrindo sua jornada…</p>
+    </div>
+  {:else}
+    {#if data.profile}
+      <div class="home-landscape">
+        <div class="home-scenery lmu-decorative">
+          <Artwork
+            src={sanctuaryContent[stage].pilot}
+            alt={`Seu ambiente no estágio ${sanctuaryContent[stage].label}`}
+            sizes="(max-width: 760px) 100vw, 1100px"
+            eager
+          />
+        </div>
+        <div class="home-landscape-top">
+          <span class="lmu-eyebrow">Santuário pessoal</span><span
+            >{data.profile.totalXpEarned} XP na sua jornada</span
+          >
+        </div>
+        <div class="home-landscape-bottom">
+          <HeroIdentity
+            profile={data.profile}
+            owned={data.owned}
+            achievements={achievements.map((item) => item.title)}
+          /><WorldProgress totalXp={data.profile.totalXpEarned} />
+        </div>
+      </div>
+    {:else}
+      <p role="alert" class="journey-error">
+        Seu perfil não está disponível. Seus dados foram preservados. <a
+          href="/"
+          data-sveltekit-reload>Tentar novamente</a
         >
-      {:else}<Card
-          ><div class="journey-empty">
-            <Icon name="today" size={36} />
-            <h2>
+      </p>
+    {/if}
+    <div class="home-columns">
+      <section class="home-work" aria-labelledby="home-action-title">
+        <div class="home-section-heading">
+          <p class="lmu-eyebrow">Na vida real</p>
+          <a href="/missoes"
+            >Abrir planejamento <Icon name="arrow" size={16} /></a
+          >
+        </div>
+        <div class="home-next" class:home-next-empty={!next}>
+          {#if next}
+            <p class="home-kicker">
+              <span class="home-reason">{next.reason}</span>{#if reward}<span
+                  >+{reward.xp} XP ao concluir</span
+                >{/if}
+            </p>
+            <h2 id="home-action-title">{next.task.title}</h2>
+            <p class="lmu-muted">{introduction}</p>
+            {#if next.reason !== 'Em andamento'}<p class="lmu-hint">
+                {next.explanation}
+              </p>{/if}
+            {#if taskSteps(next.task).length}
+              <progress
+                max={taskSteps(next.task).length}
+                value={taskSteps(next.task).filter((step) =>
+                  next.task.completedSubtasks?.includes(step.index),
+                ).length}
+                aria-label="Passos da próxima missão"
+              ></progress>
+              <p class="lmu-hint home-step">
+                Próximo passo: {taskSteps(next.task).find(
+                  (step) => !next.task.completedSubtasks?.includes(step.index),
+                )?.label ?? 'Pronta para concluir'}
+              </p>
+            {/if}
+            <a
+              class="lmu-button lmu-button--primary"
+              href={`/missao/${next.task.id}`}
+              >{next.reason === 'Em andamento'
+                ? 'Continuar missão'
+                : 'Começar missão'}<Icon name="arrow" size={18} /></a
+            >
+          {:else}
+            <p class="home-kicker">
+              <Icon
+                name={data.tasks.length ? 'spark' : 'missions'}
+                size={18}
+              />{data.tasks.length ? 'Tempo para respirar' : 'O começo é seu'}
+            </p>
+            <h2 id="home-action-title">
               {!data.tasks.length
                 ? homeCopy.firstTitle
                 : waitingReview
@@ -154,18 +253,22 @@
                     ? homeCopy.clearDescription
                     : homeCopy.archivedDescription}
             </p>
-            <Button
-              onclick={() => {
-                createMission();
-              }}
-              >{data.tasks.length
-                ? 'Criar outra missão'
-                : 'Criar minha primeira missão'}<Icon
-                name="plus"
-                size={18}
-              /></Button
-            >
-            {#if !data.tasks.length}<details class="journey-starters">
+            {#if data.tasks.length}<p class="lmu-hint">{introduction}</p>{/if}
+            <div class="home-actions">
+              <Button onclick={() => createMission()}
+                >{data.tasks.length
+                  ? 'Criar outra missão'
+                  : 'Criar minha primeira missão'}<Icon
+                  name="plus"
+                  size={18}
+                /></Button
+              >
+              {#if data.tasks.length}<a href="/progresso" class="journey-link"
+                  >Rever meu progresso</a
+                >{/if}
+            </div>
+            {#if !data.tasks.length}
+              <details class="home-starters">
                 <summary>{homeCopy.examplesTitle}</summary>
                 <p class="lmu-hint">{homeCopy.examplesHint}</p>
                 <div class="journey-starter-list">
@@ -175,87 +278,144 @@
                       >{example.label}<Icon name="arrow" size={18} /></Button
                     >{/each}
                 </div>
-              </details>{/if}
-          </div></Card
-        >{/if}
-      <Card>
-        <p class="lmu-eyebrow">Aventura experimental</p>
-        <h2>O outro lado da ponte</h2>
-        <p class="lmu-muted">
-          Jogue o capítulo inteiro no seu ritmo. Seu progresso real ajuda a liberar
-          a próxima história, sem interromper as cenas.
-        </p>
-        {#if data.profile?.rpgPilot?.scene === 6 && !data.profile?.rpgPilot?.chapterTwoUnlocked}
-          <p class="lmu-hint">Capítulo 1 concluído · próximo capítulo por XP.</p>
-        {/if}
-        <a class="lmu-button lmu-button--secondary" href="/aventura">
-          {data.profile?.rpgPilot?.scene === 6 ? 'Ver meus capítulos' : 'Entrar na aventura'}
-        </a>
-      </Card>
-      <section aria-labelledby="plan-title">
-        <div class="journey-section-heading">
-          <h2 id="plan-title">Seu plano de hoje</h2>
-          <a class="journey-link" href="/missoes">Escolher missões</a>
+              </details>
+            {/if}
+          {/if}
         </div>
-        <Card
-          >{#if plan.length}<ul class="lmu-list">
-              {#each plan as task (task.id)}<li class="journey-task">
-                  <a href={`/missao/${task.id}`}>{task.title}</a><span
-                    class="journey-task-meta"
-                    >{isAvailable(task)
-                      ? 'Escolhida por você para hoje'
-                      : task.reviewEnabled
-                        ? task.lastReviewDate === today
-                          ? 'Revisão realizada hoje'
-                          : 'Próxima revisão: ' +
-                            formatCalendar(reviewDueDate(task))
-                        : 'Concluída'}</span
+        {#if plan.length}
+          <section class="home-plan" aria-labelledby="plan-title">
+            <div class="home-section-heading">
+              <h3 id="plan-title">Seu plano de hoje</h3>
+              <span class="lmu-hint">{plan.length} no plano</span>
+            </div>
+            <ul class="home-task-list">
+              {#each plan as task (task.id)}<li>
+                  <a href={`/missao/${task.id}`}
+                    ><span>{task.title}</span><small
+                      >{isAvailable(task)
+                        ? 'Disponível'
+                        : task.reviewEnabled
+                          ? task.lastReviewDate === today
+                            ? 'Revisão realizada hoje'
+                            : 'Próxima revisão: ' +
+                              formatCalendar(reviewDueDate(task))
+                          : 'Concluída'}</small
+                    ><Icon name="arrow" size={16} /></a
                   >
                 </li>{/each}
-            </ul>{:else}<p class="lmu-muted">
-              Você ainda não escolheu missões para hoje. O plano é seu; nenhuma
-              sugestão é adicionada automaticamente.
-            </p>{/if}</Card
-        >
+            </ul>
+          </section>
+        {:else if data.tasks.some((task) => !task.archived && task.reviewEnabled && !isAvailable(task))}
+          <p class="home-plan lmu-hint">
+            {#each data.tasks
+              .filter((task) => !task.archived && task.reviewEnabled && !isAvailable(task))
+              .slice(0, 3) as task (task.id)}<a
+                class="journey-link"
+                href={`/missao/${task.id}`}
+                >{task.title} · {task.lastReviewDate === today
+                  ? 'Revisão realizada hoje'
+                  : 'Próxima revisão: ' +
+                    formatCalendar(reviewDueDate(task))}</a
+              >{/each}
+          </p>
+        {/if}
+        {#if completed.length}
+          <details class="home-completed">
+            <summary
+              >{completed.length}
+              {completed.length === 1
+                ? 'missão concluída'
+                : 'missões concluídas'}</summary
+            >
+            <ul class="home-task-list">
+              {#each completed.slice(-5).reverse() as task (task.id)}<li>
+                  <a href={`/missao/${task.id}`}
+                    ><Icon name="spark" size={16} /><span>{task.title}</span
+                    ><small>Concluída</small></a
+                  >
+                </li>{/each}
+            </ul>
+            <a class="journey-link" href="/progresso">Ver todo o histórico</a>
+          </details>
+        {/if}
+        {#if projects.length}
+          <section class="home-projects" aria-labelledby="home-projects-title">
+            <div class="home-section-heading">
+              <h3 id="home-projects-title">O que você está construindo</h3>
+              <a href="/projetos">Projetos <Icon name="arrow" size={16} /></a>
+            </div>
+            <ul class="home-task-list">
+              {#each projects.slice(0, 3) as project (project.id)}<li>
+                  <a href={`/projetos/${project.id}`}
+                    ><Icon name="projects" size={18} /><span
+                      >{project.name}</span
+                    ><small
+                      >{project.status === 'pausado'
+                        ? 'Pausado'
+                        : project.status === 'planejando'
+                          ? 'Planejando'
+                          : 'Em andamento'}</small
+                    ></a
+                  >
+                </li>{/each}
+            </ul>
+          </section>
+        {/if}
       </section>
-    </div>
-    <aside class="journey-stack">
-      <Card class="journey-world"
-        ><div class="lmu-decorative">
-          <Artwork
-            src={sanctuaryContent[stage].pilot}
-            alt={`Seu ambiente no estágio ${sanctuaryContent[stage].label}`}
-            eager
-          />
+      <aside class="home-beyond" aria-label="Além das missões">
+        <div class="home-section-heading">
+          <p class="lmu-eyebrow">Além das missões</p>
+          <Icon name="world" size={17} />
         </div>
-        <div class="journey-world-copy">
-          <p class="lmu-eyebrow">Sua jornada ganha forma</p>
-          <h2>{sanctuaryContent[stage].label}</h2>
-          <p class="lmu-muted">{sanctuaryContent[stage].description}</p>
-          <a class="journey-link" href="/refugio"
-            >{refugeCopy.visit}<Icon name="arrow" size={18} /></a
+        {#if data.companion}
+          <a href="/bestiario" class="home-companion"
+            ><Artwork
+              src={companionArtwork(data.companion)}
+              alt={data.companion.name}
+              sizes="80px"
+              class="lmu-decorative"
+            />
+            <div>
+              <p class="lmu-eyebrow">Ao seu lado</p>
+              <h3>{data.companion.name}</h3>
+              <p class="lmu-hint">
+                Estágio {data.companion.evolutionStage ?? 1} · Ver companhia
+              </p>
+            </div>
+            <Icon name="arrow" size={16} /></a
           >
-        </div></Card
-      >{#if data.companion}<div class="journey-pet">
-          <Artwork
-            src={companionArtwork(data.companion)}
-            alt={data.companion.name}
-            class="lmu-decorative"
-          />
-          <div>
-            <p class="lmu-eyebrow">Boa companhia</p>
-            <p>{data.companion.name}</p>
-            <p class="lmu-hint">{homeCopy.companion}</p>
-          </div>
-        </div>{/if}<Card
-        ><p class="lmu-eyebrow">{data.profile?.name}</p>
-        <h3>Nível {data.profile?.level}</h3>
-        <p class="lmu-muted">
-          {data.profile?.totalXpEarned ?? 0} XP na sua jornada
+        {:else}
+          <a href="/bestiario" class="home-discover"
+            ><Icon name="spark" size={24} />
+            <div>
+              <h3>Companhia para o caminho</h3>
+              <p class="lmu-hint">Conheça os companheiros disponíveis.</p>
+            </div>
+            <Icon name="arrow" size={16} /></a
+          >
+        {/if}
+        <section class="home-adventure" aria-labelledby="home-adventure-title">
+          <p class="lmu-eyebrow">Aventura experimental</p>
+          <h2 id="home-adventure-title">O outro lado da ponte</h2>
+          <p class="lmu-muted">{adventureStatus}</p>
+          <a href="/aventura" class="journey-link"
+            >{pilot.scene > 0
+              ? 'Ver meus capítulos'
+              : 'Entrar na aventura'}<Icon name="arrow" size={16} /></a
+          >
+        </section>
+        <a href="/progresso" class="home-record"
+          ><Icon name="today" size={20} /><span
+            >Seu registro de jornada<small
+              >XP, conquistas e passos que ficaram.</small
+            ></span
+          ><Icon name="arrow" size={16} /></a
+        >
+        <p class="home-rest">
+          Seu mundo pode esperar.<br />O tempo aqui é seu.
         </p>
-        <a class="journey-link" href="/progresso">Ver meu progresso</a></Card
-      >
-    </aside>
-  </div>
-  <QuickCreate bind:open snapshot={data} {starter} />
-{/if}
+      </aside>
+    </div>
+    <QuickCreate bind:open snapshot={data} {starter} />
+  {/if}
+</div>

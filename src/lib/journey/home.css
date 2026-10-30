@@ -1,0 +1,456 @@
+/* Home composition only. Shared shell and other routes keep their existing layout. */
+.home-world {
+  --home-gold: #d6bd88;
+  --home-line: #a48a563d;
+}
+.home-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.home-heading h1 {
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  margin-top: 0.4rem;
+}
+.home-heading .lmu-eyebrow {
+  color: var(--home-gold);
+  font-size: 0.65rem;
+}
+.home-heading .lmu-button {
+  border-radius: 0.35rem;
+}
+.home-loading {
+  min-height: 20rem;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 1rem;
+}
+.home-landscape {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 23rem;
+  border: 1px solid var(--home-line);
+  background: #132329;
+  border-radius: 0.45rem;
+}
+.home-scenery {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  overflow: hidden;
+  border-radius: inherit;
+}
+.home-scenery img,
+.home-scenery .lmu-art-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 47%;
+}
+.home-landscape::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    #09141c55,
+    #09141c00 18%,
+    #0b191fa6 40%,
+    #0b191ff5 76%,
+    #0b191f 100%
+  );
+}
+.home-landscape-top {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  padding: 1.25rem 1.7rem;
+  color: #f1ede2;
+  font-size: 0.7rem;
+  text-shadow: 0 1px 6px #000;
+}
+.home-landscape-top .lmu-eyebrow {
+  color: #f1ede2;
+  font-size: 0.65rem;
+}
+.home-landscape-bottom {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 2.5rem;
+  padding: 5rem 1.7rem 1.5rem;
+}
+.home-landscape-bottom .world-progress {
+  border-left: 1px solid var(--home-line);
+  padding-left: 1.7rem;
+}
+.home-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  gap: 2.5rem;
+  margin-top: 1.5rem;
+}
+.home-columns > * {
+  min-width: 0;
+}
+.home-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  min-height: 2.75rem;
+  margin-bottom: 0.75rem;
+}
+.home-section-heading .lmu-eyebrow {
+  color: var(--home-gold);
+  font-size: 0.65rem;
+}
+.home-section-heading > a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+  font-size: 0.8rem;
+  color: var(--lmu-muted);
+}
+.home-section-heading h3 {
+  font-size: 1rem;
+}
+.home-next {
+  padding: 1.5rem;
+  border: 1px solid var(--home-line);
+  border-left: 2px solid var(--home-gold);
+  border-radius: 0 0.4rem 0.4rem 0;
+  background: linear-gradient(120deg, #27342f99, #16232970);
+  display: grid;
+  gap: 0.7rem;
+  justify-items: start;
+}
+.home-kicker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  color: var(--home-gold);
+  width: 100%;
+  font-size: 0.75rem;
+}
+.home-kicker span:not(.home-reason) {
+  color: var(--lmu-positive);
+}
+.home-next-empty .home-kicker {
+  justify-content: flex-start;
+}
+.home-next h2 {
+  font-size: clamp(1.5rem, 2.5vw, 1.9rem);
+}
+.home-next > .lmu-button,
+.home-actions {
+  margin-top: 0.3rem;
+}
+.home-next .lmu-button {
+  border-radius: 0.35rem;
+}
+.home-next > progress {
+  height: 0.35rem;
+}
+.home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+}
+.home-starters {
+  width: 100%;
+  border-top: 1px solid var(--home-line);
+  margin-top: 0.4rem;
+}
+.home-starters summary {
+  font-size: 0.875rem;
+}
+.home-starters .journey-starter-list {
+  margin-top: 0.7rem;
+}
+.home-plan,
+.home-projects {
+  margin-top: 1.5rem;
+}
+.home-task-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.home-task-list li {
+  border-top: 1px solid var(--home-line);
+}
+.home-task-list a {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 0;
+  min-height: 3rem;
+  text-decoration: none;
+}
+.home-task-list a:hover span {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.home-task-list span {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9rem;
+}
+.home-task-list small {
+  color: var(--lmu-muted);
+  font-size: 0.75rem;
+}
+.home-completed {
+  margin-top: 1rem;
+  border-bottom: 1px solid var(--home-line);
+}
+.home-completed summary {
+  font-size: 0.85rem;
+}
+.home-beyond {
+  border-left: 1px solid var(--home-line);
+  padding-left: 1.7rem;
+}
+.home-companion,
+.home-discover {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  align-items: center;
+  text-decoration: none;
+  min-height: 6rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--home-line);
+}
+.home-companion > img,
+.home-companion > .lmu-art-fallback {
+  width: 4.5rem;
+  height: 5.5rem;
+  object-fit: contain;
+  flex: 0 0 4.5rem;
+}
+.home-companion > div,
+.home-discover > div {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+.home-companion .lmu-eyebrow {
+  font-size: 0.6rem;
+}
+.home-companion h3,
+.home-discover h3 {
+  font-family: var(--lmu-display);
+  font-weight: 400;
+  font-size: 1.2rem;
+  margin: 0.3rem 0;
+}
+.home-companion .lmu-hint,
+.home-discover .lmu-hint {
+  font-size: 0.75rem;
+}
+.home-adventure {
+  padding: 1.3rem 0 0.7rem;
+  border-bottom: 1px solid var(--home-line);
+}
+.home-adventure .lmu-eyebrow {
+  color: var(--home-gold);
+  font-size: 0.6rem;
+}
+.home-adventure h2 {
+  margin: 0.6rem 0;
+  font-size: 1.5rem;
+}
+.home-adventure .lmu-muted {
+  font-size: 0.8rem;
+}
+.home-adventure .journey-link {
+  font-size: 0.8rem;
+}
+.home-record {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  text-decoration: none;
+  padding: 1rem 0;
+  font-size: 0.85rem;
+}
+.home-record span {
+  flex: 1;
+}
+.home-record small {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--lmu-muted);
+}
+.home-rest {
+  font: italic 0.875rem/1.65 var(--lmu-display);
+  color: var(--lmu-muted);
+  padding-top: 0.7rem;
+}
+@media (max-width: 1050px) {
+  .home-landscape-bottom {
+    gap: 1.5rem;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  }
+  .home-landscape-bottom .world-progress {
+    padding-left: 1rem;
+  }
+  .home-columns {
+    gap: 1.5rem;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  }
+  .home-beyond {
+    padding-left: 1rem;
+  }
+}
+@media (max-width: 900px) {
+  .home-landscape-bottom {
+    grid-template-columns: 1fr;
+    padding-top: 4.5rem;
+    gap: 1rem;
+  }
+  .home-landscape-bottom .world-progress {
+    border-left: 0;
+    border-top: 1px solid var(--home-line);
+    padding: 1rem 0 0;
+  }
+  .home-landscape-bottom .world-progress h2 {
+    font-size: 1.3rem;
+  }
+  .home-landscape-bottom .world-progress progress {
+    max-width: 20rem;
+  }
+  .home-columns {
+    grid-template-columns: 1fr;
+  }
+  .home-beyond {
+    border-left: 0;
+    border-top: 1px solid var(--home-line);
+    padding: 1rem 0 0;
+  }
+}
+@media (max-width: 600px) {
+  .home-heading .home-create-label {
+    display: none;
+  }
+  .home-heading {
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+  }
+  .home-heading h1 {
+    font-size: clamp(1.45rem, 6.8vw, 1.7rem);
+  }
+  .home-heading > .lmu-button {
+    min-height: 2.75rem;
+    padding: 0.6rem 0.85rem;
+    font-size: 0.85rem;
+  }
+  .home-landscape-top {
+    display: none;
+  }
+  .home-landscape-top > span:last-child {
+    display: none;
+  }
+  .home-landscape-bottom {
+    padding: 2rem 1rem 1rem;
+  }
+  .home-landscape-bottom .world-progress {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.6rem;
+  }
+  .home-landscape-bottom .world-progress .lmu-eyebrow {
+    font-size: 0.6rem;
+    flex-basis: 100%;
+  }
+  .home-landscape-bottom .world-progress h2 {
+    margin: 0;
+    align-self: center;
+    flex: 1 1 auto;
+    order: 1;
+  }
+  .home-landscape-bottom .world-progress a {
+    order: 1;
+    min-height: 2rem;
+    font-size: 0.75rem;
+  }
+  .home-landscape-bottom .world-progress progress,
+  .home-landscape-bottom .world-progress p:not(.lmu-eyebrow) {
+    flex-basis: 100%;
+    order: 2;
+  }
+  .home-landscape-bottom .world-progress p:not(.lmu-eyebrow) {
+    margin: 0;
+  }
+  .home-landscape {
+    min-height: 0;
+  }
+  .home-landscape::after {
+    background: linear-gradient(
+      180deg,
+      #09141c66,
+      #09141c00 10%,
+      #0b191fd9 35%,
+      #0b191f 70%
+    );
+  }
+  .home-next {
+    padding: 1.1rem;
+  }
+  .home-columns {
+    gap: 1.25rem;
+    margin-top: 1rem;
+  }
+  .home-task-list a {
+    flex-wrap: wrap;
+  }
+  .home-task-list small {
+    flex-basis: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-world *,
+  .home-world *::before,
+  .home-world *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+@media (max-width: 360px) {
+  .home-landscape-bottom {
+    padding-inline: 0.6rem;
+  }
+  .home-next {
+    padding-inline: 0.6rem;
+  }
+  .home-next .lmu-button {
+    padding-inline: 0.5rem;
+    flex-wrap: wrap;
+  }
+}
+@media (forced-colors: active) {
+  .home-landscape::after {
+    background: Canvas;
+  }
+  .home-next,
+  .home-landscape {
+    border: 1px solid CanvasText;
+  }
+}
