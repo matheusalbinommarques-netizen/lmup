@@ -98,6 +98,7 @@ test('áreas no cadastro, edição, exclusão com transferência e criação ape
   await edit
     .getByRole('button', { name: 'Salvar missão', exact: true })
     .click();
+  await expect(edit).not.toBeVisible();
   await page.reload();
   await expect(
     page.getByText('Pessoal · Sem repetição', { exact: false }),
@@ -153,6 +154,7 @@ test('áreas no cadastro, edição, exclusão com transferência e criação ape
   await edit
     .getByRole('button', { name: 'Salvar missão', exact: true })
     .click();
+  await expect(edit).not.toBeVisible();
   const weekly = await backup(page);
   expect(
     weekly.data.tasks.find(
