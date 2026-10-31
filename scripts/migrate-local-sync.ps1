@@ -39,6 +39,18 @@ function Check-Copy([string]$directory, [string]$branch, [string]$url) {
   if ((Invoke-GitChecked $directory @('remote', 'get-url', 'origin')) -ne $url) { throw "Remoto inesperado na cópia: $directory" }
   if (Invoke-GitChecked $directory @('status', '--porcelain', '--untracked-files=all')) { throw "Alterações locais na cópia: $directory" }
 }
+function Compare-Release([string]$first, [string]$second) {
+  $files = @(Get-ChildItem -LiteralPath $first -File -Recurse)
+  $copies = @(Get-ChildItem -LiteralPath $second -File -Recurse)
+  if (!$files.Count -or $files.Count -ne $copies.Count) { throw 'Backup da publicação incompleto.' }
+  foreach ($file in $files) {
+    $relative = $file.FullName.Substring($first.Length).TrimStart('\', '/')
+    $copy = Join-Path $second $relative
+    if (!(Test-Path -LiteralPath $copy) -or (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $copy -Algorithm SHA256).Hash) {
+      throw ('Backup da publicação divergente: ' + $relative)
+    }
+  }
+}
 function Restore-Backup {
   if (!(Test-Path -LiteralPath (Join-Path $backup 'sync-config.json'))) { throw 'Backup da migração ausente.' }
   $savedConfig = Get-Content -LiteralPath (Join-Path $backup 'sync-config.json') -Raw | ConvertFrom-Json
@@ -46,9 +58,12 @@ function Restore-Backup {
   $savedActivePath = Join-Path $backup 'active.json'
   if (Test-Path -LiteralPath $savedActivePath) {
     $savedActive = Get-Content -LiteralPath $savedActivePath -Raw | ConvertFrom-Json
-    if ($savedActive.id -notmatch '^[a-f0-9-]+$' -or !(Test-Path -LiteralPath (Join-Path (Join-Path $store 'releases') $savedActive.id))) {
-      throw 'A publicação anterior não está mais disponível. O estado atual foi preservado.'
-    }
+    if ($savedActive.id -notmatch '^[a-f0-9-]+$') { throw 'Identificador da publicação anterior inválido.' }
+    $releasePath = Join-Path (Join-Path $store 'releases') $savedActive.id
+    $releaseBackup = Join-Path $backup 'release'
+    if (!(Test-Path -LiteralPath $releaseBackup)) { throw 'Backup dos arquivos da publicação ausente. O estado atual foi preservado.' }
+    if (!(Test-Path -LiteralPath $releasePath)) { Copy-Item -LiteralPath $releaseBackup -Destination $releasePath -Recurse }
+    Compare-Release $releaseBackup $releasePath
   }
   Copy-Item -LiteralPath (Join-Path $backup 'sync-config.json') -Destination $configPath -Force
   foreach ($name in $scripts) {
@@ -152,6 +167,12 @@ if ($Mode -eq 'activate') {
     if (!(Test-Path -LiteralPath $backup)) { New-Item -ItemType Directory -Path $backup -ErrorAction Stop | Out-Null }
     if (!(Test-Path -LiteralPath (Join-Path $backup 'sync-config.json'))) { Copy-Item -LiteralPath $configPath -Destination (Join-Path $backup 'sync-config.json') }
     if ((Test-Path -LiteralPath (Join-Path $store 'active.json')) -and !(Test-Path -LiteralPath (Join-Path $backup 'active.json'))) { Copy-Item -LiteralPath (Join-Path $store 'active.json') -Destination (Join-Path $backup 'active.json') }
+    $savedActive = Get-Content -LiteralPath (Join-Path $backup 'active.json') -Raw | ConvertFrom-Json
+    if ($savedActive.id -notmatch '^[a-f0-9-]+$') { throw 'Identificador da publicação ativa inválido.' }
+    $releasePath = Join-Path (Join-Path $store 'releases') $savedActive.id
+    $releaseBackup = Join-Path $backup 'release'
+    if (!(Test-Path -LiteralPath $releaseBackup)) { Copy-Item -LiteralPath $releasePath -Destination $releaseBackup -Recurse }
+    Compare-Release $releasePath $releaseBackup
     foreach ($name in $scripts) {
       $old = Join-Path $agent $name
       if ((Test-Path -LiteralPath $old) -and !(Test-Path -LiteralPath (Join-Path $backup $name))) { Copy-Item -LiteralPath $old -Destination (Join-Path $backup $name) }

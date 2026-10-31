@@ -39,7 +39,7 @@ Se uma validação falhar, a tarefa antiga e a publicação anterior são preser
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/migrate-local-sync.ps1 -Mode rollback
 ```
 
-O rollback restaura o ponteiro da publicação, a configuração e o controlador salvos em `.local-app/migration-main-backup/`. Não remove a cópia `publication-main`, a antiga `publication`, as versões guardadas ou os dados do Chrome. Antes de voltar a ativar `main`, execute `prepare` novamente.
+O rollback restaura o ponteiro da publicação, a configuração e o controlador salvos em `.local-app/migration-main-backup/`. O backup também guarda e confere os arquivos da versão anterior, mesmo que a retenção normal deixe de mantê-los. Não remove a cópia `publication-main`, a antiga `publication`, as versões guardadas ou os dados do Chrome. Antes de voltar a ativar `main`, execute `prepare` novamente.
 
 ## Instalações novas e manutenção
 
