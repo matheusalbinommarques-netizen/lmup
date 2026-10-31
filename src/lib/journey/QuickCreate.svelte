@@ -2,7 +2,6 @@
   import '$lib/rpg-theme.css';
   import { guardUpdates } from './guardUpdates';
   import type { MissionStarter } from '$lib/content/experience';
-  import { goto } from '$app/navigation';
   import { untrack } from 'svelte';
   import type { Task } from '$services/db';
   import { EFFORTS, effortDefinition, type Effort } from '$services/effort';
@@ -51,6 +50,7 @@
     busy = $state(false);
   let effort = $state<Effort | 'legacy'>('small');
   let detailsOpen = $state(false);
+  let saveAnother = $state(false);
   let requestId = $state('');
   let definitionRevision = 0;
   guardUpdates(() => open || busy);
@@ -74,6 +74,7 @@
         today = true;
         name = '';
         requestId = crypto.randomUUID();
+        saveAnother = false;
         effort = editTask?.effort ?? (editTask ? 'legacy' : 'small');
         definitionRevision = editTask?.definitionRevision ?? 0;
       });
@@ -126,9 +127,17 @@
         editId: editTask?.id,
         expectedRevision: definitionRevision,
       });
-      open = false;
       oncreated?.(id);
-      if (!editTask) await goto(`/missao/${id}`);
+      if (!editTask && saveAnother) {
+        // Preserve area, effort and schedule for fast planning of several missions.
+        title = '';
+        steps = '';
+        description = '';
+        requestId = crypto.randomUUID();
+        saveAnother = false;
+      } else {
+        open = false;
+      }
     } catch (cause) {
       error =
         cause instanceof Error
@@ -252,9 +261,18 @@
           onclick={() => {
             open = false;
           }}>Cancelar</Button
-        ><Button type="submit" loading={busy}
+        ><Button
+          type="submit"
+          loading={busy}
+          onclick={() => (saveAnother = false)}
           >{editTask ? 'Salvar missão' : 'Criar missão'}</Button
-        >
+        >{#if !editTask}<Button
+            type="submit"
+            variant="secondary"
+            loading={busy}
+            onclick={() => (saveAnother = true)}
+            >Salvar e criar outra</Button
+          >{/if}
       </footer>
     </form></Dialog
   >
