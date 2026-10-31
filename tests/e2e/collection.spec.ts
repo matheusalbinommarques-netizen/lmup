@@ -247,9 +247,57 @@ test('transformação usa recibo e estorno devolve o ambiente anterior', async (
   ).toBeVisible();
   await expect(page.getByText(/Recibo de origem preservado/)).toBeVisible();
   await page.goto(url);
-  await page
-    .getByRole('button', { name: 'Desfazer conclusão', exact: true })
-    .click();
+  const undoButton = page.getByRole('button', {
+    name: 'Desfazer conclusão',
+    exact: true,
+  });
+  if (!(await undoButton.isVisible())) {
+    // Test data is synthetic and isolated; report the precise receipt state
+    // instead of silently masking a real completion/history regression.
+    const diagnosis = await page.evaluate(async () => {
+      const database = await new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open('LevelMeUpDB');
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      try {
+        const tx = database.transaction(['tasks', 'activityEvents'], 'readonly');
+        const getAll = (name: string) =>
+          new Promise<any[]>((resolve, reject) => {
+            const request = tx.objectStore(name).getAll();
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+          });
+        const [tasks, events] = await Promise.all([
+          getAll('tasks'),
+          getAll('activityEvents'),
+        ]);
+        const task = tasks.find((item) => item.title === 'Cultivar um marco real');
+        return {
+          url: location.href,
+          pageHeading: document.querySelector('h1')?.textContent?.trim(),
+          rewardHeading: document.querySelector('[aria-label="Resumo da recompensa"]')?.textContent?.slice(0, 120),
+          body: document.body.innerText.slice(0, 800),
+          task: task
+            ? {
+                id: task.id, completed: task.completed, status: task.status,
+                completionEventId: task.completionEventId,
+                recurrence: task.recurrence, archived: task.archived,
+              }
+            : null,
+          events: events.filter((event) => event.taskId === task?.id)
+            .map((event) => ({
+              id: event.id, kind: event.kind, reversedAt: event.reversedAt,
+              occurrenceDate: event.occurrenceDate,
+            })),
+        };
+      } finally {
+        database.close();
+      }
+    });
+    console.log('LMUP_COLLECTION_RECEIPT_DIAGNOSTIC', JSON.stringify(diagnosis));
+  }
+  await undoButton.click();
   await expect(
     page.getByRole('button', { name: 'Concluir missão', exact: true }),
   ).toBeVisible();
