@@ -243,9 +243,14 @@ test('rotina persiste por data, impede duplicação entre abas, preserva histór
     .selectOption('weekdays');
   await edit.getByRole('checkbox', { name: 'Quarta', exact: true }).check();
   await capture(page, info.project.name, 'recorrencia');
+  await expect(
+    edit.getByRole('combobox', { name: 'Recorrência', exact: true }),
+  ).toHaveValue('weekdays');
   await edit
     .getByRole('button', { name: 'Salvar missão', exact: true })
     .click();
+  // The modal only closes after the IndexedDB definition transaction commits.
+  await expect(edit).not.toBeVisible();
   const copy = await backup(page);
   expect(copy.data.tasks).toHaveLength(1);
   expect(copy.data.tasks[0].recurrence.kind).toBe('weekdays');
