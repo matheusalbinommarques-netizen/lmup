@@ -69,7 +69,7 @@ Os seis registros baixos restantes são `deepmerge`, `@rollup/plugin-node-resolv
 - Busca no código não encontrou `use:enhance`, `$app/forms`, `setHeaders` ou uso de cookies de servidor.
 - A correção no lockfile exige repetir os testes de interface, build, serviços, publicação, política de exceção, offline e integridade de pacote antes de integrar uma nova versão na `main`.
 
-Código de um repositório ou configuração de build malicioso continua podendo executar comandos com as permissões do usuário. Por isso, a `main` deve exigir revisão, aprovação e verificações obrigatórias. O clone isolado protege os arquivos de desenvolvimento e a ativação atômica protege a versão publicada; não constituem isolamento de segurança do sistema operacional.
+Código de um repositório ou configuração de build malicioso continua podendo executar comandos com as permissões do usuário. Por isso, a `main` exige Pull Request e verificações obrigatórias, e o mantenedor confere as alterações antes do merge. O clone isolado protege os arquivos de desenvolvimento e a ativação atômica protege a versão publicada; não constituem isolamento de segurança do sistema operacional.
 
 ## Exceção proposta, ainda não aprovada
 

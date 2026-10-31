@@ -2,9 +2,9 @@
 
 ## Fonte oficial
 
-`main` é a única fonte de atualizações do aplicativo instalado. Desenvolva em uma branch própria, abra um Pull Request para `main`, obtenha revisão e aguarde os jobs obrigatórios `verify (22)` e `verify (24)` do workflow **Verificar LMU**. Não envie commits diretamente para `main`. A antiga `release/lmup-local` fica preservada para recuperação da instalação anterior; não recebe novas promoções.
+`main` é a única fonte de atualizações do aplicativo instalado. Desenvolva em uma branch própria, abra um Pull Request para `main` e aguarde os jobs obrigatórios `verify (22)` e `verify (24)` do workflow **Verificar LMU**. O mantenedor confere o diff e decide o merge. Não envie commits diretamente para `main`. A antiga `release/lmup-local` fica preservada para recuperação da instalação anterior; não recebe novas promoções.
 
-A proteção de `main` no GitHub deve exigir Pull Request, aprovação e esses dois jobs, além de impedir push direto e force push. O workflow executa lint, tipos, testes unitários e de publicação, build e auditoria em Node 22 e 24; em Node 24 também executa E2E, PWA e teste do pacote. A configuração dessas regras pertence às configurações do repositório e deve ser conferida antes de ativar a migração.
+A regra ativa de `main` exige Pull Request e esses dois jobs, impede exclusão e force push e não permite bypass. Ela não exige uma aprovação formal de outro colaborador; o merge continua sendo uma decisão manual após os checks. O workflow executa lint, tipos, testes unitários e de publicação, build e auditoria em Node 22 e 24; em Node 24 também executa E2E, PWA e teste do pacote.
 
 ## Sincronização local
 
