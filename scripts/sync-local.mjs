@@ -12,6 +12,7 @@ import { join, resolve } from 'node:path';
 import { synchronize, runNpm } from './local-sync-core.mjs';
 import { acquireLocalLock } from './local-process-lock.mjs';
 import { ensureServer } from './publish-local.mjs';
+import { auditLocalRelease } from './local-security-policy.mjs';
 
 const project =
   process.env.LMU_INSTALLATION_PROJECT ||
@@ -56,12 +57,12 @@ if (process.argv.includes('--status')) {
               ['ci', '--no-audit', '--no-fund'],
               logPath,
             );
-            await runNpm(
-              config.checkout,
-              config.npmCli,
-              ['run', 'audit:security'],
+            await auditLocalRelease({
+              project: config.checkout,
+              storage,
+              npmCli: config.npmCli,
               logPath,
-            );
+            });
             await runNpm(
               config.checkout,
               config.npmCli,

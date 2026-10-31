@@ -1,7 +1,8 @@
 param(
   [ValidateSet('install', 'status', 'remove')][string]$Mode = 'install',
   [string]$Branch,
-  [string]$Remote = 'origin'
+  [string]$Remote = 'origin',
+  [switch]$Enable
 )
 $ErrorActionPreference = 'Stop'
 $syncProject = Split-Path -Parent $PSScriptRoot
@@ -37,15 +38,15 @@ try {
   $syncCheckout = Join-Path $syncStore 'publication'
   if (!(Test-Path -LiteralPath $syncCheckout)) {
     $env:GIT_TERMINAL_PROMPT = '0'
-    & git -c core.hooksPath= clone --origin origin --branch $Branch --single-branch $syncRemoteUrl $syncCheckout
+    & git -c core.hooksPath= clone --origin origin --branch $Branch --single-branch --depth 1 $syncRemoteUrl $syncCheckout
     if ($LASTEXITCODE -ne 0) { throw 'A cópia de publicação não foi criada. Nenhum arquivo local foi descartado.' }
   }
-  $syncConfigJson = @{ enabled = $true; remote = 'origin'; branch = $Branch; url = $syncRemoteUrl; checkout = $syncCheckout; node = $syncNode; npmCli = $syncNpmCli } | ConvertTo-Json
+  $syncConfigJson = @{ enabled = [bool]$Enable; remote = 'origin'; branch = $Branch; url = $syncRemoteUrl; checkout = $syncCheckout; node = $syncNode; npmCli = $syncNpmCli } | ConvertTo-Json
   [System.IO.File]::WriteAllText((Join-Path $syncStore 'sync-config.json'), $syncConfigJson, (New-Object System.Text.UTF8Encoding $false))
   [System.IO.File]::WriteAllText((Join-Path $syncStore 'config.json'), '{"enabled":false}', (New-Object System.Text.UTF8Encoding $false))
   $syncAgent = Join-Path $syncStore 'agent/scripts'
   New-Item -ItemType Directory -Path $syncAgent -Force | Out-Null
-  foreach ($syncScript in @('sync-local.mjs', 'local-sync-core.mjs', 'local-process-lock.mjs', 'publish-local.mjs', 'local-release-store.mjs', 'verify-package.mjs', 'serve-static.mjs', 'static-server.mjs')) {
+  foreach ($syncScript in @('sync-local.mjs', 'local-sync-core.mjs', 'local-security-policy.mjs', 'local-process-lock.mjs', 'publish-local.mjs', 'local-release-store.mjs', 'verify-package.mjs', 'serve-static.mjs', 'static-server.mjs')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $syncScript) -Destination (Join-Path $syncAgent $syncScript)
   }
   $syncUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
@@ -57,6 +58,12 @@ try {
   $syncSettings = New-ScheduledTaskSettingsSet -Hidden -StartWhenAvailable -MultipleInstances IgnoreNew -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Hours 1)
   $syncPrincipal = New-ScheduledTaskPrincipal -UserId $syncUser -LogonType Interactive -RunLevel Limited
   Register-ScheduledTask -TaskName $syncTaskName -Action $syncAction -Trigger $syncTriggers -Settings $syncSettings -Principal $syncPrincipal -Description ('LMUP: sincronizar ' + $Branch + ' e publicar somente após verificações. Origem: ' + $syncProject) -Force | Out-Null
-  Start-ScheduledTask -TaskName $syncTaskName
-  Write-Output ('Sincronização configurada: ' + $Branch + ', a cada 5 minutos e ao entrar no Windows. Tarefa: ' + $syncTaskName)
+  if ($Enable) {
+    Enable-ScheduledTask -TaskName $syncTaskName | Out-Null
+    Start-ScheduledTask -TaskName $syncTaskName
+    Write-Output ('Sincronização ativa: ' + $Branch + ', a cada 5 minutos e ao entrar no Windows. Tarefa: ' + $syncTaskName)
+  } else {
+    Disable-ScheduledTask -TaskName $syncTaskName | Out-Null
+    Write-Output ('Sincronização preparada e desativada, aguardando aprovação de segurança. Tarefa: ' + $syncTaskName)
+  }
 } finally { Pop-Location }

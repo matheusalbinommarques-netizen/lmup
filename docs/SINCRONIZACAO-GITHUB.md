@@ -1,5 +1,7 @@
 # GitHub e publicação do LMUP instalado
 
+**Ativação pendente:** a primeira publicação estável aguarda a aprovação descrita na [análise de segurança](SEGURANCA-PUBLICACAO-LOCAL.md). O instalador prepara o clone e uma tarefa desativada por padrão. A versão já instalada permanece ativa.
+
 ## Branches e aprovação
 
 - `origin` aponta para o repositório GitHub do LMUP. O antigo remoto no disco foi preservado como `local-origin`.
@@ -74,6 +76,8 @@ Para instalar ou reinstalar o controlador e a tarefa, usando scripts revisados:
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-local-sync.ps1 -Branch release/lmup-local
 ```
+
+Somente após os critérios de segurança e a aprovação explícita, usar o mesmo comando com `-Enable`. Sem esse parâmetro, a tarefa e a configuração de sincronização ficam desativadas. Os alertas moderados continuam bloqueando mesmo com a tarefa habilitada, salvo uma exceção local explícita, limitada ao commit e lockfile revisados e com validade máxima de sete dias. Uma exceção não modifica a checagem estrita do GitHub.
 
 Para consultar a tarefa ou removê-la:
 

@@ -27,7 +27,7 @@
     "app:preparar": "node scripts/publish-local.mjs --setup",
     "app:iniciar": "node scripts/publish-local.mjs --serve",
     "app:versao": "node scripts/publish-local.mjs --status",
-    "test:publication": "node --test scripts/local-publication.test.mjs scripts/local-sync.test.mjs",
+    "test:publication": "node --test scripts/local-publication.test.mjs scripts/local-sync.test.mjs scripts/local-security-policy.test.mjs",
     "app:sincronizar": "node scripts/sync-local.mjs",
     "app:sync-status": "node scripts/sync-local.mjs --status",
     "app:promover": "node scripts/promote-local.mjs"
@@ -71,7 +71,8 @@
     "rxjs": "^7.8.2"
   },
   "overrides": {
-    "picomatch@2.3.1": "2.3.2"
+    "picomatch@2.3.1": "2.3.2",
+    "cookie@0.6.0": "0.7.2"
   },
   "lint-staged": {
     "*.{js,ts,svelte}": "eslint --fix --no-warn-ignored",

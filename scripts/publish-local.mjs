@@ -116,7 +116,7 @@ async function main() {
           },
         ),
       );
-      if (sync.enabled)
+      if (sync.enabled || sync.branch === 'release/lmup-local')
         throw Error(
           'A fonte oficial é a branch estável. Use npm run app:sincronizar; commits de desenvolvimento não são publicados diretamente.',
         );
