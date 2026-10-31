@@ -278,7 +278,8 @@
           {#if storedSession}<a class="lmu-button lmu-button--secondary" href="/sessao">Retomar sessão do dia</a>{/if}
         {/if}
       </div>
-      <label class="journey-label lmu-field search-field"
+      <div class="organizer-compact-filters">
+        <label class="journey-label lmu-field search-field"
         ><span class="sr-only">Buscar missão</span><input
           type="search"
           bind:value={search}
@@ -298,6 +299,7 @@
         <Button variant="secondary" onclick={() => (areasOpen = true)}
           >Gerenciar áreas</Button
         >
+      </div>
       </div>
       <details class="extra-filters">
         <summary>Mais filtros{project || pinnedOnly ? ' · ativos' : ''}</summary
@@ -580,6 +582,23 @@
     accent-color: #d5a457;
     cursor: pointer;
   }
+  .organizer-compact-filters {
+    display: grid;
+    grid-template-columns: minmax(220px, 1.4fr) minmax(330px, 1fr);
+    gap: 0.7rem;
+    align-items: end;
+  }
+  .organizer-compact-filters .search-field {
+    margin: 0;
+  }
+  .organizer-compact-filters .organizer-filters {
+    margin-top: 0;
+  }
+  @media (max-width: 900px) {
+    .organizer-compact-filters {
+      grid-template-columns: 1fr;
+    }
+  }
   .organizer-toolbar,
   .organizer-list {
     padding: 1.1rem;
@@ -715,7 +734,7 @@
     background: #ad87332b;
   }
   .mission-check :global(svg) {
-    opacity: 0;
+    opacity: 0.5;
   }
   .mission-check:hover :global(svg),
   .mission-check:focus-visible :global(svg) {
