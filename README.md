@@ -8,6 +8,12 @@ O aplicativo abre em Hoje, com Missões, Projetos e Refúgio na navegação prin
 
 O sistema visual e o piloto original estão em [E3](docs/E3-sistema-visual.md). `/laboratorio` e `/laboratorio?view=componentes` continuam sendo prévias com dados de exemplo em memória; não substituem a jornada real e não abrem o banco pessoal.
 
+A conclusão de missões usa a [Recompensa Viva 0.1](docs/RECOMPENSA-VIVA-0.1.md), com recursos registrados, barras de progresso e destaques condicionais de nível e Refúgio. O documento reúne as capturas de desktop e celular e os detalhes de compatibilidade.
+
+O organizador de [Missões e Organização Pessoal 1.0](docs/MISSOES-ORGANIZACAO-PESSOAL-1.0.md) reúne áreas personalizadas, planejamento por data, rotinas diárias e semanais e histórico por ocorrência, integrado à Recompensa Viva e disponível offline.
+
+O app instalado pelo Chrome recebe versões pela [sincronização isolada com o GitHub](docs/SINCRONIZACAO-GITHUB.md). O desenvolvimento ocorre em `feat/home-rpg-reference`; versões aprovadas são promovidas explicitamente para `release/lmup-local`. Uma tarefa local busca a branch estável, valida e publica sem alterar a pasta de desenvolvimento. A origem e os dados locais são preservados.
+
 ## Requisitos e instalação
 
 Node.js 22.12+ ou 24.x. O desenvolvimento local desta entrega foi verificado com Node 24 e npm 11. A integração contínua está configurada para Node 22/24.
@@ -35,12 +41,13 @@ npm run verify
 npm run audit:security
 ```
 
-`verify` executa lint, checagem de tipos/Svelte, testes sem modo de observação e build. Para rodar separadamente:
+`verify` executa lint, checagem de tipos/Svelte, testes sem modo de observação, testes da publicação local e build. Para rodar separadamente:
 
 ```sh
 npm run lint
 npm run check
 npm run test:run
+npm run test:publication
 npm run build
 ```
 

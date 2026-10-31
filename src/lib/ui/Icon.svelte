@@ -15,9 +15,13 @@
     | 'swords'
     | 'person'
     | 'companion'
-    | 'map';
+    | 'map'
+    | 'coin'
+    | 'food';
   let { name, size = 22 }: { name: IconName; size?: number } = $props();
   const paths: Record<IconName, string> = {
+    coin: 'M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-3 0a5 5 0 1 1-10 0 5 5 0 0 1 10 0Zm-5-3v6m-2-4 2-2 2 2',
+    food: 'M4 17c2-6 5-12 11-12 5 0 7 5 4 9-2 3-8 3-12 6l-3-3Zm3 0 9-9m-7 6 1-4m2 1 4 1',
     today:
       'M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6 7 7m10 10 1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0',
     missions:

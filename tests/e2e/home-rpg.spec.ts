@@ -17,7 +17,7 @@ async function populateTasks(page: Page) {
             String(now.getMonth() + 1).padStart(2, '0'),
             String(now.getDate()).padStart(2, '0'),
           ].join('-');
-          for (let i = 0; i < 32; i++)
+          for (let i = 0; i < 96; i++)
             tx.objectStore('tasks').put({
               id: 100 + i,
               title: `Atividade real ${i + 1}`,
@@ -66,7 +66,7 @@ test('Home RPG alinha a primeira faixa e os quatro destinos, sem espaço abaixo 
     name: 'Lista de missões',
     exact: true,
   });
-  await expect(list.getByRole('listitem')).toHaveCount(32);
+  await expect(list.getByRole('listitem')).toHaveCount(24);
   const world = (await page
     .getByRole('region', { name: 'Personagem e mundo', exact: true })
     .boundingBox())!;
@@ -136,6 +136,7 @@ test('Home RPG alinha a primeira faixa e os quatro destinos, sem espaço abaixo 
   );
   if (process.env.LMU_HOME_CAPTURE_DIR) {
     await mkdir(process.env.LMU_HOME_CAPTURE_DIR, { recursive: true });
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
     await page.screenshot({
       path: join(
@@ -144,6 +145,57 @@ test('Home RPG alinha a primeira faixa e os quatro destinos, sem espaço abaixo 
       ),
       fullPage: desktop,
     });
+    if (desktop) {
+      for (const viewport of [
+        { width: 1440, height: 900 },
+        { width: 1366, height: 768 },
+      ]) {
+        await page.setViewportSize(viewport);
+        await page.evaluate(() =>
+          window.scrollTo({ top: 0, behavior: 'instant' }),
+        );
+        const geometry = await page.evaluate(() => {
+          const world = document
+            .querySelector('.rpg-world-panel')!
+            .getBoundingClientRect();
+          const missions = document
+            .querySelector('.rpg-missions')!
+            .getBoundingClientRect();
+          const cards = Array.from(
+            document.querySelectorAll('.rpg-destination'),
+            (el) => el.getBoundingClientRect().y,
+          );
+          return {
+            overflow: document.documentElement.scrollWidth > innerWidth,
+            worldBottom: world.bottom,
+            missionsBottom: missions.bottom,
+            cards,
+            zoom: window.visualViewport!.scale,
+            fontSize: getComputedStyle(document.documentElement).fontSize,
+          };
+        });
+        expect(geometry.zoom).toBe(1);
+        expect(geometry.fontSize).toBe('16px');
+        expect(geometry.overflow).toBe(false);
+        expect(
+          Math.abs(geometry.worldBottom - geometry.missionsBottom),
+        ).toBeLessThanOrEqual(1);
+        expect(
+          Math.max(...geometry.cards) - Math.min(...geometry.cards),
+        ).toBeLessThanOrEqual(1);
+        const label = `${viewport.width}x${viewport.height}`;
+        await page.screenshot({
+          path: join(process.env.LMU_HOME_CAPTURE_DIR, `desktop-${label}.png`),
+        });
+        await page.screenshot({
+          path: join(
+            process.env.LMU_HOME_CAPTURE_DIR,
+            `desktop-${label}-completa.png`,
+          ),
+          fullPage: true,
+        });
+      }
+    }
   }
   const filters = page.getByRole('group', {
     name: 'Filtrar missões da Home',
@@ -154,7 +206,7 @@ test('Home RPG alinha a primeira faixa e os quatro destinos, sem espaço abaixo 
     .click();
   await expect(list.getByRole('listitem')).toHaveCount(8);
   await filters.getByRole('button', { name: /^Hoje / }).click();
-  await expect(list.getByRole('listitem')).toHaveCount(11);
-  await filters.getByRole('button', { name: 'Todas', exact: true }).click();
   await expect(list.getByRole('listitem')).toHaveCount(32);
+  await filters.getByRole('button', { name: 'Todas', exact: true }).click();
+  await expect(list.getByRole('listitem')).toHaveCount(96);
 });

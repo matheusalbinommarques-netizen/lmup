@@ -18,11 +18,19 @@
     "audit:security": "npm audit --audit-level=moderate",
     "lint": "eslint .",
     "check": "svelte-kit sync && svelte-check",
-    "verify": "npm run lint && npm run check && npm run test:run && npm run build",
+    "verify": "npm run lint && npm run check && npm run test:run && npm run test:publication && npm run build",
     "test:pwa": "playwright test --config playwright.pwa.config.ts",
     "package:beta": "node scripts/package-release.mjs",
     "verify:package": "node scripts/verify-package.mjs",
-    "test:package": "node scripts/test-package.mjs"
+    "test:package": "node scripts/test-package.mjs",
+    "app:publicar": "node scripts/publish-local.mjs",
+    "app:preparar": "node scripts/publish-local.mjs --setup",
+    "app:iniciar": "node scripts/publish-local.mjs --serve",
+    "app:versao": "node scripts/publish-local.mjs --status",
+    "test:publication": "node --test scripts/local-publication.test.mjs scripts/local-sync.test.mjs",
+    "app:sincronizar": "node scripts/sync-local.mjs",
+    "app:sync-status": "node scripts/sync-local.mjs --status",
+    "app:promover": "node scripts/promote-local.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

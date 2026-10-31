@@ -60,6 +60,11 @@ export interface Area {
 // ---------------------------------------------
 export type TaskRarity = 'common' | 'rare' | 'epic' | 'legendary';
 export type TaskStatus = 'available' | 'todo' | 'completed';
+export type TaskRecurrence = {
+  kind: 'daily' | 'weekdays' | 'weekly';
+  startDate: string;
+  days?: number[]; // Local calendar weekdays, Sunday = 0.
+};
 
 export interface Task {
   id?: number;
@@ -72,6 +77,11 @@ export interface Task {
   completionEventId?: string | null;
   creationKey?: string;
   plannedDate?: string | null;
+  recurrence?: TaskRecurrence | null;
+  occurrenceSession?: string;
+  lastOccurrenceDate?: string | null;
+  skippedDate?: string | null;
+  occurrenceOverride?: string | null;
   pinned?: boolean;
   executionState?: 'idle' | 'active' | 'paused';
   executionNotes?: string;
@@ -310,6 +320,10 @@ export interface ActivityEvent {
   occurredAt: string;
   date: string;
   taskId?: number;
+  occurrenceDate?: string;
+  taskTitle?: string;
+  areaName?: string;
+  areaId?: number;
   projectId?: number;
   sourceEventId?: string;
   baseXp: number;
@@ -324,6 +338,8 @@ export interface ActivityEvent {
     lastReviewDate?: string | null;
   };
   reward: { xp: number; gold: number; food: number };
+  /** XP at grant time; optional for receipts created before Recompensa Viva. */
+  progress?: { before: number; after: number };
   modifiers: {
     xpMultiplier: number;
     goldMultiplier: number;

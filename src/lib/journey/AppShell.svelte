@@ -1,4 +1,5 @@
 <script lang="ts">
+  import RpgTrim from '$lib/ui/RpgTrim.svelte';
   import { page } from '$app/state';
   import { identity, destinations } from '$lib/content/experience';
   import type { Snippet } from 'svelte';
@@ -66,11 +67,13 @@
 <div
   class="lmu-design journey-shell"
   class:journey-adventure={page.url.pathname === '/aventura'}
+  class:rpg-theme={page.url.pathname === '/'}
   class:journey-home={page.url.pathname === '/'}
 >
   <a class="lmu-skip" href="#journey-main">Pular para o conteúdo</a>
-  <aside class="journey-sidebar">
-    <a href="/" class="journey-brand"
+  <aside class="journey-sidebar" class:rpg-frame={page.url.pathname === '/'}>
+    {#if page.url.pathname === '/'}<RpgTrim />{/if}
+    <a href="/" class="journey-brand" aria-label={identity.name}
       ><Icon name="spark" size={28} /><span
         >{identity.name}<small>{identity.tagline}</small></span
       ></a
@@ -78,16 +81,24 @@
     <nav aria-label="Navegação principal">
       {#each page.url.pathname === '/' ? homeLinks : links as link (link.href)}<a
           href={link.href}
+          aria-label={link.label}
+          title={link.label}
           aria-current={active(link.href) ? 'page' : undefined}
-          ><Icon name={link.icon} />{link.label}</a
+          ><Icon name={link.icon} /><span class="journey-nav-label"
+            >{link.label}</span
+          ></a
         >{/each}
     </nav>
     <div class="journey-sidebar-bottom">
       <Button
         variant="quiet"
+        aria-label="Perfil e mais"
         onclick={() => {
           menu = true;
-        }}><Icon name="settings" />Perfil e mais</Button
+        }}
+        ><Icon name="settings" /><span class="journey-nav-label"
+          >Perfil e mais</span
+        ></Button
       >
     </div>
   </aside>

@@ -13,7 +13,7 @@ async function completeRealMission(page: Page, title: string) {
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
   await expect(
-    page.getByRole('heading', { name: 'Esse passo é seu.' }),
+    page.getByRole('heading', { name: 'Missão concluída!' }),
   ).toBeVisible();
 }
 

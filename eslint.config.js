@@ -14,6 +14,7 @@ export default [
       'node_modules/**',
       'dist/**',
       'build/**',
+      '.local-app/**',
       '.vite/**',
       'coverage/**',
       'eslint.config.js',

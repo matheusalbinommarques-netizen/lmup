@@ -45,6 +45,12 @@ const extras = {
   'scripts/serve-static.mjs': await readFile(
     join(project, 'scripts/serve-static.mjs'),
   ),
+  'scripts/static-server.mjs': await readFile(
+    join(project, 'scripts/static-server.mjs'),
+  ),
+  'scripts/local-release-store.mjs': await readFile(
+    join(project, 'scripts/local-release-store.mjs'),
+  ),
   'scripts/verify-package.mjs': await readFile(
     join(project, 'scripts/verify-package.mjs'),
   ),

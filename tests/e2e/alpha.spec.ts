@@ -100,11 +100,11 @@ test('primeira missão real persiste passos e notas, retoma, conclui e desfaz ap
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
   await expect(
-    page.getByRole('heading', { name: 'Esse passo é seu.', exact: true }),
+    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
   await page.reload();
   await expect(
-    page.getByRole('heading', { name: 'Esse passo é seu.', exact: true }),
+    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
   await page
     .getByRole('button', { name: 'Desfazer conclusão', exact: true })
@@ -172,7 +172,7 @@ test('falha de gravação preserva o rascunho e permite tentar salvar novamente'
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
   await expect(
-    page.getByRole('heading', { name: 'Esse passo é seu.', exact: true }),
+    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
   await page.evaluate(() => {
     (window as any).allowNotes = true;
@@ -277,7 +277,7 @@ test('backup antigo abre na nova jornada com saldos preservados e passos legados
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
   await expect(
-    page.getByRole('heading', { name: 'Esse passo é seu.', exact: true }),
+    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
   const result = await backup(page);
   expect(result.data.profile).toMatchObject({
@@ -355,7 +355,7 @@ test('duas abas concluem uma missão real uma única vez', async ({
     ),
   );
   await expect(
-    page.getByRole('heading', { name: 'Esse passo é seu.', exact: true }),
+    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
   const result = await backup(page);
   expect(result.data.activityEvents).toHaveLength(1);
@@ -375,6 +375,8 @@ test('plano e fixação são explícitos; navegação secundária preserva acess
     .getByRole('button', { name: 'Pausar e voltar', exact: true })
     .click();
   await page.goto('/missoes');
+  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByText('⋯', { exact: true }).click();
   await page
     .getByRole('button', { name: 'Tirar de hoje', exact: true })
     .click();
@@ -386,6 +388,8 @@ test('plano e fixação são explícitos; navegação secundária preserva acess
     page.getByRole('button', { name: 'Desafixar', exact: true }),
   ).toBeVisible();
   await page.reload();
+  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByText('⋯', { exact: true }).click();
   await expect(
     page.getByRole('button', { name: 'Desafixar', exact: true }),
   ).toBeVisible();
@@ -412,7 +416,7 @@ test('plano e fixação são explícitos; navegação secundária preserva acess
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
   await expect(
-    page.getByRole('heading', { name: 'Esse passo é seu.', exact: true }),
+    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
 });
 
@@ -437,7 +441,7 @@ test('execução real funciona em 320x568 com texto ampliado e rota inexistente 
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
   await expect(
-    page.getByRole('heading', { name: 'Esse passo é seu.', exact: true }),
+    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
   await page.goto('/missao/999999');
   await expect(
@@ -445,6 +449,6 @@ test('execução real funciona em 320x568 com texto ampliado e rota inexistente 
   ).toBeVisible();
   await page.goto(url);
   await expect(
-    page.getByRole('heading', { name: 'Esse passo é seu.', exact: true }),
+    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
 });

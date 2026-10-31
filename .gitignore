@@ -30,3 +30,6 @@ dist-ssr
 *.sw?
 
 test-results-pwa/
+
+# Local publication snapshots, process state and activation pointer.
+.local-app/

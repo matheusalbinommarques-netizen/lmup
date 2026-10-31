@@ -29,7 +29,7 @@ export async function readJourneySnapshot() {
         ? eventsById.get(task.completionEventId)
         : undefined;
       const recorded = candidate?.reversedAt ? undefined : candidate;
-      if (recorded && task.completed && !isAvailable(task))
+      if (recorded && !task.recurrence && task.completed && !isAvailable(task))
         rewards[task.id!] = recorded.reward;
       else if (profile) {
         try {

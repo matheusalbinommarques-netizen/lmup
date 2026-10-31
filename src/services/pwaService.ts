@@ -103,16 +103,20 @@ export async function applyUpdate() {
   }
 }
 export async function checkUpdate() {
-  if (!registration) return;
-  patch({ checking: true, message: '' });
+  await refreshUpdate(false);
+}
+async function refreshUpdate(silent: boolean) {
+  if (!registration || getState().checking) return;
+  patch({ checking: true, ...(silent ? {} : { message: '' }) });
   try {
     await registration.update();
     await inspectWaiting();
   } catch {
-    patch({
-      message:
-        'Não foi possível buscar uma atualização agora. Seus dados locais continuam disponíveis.',
-    });
+    if (!silent)
+      patch({
+        message:
+          'Não foi possível buscar uma atualização agora. Seus dados locais continuam disponíveis.',
+      });
   } finally {
     patch({ checking: false });
   }
@@ -205,6 +209,20 @@ export function initializePwa() {
       void inspectWaiting();
     }
   };
+  let lastAutomaticCheck = 0;
+  const checkOnReturn = () => {
+    if (
+      document.visibilityState !== 'visible' ||
+      Date.now() - lastAutomaticCheck < 60000
+    )
+      return;
+    lastAutomaticCheck = Date.now();
+    void refreshUpdate(true);
+  };
+  window.addEventListener('focus', checkOnReturn);
+  window.addEventListener('online', checkOnReturn);
+  document.addEventListener('visibilitychange', checkOnReturn);
+  const updateClock = setInterval(checkOnReturn, 60000);
   navigator.serviceWorker?.addEventListener('message', message);
   navigator.serviceWorker?.addEventListener('controllerchange', changed);
   if (!dev && 'serviceWorker' in navigator && window.isSecureContext) {
@@ -242,6 +260,10 @@ export function initializePwa() {
       );
   }
   return () => {
+    clearInterval(updateClock);
+    window.removeEventListener('focus', checkOnReturn);
+    window.removeEventListener('online', checkOnReturn);
+    document.removeEventListener('visibilitychange', checkOnReturn);
     window.removeEventListener('online', connection);
     window.removeEventListener('offline', connection);
     window.removeEventListener('beforeinstallprompt', beforeInstall);

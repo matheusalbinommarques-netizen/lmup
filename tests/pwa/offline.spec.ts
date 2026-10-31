@@ -11,6 +11,18 @@ test('Home RPG mantém cena, personagem e atlas disponíveis sem conexão', asyn
   ).toBeVisible();
   await context.setOffline(true);
   await page.reload();
+  await expect(
+    page.getByRole('region', { name: 'Seu personagem', exact: true }),
+  ).toBeVisible();
+  const offlineFonts = await page.evaluate(async () => {
+    const faces = await document.fonts.load(
+      '500 24px "LMUP Cormorant"',
+      'Missões, Refúgio e Védria',
+    );
+    return faces.map((face) => face.status);
+  });
+  expect(offlineFonts.length).toBeGreaterThan(0);
+  expect(offlineFonts.every((status) => status === 'loaded')).toBe(true);
   const scene = page.getByRole('img', {
     name: 'Viajante diante de Védria, representação visual provisória',
     exact: true,
@@ -45,6 +57,48 @@ async function ready(page: Page) {
     .poll(() => page.evaluate(() => !!navigator.serviceWorker.controller))
     .toBe(true);
 }
+
+test('ao voltar ao app, encontra uma publicação nova sem aplicar durante o uso', async ({
+  page,
+  request,
+}) => {
+  await ready(page);
+  const initial = await metadata(page);
+  await request.post('/__release', { data: 'b' });
+  const time = await page.evaluate(() => Date.now());
+  await page.clock.setFixedTime(new Date(time + 61000));
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(
+    page.getByRole('complementary', {
+      name: 'Atualização disponível',
+      exact: true,
+    }),
+  ).toBeVisible();
+  expect((await metadata(page)).version).toBe(initial.version);
+});
+
+test('busca automática indisponível fica silenciosa e preserva a jornada offline', async ({
+  page,
+  context,
+}) => {
+  await ready(page);
+  await context.setOffline(true);
+  const time = await page.evaluate(() => Date.now());
+  await page.clock.setFixedTime(new Date(time + 61000));
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(
+    page.getByRole('region', { name: 'Seu personagem', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      'Não foi possível buscar uma atualização agora. Seus dados locais continuam disponíveis.',
+      { exact: true },
+    ),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('link', { name: 'Recarregar para atualizar', exact: true }),
+  ).toHaveCount(0);
+});
 async function metadata(page: Page) {
   for (let attempt = 0; attempt < 5; attempt++)
     try {
@@ -78,6 +132,143 @@ async function mission(page: Page, title = 'Uma missão offline') {
   await page.waitForURL(/missao/);
   return page.url();
 }
+
+test('organizador cria área e rotina offline, vira o dia e preserva ocorrências e backup', async ({
+  page,
+  context,
+  request,
+}) => {
+  await page.clock.setFixedTime(new Date('2026-11-02T10:00:00-03:00'));
+  await ready(page);
+  await request.post('/__network', { data: 'offline' });
+  await context.setOffline(true);
+  await page.goto('/missoes');
+  await page.getByRole('button', { name: 'Nova missão', exact: true }).click();
+  const form = page.getByRole('dialog', {
+    name: 'Uma nova missão',
+    exact: true,
+  });
+  await form
+    .getByLabel('O que você quer fazer?')
+    .fill('Cuidar da casa sem conexão');
+  await form
+    .getByRole('button', { name: 'Gerenciar áreas', exact: true })
+    .click();
+  const areas = page.getByRole('dialog', { name: 'Minhas áreas', exact: true });
+  await areas.getByLabel('Nome da nova área').fill('Minha casa');
+  await areas.getByRole('button', { name: 'Criar área', exact: true }).click();
+  await expect(
+    areas.getByRole('button', { name: 'Renomear Minha casa', exact: true }),
+  ).toBeVisible();
+  await areas
+    .getByRole('button', { name: 'Fechar diálogo', exact: true })
+    .click();
+  await form
+    .getByRole('combobox', { name: 'Recorrência', exact: true })
+    .selectOption('daily');
+  await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
+  await page.waitForURL(/\/missao\/\d+$/);
+  const url = page.url();
+  await page
+    .getByRole('button', { name: 'Concluir missão', exact: true })
+    .click();
+  await expect(
+    page.getByRole('region', { name: 'Resumo da recompensa' }),
+  ).toBeVisible();
+  await page.clock.setFixedTime(new Date('2026-11-03T10:00:00-03:00'));
+  await page.goto('/');
+  await expect(
+    page.getByRole('region', { name: 'Lista de missões', exact: true }),
+  ).toContainText('Cuidar da casa sem conexão');
+  await page.goto(url);
+  await page
+    .getByRole('button', { name: 'Concluir missão', exact: true })
+    .click();
+  await expect(
+    page.getByRole('region', { name: 'Resumo da recompensa' }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByRole('region', { name: 'Resumo da recompensa' }),
+  ).not.toHaveClass(/celebrate/);
+  const copy = await backup(page);
+  expect(copy.data.tasks).toHaveLength(1);
+  expect(copy.data.areas[0].nome).toBe('Minha casa');
+  expect(
+    copy.data.activityEvents
+      .filter((event: { kind: string }) => event.kind === 'task')
+      .map((event: { occurrenceDate: string }) => event.occurrenceDate)
+      .sort(),
+  ).toEqual(['2026-11-02', '2026-11-03']);
+});
+
+test('Recompensa Viva conclui, compara estágios e estorna inteiramente offline', async ({
+  page,
+  context,
+  request,
+}) => {
+  await ready(page);
+  const url = await mission(page, 'Cultivar uma nova paisagem');
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open('LevelMeUpDB');
+        request.onsuccess = () => {
+          const db = request.result;
+          const tx = db.transaction('profile', 'readwrite');
+          const profile = tx.objectStore('profile');
+          const read = profile.get(1);
+          read.onsuccess = () =>
+            profile.put({ ...read.result, totalXpEarned: 2499 });
+          tx.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+          tx.onerror = () => reject(tx.error);
+        };
+      }),
+  );
+  await page.reload();
+  await request.post('/__network', { data: 'offline' });
+  await context.setOffline(true);
+  await page
+    .getByRole('button', { name: 'Concluir missão', exact: true })
+    .click();
+  const summary = page.getByRole('region', { name: 'Resumo da recompensa' });
+  await expect(
+    summary.getByRole('heading', { name: 'Refúgio evoluiu!', exact: true }),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      summary
+        .getByRole('img')
+        .evaluateAll(
+          (images) =>
+            images.length === 2 &&
+            images.every((img) => (img as HTMLImageElement).naturalWidth > 0),
+        ),
+    )
+    .toBe(true);
+  await page.reload();
+  await expect(summary).toBeVisible();
+  await expect(summary).not.toHaveClass(/celebrate/);
+  await summary.getByRole('link', { name: 'Continuar', exact: true }).click();
+  await expect(page).toHaveURL('/');
+  await page.goto(url);
+  await page
+    .getByRole('button', { name: 'Desfazer conclusão', exact: true })
+    .click();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Recompensa estornada' }),
+  ).toBeVisible();
+  const exported = await backup(page);
+  expect(exported.data.profile.totalXpEarned).toBe(2499);
+  expect(
+    exported.data.activityEvents.filter(
+      (event: { kind: string }) => event.kind === 'reversal',
+    ),
+  ).toHaveLength(1);
+});
 async function backup(page: Page) {
   await page.goto('/config');
   const pending = page.waitForEvent('download');
@@ -204,7 +395,7 @@ test('abre URLs não visitadas, cria e salva notas com a rede desligada', async 
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
   await expect(
-    page.getByRole('heading', { name: 'Esse passo é seu.', exact: true }),
+    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
   const saved = await backup(page);
   expect(saved.data.profile.totalXpEarned).toBe(53);
@@ -445,7 +636,7 @@ test('falha ao preparar cache não impede a jornada online nem cria falsa pronti
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
   await expect(
-    page.getByRole('heading', { name: 'Esse passo é seu.', exact: true }),
+    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
 });
 

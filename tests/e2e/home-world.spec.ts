@@ -101,7 +101,7 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
   await expect(
-    page.getByRole('heading', { name: 'Esse passo é seu.', exact: true }),
+    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
   await page.goto('/');
   await page
@@ -111,7 +111,7 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
   await expect(
-    page.getByRole('heading', { name: 'Esse passo é seu.', exact: true }),
+    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
   await page.goto('/');
   await expect(
@@ -235,6 +235,7 @@ test('Home em 320px, tablet, texto 200%, teclado e arte ausente mantém ações'
 }, info) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.route('**/art/pilot/**', (route) => route.abort());
+  await page.route('**/fonts/**', (route) => route.abort());
   await page.setViewportSize({ width: 320, height: 844 });
   await page.goto('/');
   await expect(

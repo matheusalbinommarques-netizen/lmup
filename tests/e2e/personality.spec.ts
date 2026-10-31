@@ -125,7 +125,7 @@ test('exemplo é rascunho editável: cancelar não cria missão e salvar permite
     .click();
   await expect(
     page.getByRole('heading', {
-      name: 'Esse passo é seu.',
+      name: 'Missão concluída!',
       level: 1,
       exact: true,
     }),
@@ -141,7 +141,7 @@ test('exemplo é rascunho editável: cancelar não cria missão e salvar permite
   ).toBeVisible();
   await expect(
     page.getByText(
-      'Não há missão disponível agora. Você pode encerrar por aqui.',
+      'O que você fez continua registrado. O próximo passo pode ficar para outra hora.',
       { exact: true },
     ),
   ).toBeVisible();

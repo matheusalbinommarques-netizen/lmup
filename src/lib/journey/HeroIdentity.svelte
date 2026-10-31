@@ -4,6 +4,7 @@
   import { getTitleForLevel, MAX_LEVEL } from '$services/progression';
   import Artwork from '$lib/ui/Artwork.svelte';
   import Icon from '$lib/ui/Icon.svelte';
+  import RpgResource from '$lib/ui/RpgResource.svelte';
 
   let {
     profile,
@@ -78,8 +79,12 @@
       ></progress>
     {/if}
     <div class="hero-resources">
-      <span><Icon name="spark" size={15} /> {profile.gold} Gold</span>
-      {#if compact}<span>{profile.food ?? 0} Comida</span>{/if}
+      <RpgResource value={profile.gold} label="Gold" icon="coin" />
+      {#if compact}<RpgResource
+          value={profile.food ?? 0}
+          label="Comida"
+          icon="food"
+        />{/if}
       <a
         href="/trofeus"
         title={achievements.join(' · ') || 'Conheça as conquistas disponíveis'}
@@ -246,7 +251,6 @@
     gap: 0.3rem 1.5rem;
     font-size: 0.8rem;
   }
-  .hero-resources span,
   .hero-resources a {
     display: inline-flex;
     align-items: center;

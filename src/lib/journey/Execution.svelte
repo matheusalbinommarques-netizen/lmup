@@ -1,9 +1,14 @@
 <script lang="ts">
   import { guardUpdates } from './guardUpdates';
-  import { executionCopy } from '$lib/content/experience';
+  import RewardSummary from './rewards/RewardSummary.svelte';
   import { isUpdateLocked } from '$services/updateSafety';
   import { storageError } from '$services/storageErrors';
   import { onMount } from 'svelte';
+  import { page } from '$app/state';
+  import { dateKey } from '$services/rewardService';
+  import { recurrenceLabel, nextPlannedDate } from '$services/recurrence';
+  import { formatCalendar } from '$services/calendar';
+  import { takeRewardCelebration } from '$services/rewardPresentation';
   import type { Task } from '$services/db';
   import QuickCreate from './QuickCreate.svelte';
   import ReviewForm from './ReviewForm.svelte';
@@ -30,14 +35,17 @@
     revealNotes = $state(false);
   let reviewOutcome = $state<'' | 'recalled' | 'partial' | 'again'>('');
   let busy = $state(false);
+  let freshEventId = $state('');
+  let today = $state(dateKey());
+  const requestedReceipt = $derived(page.url.searchParams.get('evento'));
   let startedToken = '';
   let starting = $state(0);
   guardUpdates(() => !data || dirty || saves > 0 || busy || starting > 0);
   function startCurrent(current: Task) {
-    if (isUpdateLocked() || !isAvailable(current)) return;
+    if (requestedReceipt || isUpdateLocked() || !isAvailable(current)) return;
     const token = current.reviewEnabled
       ? `review:${current.id}:${String(current.reviewStartedAt ?? current.createdAt)}:${current.completionRevision ?? 0}`
-      : `task:${current.id}:${current.completionRevision ?? 0}`;
+      : `task:${current.id}:${current.recurrence ? today : ''}:${current.completionRevision ?? 0}`;
     if (startedToken === token) return;
     startedToken = token;
     starting++;
@@ -63,22 +71,37 @@
     data?.tasks.find((item) => item.id === id && !item.archived),
   );
   const steps = $derived(task ? taskSteps(task) : []);
-  const finished = $derived(
-    task && !!task.completed && (!task.reviewEnabled || !isAvailable(task)),
-  );
   const event = $derived(
-    task?.completionEventId
+    requestedReceipt
       ? data?.events.find(
-          (item) => item.id === task.completionEventId && !item.reversedAt,
+          (item) =>
+            item.id === requestedReceipt &&
+            item.taskId === id &&
+            ['task', 'review'].includes(item.kind),
         )
-      : undefined,
+      : task?.completionEventId
+        ? data?.events.find(
+            (item) => item.id === task.completionEventId && !item.reversedAt,
+          )
+        : undefined,
+  );
+  const canExecute = $derived(
+    !!task && isAvailable(task, new Date(`${today}T12:00:00`)),
+  );
+  const finished = $derived(
+    (!!event && !!requestedReceipt) ||
+      (task &&
+        !!task.completed &&
+        (task.recurrence
+          ? task.lastOccurrenceDate === today || task.lastReviewDate === today
+          : !task.reviewEnabled || !canExecute)),
   );
   const projectEvent = $derived(
     event
       ? data?.events.find(
           (item) =>
             item.kind === 'project' &&
-            item.projectId === task?.projectId &&
+            item.projectId === event.projectId &&
             item.sequence === event.sequence + 1 &&
             !item.reversedAt,
         )
@@ -88,7 +111,13 @@
     steps.every((step) => task?.completedSubtasks?.includes(step.index)),
   );
   const reward = $derived(data?.rewards[id]);
+  const lastTaskEvent = $derived(
+    data?.events
+      .filter((entry) => entry.taskId === id)
+      .sort((a, b) => b.sequence - a.sequence)[0],
+  );
   onMount(() => {
+    freshEventId = takeRewardCelebration();
     const subscription = journeyQuery().subscribe({
       next: (value) => {
         data = value;
@@ -111,12 +140,15 @@
       }
     };
     const refresh = () => {
+      today = dateKey();
       if (task) startCurrent(task);
     };
+    const dayClock = setInterval(refresh, 30000);
     window.addEventListener('focus', refresh);
     window.addEventListener('beforeunload', protect);
     return () => {
       subscription.unsubscribe();
+      clearInterval(dayClock);
       window.removeEventListener('focus', refresh);
       window.removeEventListener('beforeunload', protect);
     };
@@ -178,7 +210,13 @@
     busy = true;
     error = '';
     try {
-      await completeTask(id, { reviewOutcome: reviewOutcome || undefined });
+      const receipt = await completeTask(id, {
+        reviewOutcome: reviewOutcome || undefined,
+        occurrenceDate: task?.recurrence
+          ? (task.occurrenceSession ?? today)
+          : undefined,
+      });
+      freshEventId = receipt?.id ?? '';
     } catch (cause) {
       error =
         cause instanceof Error
@@ -214,7 +252,8 @@
     busy = true;
     error = '';
     try {
-      await undoTask(id);
+      await undoTask(id, event?.id);
+      freshEventId = '';
     } catch (cause) {
       error =
         cause instanceof Error ? cause.message : 'Não foi possível desfazer.';
@@ -237,6 +276,12 @@
     ><Icon name="back" size={18} />Voltar para hoje</a
   >
   {#if error}<p role="alert" class="journey-error">{error}</p>{/if}
+  {#if !finished && lastTaskEvent?.kind === 'reversal'}
+    <p role="status" class="journey-banner">
+      Conclusão desfeita. Recompensa estornada: {lastTaskEvent.reward.xp} XP · {lastTaskEvent
+        .reward.gold} Ouro · {lastTaskEvent.reward.food} Comida.
+    </p>
+  {/if}
   {#if !data}<p role="status">Abrindo sua missão…</p>{:else if !task}<Card
       ><div class="journey-empty">
         <h1>Missão não encontrada</h1>
@@ -246,43 +291,27 @@
         >
       </div></Card
     >
-  {:else if finished}<div class="journey-completion">
-      <Icon name="check" size={44} />
-      <p class="lmu-eyebrow">
-        {projectEvent
-          ? 'Um projeto ganhou seu marco'
-          : event?.kind === 'review'
-            ? 'Revisão realizada'
-            : 'Missão concluída'}
-      </p>
-      <h1>{executionCopy.completion}</h1>
-      <h2>{task.title}</h2>
-      {#if event}<div class="journey-reward" aria-label="Recompensa recebida">
-          <span>+{event.reward.xp} XP</span><span
-            >+{event.reward.gold} Gold</span
-          ><span>+{event.reward.food} Comida</span>
-        </div>
-        {#if projectEvent}<Card
-            ><h3>Projeto concluído</h3>
-            <p>
-              {data.projects.find((item) => item.id === task.projectId)?.name}
-            </p>
-            <p>
-              +{projectEvent.reward.xp} XP · +{projectEvent.reward.gold} Gold · +{projectEvent
-                .reward.food} Comida de bônus
-            </p></Card
-          >{/if}{:else}<p class="lmu-muted">
-          Esta conclusão é anterior ao histórico detalhado. Seu progresso foi
-          preservado.
-        </p>{/if}
-      <p class="lmu-muted">{executionCopy.afterCompletion}</p>
-      <a class="lmu-button lmu-button--primary" href="/"
-        >Voltar para hoje<Icon name="arrow" size={18} /></a
-      >{#if event}<Button variant="quiet" disabled={busy} onclick={undo}
+  {:else if finished}
+    {#key event?.id}
+      <RewardSummary
+        title={event?.taskTitle ?? task.title}
+        {event}
+        {projectEvent}
+        projectName={data.projects.find((item) => item.id === task.projectId)
+          ?.name}
+        fresh={!!event && event.id === freshEventId}
+      />
+    {/key}
+    <div class="completion-details">
+      {#if event && !event.reversedAt && (event.occurrenceDate || task.completionEventId === event.id)}<Button
+          variant="quiet"
+          disabled={busy}
+          onclick={undo}
           >{event.kind === 'review'
             ? 'Desfazer última sessão'
             : 'Desfazer conclusão'}</Button
-        >{/if}{#if notes}<Card
+        >{/if}
+      {#if notes}<Card
           ><h3>Suas notas</h3>
           <p style="white-space: pre-wrap; text-align: left">{notes}</p></Card
         >{/if}
@@ -294,13 +323,26 @@
             'Um passo na sua jornada'}
         </p>
         <h1>{task.title}</h1>
+        <p class="lmu-hint">
+          {data.areas.find((area) => area.id === task.areaId)?.nome ?? 'Geral'} ·
+          {recurrenceLabel(task)}{task.plannedDate
+            ? ` · ${formatCalendar(task.plannedDate)}`
+            : ''}
+        </p>
+        {#if task.recurrence}<p class="lmu-hint">
+            Próxima ocorrência: {formatCalendar(nextPlannedDate(task, today))}
+          </p>{/if}
         {#if task.description}<p style="white-space: pre-wrap">
             {task.description}
           </p>{/if}
       </div>
     </header>
-    {#if task.reviewEnabled && !isAvailable(task)}<p class="journey-banner">
-        Sua próxima revisão ainda não está disponível.
+    {#if !canExecute}<p class="journey-banner">
+        {task.reviewEnabled
+          ? 'Sua próxima revisão ainda não está disponível.'
+          : task.recurrence
+            ? 'Esta rotina não está prevista para hoje. Você pode editar seu planejamento.'
+            : 'Esta missão está planejada para uma data futura.'}
       </p>{:else}<Card
         >{#if steps.length}<p class="lmu-muted">
             {steps.filter((step) =>
@@ -382,7 +424,12 @@
         <Button variant="secondary" disabled={busy || saves > 0} onclick={pause}
           ><Icon name="pause" size={18} />Pausar e voltar</Button
         ><Button
-          disabled={!ready || busy || saves > 0 || dirty}
+          disabled={!ready ||
+            busy ||
+            saves > 0 ||
+            dirty ||
+            starting > 0 ||
+            !canExecute}
           onclick={conclude}
           >Concluir missão<Icon name="check" size={18} /></Button
         >

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import RpgTrim from '$lib/ui/RpgTrim.svelte';
   import Artwork from '$lib/ui/Artwork.svelte';
   import Icon, { type IconName } from '$lib/ui/Icon.svelte';
   let {
@@ -25,7 +26,13 @@
   } = $props();
 </script>
 
-<section class="rpg-destination" aria-label={title} {id}>
+<section
+  class="rpg-destination rpg-frame rpg-frame--secondary"
+  data-destination={icon}
+  aria-label={title}
+  {id}
+>
+  <RpgTrim />
   <header>
     <Icon name={icon} size={26} />
     <h2>{title}</h2>

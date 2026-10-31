@@ -39,6 +39,14 @@ async function populated() {
 }
 
 describe('backup e recuperação', () => {
+  it('recusa barras de progresso adulteradas e aceita recibos antigos sem snapshot', async () => {
+    await populated();
+    const backup = JSON.parse(JSON.stringify(await createJourneyBackup()));
+    backup.data.activityEvents[0].progress.after++;
+    expect(() => validateBackup(backup)).toThrow();
+    for (const event of backup.data.activityEvents) delete event.progress;
+    expect(() => validateBackup(backup)).not.toThrow();
+  });
   it('restaura eventos, estornos e bônus sem recalcular recompensas', async () => {
     const id = await populated();
     await undoTask(id);

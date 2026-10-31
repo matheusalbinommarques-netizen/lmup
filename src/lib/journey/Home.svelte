@@ -9,6 +9,7 @@
   } from '$lib/content/experience';
   import { journeyQuery, type JourneySnapshot } from '$services/journeyQuery';
   import { selectNext, isAvailable, taskSteps } from '$services/journeyService';
+  import { scheduledOn } from '$services/recurrence';
   import { dateKey } from '$services/rewardService';
   import { reviewDueDate } from '$services/reviewRules';
   import { formatCalendar } from '$services/calendar';
@@ -24,7 +25,9 @@
   import { MAX_LEVEL } from '$services/progression';
   import { chapterTwoProgress, sanitizePilot } from '$services/rpgPilotService';
   import { chapterTwoScenes } from '$lib/content/pilot';
+  import '$lib/rpg-theme.css';
   import './home.css';
+  import RpgTrim from '$lib/ui/RpgTrim.svelte';
   import { collectionStats } from '$services/collectionRules';
   import { ALL_ACHIEVEMENTS } from '$services/achievementsCatalog';
   let data = $state<JourneySnapshot>();
@@ -32,7 +35,7 @@
   let open = $state(false);
   let starter = $state<MissionStarter>();
   let greeting = $state('Boa jornada');
-  let filter = $state<'all' | 'today' | 'completed'>('all');
+  let filter = $state<'pending' | 'all' | 'today' | 'completed'>('pending');
   function createMission(example?: MissionStarter) {
     starter = example;
     open = true;
@@ -63,7 +66,14 @@
       clearInterval(clock);
     };
   });
-  const next = $derived(data ? selectNext(data.tasks, today) : null);
+  const next = $derived(
+    data
+      ? selectNext(
+          data.tasks.filter((task) => scheduledOn(task, today)),
+          today,
+        )
+      : null,
+  );
   const hasVisibleTasks = $derived(
     data?.tasks.some((task) => !task.archived) ?? false,
   );
@@ -75,21 +85,33 @@
   const activeTasks = $derived(
     data?.tasks.filter((task) => !task.archived) ?? [],
   );
-  const visibleTasks = $derived(
+  const dayTasks = $derived(
     activeTasks.filter(
       (task) =>
-        filter === 'all' ||
-        (filter === 'today'
-          ? task.plannedDate === today
-          : !isAvailable(task) &&
-            (task.completed || task.status === 'completed')),
+        scheduledOn(task, today) ||
+        data?.events.some(
+          (event) =>
+            event.taskId === task.id &&
+            ['task', 'review'].includes(event.kind) &&
+            !event.reversedAt &&
+            event.date === today,
+        ),
     ),
   );
-  const plan = $derived(
-    data?.tasks.filter(
-      (task) => !task.archived && task.plannedDate === today,
-    ) ?? [],
+  const availableToday = (task: (typeof activeTasks)[number]) =>
+    isAvailable(task, new Date(`${today}T12:00:00`));
+  const visibleTasks = $derived(
+    filter === 'all'
+      ? activeTasks
+      : dayTasks.filter(
+          (task) =>
+            filter === 'today' ||
+            (filter === 'pending'
+              ? availableToday(task) || !task.completed
+              : !availableToday(task) && !!task.completed),
+        ),
   );
+  const plan = $derived(dayTasks);
   const stage = $derived(
     getEcoStageForTotalXp(data?.profile?.totalXpEarned ?? 0).id,
   );
@@ -106,10 +128,7 @@
     ),
   );
   const completed = $derived(
-    data?.tasks.filter(
-      (task) =>
-        !task.archived && (task.completed || task.status === 'completed'),
-    ) ?? [],
+    dayTasks.filter((task) => !availableToday(task) && !!task.completed),
   );
   const projects = $derived(
     data?.projects.filter((project) =>
@@ -151,7 +170,11 @@
     </div>
   {:else}
     <div class="rpg-top">
-      <section class="rpg-world-panel" aria-label="Personagem e mundo">
+      <section
+        class="rpg-world-panel rpg-frame"
+        aria-label="Personagem e mundo"
+      >
+        <RpgTrim />
         <header class="rpg-heading">
           <div>
             <p class="lmu-eyebrow">Level Me Up · Seu mundo, sua jornada</p>
@@ -180,13 +203,16 @@
             </p>{/if}
         </div>
       </section>
-      <section class="rpg-missions" aria-labelledby="rpg-missions-title">
+      <section
+        class="rpg-missions rpg-frame"
+        aria-labelledby="rpg-missions-title"
+      >
+        <RpgTrim />
         <header class="rpg-missions-heading">
           <Icon name="today" size={25} />
           <h2 id="rpg-missions-title">Suas missões</h2>
           <span
-            >{completed.length}/{activeTasks.length}<small>concluídas</small
-            ></span
+            >{completed.length}/{dayTasks.length}<small>concluídas</small></span
           >
         </header>
         <div
@@ -194,6 +220,13 @@
           role="group"
           aria-label="Filtrar missões da Home"
         >
+          <button
+            type="button"
+            aria-pressed={filter === 'pending'}
+            onclick={() => {
+              filter = 'pending';
+            }}>Pendentes</button
+          >
           <button
             type="button"
             aria-pressed={filter === 'all'}
@@ -216,40 +249,6 @@
             }}>Concluídas</button
           >
         </div>
-        {#if next && filter !== 'completed'}
-          <div class="rpg-next">
-            <div class="rpg-next-label">
-              <span>{next.reason}</span>{#if reward}<small
-                  >Prévia: +{reward.xp} XP</small
-                >{/if}
-            </div>
-            <h2>{next.task.title}</h2>
-            <p class="lmu-hint">
-              {next.reason === 'Em andamento'
-                ? homeCopy.resume
-                : next.explanation}
-            </p>
-            {#if taskSteps(next.task).length}<progress
-                max={taskSteps(next.task).length}
-                value={taskSteps(next.task).filter((step) =>
-                  next.task.completedSubtasks?.includes(step.index),
-                ).length}
-                aria-label="Passos da próxima missão"
-              ></progress>
-              <p class="lmu-hint">
-                {taskSteps(next.task).find(
-                  (step) => !next.task.completedSubtasks?.includes(step.index),
-                )?.label ?? 'Pronta para concluir'}
-              </p>{/if}
-            <a
-              class="lmu-button lmu-button--primary"
-              href={`/missao/${next.task.id}`}
-              >{next.reason === 'Em andamento'
-                ? 'Continuar missão'
-                : 'Começar missão'}<Icon name="arrow" size={16} /></a
-            >
-          </div>
-        {/if}
         <!-- Keyboard focus lets the user scroll the task region without a pointer. -->
         <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
         <div
@@ -258,8 +257,46 @@
           aria-label="Lista de missões"
           tabindex="0"
         >
+          {#if next && filter !== 'completed' && (filter !== 'today' || scheduledOn(next.task, today))}
+            <div class="rpg-next">
+              <div class="rpg-next-label">
+                <span>{next.reason}</span>{#if reward}<small
+                    >Prévia: +{reward.xp} XP</small
+                  >{/if}
+              </div>
+              <h2>{next.task.title}</h2>
+              <p class="lmu-hint">
+                {next.reason === 'Em andamento'
+                  ? homeCopy.resume
+                  : next.explanation}
+              </p>
+              {#if taskSteps(next.task).length}<progress
+                  max={taskSteps(next.task).length}
+                  value={taskSteps(next.task).filter((step) =>
+                    next.task.completedSubtasks?.includes(step.index),
+                  ).length}
+                  aria-label="Passos da próxima missão"
+                ></progress>
+                <p class="lmu-hint">
+                  {taskSteps(next.task).find(
+                    (step) =>
+                      !next.task.completedSubtasks?.includes(step.index),
+                  )?.label ?? 'Pronta para concluir'}
+                </p>{/if}
+              <a
+                class="lmu-button lmu-button--primary"
+                href={`/missao/${next.task.id}`}
+                >{next.reason === 'Em andamento'
+                  ? 'Continuar missão'
+                  : 'Começar missão'}<Icon name="arrow" size={16} /></a
+              >
+            </div>
+          {/if}
           {#if !next && filter !== 'completed'}
-            <div class="rpg-empty">
+            <div
+              class="rpg-empty"
+              class:rpg-empty-compact={data.tasks.length > 0}
+            >
               <Icon name={data.tasks.length ? 'check' : 'missions'} size={24} />
               <h2>
                 {!data.tasks.length
@@ -297,15 +334,15 @@
                       >{/each}
                   </div>
                 </details>
-              {:else}<p class="lmu-hint">{homeCopy.clear}</p>
-                <a class="journey-link" href="/progresso">Rever meu progresso</a
+              {:else}<a class="journey-link" href="/progresso"
+                  >Rever meu progresso</a
                 >{/if}
             </div>
           {/if}
           {#if visibleTasks.length}
             <ul class="rpg-task-list">
               {#each visibleTasks as task (task.id)}
-                {@const available = isAvailable(task)}
+                {@const available = availableToday(task)}
                 {@const recorded = task.completionEventId
                   ? data.events.find(
                       (event) =>
@@ -339,7 +376,7 @@
                             ? 'Em execução'
                             : task.executionState === 'paused'
                               ? 'Pausada'
-                              : task.plannedDate === today
+                              : scheduledOn(task, today)
                                 ? 'Planejada para hoje'
                                 : 'Disponível'
                           : task.reviewEnabled
@@ -443,7 +480,11 @@
         ></WorldDestination
       >
     </div>
-    <section class="rpg-horizons" aria-label="Próximos marcos">
+    <section
+      class="rpg-horizons rpg-frame rpg-frame--secondary"
+      aria-label="Próximos marcos"
+    >
+      <RpgTrim />
       <div class="rpg-horizons-title">
         <Icon name="spark" size={25} />
         <h2>O caminho adiante</h2>

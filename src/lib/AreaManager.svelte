@@ -2,6 +2,7 @@
   import { db, type Area } from '$services/db';
   import { liveQuery } from 'dexie';
   import { onMount } from 'svelte';
+  import { saveArea, deleteArea } from '$services/areaService';
 
   // --- Props ---
   let { selectedId = $bindable('all') } = $props<{
@@ -33,10 +34,7 @@
     if (!name) return;
 
     try {
-      await db.areas.add({
-        nome: name,
-        cor: '#888888',
-      });
+      await saveArea(name);
       newAreaName = '';
     } catch (error) {
       console.error('Erro ao adicionar área:', error);
@@ -59,10 +57,7 @@
     }
 
     try {
-      await db.transaction('rw', db.areas, db.tasks, async () => {
-        await db.tasks.where('areaId').equals(areaId).modify({ areaId: 0 });
-        await db.areas.delete(areaId);
-      });
+      await deleteArea(areaId);
 
       if (selectedId === areaId) {
         selectedId = 'all';

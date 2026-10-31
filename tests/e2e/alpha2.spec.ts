@@ -40,7 +40,7 @@ async function complete(page: Page) {
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
   await expect(
-    page.getByRole('heading', { name: 'Esse passo é seu.', exact: true }),
+    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
 }
 function metric(page: Page, label: string) {

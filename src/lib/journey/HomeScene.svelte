@@ -31,22 +31,25 @@
       }}
     />
   {/if}
-  <p class="rpg-scene-caption">
-    Védria <span>Viajante · visual provisório</span>
-  </p>
-  {#if companion}
-    <a
-      class="rpg-scene-companion"
-      href="/bestiario"
-      aria-label={`Seu companheiro: ${companion.name}`}
-    >
-      <Artwork
-        src={companionArtwork(companion)}
-        alt=""
-        sizes="128px"
-        class="lmu-decorative"
-      />
-      <span>{companion.name}</span>
-    </a>
-  {/if}
+  <div class="rpg-scene-meta">
+    <p class="rpg-scene-caption">
+      Védria <span>Viajante · visual provisório</span>
+    </p>
+    {#if companion}
+      <a
+        class="rpg-scene-companion"
+        href="/bestiario"
+        aria-label={`Seu companheiro: ${companion.name}`}
+        title={companion.name}
+      >
+        <Artwork
+          src={companionArtwork(companion)}
+          alt=""
+          sizes="64px"
+          class="lmu-decorative"
+        />
+        <span><small>Seu companheiro</small>{companion.name}</span>
+      </a>
+    {/if}
+  </div>
 </div>

@@ -2,6 +2,7 @@ import { db, type Task } from './db';
 import { dateKey } from './rewardService';
 import { saveTaskDefinition } from './taskDefinitionService';
 import { reviewDueDate } from './reviewRules';
+import { scheduledOn } from './recurrence';
 
 export function taskSteps(task: Task) {
   return (task.subtasks ?? [])
@@ -10,6 +11,13 @@ export function taskSteps(task: Task) {
 }
 export function isAvailable(task: Task, now = new Date()): boolean {
   if (task.archived) return false;
+  if (task.recurrence)
+    return (
+      scheduledOn(task, dateKey(now)) &&
+      task.lastOccurrenceDate !== dateKey(now) &&
+      task.lastReviewDate !== dateKey(now)
+    );
+  if (task.plannedDate && task.plannedDate > dateKey(now)) return false;
   if (!task.reviewEnabled)
     return !task.completed && task.status !== 'completed';
   return (
@@ -18,7 +26,7 @@ export function isAvailable(task: Task, now = new Date()): boolean {
 }
 export function selectNext(tasks: Task[], today = dateKey()) {
   const available = tasks
-    .filter((task) => isAvailable(task))
+    .filter((task) => isAvailable(task, new Date(`${today}T12:00:00`)))
     .sort(
       (a, b) =>
         new Date(b.updatedAt ?? b.createdAt).getTime() -
@@ -69,8 +77,19 @@ async function editable(id: number) {
 export const createQuickTask = saveTaskDefinition;
 export async function planTask(id: number, selected: boolean) {
   await db.transaction('rw', db.tasks, async () => {
-    await editable(id);
-    await db.tasks.update(id, { plannedDate: selected ? dateKey() : null });
+    const task = await editable(id);
+    await db.tasks.update(id, {
+      plannedDate: selected ? dateKey() : null,
+      ...(selected && task.recurrence && task.recurrence.startDate > dateKey()
+        ? { recurrence: { ...task.recurrence, startDate: dateKey() } }
+        : {}),
+      ...(task.recurrence
+        ? {
+            skippedDate: selected ? null : dateKey(),
+            occurrenceOverride: selected ? dateKey() : null,
+          }
+        : {}),
+    });
   });
 }
 export async function pinTask(id: number, pinned: boolean) {
@@ -98,6 +117,14 @@ export async function beginTask(id: number) {
     await db.tasks.update(id, {
       executionState: 'active',
       updatedAt: new Date(),
+      ...(task.recurrence
+        ? {
+            occurrenceSession: dateKey(),
+            ...(task.occurrenceSession !== dateKey()
+              ? { completedSubtasks: [] }
+              : {}),
+          }
+        : {}),
       ...(task.reviewEnabled
         ? {
             ...(task.reviewSession !== session && !legacyInProgress
@@ -116,11 +143,16 @@ export async function setTaskStep(id: number, index: number, checked: boolean) {
       throw new Error('A missão mudou em outra aba. Reabra para continuar.');
     if (!taskSteps(task).some((step) => step.index === index))
       throw new Error('O passo foi alterado. Reabra a missão.');
-    const completed = new Set(task.completedSubtasks ?? []);
+    const completed = new Set(
+      task.recurrence && task.occurrenceSession !== dateKey()
+        ? []
+        : (task.completedSubtasks ?? []),
+    );
     if (checked) completed.add(index);
     else completed.delete(index);
     await db.tasks.update(id, {
       completedSubtasks: [...completed],
+      ...(task.recurrence ? { occurrenceSession: dateKey() } : {}),
       executionState: 'active',
       updatedAt: new Date(),
     });

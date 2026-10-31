@@ -34,6 +34,21 @@ async function mission(extra: Partial<Task> = {}) {
 }
 
 describe('conclusão e estorno', () => {
+  it('guarda o progresso exato no recibo, preservado após outras missões e estorno', async () => {
+    const id = await mission();
+    const first = await completeTask(id);
+    expect(first?.progress).toEqual({ before: 0, after: first!.reward.xp });
+    const next = await completeTask(await mission());
+    expect(next?.progress?.before).toBe(first?.progress?.after);
+    expect(await completeTask(id)).toBeNull();
+    await undoTask(id);
+    expect((await db.activityEvents.get(first!.id))?.progress).toEqual(
+      first?.progress,
+    );
+    expect(
+      (await db.activityEvents.get(`reversal:${first!.id}`))?.progress,
+    ).toBeUndefined();
+  });
   it('é idempotente em conclusões simultâneas', async () => {
     const id = await mission();
     await Promise.all([completeTask(id), completeTask(id), completeTask(id)]);

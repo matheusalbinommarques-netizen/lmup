@@ -70,7 +70,7 @@ test('salvar após quota mantém rascunho e preserva XP e avatar atualizados na 
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
   await expect(
-    other.getByRole('heading', { name: 'Esse passo é seu.', exact: true }),
+    other.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
   const second = await edit(other);
   await second.getByLabel('Avatar (opcional)', { exact: true }).setInputFiles({

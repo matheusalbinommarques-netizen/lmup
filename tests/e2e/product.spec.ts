@@ -108,7 +108,7 @@ test('projeto com objetivo, datas e etapas mantém a próxima missão clara', as
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
   await expect(
-    page.getByRole('heading', { name: 'Esse passo é seu.', exact: true }),
+    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
   await page.goto(href);
   await expect(
@@ -358,13 +358,13 @@ test('esforço define a recompensa e editar passos não fabrica XP', async ({
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
   await expect(
-    page.getByRole('heading', { name: 'Esse passo é seu.', exact: true }),
+    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
   const result = await backup(page);
   expect(result.data.tasks[0]).toMatchObject({ effort: 'medium', xp: 100 });
   expect(result.data.profile.totalXpEarned).toBe(105);
   await page.goto(url);
-  await expect(page.getByText('+105 XP', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Recompensa recebida')).toContainText('+105');
 });
 test('datas de projeto novas e legadas não mudam entre fusos', async ({
   browser,

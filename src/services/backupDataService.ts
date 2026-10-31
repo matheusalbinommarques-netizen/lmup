@@ -1,3 +1,4 @@
+import { validateRecurrence } from './recurrence';
 import {
   db,
   LEGACY_STORES,
@@ -141,7 +142,6 @@ export function validateBackup(input: unknown): JourneyBackup {
       }
       if (pilot.chapterTwoUnlocked && pilot.chapterOneEndXp == null)
         fail('capítulo 2 sem marco de XP.');
-
     }
     date(profile.lastCompletionDate, 'profile.lastCompletionDate', true);
     if (profile.ecoGoldClaimedUpToStage != null) {
@@ -165,6 +165,21 @@ export function validateBackup(input: unknown): JourneyBackup {
   const projectIds = new Set(lists.projects.map((row) => row.id));
   for (const task of lists.tasks) {
     text(task.title, 'tasks.title');
+    if (task.recurrence != null) {
+      try {
+        validateRecurrence(task.recurrence);
+      } catch {
+        fail('recorrência inválida.');
+      }
+      if (task.reviewEnabled)
+        fail('uma missão não pode misturar rotina e revisão espaçada.');
+    }
+    for (const key of [
+      'occurrenceSession',
+      'lastOccurrenceDate',
+      'skippedDate',
+    ])
+      calendar(task[key], `tasks.${key}`);
     integer(task.xp, 'tasks.xp', 1);
     date(task.createdAt, 'tasks.createdAt');
     if (!['common', 'rare', 'epic', 'legendary'].includes(task.rarity))
@@ -419,7 +434,29 @@ export function validateBackup(input: unknown): JourneyBackup {
     }
     if (!Number.isSafeInteger(event.baseXp))
       fail('XP base de evento inválido.');
+    if (event.occurrenceDate !== undefined) {
+      calendar(event.occurrenceDate, 'activityEvents.occurrenceDate');
+      if (
+        !['task', 'reversal'].includes(event.kind) ||
+        (event.kind === 'task' && event.occurrenceDate !== event.date)
+      )
+        fail('data de ocorrência inválida.');
+    }
+    if (event.areaId !== undefined)
+      integer(event.areaId, 'activityEvents.areaId');
+    for (const key of ['taskTitle', 'areaName'])
+      if (event[key] !== undefined) text(event[key], `activityEvents.${key}`);
     const reward = object(event.reward, 'activityEvents.reward');
+    if (event.progress !== undefined) {
+      const progress = object(event.progress, 'activityEvents.progress');
+      integer(progress.before, 'activityEvents.progress.before');
+      integer(progress.after, 'activityEvents.progress.after');
+      if (
+        !['task', 'review', 'project'].includes(event.kind) ||
+        progress.after - progress.before !== reward.xp
+      )
+        fail('progresso do recibo inválido.');
+    }
     for (const resource of ['xp', 'gold', 'food']) {
       if (!Number.isSafeInteger(reward[resource])) fail('recompensa inválida.');
       if (
@@ -457,6 +494,28 @@ export function validateBackup(input: unknown): JourneyBackup {
         if (reward[key] !== -source.reward?.[key])
           fail('estorno difere da recompensa original.');
     }
+  }
+  const occurrences = new Set<string>();
+  for (const event of events.filter(
+    (entry) =>
+      entry.kind === 'task' && entry.occurrenceDate && !entry.reversedAt,
+  )) {
+    const key = `${event.taskId}:${event.occurrenceDate}`;
+    if (occurrences.has(key)) fail('ocorrência com recompensas duplicadas.');
+    occurrences.add(key);
+  }
+  for (const task of lists.tasks) {
+    if (
+      task.lastOccurrenceDate != null &&
+      !events.some(
+        (event) =>
+          event.taskId === task.id &&
+          event.kind === 'task' &&
+          !event.reversedAt &&
+          (event.occurrenceDate ?? event.date) === task.lastOccurrenceDate,
+      )
+    )
+      fail('conclusão da rotina sem recibo válido.');
   }
   const paidUpTo = events
     .filter((event) => event.kind !== 'reversal' && !event.reversedAt)

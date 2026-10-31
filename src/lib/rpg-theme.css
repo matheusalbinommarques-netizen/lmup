@@ -1,0 +1,281 @@
+/* Opt-in presentation primitives. No layout, storage or reward rules here. */
+@font-face {
+  font-family: 'LMUP Cormorant';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/cormorant-garamond/latin-ext-variable.woff2') format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'LMUP Cormorant';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/cormorant-garamond/latin-variable.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
+}
+.rpg-theme {
+  --lmu-display: 'LMUP Cormorant', Georgia, 'Times New Roman', serif;
+  --rpg-gold: #edc477;
+  --rpg-gold-bright: #ffe0a0;
+  --rpg-line: #a27c43a6;
+  --rpg-engraving: #e7bb6b8f;
+  --rpg-panel: #061115f5;
+  --rpg-radius: 0.7rem;
+  --rpg-depth: 0 12px 28px #0009, 0 2px 5px #000a;
+  --rpg-bevel: inset 0 1px 1px #ffe4ac33, inset 0 -2px 3px #000a;
+  --rpg-button-fill: linear-gradient(
+    180deg,
+    #957344,
+    #513c23 45%,
+    #302a1d 85%,
+    #624726
+  );
+  --rpg-selected: linear-gradient(90deg, #a675334d, #7052212b 70%, #362e1b33);
+  --rpg-xp: linear-gradient(180deg, #fff0b5, #f7c66b 45%, #d49339);
+}
+.rpg-theme .rpg-frame {
+  position: relative;
+  border: 1px solid var(--rpg-line);
+  border-radius: var(--rpg-radius);
+  background:
+    radial-gradient(ellipse at 15% 0%, #25403c2b, transparent 65%),
+    var(--rpg-panel);
+  box-shadow:
+    var(--rpg-depth),
+    var(--rpg-bevel),
+    inset 0 0 0 3px #02090cb3;
+}
+.rpg-theme .rpg-frame--secondary {
+  --rpg-line: #99825970;
+  --rpg-engraving: #d2b77b70;
+  --rpg-depth: 0 4px 12px #0006;
+  --rpg-bevel: inset 0 1px #ffe4ac14;
+}
+.rpg-frame--secondary .rpg-trim > svg {
+  width: 20px;
+  height: 20px;
+  filter: none;
+}
+.rpg-frame--secondary .rpg-trim :is(.se, .sw, .rpg-trim-jewel) {
+  display: none;
+}
+.rpg-frame::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1px solid #d6b77b14;
+  border-radius: calc(var(--rpg-radius) - 3px);
+  pointer-events: none;
+  z-index: 3;
+}
+.rpg-trim {
+  position: absolute;
+  inset: 3px;
+  z-index: 4;
+  pointer-events: none;
+  color: var(--rpg-engraving);
+}
+.rpg-trim > svg {
+  position: absolute;
+  width: 27px;
+  height: 27px;
+  stroke: currentColor;
+  stroke-width: 0.85;
+  filter: drop-shadow(0 1px 1px #000);
+}
+.rpg-trim .nw {
+  top: 0;
+  left: 0;
+}
+.rpg-trim .ne {
+  top: 0;
+  right: 0;
+  transform: rotate(90deg);
+}
+.rpg-trim .se {
+  bottom: 0;
+  right: 0;
+  transform: rotate(180deg);
+}
+.rpg-trim .sw {
+  bottom: 0;
+  left: 0;
+  transform: rotate(270deg);
+}
+.rpg-trim-jewel {
+  position: absolute;
+  top: -6px;
+  left: calc(50% - 4px);
+  width: 8px;
+  height: 8px;
+  transform: rotate(45deg);
+  border: 1px solid var(--rpg-engraving);
+  background: #15201e;
+  box-shadow: 0 0 7px #eab35b33;
+}
+.rpg-theme
+  :is(
+    .rpg-button,
+    .rpg-destination-action,
+    .rpg-missions-footer > .lmu-button,
+    .lmu-button.lmu-button--primary
+  ) {
+  border: 1px solid #c99a50;
+  border-radius: 0.4rem;
+  color: #fff0d4 !important;
+  background: var(--rpg-button-fill);
+  box-shadow:
+    var(--rpg-bevel),
+    0 3px 8px #0008,
+    0 0 12px #bc853017;
+  font-family: var(--lmu-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-shadow: 0 2px 2px #000;
+  transition:
+    border-color 160ms,
+    box-shadow 160ms,
+    background-color 160ms;
+}
+.rpg-theme
+  :is(
+    .rpg-button,
+    .rpg-destination-action,
+    .lmu-button.lmu-button--primary
+  ):hover {
+  border-color: var(--rpg-gold-bright);
+  box-shadow:
+    var(--rpg-bevel),
+    0 3px 8px #0008,
+    0 0 16px #dfac4540;
+}
+.rpg-theme
+  :is(
+    .rpg-button,
+    .rpg-destination-action,
+    .lmu-button.lmu-button--primary
+  ):active {
+  box-shadow: inset 0 2px 6px #000c;
+}
+.rpg-theme
+  :is(
+    .lmu-button.lmu-button--secondary,
+    .rpg-task-filters button,
+    .rpg-missions-footer > a
+  ) {
+  background: linear-gradient(180deg, #152326, #081115);
+  box-shadow:
+    inset 0 1px #e9d4a70d,
+    inset 0 -1px #0009;
+}
+.rpg-theme .rpg-task-filters button[aria-pressed='true'] {
+  color: #ffe0a0;
+  border-color: #c99a50;
+  background: var(--rpg-selected);
+  box-shadow:
+    inset 0 1px #e5bd7755,
+    inset 0 -1px #000,
+    0 0 10px #c78a2926;
+}
+.rpg-theme progress {
+  height: 0.45rem;
+  border: 1px solid #d5b56e26;
+  background: #030d10;
+  color: #f5c06a;
+  box-shadow:
+    inset 0 2px 3px #000,
+    0 1px #e6c57d12;
+}
+.rpg-theme progress::-webkit-progress-bar {
+  background: #030d10;
+  box-shadow: inset 0 2px 3px #000;
+}
+.rpg-theme progress::-webkit-progress-value {
+  background: var(--rpg-xp);
+  border-radius: 1rem;
+  box-shadow: 0 0 7px #eeb35066;
+}
+.rpg-theme progress::-moz-progress-bar {
+  background: var(--rpg-xp);
+  border-radius: 1rem;
+}
+.rpg-theme .rpg-resource {
+  color: #dfdacd;
+}
+.rpg-theme .rpg-resource > svg {
+  color: var(--rpg-gold);
+  filter: drop-shadow(0 1px 2px #000) drop-shadow(0 0 4px #dfa44340);
+}
+.rpg-theme .hero-portrait {
+  border-color: #d3ae64;
+  border-radius: 35% 35% 45% 45%;
+  background: radial-gradient(ellipse at top, #3c4e45, #0a161b 70%);
+  box-shadow:
+    inset 0 0 0 3px #030d10,
+    inset 0 0 0 4px #d3ae6433,
+    0 3px 10px #0009,
+    0 0 12px #e3ba4826;
+}
+:root:is([data-neuro-low-stimulus='true'], [data-neuro-focus='true'])
+  .rpg-theme {
+  background-image: none;
+  --rpg-depth: 0 0 #0000;
+  --rpg-bevel: inset 0 0 #0000;
+}
+:root:is([data-neuro-low-stimulus='true'], [data-neuro-focus='true'])
+  .rpg-theme
+  *,
+:root:is([data-neuro-low-stimulus='true'], [data-neuro-focus='true'])
+  .rpg-theme
+  *::before,
+:root:is([data-neuro-low-stimulus='true'], [data-neuro-focus='true'])
+  .rpg-theme
+  *::after {
+  box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+:root[data-neuro-low-stimulus='true'] .rpg-trim {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rpg-theme *,
+  .rpg-theme *::before,
+  .rpg-theme *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+@media (forced-colors: active) {
+  .rpg-theme .rpg-trim {
+    display: none;
+  }
+  .rpg-theme :is(.rpg-frame, .rpg-destination-action, progress) {
+    border-color: CanvasText;
+  }
+  .rpg-theme .rpg-frame::before {
+    display: none;
+  }
+}
+
+/* Shared dialog material for the daily organizer and its quick create flow. */
+.rpg-theme .lmu-dialog {
+  background: linear-gradient(145deg, #14262b, #09171c);
+  border-color: #ab854b;
+  border-radius: 0.65rem;
+  box-shadow:
+    0 18px 60px #000b,
+    inset 0 0 0 3px #02090c60;
+}
+.rpg-theme .lmu-dialog h2 {
+  color: var(--rpg-gold);
+  font-family: var(--lmu-display);
+}

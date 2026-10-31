@@ -5,6 +5,7 @@ await stat('build/200.html');
 const { manifestEntries, count, size, warnings } = await getManifest({
   globDirectory: 'build',
   globPatterns: [
+    'art/bg/eco-stage-*.webp',
     '_app/immutable/**/*.{js,css,wasm,woff2}',
     '200.html',
     'manifest.webmanifest',
@@ -14,6 +15,7 @@ const { manifestEntries, count, size, warnings } = await getManifest({
     'art/pilot/companion.webp',
     'art/companions-v2/*-160.webp',
     'art/home-rpg/*.webp',
+    'fonts/**/*.woff2',
   ],
   maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
 });

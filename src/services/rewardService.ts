@@ -67,6 +67,7 @@ export async function grantReward(input: {
       projectId: input.projectId,
       baseXp: input.baseXp,
       reward: { xp, gold, food },
+      progress: { before: profile.totalXpEarned, after: total },
       modifiers,
       awardedStages: awarded.map((stage) => stage.id),
       ecoClaimedBefore,
@@ -164,6 +165,7 @@ export async function revokeRewards(ids: string[]): Promise<Profile> {
         kind: 'reversal',
         sequence: await nextSequence(),
         sourceEventId: event.id,
+        progress: undefined,
         occurredAt: now.toISOString(),
         date: dateKey(now),
         reward: {

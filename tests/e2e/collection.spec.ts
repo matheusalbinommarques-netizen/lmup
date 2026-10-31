@@ -105,7 +105,7 @@ test('compra confirma custo, troca de espaço e prévia coincidem com missão re
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
-  await expect(page.getByText('+116 XP', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Recompensa recebida')).toContainText('+116');
   const saved = await backup(page);
   expect(saved.data.profile.gold).toBe(15050);
   expect(
@@ -235,7 +235,7 @@ test('transformação usa recibo e estorno devolve o ambiente anterior', async (
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
   await expect(
-    page.getByRole('heading', { name: 'Esse passo é seu.', exact: true }),
+    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
   await page.goto('/refugio');
   await expect(
