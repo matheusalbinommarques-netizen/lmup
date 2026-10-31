@@ -32,7 +32,10 @@ async function create(
   await form.getByLabel('O que você quer fazer?').fill(title);
   await configure?.(form);
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
-  await page.waitForURL(/\/missao\/\d+$/);
+  await expect(form).not.toBeVisible();
+  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('link', { name: title, exact: true }).click();
+  await expect(page).toHaveURL(/\/missao\/\d+$/);
   return page.url();
 }
 async function backup(page: Page) {
@@ -72,7 +75,9 @@ test('áreas no cadastro, edição, exclusão com transferência e criação ape
   ).not.toHaveValue('0');
   await capture(page, info.project.name, 'cadastro');
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
-  await page.waitForURL(/\/missao\/\d+$/);
+  await expect(form).not.toBeVisible();
+  await expect(page).toHaveURL(/\/missoes$/);
+  await page.getByRole('link', { name: 'Organizar a cozinha', exact: true }).click();
   const url = page.url();
   await expect(
     page.getByRole('heading', { name: 'Organizar a cozinha', exact: true }),
