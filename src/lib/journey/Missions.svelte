@@ -11,6 +11,13 @@
   } from '$services/journeyService';
   import { completeTask, undoTask } from '$services/taskService';
   import { celebrateReward } from '$services/rewardPresentation';
+  import {
+    MISSION_SESSION_KEY,
+    newMissionSession,
+    readMissionSession,
+    saveMissionSession,
+    type MissionSession,
+  } from '$services/missionSession';
   import { dateKey } from '$services/rewardService';
   import {
     scheduledOn,
@@ -37,10 +44,19 @@
   let filter = $state<'today' | 'upcoming' | 'all' | 'completed'>('today');
   let groupAreas = $state(false),
     pinnedOnly = $state(false);
+  let selecting = $state(false),
+    selected = $state<number[]>([]),
+    storedSession = $state<MissionSession | null>(null);
   let pending = $state<string[]>([]),
     today = $state(dateKey());
   guardUpdates(() => !data || pending.length > 0);
   onMount(() => {
+    storedSession = readMissionSession(today);
+    const sync = (event: StorageEvent) => {
+      if (event.key === MISSION_SESSION_KEY || event.key === null)
+        storedSession = readMissionSession(dateKey());
+    };
+    window.addEventListener('storage', sync);
     project = new URLSearchParams(location.search).get('projectId') ?? '';
     if (project) filter = 'all';
     const sub = journeyQuery().subscribe({
@@ -51,13 +67,21 @@
         (error =
           'Não foi possível carregar as missões. Recarregue para tentar novamente.'),
     });
-    const refresh = () => (today = dateKey());
+    const refresh = () => {
+      const current = dateKey();
+      if (today !== current) {
+        today = current;
+        selected = [];
+        storedSession = readMissionSession(current);
+      }
+    };
     const clock = setInterval(refresh, 30000);
     window.addEventListener('focus', refresh);
     return () => {
       sub.unsubscribe();
       clearInterval(clock);
       window.removeEventListener('focus', refresh);
+      window.removeEventListener('storage', sync);
     };
   });
   $effect(() => {
@@ -186,6 +210,31 @@
     editTask = undefined;
     open = true;
   }
+  const eligibleSelection = $derived(
+    selected.filter((id) =>
+      data?.tasks.some(
+        (task) => task.id === id && scheduledOn(task, today) && available(task),
+      ),
+    ),
+  );
+  function toggleSelection(id: number) {
+    selected = selected.includes(id)
+      ? selected.filter((entry) => entry !== id)
+      : [...selected, id];
+  }
+  async function beginSession() {
+    try {
+      const session = newMissionSession(eligibleSelection, today);
+      saveMissionSession(session);
+      storedSession = session;
+      selecting = false;
+      selected = [];
+      error = '';
+      await goto('/sessao');
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : 'Não foi possível criar a sessão.';
+    }
+  }
 </script>
 
 <svelte:head><title>Missões · Level Me Up</title></svelte:head>
@@ -217,6 +266,18 @@
             ></Button
           >{/each}
       </nav>
+      <div class="mission-session-tools">
+        {#if selecting}
+          <span>{eligibleSelection.length} {eligibleSelection.length === 1 ? 'missão selecionada' : 'missões selecionadas'}</span>
+          <Button disabled={!eligibleSelection.length} onclick={beginSession}>Iniciar sessão</Button>
+          <Button variant="quiet" onclick={() => { selecting = false; selected = []; }}>Cancelar seleção</Button>
+        {:else}
+          <Button variant="secondary" onclick={() => { selecting = true; filter = 'today'; selected = []; }}>
+            <Icon name="missions" size={18} />Montar sessão
+          </Button>
+          {#if storedSession}<a class="lmu-button lmu-button--secondary" href="/sessao">Retomar sessão do dia</a>{/if}
+        {/if}
+      </div>
       <label class="journey-label lmu-field search-field"
         ><span class="sr-only">Buscar missão</span><input
           type="search"
@@ -366,7 +427,15 @@
                   )?.reward
                 : data.rewards[task.id!]}
             <li class="mission-row" class:mission-done={done}>
-              {#if canComplete && !taskSteps(task).length && filter !== 'upcoming'}<button
+              {#if selecting && filter === 'today'}<label class="mission-selection">
+                  <input
+                    type="checkbox"
+                    aria-label={`Incluir ${task.title} na sessão`}
+                    disabled={!canComplete || !scheduledOn(task, today)}
+                    checked={selected.includes(task.id!)}
+                    onchange={() => toggleSelection(task.id!)}
+                  />
+                </label>{:else if canComplete && !taskSteps(task).length && filter !== 'upcoming'}<button
                   class="mission-check"
                   disabled={pending.includes(String(task.id))}
                   aria-label={`Concluir ${task.title}`}
@@ -479,6 +548,7 @@
       snapshot={data}
       {editTask}
       defaultAreaId={area === 'all' ? undefined : Number(area)}
+      oncreated={() => (notice = editTask ? 'Missão atualizada.' : 'Missão salva. Você pode criar outra ou continuar seu planejamento.')}
     /><AreasDialog bind:open={areasOpen} snapshot={data} />
   {/if}
 </section>
@@ -487,6 +557,28 @@
   .missions-organizer {
     max-width: 1100px;
     margin: auto;
+  }
+  .mission-session-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .55rem;
+    margin: 0 0 .85rem;
+    color: #dcc79c;
+    font-size: .85rem;
+  }
+  .mission-selection {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 38px;
+    flex: 0 0 36px;
+  }
+  .mission-selection input {
+    width: 22px;
+    height: 22px;
+    accent-color: #d5a457;
+    cursor: pointer;
   }
   .organizer-toolbar,
   .organizer-list {
