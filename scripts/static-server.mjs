@@ -29,9 +29,10 @@ async function syncSummary(publicationRoot) {
     const status = JSON.parse(raw);
     const safe = (value, max = 160) =>
       typeof value === 'string' ? value.slice(0, max) : null;
-    const states = ['current', 'published', 'waiting', 'paused', 'error'];
+    const states = ['current', 'published', 'waiting', 'paused', 'error', 'validating'];
     return {
       state: states.includes(status.state) ? status.state : 'unknown',
+      step: ['dependencies', 'audit', 'verify', 'pwa', 'package'].includes(status.step) ? status.step : null,
       commit: /^[a-f0-9]{40}$/.test(status.commit ?? '') ? status.commit : null,
       version: /^[a-f0-9]{16}$/.test(status.version ?? '') ? status.version : null,
       checkedAt: Number.isFinite(Date.parse(status.checkedAt)) ? status.checkedAt : null,
