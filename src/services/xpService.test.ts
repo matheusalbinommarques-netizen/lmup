@@ -87,7 +87,7 @@ describe('xpService – smoke', () => {
       await expect(api.addXp(50)).resolves.toMatchObject({ id: 1 });
     }
     if (typeof api.removeXp === 'function') {
-      await expect(api.removeXp(10)).resolves.toBeUndefined();
+      await expect(api.removeXp(10)).resolves.toMatchObject({ id: 1 });
     }
   });
 });
