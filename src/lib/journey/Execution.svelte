@@ -247,7 +247,7 @@
     try {
       await pauseTask(id);
       busy = false;
-      await goto(sessionMode ? '/sessao' : '/missoes');
+      await goto('/missoes');
     } catch (cause) {
       error =
         cause instanceof Error ? cause.message : 'Não foi possível pausar.';
@@ -273,16 +273,16 @@
     await queue;
     dirty = false;
     noteError = '';
-    await goto(sessionMode ? '/sessao' : '/missoes');
+    await goto('/missoes');
   }
 </script>
 
 <svelte:head><title>{task?.title ?? 'Missão'} · Level Me Up</title></svelte:head
 >
 <div class="journey-execution">
-  <a class="journey-link" href={sessionMode ? '/sessao' : '/missoes'}
-    ><Icon name="back" size={18} />{sessionMode ? 'Voltar à sessão' : 'Voltar às missões'}</a
-  >
+  {#if !sessionMode}<a class="journey-link" href="/missoes"
+      ><Icon name="back" size={18} />Voltar às missões</a
+    >{/if}
   {#if error}<p role="alert" class="journey-error">{error}</p>{/if}
   {#if !finished && lastTaskEvent?.kind === 'reversal'}
     <p role="status" class="journey-banner">
@@ -445,7 +445,7 @@
         >{/if}
       <div class="journey-actions">
         <Button variant="secondary" disabled={busy || saves > 0} onclick={pause}
-          ><Icon name="pause" size={18} />{sessionMode ? 'Pausar e voltar à sessão' : 'Pausar e voltar'}</Button
+          ><Icon name="pause" size={18} />{sessionMode ? 'Pausar e voltar às missões' : 'Pausar e voltar'}</Button
         ><Button
           disabled={!ready ||
             busy ||
