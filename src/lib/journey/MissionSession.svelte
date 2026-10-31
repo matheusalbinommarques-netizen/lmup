@@ -21,6 +21,7 @@
   let snapshot = $state<JourneySnapshot>();
   let today = $state(dateKey());
   let error = $state('');
+  let navigationBlocked = $state(false);
 
   onMount(() => {
     session = readMissionSession(today);
@@ -76,6 +77,10 @@
 
   function choose(index: number) {
     if (!session) return;
+    if (navigationBlocked && index !== session.cursor) {
+      error = 'Aguarde suas notas serem salvas antes de trocar de missão.';
+      return;
+    }
     const next = { ...session, cursor: index };
     try {
       saveMissionSession(next);
@@ -87,7 +92,7 @@
   }
 
   function reorder(index: number, offset: number) {
-    if (!session) return;
+    if (!session || navigationBlocked) return;
     const target = index + offset;
     if (target < 0 || target >= session.taskIds.length) return;
     const taskIds = [...session.taskIds];
@@ -120,6 +125,10 @@
   }
 
   async function finishSession() {
+    if (navigationBlocked) {
+      error = 'Aguarde o salvamento das notas antes de encerrar a sessão.';
+      return;
+    }
     clearMissionSession();
     session = null;
     await goto('/missoes');
@@ -170,6 +179,7 @@
                   class:chosen={session.cursor === index}
                   type="button"
                   aria-current={session.cursor === index ? 'step' : undefined}
+                  disabled={navigationBlocked && session.cursor !== index}
                   onclick={() => choose(index)}
                 >
                   <span class="queue-number">{completedIds.has(id) ? '✓' : index + 1}</span>
@@ -179,15 +189,15 @@
                   </span>
                 </button>
                 <div class="queue-reorder">
-                  <button type="button" disabled={index === 0} aria-label={`Mover ${task?.title ?? 'missão'} para cima`} onclick={() => reorder(index, -1)}>↑</button>
-                  <button type="button" disabled={index === session!.taskIds.length - 1} aria-label={`Mover ${task?.title ?? 'missão'} para baixo`} onclick={() => reorder(index, 1)}>↓</button>
+                  <button type="button" disabled={navigationBlocked || index === 0} aria-label={`Mover ${task?.title ?? 'missão'} para cima`} onclick={() => reorder(index, -1)}>↑</button>
+                  <button type="button" disabled={navigationBlocked || index === session!.taskIds.length - 1} aria-label={`Mover ${task?.title ?? 'missão'} para baixo`} onclick={() => reorder(index, 1)}>↓</button>
                 </div>
               </div>
             </li>
           {/each}
         </ol>
         <p class="lmu-hint">Pular uma missão não a conclui nem gera recompensas. Toque em uma atividade da lista para voltar a ela.</p>
-        <Button variant="quiet" onclick={finishSession}>Encerrar e limpar esta sequência</Button>
+        <Button variant="quiet" disabled={navigationBlocked} onclick={finishSession}>Encerrar e limpar esta sequência</Button>
       </aside>
       <div class="session-current">
         {#if session.cursor >= session.taskIds.length}
@@ -204,10 +214,10 @@
         {:else if currentTask?.id}
           <div class="session-current-heading">
             <span>Missão {session.cursor + 1} de {session.taskIds.length}</span>
-            <Button variant="quiet" onclick={advance}>Pular por agora <Icon name="arrow" size={16}/></Button>
+            <Button variant="quiet" disabled={navigationBlocked} onclick={advance}>Pular por agora <Icon name="arrow" size={16}/></Button>
           </div>
           {#key currentTask.id}
-            <Execution id={currentTask.id} sessionMode onSessionContinue={advance} />
+            <Execution id={currentTask.id} sessionMode onSessionContinue={advance} onSessionBusyChange={(blocked) => (navigationBlocked = blocked)} />
           {/key}
         {:else}
           <div class="rpg-frame session-empty">
