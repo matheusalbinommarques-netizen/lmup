@@ -125,6 +125,15 @@ async function metadata(page: Page) {
     }
   throw new Error('Não foi possível ler a revisão ativa.');
 }
+async function applyAndWaitForReload(page: Page, tabs = [page]) {
+  // Observe reloads without posting messages to the outgoing worker. Chromium
+  // waits for that worker to become idle before it activates the replacement.
+  // Arm every listener before clicking so a fast controllerchange is not lost.
+  await Promise.all([
+    ...tabs.map((tab) => tab.waitForEvent('domcontentloaded', { timeout: 30000 })),
+    page.getByRole('button', { name: 'Atualizar agora', exact: true }).click(),
+  ]);
+}
 async function mission(page: Page, title = 'Uma missão offline') {
   await page.goto('/');
   await page.getByRole('button', { name: 'Nova missão', exact: true }).click();
@@ -451,13 +460,9 @@ test('revisão pronta espera formulário aberto e preserva URL e dados ao atuali
     .getByRole('button', { name: 'Cancelar', exact: true })
     .click();
   const url = page.url();
-  await page
-    .getByRole('button', { name: 'Atualizar agora', exact: true })
-    .click();
   try {
-    await expect
-      .poll(async () => (await metadata(page)).version, { timeout: 30000 })
-      .not.toBe(initial.version);
+    await applyAndWaitForReload(page);
+    expect((await metadata(page)).version).not.toBe(initial.version);
   } catch (error) {
     const diagnostics = await page.evaluate(async () => {
       const registration = await navigator.serviceWorker.getRegistration();
@@ -541,15 +546,15 @@ test('outra aba com notas não salvas bloqueia a troca até salvar', async ({
   await expect(
     other.getByText('Tudo salvo neste navegador', { exact: true }),
   ).toBeVisible();
-  await page
-    .getByRole('button', { name: 'Atualizar agora', exact: true })
-    .click();
-  await expect
-    .poll(async () => (await metadata(page)).version, { timeout: 30000 })
-    .not.toBe(before);
-  await expect
-    .poll(async () => (await metadata(other)).version, { timeout: 30000 })
-    .not.toBe(before);
+  await applyAndWaitForReload(page, [page, other]);
+  const updated = (await metadata(page)).version;
+  expect(updated).not.toBe(before);
+  expect((await metadata(other)).version).toBe(updated);
+  await expect(page).toHaveURL(url);
+  await expect(other).toHaveURL(url);
+  await expect(page.getByLabel('Notas da missão')).toHaveValue(
+    'Rascunho que precisa salvar',
+  );
   await expect(other.getByLabel('Notas da missão')).toHaveValue(
     'Rascunho que precisa salvar',
   );
@@ -695,13 +700,9 @@ test('aba antiga sem protocolo impede a ativação até ser fechada', async ({
   expect((await metadata(page)).version).toBe(before);
   await legacy.close();
   await page.bringToFront();
-  await page
-    .getByRole('button', { name: 'Atualizar agora', exact: true })
-    .click();
   try {
-    await expect
-      .poll(async () => (await metadata(page)).version, { timeout: 30000 })
-      .not.toBe(before);
+    await applyAndWaitForReload(page);
+    expect((await metadata(page)).version).not.toBe(before);
   } catch (error) {
     const diagnostic = await page.evaluate(async () => {
       const registration = await navigator.serviceWorker.getRegistration();

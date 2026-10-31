@@ -1,70 +1,57 @@
-# Investigação da atualização PWA entre abas
+# Atualização PWA entre abas: investigação e correção da espera
 
-Data: 31/10/2026. Base: `e013031c21c0d15b8ddda4c29d55922689aa5d20`.
+Base investigada: e013031c21c0d15b8ddda4c29d55922689aa5d20. Trabalho no [PR #37](https://github.com/matheusalbinommarques-netizen/lmup/pull/37), em branch isolada no C:. Data: 31/10/2026.
 
-## Estado da investigação
+## Problema e causa tratada
 
-**Causa ainda não comprovada. Este trabalho não deve ser apresentado como correção da intermitência nem integrado como tal.** Aumentar timeouts, repetir jobs até ficarem verdes ou aceitar uma amostra sem falhas não resolve o problema.
+O teste **outra aba com notas não salvas bloqueia a troca até salvar**, em tests/pwa/offline.spec.ts, falhava depois de salvar e pedir novamente a atualização. As duas abas já estavam salvas e bloqueadas para a troca, mas o controlador permanecia na revisão anterior. O cenário com formulário aberto e o cenário de aba legada usavam a mesma forma de espera.
 
-O teste principal é `tests/pwa/offline.spec.ts`, cenário **outra aba com notas não salvas bloqueia a troca até salvar**. A falha ocorre na primeira verificação da versão depois de salvar as notas e clicar novamente em Atualizar agora. O bloqueio inicial por notas não salvas funciona; a revisão ativa permanece na versão anterior por 30 segundos. O cenário **revisão pronta espera formulário aberto e preserva URL e dados ao atualizar** também apresentou falha equivalente.
+A espera anterior consultava repetidamente a versão por MessageChannel/LMU_META no worker antigo. Essa observação cria trabalho justamente no worker que precisa ficar ocioso para ser substituído. A condição de corrida depende do momento em que a consulta coincide com o pedido de ativação; aumentar o prazo ou repetir a tentativa não remove essa interferência.
 
-## Evidências anteriores
+O diagnóstico no CI separou o consenso entre abas da ativação nativa: o worker b recebeu o pedido certo, houve ACK positivo das duas abas, a lista de clientes permaneceu igual, a barreira concluiu com sucesso e skipWaiting iniciou sem concluir durante o prazo. Não se tratava de notas ainda não salvas, falta de ACK ou pedido dirigido ao worker errado nessa falha.
 
-| Execução                                                                                                              | Evidência                                                                                                                                                                                         |
-| --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [41235035026, tentativa 1](https://github.com/matheusalbinommarques-netizen/lmup/actions/runs/41235035026/attempts/1) | Job `124636880986`: cenário de notas falha em desktop e celular na asserção de mudança de versão.                                                                                                 |
-| [41240387525, tentativa 1](https://github.com/matheusalbinommarques-netizen/lmup/actions/runs/41240387525/attempts/1) | Job `124652877578`: cenário de notas falha em desktop; a tentativa posterior verde não explica a primeira falha.                                                                                  |
-| [41246779319](https://github.com/matheusalbinommarques-netizen/lmup/actions/runs/41246779319)                         | Job `124671741024`: cenário de formulário falha nas duas plataformas. Diagnóstico: controlador antigo `activated`, novo worker `installed` em waiting, interface mostrando Aplicando atualização. |
-| Instalação anterior no C:, `sync.log`, linhas 1165 e 1470                                                             | Mesmo cenário de notas falha respectivamente em celular e desktop, na mesma asserção. Apenas leitura do histórico; sincronizador não alterado.                                                    |
+A implementação do Chromium 156 usado no CI fundamenta a relação com ociosidade: [IsReadyToActivate](https://github.com/chromium/chromium/blob/156.0.8078.4/content/browser/service_worker/service_worker_registration.cc) depende de HasNoWork do worker antigo; [HasNoWork e SkipWaiting](https://github.com/chromium/chromium/blob/156.0.8078.4/content/browser/service_worker/service_worker_version.cc) consideram trabalho no navegador e ociosidade do renderer. A atribuição à sondagem do teste é a conclusão da investigação apoiada nesses registros e na comparação antes/depois, não uma alegação de defeito no armazenamento pessoal.
 
-Os logs históricos mencionam `trace.zip`, capturas e `error-context.md`, mas o workflow não fazia upload desses arquivos. A consulta aos artefatos da execução `41246779319` retornou lista vazia. Não é possível apresentar esses traces como recuperados.
+## Correção
 
-Os três logs completos dos jobs e os recortes locais foram preservados fora do Git, em `../investigacao-pwa/` no workspace do C:.
+A espera agora registra DOMContentLoaded de todas as abas antes do clique e aguarda a recarga real. Nenhuma mensagem de sondagem é enviada ao worker antigo durante essa janela. As versões são lidas depois da recarga.
 
-## Reprodução dirigida
+O limite continua em 30 segundos, sem aumentar timeouts nem retries. As verificações de bloqueio com rascunho, formulário ou aba sem protocolo permanecem. No teste de notas, também se exige que as duas abas recarreguem, recebam a mesma versão nova, preservem a URL e mostrem as notas salvas. Não basta mais observar uma troca de controlador sem confirmar a recarga das páginas.
 
-O build da base foi executado uma vez, seguido apenas dos cenários afetados na porta de teste `4274`, com contextos descartáveis do Playwright. Não foi usado o perfil pessoal do Chrome nem a origem operacional `5174`.
+Não há mudança funcional no aplicativo, em pwa/worker.js, no protocolo de consenso ou no sincronizador.
 
-Primeiro controle sem alteração no aplicativo ou nos testes: `--grep 'outra aba com notas' --repeat-each 5 --retries 0 --trace on`, nas duas plataformas. Resultado: **1 falha e 9 aprovações**. A falha é a mesma asserção de versão após salvar. Seu trace, duas capturas e snapshot estão em `../investigacao-pwa/baseline-traces/`; o log está em `baseline-isolado.log`.
+## Evidências recuperadas
 
-Amostras exploratórias com registro de mensagens e inspeção dos workers passaram (12 cenários relacionados e depois 30 execuções do cenário de notas). Uma amostra com instrumentação inserida somente no worker de teste passou 10/10. Isso não comprova estabilidade do código original: observar a execução pode mudar sua ordem e seu tempo. Uma rodada adicional de instrumentação foi descartada por falha na geração do arquivo de trace; não foi classificada como falha do protocolo PWA.
+| Execução | Evidência |
+| --- | --- |
+| [41235035026, tentativa 1](https://github.com/matheusalbinommarques-netizen/lmup/actions/runs/41235035026/attempts/1) | Job 124636880986: notas falham em desktop e celular, esperando a versão mudar. |
+| [41240387525, tentativa 1](https://github.com/matheusalbinommarques-netizen/lmup/actions/runs/41240387525/attempts/1) | Job 124652877578: mesma falha em desktop; a tentativa posterior verde não explica a primeira. |
+| [41246779319](https://github.com/matheusalbinommarques-netizen/lmup/actions/runs/41246779319) | Job 124671741024: formulário falha nas duas plataformas; worker novo instalado em espera e tela Aplicando atualização. |
+| Histórico local no C:, sync.log | Linhas 1165 e 1470 registram a mesma falha de notas em celular e desktop. Apenas leitura do histórico. |
+| Controle local inicial | Uma falha e nove aprovações; trace, duas capturas e snapshot preservados fora do Git. |
+| [41252321680](https://github.com/matheusalbinommarques-netizen/lmup/actions/runs/41252321680) | 188/188 E2E e 29/30 PWA; o diagnóstico das duas abas confirma dados salvos, a ativo e b aguardando. [Artefato](https://github.com/matheusalbinommarques-netizen/lmup/actions/runs/41252321680/artifacts/13061716875), SHA-256 9bd150efa4d77588d3f3d6d2105adaeeb53640fcd07ff40390a7140e8cabc129. |
+| [41253447894](https://github.com/matheusalbinommarques-netizen/lmup/actions/runs/41253447894) | Controle dirigido no Linux: duas aprovações e falha na terceira execução; sete não executadas pela parada na primeira falha. Consenso positivo e skip-start sem skip-end. A suíte ampla não foi repetida. [Artefato](https://github.com/matheusalbinommarques-netizen/lmup/actions/runs/41253447894/artifacts/13061832732), SHA-256 0a22871dcc3d5605e976f7d4c1aeb77d8cef54d160c63c769c3095e22bade4c8. |
 
-Um controle posterior, sem instrumentação no aplicativo/worker e com coleta somente em caso de falha, passou 20/20 nos dois cenários relacionados. Esse resultado também não invalida a falha inicial. Na alteração final, a coleta foi movida para o hook após a falha, sem fixture automática que antecipe a criação do contexto de navegador.
+Os workflows antigos não enviavam artefatos: os logs citavam traces que não foram recuperáveis. Os três logs históricos completos, recortes locais, arquivos da reprodução, artefato do CI e manifesto de hashes estão em ../investigacao-pwa/ no workspace do C:.
 
-Nenhum timeout ou retry foi aumentado. Nenhuma mudança funcional foi aplicada ao aplicativo, ao Service Worker de produção ou ao sincronizador. As tentativas anteriores de aumentar a janela de ACK ou esperar confirmação de desbloqueio, posteriormente revertidas no histórico, também não constituem prova da causa.
+## Ambiente e comparação controlada
 
-## Hipóteses e próximo experimento
+Foi identificado um desvio no node_modules do checkout de desenvolvimento: Playwright 1.56.1 e Dexie 4.2.1, enquanto o lockfile exige 1.64.1 e 4.4.7. Os primeiros números locais são exploratórios desse ambiente antigo, não validação do lockfile. npm ci alinhou a cópia do C: e foi instalado o Chromium 156.0.8078.4 correspondente ao CI. Nenhuma versão no package.json ou no lockfile foi alterada.
 
-1. **Tentativa anterior ainda em conclusão ou desbloqueio tardio entre abas.** Registrar o identificador de cada PREPARE/ACK/ABORT e o instante de conclusão da tentativa. Um ACK negativo tardio precisa ser distinguido de uma ativação já aceita; não basta acrescentar espera fixa.
-2. **Ativação aceita, mas impedida por evento pendente no worker anterior ou no candidato.** O estado observado no CI é compatível com essa hipótese, mas os logs antigos não registram `skipWaiting()` nem as promessas pendentes de `waitUntil`/`respondWith`. O próximo experimento deve registrar essas etapas no worker de teste e provocar, separadamente, a conclusão tardia de um fetch e a liberação de uma tentativa abortada. Isso permite testar causalidade, em vez de repetir a suíte.
-3. **Corrida no teste entre registro, instalação e seleção do worker aguardando.** Capturar, em cada aba, metadados do controlador, active e waiting, além da navegação. Confirmar explicitamente qual candidato recebeu a solicitação. O texto do aviso sozinho não identifica o worker.
+Com as dependências alinhadas e a espera corrigida, sem instrumentação do worker: **20/20 repetições** do cenário de notas, dez por plataforma, retries zero e parada na primeira falha; **4/4 cenários relacionados**, formulário e aba legada em desktop/celular. Os logs são correcao-notas.log e correlatos.log, e os traces estão em correcao-traces/.
 
-O ciclo de vida de ativação depende dos eventos pendentes e das condições da registration; veja a [especificação de Try Activate](https://www.w3.org/TR/service-workers/#try-activate-algorithm). Essa referência fundamenta o experimento, não prova que um defeito do navegador causou estas falhas.
+As amostras instrumentadas anteriores que passaram não foram aceitas como correção. A validação remota do commit final, incluindo a etapa dirigida antes da suíte completa, continua sendo gate para a integração. Uma amostra finita não prova ausência absoluta de futuras falhas.
 
-Antes de ampliar para outro navegador, atualizar Playwright/Chromium ou redesenhar o protocolo, concluir esses experimentos controlados e comparar com o trace do controle que falhou. Não atribuir a causa ao teste, ao navegador ou ao aplicativo sem essa distinção.
+## CI e preservação de evidências
 
-## Duplicação de CI e preservação de evidências
+Havia pares push/pull_request para o mesmo SHA, por exemplo 20c6231 nas execuções 41248493338 e 41248508265. Push agora dispara somente na main; pull_request permanece sem filtro de arquivos. Os jobs obrigatórios verify (22) e verify (24), build, testes e auditoria foram preservados. Nos dois commits de diagnóstico houve somente uma execução por commit, por pull_request.
 
-Foram encontrados pares `push`/`pull_request` para o mesmo SHA, por exemplo `20c6231`: execuções `41248493338` e `41248508265`. O workflow passa a executar `push` apenas na `main`, mantendo `pull_request` sem filtros de arquivos e os jobs `verify (22)` e `verify (24)` com todas as etapas existentes. A verificação do merge na main permanece; o push de uma branch de trabalho deixa de disparar uma segunda suíte. Isso segue os [filtros oficiais de eventos do GitHub Actions](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow).
+Node 24 começa com uma amostra fixa do cenário de notas, cinco vezes em cada plataforma, sem retry e com parada na primeira falha. Depois executa as etapas amplas existentes. A variável explícita LMU_PWA_DIAGNOSTICS habilita somente nesse ensaio o registro de APPLY/ACK, resultado da barreira e início/fim de skipWaiting no servidor de teste. A suíte completa usa o worker sem essa instrumentação.
 
-Em falhas do job Node 24, o workflow envia `test-results/` e `test-results-pwa/` como artefatos, com retenção de 14 dias e identificação da execução/tentativa. Os traces continuam sendo retidos somente quando o teste falha. Não há retry adicional ou asserção relaxada.
+Em falhas, traces, capturas e snapshots são enviados como artefatos por 14 dias. Um hook executado somente após falhar registra versões e estado de cada aba. Nenhum mecanismo transforma uma falha em aprovação por repetição automática. Os filtros seguem a [documentação oficial de eventos do GitHub](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow).
 
-Os nomes dos checks obrigatórios foram preservados. A conexão GitHub retornou 403 ao consultar a configuração administrativa de proteção, e a CLI local não tem autenticação. Não foi alterada nenhuma regra de proteção.
-
-## Evidência nova do PR de diagnóstico
-
-A execução [41252321680](https://github.com/matheusalbinommarques-netizen/lmup/actions/runs/41252321680) passou em Node 22 e falhou em Node 24 exatamente no cenário de notas (29/30 PWA; 188/188 E2E). Sem reexecução do job, foi possível recuperar pela primeira vez o [artefato completo](https://github.com/matheusalbinommarques-netizen/lmup/actions/runs/41252321680/artifacts/13061716875), SHA-256 `9bd150efa4d77588d3f3d6d2105adaeeb53640fcd07ff40390a7140e8cabc129`. O diagnóstico confirma, nas duas abas: notas salvas, tela Aplicando atualização, worker `a` ativo e `b` instalado em espera, ambos com schema 5/protocolo 1.
-
-Foi também identificada divergência de dependências no checkout local: Playwright 1.56.1/Dexie 4.2.1 instalados versus 1.64.1/4.4.7 no lockfile. Os números locais anteriores são evidência exploratória desse ambiente antigo, e não validação do lockfile. `npm ci` alinhou a cópia de desenvolvimento do C:, e foi instalado o Chromium 156 correspondente ao CI. Cinco reproduções dirigidas no ambiente alinhado, com instrumentação, passaram; isso ainda não prova correção.
-
-O próximo commit acrescenta uma etapa curta de estabilidade antes dos testes amplos no Node 24: apenas o cenário de notas, cinco vezes por plataforma, retries zero e parada na primeira falha. O servidor de teste pode registrar, somente mediante variável explícita, quem recebeu APPLY/ACK, o resultado da barreira e início/fim de skipWaiting. A suíte completa e as demais etapas obrigatórias permanecem. O worker de produção não foi alterado.
-
-## Validação deste conjunto de diagnóstico
-
-- `npm run verify`: lint e tipos sem erros; 172 testes unitários e 21 testes de publicação aprovados; build concluído.
-- Uma execução completa local de `test:pwa`, com retries explicitamente em zero: **30/30 aprovados**. Esse resultado valida a alteração de diagnóstico, mas não demonstra a eliminação da intermitência reproduzida no controle inicial.
-- Os checks remotos `verify (22)` e `verify (24)` devem ser conferidos no PR. Mesmo que aprovem, este trabalho continua sem comprovação da causa e sem autorização técnica para declarar resolvido o problema PWA.
+A conexão GitHub não permite ler a configuração administrativa de proteção (403), e a CLI local não tem autenticação. Os nomes exigidos e todas as etapas foram preservados; nenhuma regra de proteção foi alterada.
 
 ## Preservação operacional
 
-A instalação operacional no D:, sua tarefa agendada, o controlador e os dados pessoais do navegador não foram modificados. O código foi trabalhado na branch isolada `fix/pwa-cross-tab-stability` do checkout no C:. Sem causa comprovada e regressão determinística, este conjunto deve permanecer em revisão, sem merge e sem declaração de estabilidade definitiva.
+A instalação no D:, sua tarefa, controlador, sincronizador e dados do navegador não foram modificados manualmente. Os testes usam contextos descartáveis e a porta 4274. O endereço operacional 127.0.0.1:5174 e o perfil pessoal do Chrome não foram usados nos ensaios.
