@@ -14,7 +14,9 @@ jobs:
         with:
           node-version: 24
       - name: Regenerate dependency lockfile without installing scripts
-        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+        run: |
+          rm package-lock.json
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
       - name: Emit reviewed lockfile chunks for GitHub connector update
         run: |
           node --input-type=module -e '
