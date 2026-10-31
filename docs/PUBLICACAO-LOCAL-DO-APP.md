@@ -1,6 +1,6 @@
 # Atualizações do aplicativo instalado pelo Chrome
 
-> O fluxo oficial agora é a [sincronização isolada da branch estável no GitHub](SINCRONIZACAO-GITHUB.md). A publicação direta por commits descrita abaixo registra a configuração inicial e foi desabilitada nesta instalação. Use o guia novo para promoção, sincronização e recuperação.
+> Este documento registra a configuração inicial. O fluxo oficial atual usa a [sincronização isolada da `main` no GitHub](SINCRONIZACAO-GITHUB.md). A publicação direta por commits foi desabilitada nesta instalação; consulte o guia de migração, sincronização e recuperação.
 
 O Level Me Up instalado continua em `http://127.0.0.1:5174/`, no mesmo perfil do Chrome. A publicação troca os arquivos do aplicativo; não copia, limpa ou substitui o IndexedDB do usuário.
 

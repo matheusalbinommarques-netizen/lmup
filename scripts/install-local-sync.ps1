@@ -24,29 +24,46 @@ if ($Mode -eq 'remove') {
   exit
 }
 if (!$Branch) { throw 'Informe a branch que deve alimentar o app.' }
-if ($Branch -ne 'release/lmup-local') { throw 'A fonte oficial deve ser release/lmup-local.' }
+if ($Branch -ne 'main') { throw 'A fonte oficial deve ser main.' }
 Push-Location $syncProject
 try {
   & git check-ref-format --branch $Branch | Out-Null
   if ($LASTEXITCODE -ne 0) { throw 'Branch inválida.' }
   $syncRemoteUrl = & git remote get-url $Remote
   if ($LASTEXITCODE -ne 0 -or $syncRemoteUrl -notmatch '^https://github.com/[^/]+/[^/]+(\.git)?$') { throw 'Selecione um remoto HTTPS do GitHub sem credenciais na URL.' }
+  $syncSourceBranch = & git branch --show-current
+  $syncSourceChanges = & git status --porcelain --untracked-files=all
+  $syncSourceCommit = & git rev-parse HEAD
+  $env:GIT_TERMINAL_PROMPT = '0'
+  $syncMainRemote = (& git ls-remote --heads $Remote main) -split '\s+'
+  if ($LASTEXITCODE -ne 0 -or $syncSourceBranch -ne 'main' -or $syncSourceChanges -or $syncSourceCommit -ne $syncMainRemote[0]) {
+    throw 'Instale o controlador a partir de uma cópia limpa e atualizada da main.'
+  }
   $syncNode = (Get-Command node.exe).Source
   $syncNpmCli = Join-Path (Split-Path -Parent (Get-Command npm.cmd).Source) 'node_modules/npm/bin/npm-cli.js'
   if (!(Test-Path -LiteralPath $syncNpmCli)) { throw 'Não foi possível localizar o npm instalado.' }
   New-Item -ItemType Directory -Path $syncStore -Force | Out-Null
-  $syncCheckout = Join-Path $syncStore 'publication'
+  $syncCheckout = Join-Path $syncStore 'publication-main'
+  if ((Test-Path -LiteralPath (Join-Path $syncStore 'sync-config.json')) -and !(Test-Path -LiteralPath $syncCheckout)) {
+    throw 'Instalação anterior detectada. Execute scripts/migrate-local-sync.ps1 antes de reinstalar a tarefa.'
+  }
   if (!(Test-Path -LiteralPath $syncCheckout)) {
     $env:GIT_TERMINAL_PROMPT = '0'
     & git -c core.hooksPath= clone --origin origin --branch $Branch --single-branch --depth 1 $syncRemoteUrl $syncCheckout
     if ($LASTEXITCODE -ne 0) { throw 'A cópia de publicação não foi criada. Nenhum arquivo local foi descartado.' }
+  }
+  $syncCheckoutBranch = & git -C $syncCheckout branch --show-current
+  $syncCheckoutRemote = & git -C $syncCheckout remote get-url origin
+  $syncCheckoutChanges = & git -C $syncCheckout status --porcelain --untracked-files=all
+  if ($syncCheckoutBranch -ne 'main' -or $syncCheckoutRemote -ne $syncRemoteUrl -or $syncCheckoutChanges) {
+    throw 'A cópia de publicação não está limpa na main com o remoto esperado. Nenhum estado foi substituído.'
   }
   $syncConfigJson = @{ enabled = [bool]$Enable; remote = 'origin'; branch = $Branch; url = $syncRemoteUrl; checkout = $syncCheckout; node = $syncNode; npmCli = $syncNpmCli } | ConvertTo-Json
   [System.IO.File]::WriteAllText((Join-Path $syncStore 'sync-config.json'), $syncConfigJson, (New-Object System.Text.UTF8Encoding $false))
   [System.IO.File]::WriteAllText((Join-Path $syncStore 'config.json'), '{"enabled":false}', (New-Object System.Text.UTF8Encoding $false))
   $syncAgent = Join-Path $syncStore 'agent/scripts'
   New-Item -ItemType Directory -Path $syncAgent -Force | Out-Null
-  foreach ($syncScript in @('sync-local.mjs', 'local-sync-core.mjs', 'local-security-policy.mjs', 'local-process-lock.mjs', 'publish-local.mjs', 'local-release-store.mjs', 'verify-package.mjs', 'serve-static.mjs', 'static-server.mjs')) {
+  foreach ($syncScript in @('sync-local.mjs', 'local-sync-config.mjs', 'local-sync-core.mjs', 'local-security-policy.mjs', 'local-process-lock.mjs', 'publish-local.mjs', 'local-release-store.mjs', 'verify-package.mjs', 'serve-static.mjs', 'static-server.mjs')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $syncScript) -Destination (Join-Path $syncAgent $syncScript)
   }
   $syncUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name

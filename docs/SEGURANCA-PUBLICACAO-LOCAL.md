@@ -67,9 +67,9 @@ Os seis registros baixos restantes são `deepmerge`, `@rollup/plugin-node-resolv
 - `scripts/static-server.mjs` e seus helpers: dependem de módulos nativos do Node; não carregam ESLint, glob, minimatch, cookie ou deepmerge para tratar requisições.
 - `scripts/build-pwa.mjs`: Workbox é usado apenas para listar arquivos; o service worker é gerado do código próprio em `pwa/worker.js`. Não é distribuído `workbox-build` ao navegador.
 - Busca no código não encontrou `use:enhance`, `$app/forms`, `setHeaders` ou uso de cookies de servidor.
-- A correção no lockfile exige repetir os 184 testes de interface, build, testes de serviço, publicação, política de exceção, offline e integridade de pacote antes de criar a branch estável.
+- A correção no lockfile exige repetir os testes de interface, build, serviços, publicação, política de exceção, offline e integridade de pacote antes de integrar uma nova versão na `main`.
 
-Código de um repositório ou configuração de build malicioso continua podendo executar comandos com as permissões do usuário. Por isso, a branch estável deve receber apenas commits revisados e aprovados. O clone isolado protege os arquivos de desenvolvimento e a ativação atômica protege a versão publicada; não constituem isolamento de segurança do sistema operacional.
+Código de um repositório ou configuração de build malicioso continua podendo executar comandos com as permissões do usuário. Por isso, a `main` deve exigir revisão, aprovação e verificações obrigatórias. O clone isolado protege os arquivos de desenvolvimento e a ativação atômica protege a versão publicada; não constituem isolamento de segurança do sistema operacional.
 
 ## Exceção proposta, ainda não aprovada
 

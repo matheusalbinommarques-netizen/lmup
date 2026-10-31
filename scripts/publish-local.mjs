@@ -116,9 +116,9 @@ async function main() {
           },
         ),
       );
-      if (sync.enabled || sync.branch === 'release/lmup-local')
+      if (sync.enabled || sync.branch)
         throw Error(
-          'A fonte oficial é a branch estável. Use npm run app:sincronizar; commits de desenvolvimento não são publicados diretamente.',
+          'A fonte oficial é a branch main. Use npm run app:sincronizar; commits de desenvolvimento não são publicados diretamente.',
         );
       const unlock = await acquireLocalLock(join(storage, 'publish.lock'));
       try {
