@@ -250,7 +250,8 @@
     busy = true;
     error = '';
     try {
-      await pauseTask(id);
+      if (task && ['active', 'paused'].includes(task.executionState ?? ''))
+        await pauseTask(id);
       busy = false;
       await goto('/missoes');
     } catch (cause) {
@@ -450,7 +451,11 @@
         >{/if}
       <div class="journey-actions">
         <Button variant="secondary" disabled={busy || saves > 0} onclick={pause}
-          ><Icon name="pause" size={18} />{sessionMode ? 'Pausar e voltar às missões' : 'Pausar e voltar'}</Button
+          ><Icon name="pause" size={18} />{!task || !['active', 'paused'].includes(task.executionState ?? '')
+            ? 'Voltar às missões'
+            : sessionMode
+              ? 'Pausar e voltar às missões'
+              : 'Pausar e voltar'}</Button
         ><Button
           disabled={!ready ||
             busy ||
