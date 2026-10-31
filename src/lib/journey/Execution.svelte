@@ -120,8 +120,22 @@
         )
       : undefined,
   );
+  const currentStepSession = $derived.by(() => {
+    if (!task) return false;
+    if (task.recurrence) return task.occurrenceSession === today;
+    if (!task.reviewEnabled) return true;
+    const base = new Date(task.reviewStartedAt ?? task.createdAt).toISOString();
+    return (
+      task.reviewSession === `${base}:${task.completionRevision ?? 0}` ||
+      (task.reviewSession === base &&
+        ['active', 'paused'].includes(task.executionState ?? ''))
+    );
+  });
+  const checkedSteps = $derived(
+    currentStepSession ? (task?.completedSubtasks ?? []) : [],
+  );
   const ready = $derived(
-    steps.every((step) => task?.completedSubtasks?.includes(step.index)),
+    steps.every((step) => checkedSteps.includes(step.index)),
   );
   const reward = $derived(data?.rewards[id]);
   const lastTaskEvent = $derived(
@@ -225,9 +239,7 @@
     try {
       const receipt = await completeTask(id, {
         reviewOutcome: reviewOutcome || undefined,
-        occurrenceDate: task?.recurrence
-          ? (task.occurrenceSession ?? today)
-          : undefined,
+        occurrenceDate: task?.recurrence ? today : undefined,
       });
       freshEventId = receipt?.id ?? '';
     } catch (cause) {
@@ -375,23 +387,22 @@
       </p>{:else}<Card
         >{#if steps.length}<p class="lmu-muted">
             {steps.filter((step) =>
-              task.completedSubtasks?.includes(step.index),
+              checkedSteps.includes(step.index),
             ).length} de {steps.length} passos
           </p>
           <progress
             max={steps.length}
             value={steps.filter((step) =>
-              task.completedSubtasks?.includes(step.index),
+              checkedSteps.includes(step.index),
             ).length}
             aria-label="Passos concluídos"
           ></progress>
           <ul class="journey-step-list">
             {#each steps as step (step.index)}<li>
-                <label class:done={task.completedSubtasks?.includes(step.index)}
+                <label class:done={checkedSteps.includes(step.index)}
                   ><input
                     type="checkbox"
-                    checked={task.completedSubtasks?.includes(step.index) ??
-                      false}
+                    checked={checkedSteps.includes(step.index)}
                     disabled={busy}
                     onchange={(event) => stepChange(event, step.index)}
                   /><span>{step.label}</span></label
