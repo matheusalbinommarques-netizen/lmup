@@ -178,9 +178,8 @@ async function update(event) {
     ready: new Set(),
     resolve,
   };
-  // Background tabs may delay acknowledgements under browser throttling.
-  // Keep the safety barrier: never activate without every tab's ACK.
-  const timer = setTimeout(() => resolve(false), 12000);
+  // Decline promptly when a client does not answer; unlock ACKs are awaited below.
+  const timer = setTimeout(() => resolve(false), 3500);
   for (const client of clients)
     client.postMessage({
       type: 'LMU_UPDATE_PREPARE',
