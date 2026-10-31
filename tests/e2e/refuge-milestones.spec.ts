@@ -65,6 +65,7 @@ async function cross(page: Page) {
   await dialog
     .getByRole('button', { name: 'Criar missão', exact: true })
     .click();
+  await expect(dialog).not.toBeVisible();
   await page.goto('/missoes');
   await page.getByRole('button', { name: 'Todas', exact: true }).click();
   await page.getByRole('link', { name: 'Alcançar uma nova paisagem', exact: true }).click();
