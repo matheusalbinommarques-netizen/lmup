@@ -252,7 +252,7 @@
     }
   }
   async function pause() {
-    if (busy) return;
+    if (busy || starting > 0) return;
     await queue;
     if (dirty || noteError) {
       error =
@@ -461,7 +461,7 @@
           }}>Consultar e editar notas</Button
         >{/if}
       <div class="journey-actions">
-        <Button variant="secondary" disabled={busy || saves > 0} onclick={pause}
+        <Button variant="secondary" disabled={busy || saves > 0 || starting > 0} onclick={pause}
           ><Icon name="pause" size={18} />{!task || !['active', 'paused'].includes(task.executionState ?? '')
             ? 'Voltar às missões'
             : sessionMode
