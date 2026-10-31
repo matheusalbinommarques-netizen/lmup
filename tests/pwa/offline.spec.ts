@@ -452,9 +452,33 @@ test('revisão pronta espera formulário aberto e preserva URL e dados ao atuali
   await page
     .getByRole('button', { name: 'Atualizar agora', exact: true })
     .click();
-  await expect
-    .poll(async () => (await metadata(page)).version, { timeout: 15000 })
-    .not.toBe(initial.version);
+  try {
+    await expect
+      .poll(async () => (await metadata(page)).version, { timeout: 15000 })
+      .not.toBe(initial.version);
+  } catch (error) {
+    const diagnostics = await page.evaluate(async () => {
+      const registration = await navigator.serviceWorker.getRegistration();
+      const workerInfo = (worker: ServiceWorker | null | undefined) =>
+        worker
+          ? { state: worker.state, scriptURL: worker.scriptURL }
+          : null;
+      return {
+        url: location.href,
+        controller: workerInfo(navigator.serviceWorker.controller),
+        active: workerInfo(registration?.active),
+        waiting: workerInfo(registration?.waiting),
+        installing: workerInfo(registration?.installing),
+        visibleUpdate: document.querySelector('[aria-label="Atualização disponível"]')?.textContent,
+        lockMessage: document.querySelector('.pwa-lock')?.textContent,
+        dialogs: Array.from(document.querySelectorAll('dialog[open], [aria-modal="true"]')).map(
+          (element) => element.textContent?.slice(0, 300),
+        ),
+      };
+    });
+    console.error('LMUP_PWA_UPDATE_DIAGNOSTIC', JSON.stringify(diagnostics));
+    throw error;
+  }
   await expect(page).toHaveURL(url);
   await expect(page.getByLabel('Notas da missão')).toHaveValue(
     'Uma nota preservada.',
