@@ -63,6 +63,7 @@ test('primeira missão real persiste passos e notas, retoma, conclui e desfaz ap
   await page
     .getByRole('button', { name: 'Pausar e voltar', exact: true })
     .click();
+  await page.goto('/');
   await expect(page.getByText('Em andamento', { exact: true })).toBeVisible();
   const contrast = await page
     .getByRole('link', { name: 'Continuar missão', exact: true })
@@ -375,7 +376,7 @@ test('plano e fixação são explícitos; navegação secundária preserva acess
 }) => {
   const url = await create(page, 'Escolher meu dia');
   await page
-    .getByRole('button', { name: 'Pausar e voltar', exact: true })
+    .getByRole('button', { name: 'Voltar às missões', exact: true })
     .click();
   await page.goto('/missoes');
   await page.getByRole('button', { name: 'Todas', exact: true }).click();
