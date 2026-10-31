@@ -95,6 +95,7 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
   await page
     .getByRole('button', { name: 'Pausar e voltar', exact: true })
     .click();
+  await expect(page).toHaveURL(/\\/missoes$/);
   await page.goto('/');
   await expect(
     page.getByRole('link', { name: 'Continuar missão', exact: true }),
@@ -102,7 +103,18 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
   await page
     .getByRole('link', { name: 'Continuar missão', exact: true })
     .click();
-  await page.getByRole('button', { name: 'Retomar missão', exact: true }).click();
+  await expect(page).toHaveURL(/\\/missao\\/\\d+$/);
+  const resume = page.getByRole('button', { name: 'Retomar missão', exact: true });
+  if (!(await resume.isVisible())) {
+    console.log(
+      'LMUP_HOME_PAUSE_DIAGNOSTIC',
+      JSON.stringify({
+        url: page.url(),
+        body: (await page.locator('body').innerText()).slice(0, 800),
+      }),
+    );
+  }
+  await resume.click();
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
