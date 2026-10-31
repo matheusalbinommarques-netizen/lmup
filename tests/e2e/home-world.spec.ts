@@ -15,6 +15,25 @@ async function capture(page: Page, name: string) {
   });
 }
 
+async function awaitStoredMission(page: Page, title: string) {
+  await expect.poll(() => page.evaluate(async (name) => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('LevelMeUpDB');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    try {
+      return await new Promise<boolean>((resolve, reject) => {
+        const request = db.transaction('tasks', 'readonly').objectStore('tasks').getAll();
+        request.onsuccess = () => resolve(request.result.some((task) => task.title === name));
+        request.onerror = () => reject(request.error);
+      });
+    } finally {
+      db.close();
+    }
+  }, title), { timeout: 15000, message: 'Missão deve estar persistida antes de navegar' }).toBe(true);
+}
+
 async function createMission(page: Page, title: string) {
   await page.getByRole('button', { name: 'Nova missão', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Uma nova missão' });
@@ -22,6 +41,7 @@ async function createMission(page: Page, title: string) {
   await dialog
     .getByRole('button', { name: 'Criar missão', exact: true })
     .click();
+  await awaitStoredMission(page, title);
   await page.goto('/missoes');
   await page.getByRole('button', { name: 'Todas', exact: true }).click();
   await page.getByRole('link', { name: title, exact: true }).click();

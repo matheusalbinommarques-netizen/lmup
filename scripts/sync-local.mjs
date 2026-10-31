@@ -30,6 +30,9 @@ if (process.argv.includes('--status')) {
   );
 } else {
   const unlock = await acquireLocalLock(join(storage, 'sync-daemon.lock'));
+  const progress = async (step) => {
+    await writeFile(statusPath, JSON.stringify({ state: 'validating', step, checkedAt: new Date().toISOString() }, null, 2));
+  };
   const cycle = async () => {
     let result;
     try {
@@ -51,30 +54,35 @@ if (process.argv.includes('--status')) {
           storage,
           config,
           verify: async () => {
+            await progress('dependencies');
             await runNpm(
               config.checkout,
               config.npmCli,
               ['ci', '--no-audit', '--no-fund'],
               logPath,
             );
+            await progress('audit');
             await auditLocalRelease({
               project: config.checkout,
               storage,
               npmCli: config.npmCli,
               logPath,
             });
+            await progress('verify');
             await runNpm(
               config.checkout,
               config.npmCli,
               ['run', 'verify'],
               logPath,
             );
+            await progress('pwa');
             await runNpm(
               config.checkout,
               config.npmCli,
               ['run', 'test:pwa'],
               logPath,
             );
+            await progress('package');
             await runNpm(
               config.checkout,
               config.npmCli,
