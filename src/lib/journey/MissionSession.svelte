@@ -86,6 +86,25 @@
     }
   }
 
+  function reorder(index: number, offset: number) {
+    if (!session) return;
+    const target = index + offset;
+    if (target < 0 || target >= session.taskIds.length) return;
+    const taskIds = [...session.taskIds];
+    const selectedId = session.taskIds[session.cursor];
+    const [moved] = taskIds.splice(index, 1);
+    taskIds.splice(target, 0, moved);
+    const cursor = selectedId ? taskIds.indexOf(selectedId) : taskIds.length;
+    const next = { ...session, taskIds, cursor };
+    try {
+      saveMissionSession(next);
+      session = next;
+      error = '';
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : 'Não foi possível reorganizar a sessão.';
+    }
+  }
+
   function advance() {
     if (!session) return;
     const next = session.taskIds.findIndex(
@@ -146,18 +165,24 @@
           {#each session.taskIds as id, index (id)}
             {@const task = missions[index]}
             <li>
-              <button
-                class:chosen={session.cursor === index}
-                type="button"
-                aria-current={session.cursor === index ? 'step' : undefined}
-                onclick={() => choose(index)}
-              >
-                <span class="queue-number">{completedIds.has(id) ? '✓' : index + 1}</span>
-                <span class="queue-copy">
-                  <strong>{task?.title ?? 'Missão indisponível'}</strong>
-                  <small>{completedIds.has(id) ? 'Concluída hoje' : task?.executionState === 'paused' ? 'Pausada' : 'Pendente'}</small>
-                </span>
-              </button>
+              <div class="queue-entry">
+                <button
+                  class:chosen={session.cursor === index}
+                  type="button"
+                  aria-current={session.cursor === index ? 'step' : undefined}
+                  onclick={() => choose(index)}
+                >
+                  <span class="queue-number">{completedIds.has(id) ? '✓' : index + 1}</span>
+                  <span class="queue-copy">
+                    <strong>{task?.title ?? 'Missão indisponível'}</strong>
+                    <small>{completedIds.has(id) ? 'Concluída hoje' : task?.executionState === 'paused' ? 'Pausada' : 'Pendente'}</small>
+                  </span>
+                </button>
+                <div class="queue-reorder">
+                  <button type="button" disabled={index === 0} aria-label={`Mover ${task?.title ?? 'missão'} para cima`} onclick={() => reorder(index, -1)}>↑</button>
+                  <button type="button" disabled={index === session!.taskIds.length - 1} aria-label={`Mover ${task?.title ?? 'missão'} para baixo`} onclick={() => reorder(index, 1)}>↓</button>
+                </div>
+              </div>
             </li>
           {/each}
         </ol>
@@ -208,8 +233,12 @@
   .session-queue h2, .session-empty h2 { font: 500 1.45rem var(--lmu-display); margin: .2rem 0 1rem; }
   .session-queue ol { padding: 0; list-style: none; margin: 0 0 .7rem; }
   .session-queue li { border-top: 1px solid #a27c433b; }
-  .session-queue li button { width: 100%; border: 0; border-left: 3px solid transparent; background: none; color: #e8e1d3; display: flex; gap: .7rem; align-items: center; text-align: left; padding: .7rem .25rem; cursor: pointer; }
-  .session-queue li button:hover, .session-queue li button.chosen { background: #a27c4326; border-left-color: #deb466; }
+  .queue-entry { display: flex; align-items: center; }
+  .session-queue li .queue-entry > button { flex: 1; min-width: 0; border: 0; border-left: 3px solid transparent; background: none; color: #e8e1d3; display: flex; gap: .7rem; align-items: center; text-align: left; padding: .7rem .25rem; cursor: pointer; }
+  .queue-reorder { display: flex; flex-direction: column; }
+  .queue-reorder button { color: #d8b16e; border: 0; background: transparent; padding: .15rem .4rem; cursor: pointer; }
+  .queue-reorder button:disabled { opacity: .22; cursor: default; }
+  .session-queue li .queue-entry > button:hover, .session-queue li .queue-entry > button.chosen { background: #a27c4326; border-left-color: #deb466; }
   .queue-number { display: grid; place-items: center; width: 27px; height: 27px; flex: 0 0 27px; border: 1px solid #a27c4377; border-radius: .3rem; font-variant-numeric: tabular-nums; }
   .queue-copy { min-width: 0; }
   .queue-copy strong { display: block; font-size: .88rem; overflow-wrap: anywhere; }
