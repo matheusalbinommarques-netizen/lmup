@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { captureProtocolDiagnostics } from './protocol-diagnostics';
 import { readFile } from 'node:fs/promises';
 
 test('Home RPG mantém cena, personagem e atlas disponíveis sem conexão', async ({
@@ -797,7 +798,9 @@ test('cache opcional respeita limite e configuração cabe em 320px com texto am
   ).toBe(true);
 });
 
-test.afterEach(async ({ page }, info) => {
+test.afterEach(async ({ page, context }, info) => {
+  if (info.status !== info.expectedStatus)
+    await captureProtocolDiagnostics(context, info);
   if (process.env.LMU_CAPTURE_DIR && info.status === 'passed')
     await page.screenshot({
       path:

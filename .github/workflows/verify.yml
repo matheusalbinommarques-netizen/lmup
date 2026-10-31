@@ -2,6 +2,7 @@ name: Verificar LMU
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:
@@ -29,6 +30,16 @@ jobs:
         run: npm run test:e2e
       - if: matrix.node == 24
         run: npm run test:pwa
+      - name: Preserve browser failure evidence
+        if: failure() && matrix.node == 24
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser-failures-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            test-results/
+            test-results-pwa/
+          retention-days: 14
+          if-no-files-found: ignore
       - if: matrix.node == 24
         run: npm run test:package
       # Keep the strict audit mandatory; run functional checks before it so
