@@ -129,7 +129,13 @@ async function mission(page: Page, title = 'Uma missão offline') {
   await page.getByRole('button', { name: 'Nova missão', exact: true }).click();
   await page.getByLabel('O que você quer fazer?').fill(title);
   await page.getByRole('button', { name: 'Criar missão', exact: true }).click();
-  await page.waitForURL(/missao/);
+  // Creating a mission does not open execution. Wait for persistence,
+  // then explicitly open it, including when the PWA is offline.
+  await expect(page.getByRole('dialog', { name: 'Uma nova missão' })).not.toBeVisible();
+  await page.goto('/missoes');
+  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('link', { name: title, exact: true }).click();
+  await expect(page).toHaveURL(/\/missao\/\d+$/);
   return page.url();
 }
 
@@ -167,7 +173,9 @@ test('organizador cria área e rotina offline, vira o dia e preserva ocorrência
     .getByRole('combobox', { name: 'Recorrência', exact: true })
     .selectOption('daily');
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
-  await page.waitForURL(/\/missao\/\d+$/);
+  await expect(form).not.toBeVisible();
+  await page.getByRole('link', { name: 'Cuidar da casa sem conexão', exact: true }).click();
+  await expect(page).toHaveURL(/\/missao\/\d+$/);
   const url = page.url();
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
