@@ -85,7 +85,7 @@ export async function applyUpdate() {
       id: crypto.randomUUID(),
       schema: APP_SCHEMA,
       protocol: UPDATE_PROTOCOL,
-    });
+    }, 16000);
     if (!result.ok)
       patch({
         message:
