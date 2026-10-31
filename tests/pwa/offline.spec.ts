@@ -540,6 +540,8 @@ test('outra aba com notas não salvas bloqueia a troca até salvar', async ({
   await expect(
     other.getByText('Tudo salvo neste navegador', { exact: true }),
   ).toBeVisible();
+  // Explicitly refocus the initiating tab after saving in the secondary tab.
+  await page.bringToFront();
   await page
     .getByRole('button', { name: 'Atualizar agora', exact: true })
     .click();
