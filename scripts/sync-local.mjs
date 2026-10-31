@@ -5,14 +5,14 @@ import {
   stat,
   rename,
   appendFile,
-  realpath,
 } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { synchronize, runNpm } from './local-sync-core.mjs';
 import { acquireLocalLock } from './local-process-lock.mjs';
 import { ensureServer } from './publish-local.mjs';
 import { auditLocalRelease } from './local-security-policy.mjs';
+import { validateSyncConfig } from './local-sync-config.mjs';
 
 const project =
   process.env.LMU_INSTALLATION_PROJECT ||
@@ -42,13 +42,7 @@ if (process.argv.includes('--status')) {
       const config = JSON.parse(await readFile(configPath, 'utf8'));
       if (!config.enabled) result = { state: 'paused', reason: 'disabled' };
       else {
-        if (
-          config.branch !== 'release/lmup-local' ||
-          (await realpath(config.checkout)) !== resolve(storage, 'publication')
-        )
-          throw Error(
-            'A sincronização exige a cópia isolada e a branch release/lmup-local.',
-          );
+        await validateSyncConfig(config, storage);
         result = await synchronize({
           project: config.checkout,
           storage,

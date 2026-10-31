@@ -27,10 +27,10 @@
     "app:preparar": "node scripts/publish-local.mjs --setup",
     "app:iniciar": "node scripts/publish-local.mjs --serve",
     "app:versao": "node scripts/publish-local.mjs --status",
-    "test:publication": "node --test scripts/local-publication.test.mjs scripts/local-sync.test.mjs scripts/local-security-policy.test.mjs scripts/local-precache.test.mjs",
+    "test:publication": "node --test scripts/local-publication.test.mjs scripts/local-sync.test.mjs scripts/local-sync-config.test.mjs scripts/local-security-policy.test.mjs scripts/local-precache.test.mjs",
     "app:sincronizar": "node scripts/sync-local.mjs",
     "app:sync-status": "node scripts/sync-local.mjs --status",
-    "app:promover": "node scripts/promote-local.mjs"
+    "app:migrar": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/migrate-local-sync.ps1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",

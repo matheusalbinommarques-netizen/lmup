@@ -12,7 +12,7 @@ A conclusão de missões usa a [Recompensa Viva 0.1](docs/RECOMPENSA-VIVA-0.1.md
 
 O organizador de [Missões e Organização Pessoal 1.0](docs/MISSOES-ORGANIZACAO-PESSOAL-1.0.md) reúne áreas personalizadas, planejamento por data, rotinas diárias e semanais e histórico por ocorrência, integrado à Recompensa Viva e disponível offline.
 
-O app instalado pelo Chrome recebe versões pela [sincronização isolada com o GitHub](docs/SINCRONIZACAO-GITHUB.md). O desenvolvimento ocorre em `feat/home-rpg-reference`; versões aprovadas são promovidas explicitamente para `release/lmup-local`. Uma tarefa local busca a branch estável, valida e publica sem alterar a pasta de desenvolvimento. A origem e os dados locais são preservados.
+O app instalado pelo Chrome recebe versões pela [sincronização isolada com o GitHub](docs/SINCRONIZACAO-GITHUB.md). O desenvolvimento ocorre em branches próprias e as alterações aprovadas entram por Pull Request na `main`. Uma tarefa local acompanha a `main`, valida e publica sem alterar a pasta de desenvolvimento. A origem e os dados locais são preservados.
 
 ## Requisitos e instalação
 
