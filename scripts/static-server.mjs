@@ -1,7 +1,7 @@
 import { createReadStream } from 'node:fs';
-import { stat } from 'node:fs/promises';
+import { stat, readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
-import { extname, isAbsolute, relative, resolve } from 'node:path';
+import { extname, isAbsolute, relative, resolve, join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { publishedBuilds } from './local-release-store.mjs';
 import { createHash } from 'node:crypto';
@@ -20,6 +20,29 @@ const types = {
   '.woff2': 'font/woff2',
   '.wasm': 'application/wasm',
 };
+
+// Only expose an allowlisted, bounded summary; never return local paths, credentials or logs.
+async function syncSummary(publicationRoot) {
+  try {
+    const raw = await readFile(join(publicationRoot, 'sync-status.json'), 'utf8');
+    if (raw.length > 16384) return null;
+    const status = JSON.parse(raw);
+    const safe = (value, max = 160) =>
+      typeof value === 'string' ? value.slice(0, max) : null;
+    const states = ['current', 'published', 'waiting', 'paused', 'error'];
+    return {
+      state: states.includes(status.state) ? status.state : 'unknown',
+      commit: /^[a-f0-9]{40}$/.test(status.commit ?? '') ? status.commit : null,
+      version: /^[a-f0-9]{16}$/.test(status.version ?? '') ? status.version : null,
+      checkedAt: Number.isFinite(Date.parse(status.checkedAt)) ? status.checkedAt : null,
+      reason: safe(status.reason),
+      message: status.state === 'error' ? 'A sincronização encontrou um erro. Consulte o diagnóstico local.' : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function createStaticServer({ root, publicationRoot }) {
   return createServer(async (request, response) => {
     try {
@@ -48,6 +71,7 @@ export function createStaticServer({ root, publicationRoot }) {
                   .digest('hex'),
                 version: releases[0]?.version ?? null,
                 commit: releases[0]?.source?.commit ?? null,
+                sync: await syncSummary(publicationRoot),
               }),
         );
         return;
