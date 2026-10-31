@@ -143,8 +143,18 @@ export async function setTaskStep(id: number, index: number, checked: boolean) {
       throw new Error('A missão mudou em outra aba. Reabra para continuar.');
     if (!taskSteps(task).some((step) => step.index === index))
       throw new Error('O passo foi alterado. Reabra a missão.');
+    const reviewBase = new Date(task.reviewStartedAt ?? task.createdAt).toISOString();
+    const expectedReviewSession = `${reviewBase}:${task.completionRevision ?? 0}`;
+    const legacyReviewInProgress =
+      task.reviewSession === reviewBase &&
+      ['active', 'paused'].includes(task.executionState ?? '');
+    const reviewIsCurrent =
+      !task.reviewEnabled ||
+      task.reviewSession === expectedReviewSession ||
+      legacyReviewInProgress;
     const completed = new Set(
-      task.recurrence && task.occurrenceSession !== dateKey()
+      (task.recurrence && task.occurrenceSession !== dateKey()) ||
+      !reviewIsCurrent
         ? []
         : (task.completedSubtasks ?? []),
     );
@@ -153,6 +163,9 @@ export async function setTaskStep(id: number, index: number, checked: boolean) {
     await db.tasks.update(id, {
       completedSubtasks: [...completed],
       ...(task.recurrence ? { occurrenceSession: dateKey() } : {}),
+      ...(task.reviewEnabled && !reviewIsCurrent
+        ? { reviewSession: expectedReviewSession }
+        : {}),
       executionState: 'active',
       updatedAt: new Date(),
     });
