@@ -5,8 +5,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  // Keep mobile/desktop browser runs isolated on shared CI runners.
-  workers: process.env.CI ? 1 : undefined,
+  // Balance CI duration and browser resources; persistence checks guard navigation races.
+  workers: process.env.CI ? 2 : undefined,
   timeout: 45_000,
   use: {
     baseURL: 'http://127.0.0.1:4174',
