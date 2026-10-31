@@ -3,6 +3,9 @@ import { readFile, stat } from 'node:fs/promises';
 import { resolve, relative, extname } from 'node:path';
 const root = resolve('build');
 const sw = await readFile(resolve(root, 'sw.js'), 'utf8');
+const diagnostic = process.env.LMU_PWA_DIAGNOSTICS
+  ? await readFile(resolve('tests/pwa/worker-diagnostics.js'), 'utf8')
+  : '';
 let release = 'a';
 let network = true;
 const mime = {
@@ -62,6 +65,22 @@ createServer(async (request, response) => {
       }
       const version = sw.match(/const RELEASE = '([^']+)'/)[1];
       let code = sw.replace(version, version + '-' + release);
+      if (diagnostic)
+        code =
+          diagnostic +
+          code
+            .replace(
+              'version: RELEASE,',
+              'version: RELEASE, diagnostics: protocolEvents,',
+            )
+            .replace(
+              'barrier = null;\n  if (!ready',
+              "recordProtocol({ phase: 'barrier', ready, unchanged, expected: [...barrier.expected], acknowledged: [...barrier.ready] }); barrier = null;\n  if (!ready",
+            )
+            .replace(
+              'await self.skipWaiting();',
+              "recordProtocol({ phase: 'skip-start' }); await self.skipWaiting(); recordProtocol({ phase: 'skip-end' });",
+            );
       if (release === 'incompatible')
         code = code.replace('const SCHEMA = 5', 'const SCHEMA = 6');
       if (release === 'cache-failure')
