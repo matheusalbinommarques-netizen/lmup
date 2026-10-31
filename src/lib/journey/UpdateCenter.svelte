@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import Card from '$lib/ui/Card.svelte';
   import Button from '$lib/ui/Button.svelte';
+  import PwaPanel from './PwaPanel.svelte';
 
   type SyncState = {
     state: string;
@@ -22,6 +23,7 @@
   let status = $state<ServerStatus | null>(null);
   let unavailable = $state(false);
   let checking = $state(false);
+  let lastConsulted = $state<string | null>(null);
 
   const stateNames: Record<string, string> = {
     current: 'Atualizado',
@@ -70,6 +72,7 @@
       if (value.service !== 'lmup-local-publications') throw Error('Servidor desconhecido');
       status = value;
       unavailable = false;
+      lastConsulted = new Date().toISOString();
     } catch {
       unavailable = true;
       status = null;
@@ -93,10 +96,10 @@
       <p class="lmu-eyebrow">GitHub · Publicação local</p>
       <h2>Central de Atualizações</h2>
       <p class="lmu-muted">
-        A publicação é validada no computador antes de chegar ao Chrome.
-        A ativação no navegador continua sendo feita na seção de atualização abaixo.
+        Acompanhe a publicação do GitHub e a versão instalada no Chrome em um só lugar. Verificar o Chrome não inicia uma sincronização com o GitHub.
       </p>
     </div>
+    <div><h3>Publicação no computador</h3><p class="lmu-hint">A sincronização é automática. A consulta abaixo apenas lê o estado da última verificação.</p></div>
     {#if unavailable}
       <p role="status" class="lmu-hint">
         Monitor local indisponível. Você pode continuar usando suas missões, inclusive offline.
@@ -131,8 +134,11 @@
     {/if}
     <div class="journey-actions">
       <Button variant="secondary" disabled={checking} onclick={refresh}>
-        {checking ? 'Consultando…' : 'Atualizar status'}
+        {checking ? 'Consultando…' : 'Consultar publicação'}
       </Button>
     </div>
+    {#if lastConsulted}<p role="status" class="lmu-hint">Informações consultadas em {date(lastConsulted)}.</p>{/if}
+    <hr />
+    <PwaPanel />
   </div>
 </Card>
