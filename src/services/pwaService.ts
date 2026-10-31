@@ -163,6 +163,7 @@ export function initializePwa() {
         updateLocked.set(false);
         lockedRequest = null;
       }
+      event.ports[0]?.postMessage({ unlocked: true });
       return;
     }
     if (data.type !== 'LMU_UPDATE_PREPARE') return;
