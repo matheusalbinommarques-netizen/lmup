@@ -13,6 +13,7 @@ const { manifestEntries, count, size, warnings } = await getManifest({
     'art/pilot/scene-*-small.webp',
     'art/pilot/companion.webp',
     'art/companions-v2/*-160.webp',
+    'art/home-rpg/*.webp',
   ],
   maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
 });

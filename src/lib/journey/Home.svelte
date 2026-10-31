@@ -14,13 +14,14 @@
   import { formatCalendar } from '$services/calendar';
   import { getEcoStageForTotalXp } from '$services/ecoConfig';
   import { sanctuaryContent } from '$lib/content/world';
-  import { companionArtwork } from './companionArtwork';
   import Button from '$lib/ui/Button.svelte';
   import Icon from '$lib/ui/Icon.svelte';
-  import Artwork from '$lib/ui/Artwork.svelte';
   import QuickCreate from './QuickCreate.svelte';
   import HeroIdentity from './HeroIdentity.svelte';
   import WorldProgress from './WorldProgress.svelte';
+  import HomeScene from './HomeScene.svelte';
+  import WorldDestination from './WorldDestination.svelte';
+  import { MAX_LEVEL } from '$services/progression';
   import { chapterTwoProgress, sanitizePilot } from '$services/rpgPilotService';
   import { chapterTwoScenes } from '$lib/content/pilot';
   import './home.css';
@@ -30,6 +31,8 @@
   let error = $state('');
   let open = $state(false);
   let starter = $state<MissionStarter>();
+  let greeting = $state('Boa jornada');
+  let filter = $state<'all' | 'today' | 'completed'>('all');
   function createMission(example?: MissionStarter) {
     starter = example;
     open = true;
@@ -48,7 +51,10 @@
     });
     const refreshDay = () => {
       today = dateKey();
+      const hour = new Date().getHours();
+      greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
     };
+    refreshDay();
     window.addEventListener('focus', refreshDay);
     const clock = setInterval(refreshDay, 30000);
     return () => {
@@ -66,16 +72,18 @@
       (data?.tasks.some((task) => !task.archived && task.reviewEnabled) ??
         false),
   );
-  const introduction = $derived(
-    !data
-      ? ''
-      : !data.tasks.length
-        ? homeCopy.first
-        : next
-          ? next.reason === 'Em andamento'
-            ? homeCopy.resume
-            : homeCopy.next
-          : homeCopy.clear,
+  const activeTasks = $derived(
+    data?.tasks.filter((task) => !task.archived) ?? [],
+  );
+  const visibleTasks = $derived(
+    activeTasks.filter(
+      (task) =>
+        filter === 'all' ||
+        (filter === 'today'
+          ? task.plannedDate === today
+          : !isAvailable(task) &&
+            (task.completed || task.status === 'completed')),
+    ),
   );
   const plan = $derived(
     data?.tasks.filter(
@@ -130,20 +138,7 @@
 </script>
 
 <svelte:head><title>{destinations.today} · {identity.name}</title></svelte:head>
-<div class="home-world">
-  <header class="home-heading">
-    <div>
-      <p class="lmu-eyebrow">O registro da sua jornada</p>
-      <h1>Hoje, no seu mundo.</h1>
-    </div>
-    {#if data && !error}<Button
-        aria-label="Nova missão"
-        onclick={() => createMission()}
-        ><Icon name="plus" size={18} /><span class="home-create-label"
-          >Nova missão</span
-        ></Button
-      >{/if}
-  </header>
+<div class="home-world rpg-home">
   {#if error}
     <div role="alert" class="journey-error">
       {error}<a class="journey-link" href="/" data-sveltekit-reload
@@ -151,271 +146,335 @@
       >
     </div>
   {:else if !data}
-    <div class="home-loading" role="status">
-      <Icon name="world" size={32} />
-      <p>Abrindo sua jornada…</p>
+    <div class="rpg-loading" role="status">
+      <Icon name="world" size={36} />Abrindo sua jornada…
     </div>
   {:else}
-    {#if data.profile}
-      <div class="home-landscape">
-        <div class="home-scenery lmu-decorative">
-          <Artwork
-            src={sanctuaryContent[stage].pilot}
-            alt={`Seu ambiente no estágio ${sanctuaryContent[stage].label}`}
-            sizes="(max-width: 760px) 100vw, 1100px"
-            eager
-          />
-        </div>
-        <div class="home-landscape-top">
-          <span class="lmu-eyebrow">Santuário pessoal</span><span
-            >{data.profile.totalXpEarned} XP na sua jornada</span
-          >
-        </div>
-        <div class="home-landscape-bottom">
-          <HeroIdentity
-            profile={data.profile}
-            owned={data.owned}
-            achievements={achievements.map((item) => item.title)}
-          /><WorldProgress totalXp={data.profile.totalXpEarned} />
-        </div>
-      </div>
-    {:else}
-      <p role="alert" class="journey-error">
-        Seu perfil não está disponível. Seus dados foram preservados. <a
-          href="/"
-          data-sveltekit-reload>Tentar novamente</a
-        >
-      </p>
-    {/if}
-    <div class="home-columns">
-      <section class="home-work" aria-labelledby="home-action-title">
-        <div class="home-section-heading">
-          <p class="lmu-eyebrow">Na vida real</p>
-          <a href="/missoes"
-            >Abrir planejamento <Icon name="arrow" size={16} /></a
-          >
-        </div>
-        <div class="home-next" class:home-next-empty={!next}>
-          {#if next}
-            <p class="home-kicker">
-              <span class="home-reason">{next.reason}</span>{#if reward}<span
-                  >+{reward.xp} XP ao concluir</span
-                >{/if}
+    <div class="rpg-top">
+      <section class="rpg-world-panel" aria-label="Personagem e mundo">
+        <header class="rpg-heading">
+          <div>
+            <p class="lmu-eyebrow">Level Me Up · Seu mundo, sua jornada</p>
+            <h1>
+              {data?.profile
+                ? `${greeting}, ${data.profile.name}.`
+                : 'Hoje, no seu mundo.'}
+            </h1>
+            <p class="rpg-heading-note">
+              O que você faz hoje deixa marcas no seu mundo.
             </p>
-            <h2 id="home-action-title">{next.task.title}</h2>
-            <p class="lmu-muted">{introduction}</p>
-            {#if next.reason !== 'Em andamento'}<p class="lmu-hint">
-                {next.explanation}
-              </p>{/if}
-            {#if taskSteps(next.task).length}
-              <progress
+          </div>
+        </header>
+        <HomeScene companion={data.companion} />
+        <div class="rpg-character-status">
+          {#if data.profile}<HeroIdentity
+              profile={data.profile}
+              owned={data.owned}
+              achievements={achievements.map((item) => item.title)}
+              compact
+            />{:else}<p role="alert">
+              Seu perfil não está disponível. Seus dados foram preservados. <a
+                href="/"
+                data-sveltekit-reload>Tentar novamente</a
+              >
+            </p>{/if}
+        </div>
+      </section>
+      <section class="rpg-missions" aria-labelledby="rpg-missions-title">
+        <header class="rpg-missions-heading">
+          <Icon name="today" size={25} />
+          <h2 id="rpg-missions-title">Suas missões</h2>
+          <span
+            >{completed.length}/{activeTasks.length}<small>concluídas</small
+            ></span
+          >
+        </header>
+        <div
+          class="rpg-task-filters"
+          role="group"
+          aria-label="Filtrar missões da Home"
+        >
+          <button
+            type="button"
+            aria-pressed={filter === 'all'}
+            onclick={() => {
+              filter = 'all';
+            }}>Todas</button
+          >
+          <button
+            type="button"
+            aria-pressed={filter === 'today'}
+            onclick={() => {
+              filter = 'today';
+            }}>Hoje <span>{plan.length}</span></button
+          >
+          <button
+            type="button"
+            aria-pressed={filter === 'completed'}
+            onclick={() => {
+              filter = 'completed';
+            }}>Concluídas</button
+          >
+        </div>
+        {#if next && filter !== 'completed'}
+          <div class="rpg-next">
+            <div class="rpg-next-label">
+              <span>{next.reason}</span>{#if reward}<small
+                  >Prévia: +{reward.xp} XP</small
+                >{/if}
+            </div>
+            <h2>{next.task.title}</h2>
+            <p class="lmu-hint">
+              {next.reason === 'Em andamento'
+                ? homeCopy.resume
+                : next.explanation}
+            </p>
+            {#if taskSteps(next.task).length}<progress
                 max={taskSteps(next.task).length}
                 value={taskSteps(next.task).filter((step) =>
                   next.task.completedSubtasks?.includes(step.index),
                 ).length}
                 aria-label="Passos da próxima missão"
               ></progress>
-              <p class="lmu-hint home-step">
-                Próximo passo: {taskSteps(next.task).find(
+              <p class="lmu-hint">
+                {taskSteps(next.task).find(
                   (step) => !next.task.completedSubtasks?.includes(step.index),
                 )?.label ?? 'Pronta para concluir'}
-              </p>
-            {/if}
+              </p>{/if}
             <a
               class="lmu-button lmu-button--primary"
               href={`/missao/${next.task.id}`}
               >{next.reason === 'Em andamento'
                 ? 'Continuar missão'
-                : 'Começar missão'}<Icon name="arrow" size={18} /></a
+                : 'Começar missão'}<Icon name="arrow" size={16} /></a
             >
-          {:else}
-            <p class="home-kicker">
-              <Icon
-                name={data.tasks.length ? 'spark' : 'missions'}
-                size={18}
-              />{data.tasks.length ? 'Tempo para respirar' : 'O começo é seu'}
-            </p>
-            <h2 id="home-action-title">
-              {!data.tasks.length
-                ? homeCopy.firstTitle
-                : waitingReview
-                  ? homeCopy.waitingTitle
-                  : hasVisibleTasks
-                    ? homeCopy.clearTitle
-                    : homeCopy.archivedTitle}
-            </h2>
-            <p class="lmu-muted">
-              {!data.tasks.length
-                ? homeCopy.firstDescription
-                : waitingReview
-                  ? homeCopy.waitingDescription
-                  : hasVisibleTasks
-                    ? homeCopy.clearDescription
-                    : homeCopy.archivedDescription}
-            </p>
-            {#if data.tasks.length}<p class="lmu-hint">{introduction}</p>{/if}
-            <div class="home-actions">
-              <Button onclick={() => createMission()}
-                >{data.tasks.length
-                  ? 'Criar outra missão'
-                  : 'Criar minha primeira missão'}<Icon
-                  name="plus"
-                  size={18}
-                /></Button
-              >
-              {#if data.tasks.length}<a href="/progresso" class="journey-link"
-                  >Rever meu progresso</a
+          </div>
+        {/if}
+        <!-- Keyboard focus lets the user scroll the task region without a pointer. -->
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+        <div
+          class="rpg-task-scroll"
+          role="region"
+          aria-label="Lista de missões"
+          tabindex="0"
+        >
+          {#if !next && filter !== 'completed'}
+            <div class="rpg-empty">
+              <Icon name={data.tasks.length ? 'check' : 'missions'} size={24} />
+              <h2>
+                {!data.tasks.length
+                  ? homeCopy.firstTitle
+                  : waitingReview
+                    ? homeCopy.waitingTitle
+                    : hasVisibleTasks
+                      ? homeCopy.clearTitle
+                      : homeCopy.archivedTitle}
+              </h2>
+              <p class="lmu-muted">
+                {!data.tasks.length
+                  ? homeCopy.firstDescription
+                  : waitingReview
+                    ? homeCopy.waitingDescription
+                    : hasVisibleTasks
+                      ? homeCopy.clearDescription
+                      : homeCopy.archivedDescription}
+              </p>
+              {#if !data.tasks.length}
+                <Button onclick={() => createMission()}
+                  >Criar minha primeira missão<Icon
+                    name="plus"
+                    size={16}
+                  /></Button
+                >
+                <details class="rpg-starters">
+                  <summary>{homeCopy.examplesTitle}</summary>
+                  <p class="lmu-hint">{homeCopy.examplesHint}</p>
+                  <div class="journey-starter-list">
+                    {#each missionStarters as example (example.key)}<Button
+                        variant="secondary"
+                        onclick={() => createMission(example)}
+                        >{example.label}<Icon name="arrow" size={16} /></Button
+                      >{/each}
+                  </div>
+                </details>
+              {:else}<p class="lmu-hint">{homeCopy.clear}</p>
+                <a class="journey-link" href="/progresso">Rever meu progresso</a
                 >{/if}
             </div>
-            {#if !data.tasks.length}
-              <details class="home-starters">
-                <summary>{homeCopy.examplesTitle}</summary>
-                <p class="lmu-hint">{homeCopy.examplesHint}</p>
-                <div class="journey-starter-list">
-                  {#each missionStarters as example (example.key)}<Button
-                      variant="secondary"
-                      onclick={() => createMission(example)}
-                      >{example.label}<Icon name="arrow" size={18} /></Button
-                    >{/each}
-                </div>
-              </details>
-            {/if}
           {/if}
+          {#if visibleTasks.length}
+            <ul class="rpg-task-list">
+              {#each visibleTasks as task (task.id)}
+                {@const available = isAvailable(task)}
+                {@const recorded = task.completionEventId
+                  ? data.events.find(
+                      (event) =>
+                        event.id === task.completionEventId &&
+                        !event.reversedAt,
+                    )
+                  : undefined}
+                {@const taskReward = available
+                  ? data.rewards[task.id!]
+                  : recorded?.reward}
+                <li
+                  class:rpg-task-done={!available &&
+                    (task.completed || task.status === 'completed')}
+                >
+                  <a href={`/missao/${task.id}`}>
+                    <span class="rpg-task-mark"
+                      ><Icon
+                        name={!available &&
+                        (task.completed || task.status === 'completed')
+                          ? 'check'
+                          : task.executionState === 'active'
+                            ? 'pause'
+                            : 'book'}
+                        size={18}
+                      /></span
+                    >
+                    <span class="rpg-task-copy"
+                      ><strong>{task.title}</strong><small
+                        >{available
+                          ? task.executionState === 'active'
+                            ? 'Em execução'
+                            : task.executionState === 'paused'
+                              ? 'Pausada'
+                              : task.plannedDate === today
+                                ? 'Planejada para hoje'
+                                : 'Disponível'
+                          : task.reviewEnabled
+                            ? task.lastReviewDate === today
+                              ? 'Revisão realizada hoje'
+                              : 'Próxima revisão: ' +
+                                formatCalendar(reviewDueDate(task))
+                            : 'Concluída'}</small
+                      ></span
+                    >
+                    {#if taskReward}<span class="rpg-task-reward"
+                        ><span>+{taskReward.xp} XP</span><small
+                          >+{taskReward.gold} Gold</small
+                        ><span class="sr-only"
+                          >{available ? 'Prévia' : 'Registrado'}</span
+                        ></span
+                      >{/if}
+                    <Icon name="arrow" size={14} />
+                  </a>
+                </li>
+              {/each}
+            </ul>
+          {:else if filter === 'completed'}<p class="rpg-list-empty">
+              Nenhuma missão concluída para mostrar.
+            </p>{:else if filter === 'today' && next}<p class="rpg-list-empty">
+              Você ainda não escolheu missões para hoje. <a href="/missoes"
+                >Abrir planejamento</a
+              >
+            </p>{/if}
         </div>
-        {#if plan.length}
-          <section class="home-plan" aria-labelledby="plan-title">
-            <div class="home-section-heading">
-              <h3 id="plan-title">Seu plano de hoje</h3>
-              <span class="lmu-hint">{plan.length} no plano</span>
-            </div>
-            <ul class="home-task-list">
-              {#each plan as task (task.id)}<li>
-                  <a href={`/missao/${task.id}`}
-                    ><span>{task.title}</span><small
-                      >{isAvailable(task)
-                        ? 'Disponível'
-                        : task.reviewEnabled
-                          ? task.lastReviewDate === today
-                            ? 'Revisão realizada hoje'
-                            : 'Próxima revisão: ' +
-                              formatCalendar(reviewDueDate(task))
-                          : 'Concluída'}</small
-                    ><Icon name="arrow" size={16} /></a
-                  >
-                </li>{/each}
-            </ul>
-          </section>
-        {:else if data.tasks.some((task) => !task.archived && task.reviewEnabled && !isAvailable(task))}
-          <p class="home-plan lmu-hint">
-            {#each data.tasks
-              .filter((task) => !task.archived && task.reviewEnabled && !isAvailable(task))
-              .slice(0, 3) as task (task.id)}<a
-                class="journey-link"
-                href={`/missao/${task.id}`}
-                >{task.title} · {task.lastReviewDate === today
-                  ? 'Revisão realizada hoje'
-                  : 'Próxima revisão: ' +
-                    formatCalendar(reviewDueDate(task))}</a
-              >{/each}
-          </p>
-        {/if}
-        {#if completed.length}
-          <details class="home-completed">
-            <summary
-              >{completed.length}
-              {completed.length === 1
-                ? 'missão concluída'
-                : 'missões concluídas'}</summary
-            >
-            <ul class="home-task-list">
-              {#each completed.slice(-5).reverse() as task (task.id)}<li>
-                  <a href={`/missao/${task.id}`}
-                    ><Icon name="spark" size={16} /><span>{task.title}</span
-                    ><small>Concluída</small></a
-                  >
-                </li>{/each}
-            </ul>
-            <a class="journey-link" href="/progresso">Ver todo o histórico</a>
-          </details>
-        {/if}
-        {#if projects.length}
-          <section class="home-projects" aria-labelledby="home-projects-title">
-            <div class="home-section-heading">
-              <h3 id="home-projects-title">O que você está construindo</h3>
-              <a href="/projetos">Projetos <Icon name="arrow" size={16} /></a>
-            </div>
-            <ul class="home-task-list">
-              {#each projects.slice(0, 3) as project (project.id)}<li>
-                  <a href={`/projetos/${project.id}`}
-                    ><Icon name="projects" size={18} /><span
-                      >{project.name}</span
-                    ><small
-                      >{project.status === 'pausado'
-                        ? 'Pausado'
-                        : project.status === 'planejando'
-                          ? 'Planejando'
-                          : 'Em andamento'}</small
-                    ></a
-                  >
-                </li>{/each}
-            </ul>
-          </section>
-        {/if}
+        <footer class="rpg-missions-footer">
+          <Button aria-label="Nova missão" onclick={() => createMission()}
+            ><Icon name="plus" size={18} />Nova missão</Button
+          ><a href="/missoes" aria-label="Abrir planejamento"
+            ><Icon name="missions" size={22} /></a
+          >
+        </footer>
       </section>
-      <aside class="home-beyond" aria-label="Além das missões">
-        <div class="home-section-heading">
-          <p class="lmu-eyebrow">Além das missões</p>
-          <Icon name="world" size={17} />
-        </div>
-        {#if data.companion}
-          <a href="/bestiario" class="home-companion"
-            ><Artwork
-              src={companionArtwork(data.companion)}
-              alt={data.companion.name}
-              sizes="80px"
-              class="lmu-decorative"
-            />
-            <div>
-              <p class="lmu-eyebrow">Ao seu lado</p>
-              <h3>{data.companion.name}</h3>
-              <p class="lmu-hint">
-                Estágio {data.companion.evolutionStage ?? 1} · Ver companhia
-              </p>
-            </div>
-            <Icon name="arrow" size={16} /></a
-          >
-        {:else}
-          <a href="/bestiario" class="home-discover"
-            ><Icon name="spark" size={24} />
-            <div>
-              <h3>Companhia para o caminho</h3>
-              <p class="lmu-hint">Conheça os companheiros disponíveis.</p>
-            </div>
-            <Icon name="arrow" size={16} /></a
-          >
-        {/if}
-        <section class="home-adventure" aria-labelledby="home-adventure-title">
-          <p class="lmu-eyebrow">Aventura experimental</p>
-          <h2 id="home-adventure-title">O outro lado da ponte</h2>
-          <p class="lmu-muted">{adventureStatus}</p>
-          <a href="/aventura" class="journey-link"
-            >{pilot.scene > 0
-              ? 'Ver meus capítulos'
-              : 'Entrar na aventura'}<Icon name="arrow" size={16} /></a
-          >
-        </section>
-        <a href="/progresso" class="home-record"
-          ><Icon name="today" size={20} /><span
-            >Seu registro de jornada<small
-              >XP, conquistas e passos que ficaram.</small
-            ></span
-          ><Icon name="arrow" size={16} /></a
-        >
-        <p class="home-rest">
-          Seu mundo pode esperar.<br />O tempo aqui é seu.
-        </p>
-      </aside>
     </div>
+    <div class="rpg-destinations" aria-label="Explorar seu mundo">
+      <WorldDestination
+        title="Aventura"
+        icon="swords"
+        image="/art/home-rpg/adventure-small.webp"
+        detail={adventureStatus}
+        href="/aventura"
+        action={pilot.scene > 0 ? 'Continuar aventura' : 'Entrar na aventura'}
+      >
+        {#if pilot.scene === 6 && pilot.chapterOneEndXp !== undefined && !pilot.chapterTwoUnlocked}<progress
+            value={Math.min(chapter.required, chapter.earned)}
+            max={chapter.required}
+            aria-label="XP para o capítulo 2"
+          ></progress><small
+            >{Math.min(chapter.required, chapter.earned)} / {chapter.required} XP</small
+          >{:else}<small>O outro lado da ponte · experiência narrativa</small
+          >{/if}
+      </WorldDestination>
+      <WorldDestination
+        title="Refúgio"
+        icon="world"
+        image={sanctuaryContent[stage].pilot}
+        alt={`Seu ambiente no estágio ${sanctuaryContent[stage].label}`}
+        detail={`Estágio ${stage} · ${sanctuaryContent[stage].label}`}
+        href="/refugio"
+        action="Acessar refúgio"
+        ><small>{sanctuaryContent[stage].description}</small></WorldDestination
+      >
+      <WorldDestination
+        title="Projetos"
+        icon="projects"
+        image="/art/home-rpg/planning-small.webp"
+        detail={projects.length
+          ? `${projects.length} ${projects.length === 1 ? 'projeto em curso' : 'projetos em curso'}`
+          : 'Seu próximo projeto começa com uma ideia.'}
+        href="/projetos"
+        action="Ver projetos"
+      >
+        {#if projects.length}<a
+            class="rpg-project-name"
+            href={`/projetos/${projects[0].id}`}
+            >{projects[0].name}<span
+              >{projects[0].status === 'pausado'
+                ? 'Pausado'
+                : projects[0].status === 'planejando'
+                  ? 'Planejando'
+                  : 'Em andamento'}</span
+            ></a
+          >{:else}<small>Organize o que você quer construir.</small>{/if}
+      </WorldDestination>
+      <WorldDestination
+        id="home-map"
+        title="Mapa"
+        icon="map"
+        image="/art/home-rpg/atlas.webp"
+        detail="Um atlas ainda por explorar."
+        href="/refugio"
+        action="Ver lugares do refúgio"
+        ><small
+          >Mapa explorável em preparação. As paisagens do refúgio já estão
+          disponíveis.</small
+        ></WorldDestination
+      >
+    </div>
+    <section class="rpg-horizons" aria-label="Próximos marcos">
+      <div class="rpg-horizons-title">
+        <Icon name="spark" size={25} />
+        <h2>O caminho adiante</h2>
+        <a href="/progresso">Ver progresso <Icon name="arrow" size={14} /></a>
+      </div>
+      <div class="rpg-horizons-grid">
+        <WorldProgress totalXp={data.profile?.totalXpEarned ?? 0} />
+        <div class="rpg-level-goal">
+          <p class="lmu-eyebrow">Seu personagem</p>
+          <h3>
+            {(data.profile?.level ?? 0) >= MAX_LEVEL
+              ? 'Nível máximo alcançado'
+              : `Rumo ao nível ${(data.profile?.level ?? 1) + 1}`}
+          </h3>
+          <p>
+            {(data.profile?.level ?? 0) >= MAX_LEVEL
+              ? 'Cada novo passo continua registrado.'
+              : `${Math.max(0, (data.profile?.xpNext ?? 0) - (data.profile?.xpCurrent ?? 0))} XP para a próxima evolução.`}
+          </p>
+          <a href="/perfil">Ver personagem <Icon name="arrow" size={14} /></a>
+        </div>
+        <a class="rpg-earned" href="/trofeus"
+          ><Icon name="spark" size={28} /><span
+            ><strong
+              >{achievements.length}
+              {achievements.length === 1 ? 'conquista' : 'conquistas'}</strong
+            ><small>Marcas do que você já construiu.</small></span
+          ><Icon name="arrow" size={15} /></a
+        >
+      </div>
+    </section>
     <QuickCreate bind:open snapshot={data} {starter} />
   {/if}
 </div>

@@ -28,6 +28,16 @@
     { href: '/trofeus', label: destinations.achievements },
     { href: '/cla', label: 'Clã (demonstração)' },
   ];
+  const homeLinks: { href: string; label: string; icon: IconName }[] = [
+    links[0],
+    links[1],
+    links[2],
+    { href: '/aventura', label: 'Aventura', icon: 'swords' },
+    links[3],
+    { href: '/perfil', label: 'Personagem', icon: 'person' },
+    { href: '/bestiario', label: 'Companheiros', icon: 'companion' },
+    { href: '#home-map', label: 'Mapa', icon: 'map' },
+  ];
   function active(href: string) {
     const path = page.url.pathname;
     if (href === '/') return path === '/' || path.startsWith('/missao/');
@@ -53,7 +63,11 @@
   });
 </script>
 
-<div class="lmu-design journey-shell" class:journey-adventure={page.url.pathname === '/aventura'}>
+<div
+  class="lmu-design journey-shell"
+  class:journey-adventure={page.url.pathname === '/aventura'}
+  class:journey-home={page.url.pathname === '/'}
+>
   <a class="lmu-skip" href="#journey-main">Pular para o conteúdo</a>
   <aside class="journey-sidebar">
     <a href="/" class="journey-brand"
@@ -62,7 +76,7 @@
       ></a
     >
     <nav aria-label="Navegação principal">
-      {#each links as link (link.href)}<a
+      {#each page.url.pathname === '/' ? homeLinks : links as link (link.href)}<a
           href={link.href}
           aria-current={active(link.href) ? 'page' : undefined}
           ><Icon name={link.icon} />{link.label}</a

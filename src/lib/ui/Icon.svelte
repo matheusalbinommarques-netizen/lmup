@@ -11,7 +11,11 @@
     | 'settings'
     | 'spark'
     | 'book'
-    | 'pause';
+    | 'pause'
+    | 'swords'
+    | 'person'
+    | 'companion'
+    | 'map';
   let { name, size = 22 }: { name: IconName; size?: number } = $props();
   const paths: Record<IconName, string> = {
     today:
@@ -29,6 +33,13 @@
     spark: 'm12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3',
     book: 'M12 5v15M3 4c4-1 6 0 9 1 3-1 5-2 9-1v15c-4-1-6 0-9 1-3-1-5-2-9-1V4',
     pause: 'M8 5v14M16 5v14',
+    swords:
+      'm4 3 7 5-3 3-5-7 1-1m16 0-7 5 3 3 5-7-1-1M7 14l3 3m4-7 6 10m-3-6-3 3M10 10 4 20m-2 0 3 2m14-2 3 2',
+    person:
+      'M12 3c-4 0-6 5-6 8l3-2h6l3 2c0-3-2-8-6-8Zm-3 6 1 6h4l1-6M5 21l2-6 5 3 5-3 2 6H5',
+    companion:
+      'M9 13c-2 2-5 4-4 6 1 2 4 0 7 0s6 2 7 0c1-2-2-4-4-6-2-2-4-2-6 0ZM5 8c-2-2-3 1-2 3s3 0 2-3Zm5-3c0-3-3-3-3 0s3 3 3 0Zm7 0c0-3-3-3-3 0s3 3 3 0Zm5 6c1-2 0-5-2-3s0 5 2 3',
+    map: 'm3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2V5m6-2v16m6-14v16',
   };
 </script>
 

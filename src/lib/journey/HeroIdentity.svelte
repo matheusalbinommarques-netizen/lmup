@@ -9,15 +9,21 @@
     profile,
     owned = [],
     achievements = [],
+    compact = false,
   }: {
     profile: Profile;
     owned?: OwnedShopItem[];
     achievements?: string[];
+    compact?: boolean;
   } = $props();
   const equipped = $derived(equippedItemsForOwned(owned));
 </script>
 
-<section class="hero-identity" aria-label="Seu personagem">
+<section
+  class="hero-identity"
+  class:hero-compact={compact}
+  aria-label="Seu personagem"
+>
   <a
     href="/perfil"
     class="hero-portrait"
@@ -73,6 +79,7 @@
     {/if}
     <div class="hero-resources">
       <span><Icon name="spark" size={15} /> {profile.gold} Gold</span>
+      {#if compact}<span>{profile.food ?? 0} Comida</span>{/if}
       <a
         href="/trofeus"
         title={achievements.join(' · ') || 'Conheça as conquistas disponíveis'}
@@ -104,6 +111,75 @@
 </section>
 
 <style>
+  .hero-compact {
+    gap: 0.8rem;
+  }
+  .hero-compact .hero-portrait {
+    width: 3.5rem;
+    flex-basis: 3.5rem;
+  }
+  .hero-compact .hero-details {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    max-width: none;
+    gap: 0.2rem 0.8rem;
+  }
+  .hero-compact .hero-details > .lmu-eyebrow {
+    grid-column: 1;
+    font-size: 0.6rem;
+  }
+  .hero-compact .hero-details h2 {
+    grid-column: 1;
+    margin: 0;
+    font-size: 1.4rem;
+  }
+  .hero-compact .hero-title {
+    grid-column: 1;
+    font-size: 0.75rem;
+    margin: 0;
+  }
+  .hero-compact .hero-resources {
+    grid-column: 2;
+    grid-row: 1 / 4;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 0;
+    font-size: 0.75rem;
+  }
+  .hero-compact .hero-xp-label {
+    grid-column: 1 / -1;
+    margin-top: 0.4rem;
+    font-size: 0.65rem;
+  }
+  .hero-compact .hero-details progress {
+    grid-column: 1 / -1;
+    margin: 0;
+  }
+  .hero-compact .hero-equipment {
+    grid-column: 1 / -1;
+    margin: 0.3rem 0 0;
+  }
+  .hero-compact .hero-equipment a {
+    width: 2rem;
+    height: 2rem;
+  }
+  .hero-compact .hero-equipment :global(img) {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+  @media (max-width: 360px) {
+    .hero-compact .hero-details {
+      grid-template-columns: 1fr;
+    }
+    .hero-compact .hero-resources {
+      grid-column: 1;
+      grid-row: auto;
+      flex-direction: row;
+      justify-content: flex-start;
+      gap: 0.3rem 0.8rem;
+    }
+  }
   .hero-identity {
     display: flex;
     flex-wrap: wrap;
