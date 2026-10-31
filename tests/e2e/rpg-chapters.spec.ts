@@ -8,6 +8,9 @@ async function completeRealMission(page: Page, title: string) {
   await dialog
     .getByRole('button', { name: 'Criar missão', exact: true })
     .click();
+  await page.goto('/missoes');
+  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('link', { name: title, exact: true }).click();
   await expect(page).toHaveURL(/\/missao\/\d+$/);
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
