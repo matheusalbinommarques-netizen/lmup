@@ -6,7 +6,6 @@
     checkUpdate,
     applyUpdate,
   } from '$services/pwaService';
-  import Card from '$lib/ui/Card.svelte';
   import Button from '$lib/ui/Button.svelte';
   let storage = $state<{
       persisted: boolean;
@@ -49,10 +48,10 @@
   }
 </script>
 
-<Card
-  ><div class="journey-stack">
+<section class="journey-stack" aria-label="Aplicativo e proteção local">
     <div>
-      <h2>Uso offline e instalação</h2>
+      <p class="lmu-eyebrow">Chrome · Aplicativo</p>
+      <h3>Aplicativo, instalação e offline</h3>
       <p class="lmu-muted">
         {$pwaState.ready
           ? 'O conteúdo essencial está disponível offline neste navegador. Artes já visitadas podem ser guardadas; imagens ausentes têm alternativa em texto.'
@@ -116,5 +115,5 @@
       site remove a jornada e suas recuperações locais. O primeiro acesso e a
       preparação de uma nova versão precisam de conexão.
     </p>
-  </div></Card
->
+</section>
+
