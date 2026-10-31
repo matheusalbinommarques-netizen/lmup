@@ -697,9 +697,26 @@ test('aba antiga sem protocolo impede a ativação até ser fechada', async ({
   await page
     .getByRole('button', { name: 'Atualizar agora', exact: true })
     .click();
-  await expect
-    .poll(async () => (await metadata(page)).version, { timeout: 30000 })
-    .not.toBe(before);
+  try {
+    await expect
+      .poll(async () => (await metadata(page)).version, { timeout: 30000 })
+      .not.toBe(before);
+  } catch (error) {
+    const diagnostic = await page.evaluate(async () => {
+      const registration = await navigator.serviceWorker.getRegistration();
+      const serialize = (worker: ServiceWorker | null | undefined) =>
+        worker ? { state: worker.state, scriptURL: worker.scriptURL } : null;
+      return {
+        controller: serialize(navigator.serviceWorker.controller),
+        active: serialize(registration?.active),
+        waiting: serialize(registration?.waiting),
+        installing: serialize(registration?.installing),
+        warning: document.querySelector('[aria-label="Atualização disponível"]')?.textContent?.slice(0, 500),
+      };
+    });
+    console.error('LMUP_LEGACY_UPDATE_DIAGNOSTIC', JSON.stringify(diagnostic));
+    throw error;
+  }
 });
 test('controle legado sem cache confirmado não aparece como pronto para offline', async ({
   page,
