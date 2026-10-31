@@ -22,6 +22,9 @@ async function createMission(page: Page, title: string) {
   await dialog
     .getByRole('button', { name: 'Criar missão', exact: true })
     .click();
+  await page.goto('/missoes');
+  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('link', { name: title, exact: true }).click();
   await expect(page).toHaveURL(/\/missao\/\d+$/);
   await expect(
     page.getByRole('heading', { name: title, exact: true }),
@@ -73,11 +76,11 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole('link', { name: 'Continuar missão', exact: true }),
+    page.getByRole('link', { name: 'Começar missão', exact: true }),
   ).toBeVisible();
   if (info.project.name === 'mobile') {
     const action = await page
-      .getByRole('link', { name: 'Continuar missão', exact: true })
+      .getByRole('link', { name: 'Começar missão', exact: true })
       .boundingBox();
     const navigation = await page
       .getByRole('navigation', { name: 'Navegação móvel', exact: true })
@@ -86,17 +89,32 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
   }
   await capture(page, info.project.name + '-pendentes');
   await page
-    .getByRole('link', { name: 'Continuar missão', exact: true })
+    .getByRole('link', { name: 'Começar missão', exact: true })
     .click();
+  await page.getByRole('button', { name: 'Iniciar missão', exact: true }).click();
   await page
     .getByRole('button', { name: 'Pausar e voltar', exact: true })
     .click();
+  await expect(page).toHaveURL(new RegExp('/missoes$'));
+  await page.goto('/');
   await expect(
     page.getByRole('link', { name: 'Continuar missão', exact: true }),
   ).toBeVisible();
   await page
     .getByRole('link', { name: 'Continuar missão', exact: true })
     .click();
+  await expect(page).toHaveURL(new RegExp('/missao/[0-9]+$'));
+  const resume = page.getByRole('button', { name: 'Retomar missão', exact: true });
+  if (!(await resume.isVisible())) {
+    console.log(
+      'LMUP_HOME_PAUSE_DIAGNOSTIC',
+      JSON.stringify({
+        url: page.url(),
+        body: (await page.locator('body').innerText()).slice(0, 800),
+      }),
+    );
+  }
+  await resume.click();
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
@@ -105,7 +123,7 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
   ).toBeVisible();
   await page.goto('/');
   await page
-    .getByRole('link', { name: 'Continuar missão', exact: true })
+    .getByRole('link', { name: 'Começar missão', exact: true })
     .click();
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })

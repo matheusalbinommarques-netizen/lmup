@@ -129,7 +129,13 @@ async function mission(page: Page, title = 'Uma missão offline') {
   await page.getByRole('button', { name: 'Nova missão', exact: true }).click();
   await page.getByLabel('O que você quer fazer?').fill(title);
   await page.getByRole('button', { name: 'Criar missão', exact: true }).click();
-  await page.waitForURL(/missao/);
+  // Creating a mission does not open execution. Wait for persistence,
+  // then explicitly open it, including when the PWA is offline.
+  await expect(page.getByRole('dialog', { name: 'Uma nova missão' })).not.toBeVisible();
+  await page.goto('/missoes');
+  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('link', { name: title, exact: true }).click();
+  await expect(page).toHaveURL(/\/missao\/\d+$/);
   return page.url();
 }
 
@@ -167,7 +173,9 @@ test('organizador cria área e rotina offline, vira o dia e preserva ocorrência
     .getByRole('combobox', { name: 'Recorrência', exact: true })
     .selectOption('daily');
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
-  await page.waitForURL(/\/missao\/\d+$/);
+  await expect(form).not.toBeVisible();
+  await page.getByRole('link', { name: 'Cuidar da casa sem conexão', exact: true }).click();
+  await expect(page).toHaveURL(/\/missao\/\d+$/);
   const url = page.url();
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
@@ -444,9 +452,33 @@ test('revisão pronta espera formulário aberto e preserva URL e dados ao atuali
   await page
     .getByRole('button', { name: 'Atualizar agora', exact: true })
     .click();
-  await expect
-    .poll(async () => (await metadata(page)).version, { timeout: 15000 })
-    .not.toBe(initial.version);
+  try {
+    await expect
+      .poll(async () => (await metadata(page)).version, { timeout: 15000 })
+      .not.toBe(initial.version);
+  } catch (error) {
+    const diagnostics = await page.evaluate(async () => {
+      const registration = await navigator.serviceWorker.getRegistration();
+      const workerInfo = (worker: ServiceWorker | null | undefined) =>
+        worker
+          ? { state: worker.state, scriptURL: worker.scriptURL }
+          : null;
+      return {
+        url: location.href,
+        controller: workerInfo(navigator.serviceWorker.controller),
+        active: workerInfo(registration?.active),
+        waiting: workerInfo(registration?.waiting),
+        installing: workerInfo(registration?.installing),
+        visibleUpdate: document.querySelector('[aria-label="Atualização disponível"]')?.textContent,
+        lockMessage: document.querySelector('.pwa-lock')?.textContent,
+        dialogs: Array.from(document.querySelectorAll('dialog[open], [aria-modal="true"]')).map(
+          (element) => element.textContent?.slice(0, 300),
+        ),
+      };
+    });
+    console.error('LMUP_PWA_UPDATE_DIAGNOSTIC', JSON.stringify(diagnostics));
+    throw error;
+  }
   await expect(page).toHaveURL(url);
   await expect(page.getByLabel('Notas da missão')).toHaveValue(
     'Uma nota preservada.',

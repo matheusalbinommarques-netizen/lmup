@@ -31,8 +31,13 @@ async function mission(page: Page, title = 'Um passo registrado') {
   await page.goto('/');
   await page.getByRole('button', { name: 'Nova missão', exact: true }).click();
   await page.getByLabel('O que você quer fazer?').fill(title);
-  await page.getByRole('button', { name: 'Criar missão', exact: true }).click();
-  await page.waitForURL(/missao/);
+  const form = page.getByRole('dialog', { name: 'Uma nova missão' });
+  await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
+  await expect(form).not.toBeVisible();
+  await page.goto('/missoes');
+  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('link', { name: title, exact: true }).click();
+  await expect(page).toHaveURL(/\/missao\/\d+$/);
   return page.url();
 }
 async function complete(page: Page) {

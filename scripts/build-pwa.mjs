@@ -1,27 +1,8 @@
-import { getManifest } from 'workbox-build';
+import { getLocalPrecacheManifest } from './local-precache.mjs';
 import { readFile, writeFile, stat } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 await stat('build/200.html');
-const { manifestEntries, count, size, warnings } = await getManifest({
-  globDirectory: 'build',
-  globPatterns: [
-    'art/bg/eco-stage-*.webp',
-    '_app/immutable/**/*.{js,css,wasm,woff2}',
-    '200.html',
-    'manifest.webmanifest',
-    'pwa-*.png',
-    'favicon-shield.ico',
-    'art/pilot/scene-*-small.webp',
-    'art/pilot/companion.webp',
-    'art/companions-v2/*-160.webp',
-    'art/home-rpg/*.webp',
-    'fonts/**/*.woff2',
-  ],
-  maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
-});
-if (warnings.length) throw new Error(warnings.join('\n'));
-if (!manifestEntries.some((entry) => entry.url === '200.html'))
-  throw new Error('Shell offline ausente.');
+const { manifestEntries, count, size } = await getLocalPrecacheManifest('build');
 const source = await readFile('pwa/worker.js', 'utf8');
 const version = createHash('sha256')
   .update(

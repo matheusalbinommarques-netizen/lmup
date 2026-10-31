@@ -10,7 +10,7 @@ export async function acquireLocalLock(path) {
     if (error.code !== 'EEXIST') throw error;
     const previous = JSON.parse(await readFile(path, 'utf8'));
     if (!Number.isSafeInteger(previous.pid) || previous.pid < 1)
-      throw Error('Trava inválida; a versão publicada foi preservada.');
+      throw Error('Trava inválida; a versão publicada foi preservada.', { cause: error });
     try {
       process.kill(previous.pid, 0);
     } catch (cause) {
@@ -20,6 +20,6 @@ export async function acquireLocalLock(path) {
       }
       throw cause;
     }
-    throw Error('Outra publicação ou sincronização está em andamento.');
+    throw Error('Outra publicação ou sincronização está em andamento.', { cause: error });
   }
 }

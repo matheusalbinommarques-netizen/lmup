@@ -76,6 +76,10 @@ async function createTask(
   await dialog
     .getByRole('button', { name: 'Criar missão', exact: true })
     .click();
+  await expect(dialog).not.toBeVisible();
+  await page.goto('/missoes');
+  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('link', { name: title, exact: true }).click();
   await expect(page).toHaveURL(/\/missao\/\d+$/);
   await expect(
     page.getByRole('heading', { name: title, level: 1, exact: true }),

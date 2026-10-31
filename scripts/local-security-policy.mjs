@@ -125,6 +125,7 @@ export async function auditLocalRelease({ project, storage, npmCli, logPath }) {
     if (exitCode !== 1)
       throw Error(
         'Não foi possível concluir a auditoria; a versão instalada foi preservada.',
+        { cause: error },
       );
   }
   const report = JSON.parse(output);

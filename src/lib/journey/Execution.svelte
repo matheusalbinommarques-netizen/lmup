@@ -27,7 +27,17 @@
   import Button from '$lib/ui/Button.svelte';
   import Card from '$lib/ui/Card.svelte';
   import Icon from '$lib/ui/Icon.svelte';
-  let { id }: { id: number } = $props();
+  let {
+    id,
+    sessionMode = false,
+    onSessionContinue,
+    onSessionBusyChange,
+  }: {
+    id: number;
+    sessionMode?: boolean;
+    onSessionContinue?: () => void;
+    onSessionBusyChange?: (blocked: boolean) => void;
+  } = $props();
   let data = $state<JourneySnapshot>();
   let error = $state('');
   let editOpen = $state(false),
@@ -67,6 +77,9 @@
   let noteError = $state('');
   let revision = 0;
   let queue = Promise.resolve();
+  $effect(() => {
+    if (sessionMode) onSessionBusyChange?.(dirty || saves > 0 || busy || starting > 0 || !!noteError);
+  });
   const task = $derived(
     data?.tasks.find((item) => item.id === id && !item.archived),
   );
@@ -107,8 +120,22 @@
         )
       : undefined,
   );
+  const currentStepSession = $derived.by(() => {
+    if (!task) return false;
+    if (task.recurrence) return task.occurrenceSession === today;
+    if (!task.reviewEnabled) return true;
+    const base = new Date(task.reviewStartedAt ?? task.createdAt).toISOString();
+    return (
+      task.reviewSession === `${base}:${task.completionRevision ?? 0}` ||
+      (task.reviewSession === base &&
+        ['active', 'paused'].includes(task.executionState ?? ''))
+    );
+  });
+  const checkedSteps = $derived(
+    currentStepSession ? (task?.completedSubtasks ?? []) : [],
+  );
   const ready = $derived(
-    steps.every((step) => task?.completedSubtasks?.includes(step.index)),
+    steps.every((step) => checkedSteps.includes(step.index)),
   );
   const reward = $derived(data?.rewards[id]);
   const lastTaskEvent = $derived(
@@ -126,7 +153,7 @@
           notes = current.executionNotes ?? '';
           revision = current.notesRevision ?? 0;
         }
-        if (current) startCurrent(current);
+        // Opening mission details never begins execution automatically.
       },
       error: () => {
         error =
@@ -141,7 +168,7 @@
     };
     const refresh = () => {
       today = dateKey();
-      if (task) startCurrent(task);
+
     };
     const dayClock = setInterval(refresh, 30000);
     window.addEventListener('focus', refresh);
@@ -212,9 +239,7 @@
     try {
       const receipt = await completeTask(id, {
         reviewOutcome: reviewOutcome || undefined,
-        occurrenceDate: task?.recurrence
-          ? (task.occurrenceSession ?? today)
-          : undefined,
+        occurrenceDate: task?.recurrence ? today : undefined,
       });
       freshEventId = receipt?.id ?? '';
     } catch (cause) {
@@ -227,7 +252,7 @@
     }
   }
   async function pause() {
-    if (busy) return;
+    if (busy || starting > 0) return;
     await queue;
     if (dirty || noteError) {
       error =
@@ -237,9 +262,10 @@
     busy = true;
     error = '';
     try {
-      await pauseTask(id);
+      if (task && ['active', 'paused'].includes(task.executionState ?? ''))
+        await pauseTask(id);
       busy = false;
-      await goto('/');
+      await goto('/missoes');
     } catch (cause) {
       error =
         cause instanceof Error ? cause.message : 'Não foi possível pausar.';
@@ -265,16 +291,16 @@
     await queue;
     dirty = false;
     noteError = '';
-    await goto('/');
+    await goto('/missoes');
   }
 </script>
 
 <svelte:head><title>{task?.title ?? 'Missão'} · Level Me Up</title></svelte:head
 >
 <div class="journey-execution">
-  <a class="journey-link" href="/"
-    ><Icon name="back" size={18} />Voltar para hoje</a
-  >
+  {#if !sessionMode}<a class="journey-link" href="/missoes"
+      ><Icon name="back" size={18} />Voltar às missões</a
+    >{/if}
   {#if error}<p role="alert" class="journey-error">{error}</p>{/if}
   {#if !finished && lastTaskEvent?.kind === 'reversal'}
     <p role="status" class="journey-banner">
@@ -300,6 +326,8 @@
         projectName={data.projects.find((item) => item.id === task.projectId)
           ?.name}
         fresh={!!event && event.id === freshEventId}
+        continueLabel={sessionMode ? 'Próxima missão' : 'Continuar'}
+        onContinue={sessionMode ? onSessionContinue : undefined}
       />
     {/key}
     <div class="completion-details">
@@ -337,6 +365,19 @@
           </p>{/if}
       </div>
     </header>
+    {#if canExecute && !['active', 'paused'].includes(task.executionState ?? '')}<div class="journey-actions">
+        <Button
+          variant="secondary"
+          disabled={starting > 0 || busy}
+          onclick={() => startCurrent(task)}
+          >Iniciar missão</Button
+        >
+        <p class="lmu-hint">Consultar a missão não inicia sua execução.</p>
+      </div>{:else if canExecute && task.executionState === 'paused'}<div class="journey-actions">
+        <Button variant="secondary" disabled={starting > 0 || busy} onclick={() => startCurrent(task)}
+          >Retomar missão</Button
+        >
+      </div>{/if}
     {#if !canExecute}<p class="journey-banner">
         {task.reviewEnabled
           ? 'Sua próxima revisão ainda não está disponível.'
@@ -346,23 +387,22 @@
       </p>{:else}<Card
         >{#if steps.length}<p class="lmu-muted">
             {steps.filter((step) =>
-              task.completedSubtasks?.includes(step.index),
+              checkedSteps.includes(step.index),
             ).length} de {steps.length} passos
           </p>
           <progress
             max={steps.length}
             value={steps.filter((step) =>
-              task.completedSubtasks?.includes(step.index),
+              checkedSteps.includes(step.index),
             ).length}
             aria-label="Passos concluídos"
           ></progress>
           <ul class="journey-step-list">
             {#each steps as step (step.index)}<li>
-                <label class:done={task.completedSubtasks?.includes(step.index)}
+                <label class:done={checkedSteps.includes(step.index)}
                   ><input
                     type="checkbox"
-                    checked={task.completedSubtasks?.includes(step.index) ??
-                      false}
+                    checked={checkedSteps.includes(step.index)}
                     disabled={busy}
                     onchange={(event) => stepChange(event, step.index)}
                   /><span>{step.label}</span></label
@@ -421,8 +461,12 @@
           }}>Consultar e editar notas</Button
         >{/if}
       <div class="journey-actions">
-        <Button variant="secondary" disabled={busy || saves > 0} onclick={pause}
-          ><Icon name="pause" size={18} />Pausar e voltar</Button
+        <Button variant="secondary" disabled={busy || saves > 0 || starting > 0} onclick={pause}
+          ><Icon name="pause" size={18} />{!task || !['active', 'paused'].includes(task.executionState ?? '')
+            ? 'Voltar às missões'
+            : sessionMode
+              ? 'Pausar e voltar às missões'
+              : 'Pausar e voltar'}</Button
         ><Button
           disabled={!ready ||
             busy ||

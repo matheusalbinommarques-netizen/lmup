@@ -32,7 +32,10 @@ async function create(
   await form.getByLabel('O que você quer fazer?').fill(title);
   await configure?.(form);
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
-  await page.waitForURL(/\/missao\/\d+$/);
+  await expect(form).not.toBeVisible();
+  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('link', { name: title, exact: true }).click();
+  await expect(page).toHaveURL(/\/missao\/\d+$/);
   return page.url();
 }
 async function backup(page: Page) {
@@ -72,7 +75,9 @@ test('áreas no cadastro, edição, exclusão com transferência e criação ape
   ).not.toHaveValue('0');
   await capture(page, info.project.name, 'cadastro');
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
-  await page.waitForURL(/\/missao\/\d+$/);
+  await expect(form).not.toBeVisible();
+  await expect(page).toHaveURL(/\/missoes$/);
+  await page.getByRole('link', { name: 'Organizar a cozinha', exact: true }).click();
   const url = page.url();
   await expect(
     page.getByRole('heading', { name: 'Organizar a cozinha', exact: true }),
@@ -93,6 +98,7 @@ test('áreas no cadastro, edição, exclusão com transferência e criação ape
   await edit
     .getByRole('button', { name: 'Salvar missão', exact: true })
     .click();
+  await expect(edit).not.toBeVisible();
   await page.reload();
   await expect(
     page.getByText('Pessoal · Sem repetição', { exact: false }),
@@ -148,6 +154,7 @@ test('áreas no cadastro, edição, exclusão com transferência e criação ape
   await edit
     .getByRole('button', { name: 'Salvar missão', exact: true })
     .click();
+  await expect(edit).not.toBeVisible();
   const weekly = await backup(page);
   expect(
     weekly.data.tasks.find(
@@ -236,9 +243,14 @@ test('rotina persiste por data, impede duplicação entre abas, preserva histór
     .selectOption('weekdays');
   await edit.getByRole('checkbox', { name: 'Quarta', exact: true }).check();
   await capture(page, info.project.name, 'recorrencia');
+  await expect(
+    edit.getByRole('combobox', { name: 'Recorrência', exact: true }),
+  ).toHaveValue('weekdays');
   await edit
     .getByRole('button', { name: 'Salvar missão', exact: true })
     .click();
+  // The modal only closes after the IndexedDB definition transaction commits.
+  await expect(edit).not.toBeVisible();
   const copy = await backup(page);
   expect(copy.data.tasks).toHaveLength(1);
   expect(copy.data.tasks[0].recurrence.kind).toBe('weekdays');

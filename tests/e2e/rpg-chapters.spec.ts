@@ -8,6 +8,12 @@ async function completeRealMission(page: Page, title: string) {
   await dialog
     .getByRole('button', { name: 'Criar missão', exact: true })
     .click();
+  // Wait until the IndexedDB transaction finishes and the modal closes.
+  // Navigating earlier could abort creation, especially under slower CI load.
+  await expect(dialog).not.toBeVisible();
+  await page.goto('/missoes');
+  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('link', { name: title, exact: true }).click();
   await expect(page).toHaveURL(/\/missao\/\d+$/);
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })

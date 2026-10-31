@@ -19,12 +19,16 @@
     projectEvent,
     projectName,
     fresh = false,
+    continueLabel = 'Continuar',
+    onContinue,
   }: {
     title: string;
     event?: ActivityEvent;
     projectEvent?: ActivityEvent;
     projectName?: string;
     fresh?: boolean;
+    continueLabel?: string;
+    onContinue?: () => void;
   } = $props();
   let skipped = $state(false);
   const animate = $derived(
@@ -162,9 +166,14 @@
       </p>{/if}
     <p class="closing">Pequenas ações constroem grandes jornadas.</p>
     <div class="reward-actions">
-      <a class="lmu-button lmu-button--primary" href="/"
-        >Continuar<Icon name="arrow" size={18} /></a
-      >{#if evolved}<a class="lmu-button lmu-button--secondary" href="/refugio"
+      {#if onContinue}<button
+          type="button"
+          class="lmu-button lmu-button--primary"
+          onclick={onContinue}
+          >{continueLabel}<Icon name="arrow" size={18} /></button
+        >{:else}<a class="lmu-button lmu-button--primary" href="/"
+          >{continueLabel}<Icon name="arrow" size={18} /></a
+        >{/if}{#if evolved}<a class="lmu-button lmu-button--secondary" href="/refugio"
           >Ver Refúgio</a
         >{/if}
     </div>
@@ -274,7 +283,8 @@
     justify-content: center;
     gap: 0.7rem;
   }
-  .reward-actions a {
+  .reward-actions a,
+  .reward-actions button {
     flex: 1 1 160px;
   }
   .skip-effects {

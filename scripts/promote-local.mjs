@@ -1,5 +1,8 @@
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
+import { auditLocalRelease } from './local-security-policy.mjs';
 import { gitCommand } from './local-sync-core.mjs';
 
 const project = fileURLToPath(new URL('../', import.meta.url));
@@ -22,7 +25,32 @@ async function guard() {
 await guard();
 const npmCli = process.env.npm_execpath;
 if (!npmCli) throw Error('Execute pelo comando npm run app:promover.');
-for (const script of ['verify', 'audit:security', 'test:pwa']) {
+// The strict npm audit remains unchanged in CI. Local-only promotion may
+// proceed only after the same fail-closed, commit+lockfile-scoped approval used
+// by the synchronizer; a missing or stale grant always blocks this step.
+const storage = join(project, '.local-app');
+await mkdir(storage, { recursive: true });
+for (const script of ['verify']) {
+  execFileSync(process.execPath, [npmCli, 'run', script], {
+    cwd: project,
+    stdio: 'inherit',
+    windowsHide: true,
+    env: {
+      ...process.env,
+      HUSKY: '0',
+      LMU_BROWSER_CHANNEL:
+        process.env.LMU_BROWSER_CHANNEL ||
+        (process.platform === 'win32' ? 'chrome' : ''),
+    },
+  });
+}
+await auditLocalRelease({
+  project,
+  storage,
+  npmCli,
+  logPath: join(storage, 'promotion-security.log'),
+});
+for (const script of ['test:pwa', 'test:package']) {
   execFileSync(process.execPath, [npmCli, 'run', script], {
     cwd: project,
     stdio: 'inherit',

@@ -127,6 +127,7 @@ export async function publishBuild(
     if (JSON.stringify(copied) !== JSON.stringify(files))
       throw Error(
         'A cópia mudou durante a publicação. A versão atual foi mantida.',
+        { cause: error },
       );
     await writeFile(
       join(staged, 'publication.json'),

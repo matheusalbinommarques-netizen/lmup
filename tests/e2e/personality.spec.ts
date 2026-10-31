@@ -15,6 +15,9 @@ async function task(page: Page, title: string) {
   await dialog
     .getByRole('button', { name: 'Criar missão', exact: true })
     .click();
+  await page.goto('/missoes');
+  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('link', { name: title, exact: true }).click();
   await expect(page).toHaveURL(/\/missao\/\d+$/);
   return Number(page.url().split('/').pop());
 }
@@ -91,6 +94,9 @@ test('exemplo é rascunho editável: cancelar não cria missão e salvar permite
   await dialog
     .getByRole('button', { name: 'Criar missão', exact: true })
     .click();
+  await page.goto('/missoes');
+  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('link', { name: 'Meu rascunho de verdade', exact: true }).click();
   await expect(
     page.getByRole('heading', {
       name: 'Meu rascunho de verdade',
@@ -110,6 +116,7 @@ test('exemplo é rascunho editável: cancelar não cria missão e salvar permite
   await page
     .getByRole('button', { name: 'Pausar e voltar', exact: true })
     .click();
+  await page.goto('/');
   await expect(
     page.getByText('Você já começou. Continue de onde parou.', { exact: true }),
   ).toBeVisible();
@@ -133,9 +140,10 @@ test('exemplo é rascunho editável: cancelar não cria missão e salvar permite
   await capture(page, 'conclusao', info.project.name);
   const missionUrl = page.url();
   await page
-    .getByRole('link', { name: 'Voltar para hoje', exact: true })
+    .getByRole('link', { name: 'Voltar às missões', exact: true })
     .first()
     .click();
+  await page.goto('/');
   await expect(
     page.getByRole('heading', { name: 'Você está em dia.', exact: true }),
   ).toBeVisible();

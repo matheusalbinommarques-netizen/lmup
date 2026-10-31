@@ -66,6 +66,9 @@ test('salvar após quota mantém rascunho e preserva XP e avatar atualizados na 
   await create
     .getByRole('button', { name: 'Criar missão', exact: true })
     .click();
+  await expect(create).not.toBeVisible();
+  await other.goto('/missoes');
+  await other.getByRole('link', { name: 'Uma ação real', exact: true }).click();
   await other
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
