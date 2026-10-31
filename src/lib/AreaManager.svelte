@@ -35,7 +35,7 @@
     try {
       await db.areas.add({
         nome: name,
-        color: '#888888', // placeholder
+        cor: '#888888', // placeholder
         createdAt: new Date(),
       });
       newAreaName = '';
