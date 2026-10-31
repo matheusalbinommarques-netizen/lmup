@@ -84,7 +84,7 @@ describe('xpService – smoke', () => {
 
   test('add/remove XP (se existirem) não lançam erro', async () => {
     if (typeof api.addXp === 'function') {
-      await expect(api.addXp(50)).resolves.toBeUndefined();
+      await expect(api.addXp(50)).resolves.toMatchObject({ id: 1 });
     }
     if (typeof api.removeXp === 'function') {
       await expect(api.removeXp(10)).resolves.toBeUndefined();
