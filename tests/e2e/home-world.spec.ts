@@ -76,11 +76,11 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole('link', { name: 'Continuar missão', exact: true }),
+    page.getByRole('link', { name: 'Começar missão', exact: true }),
   ).toBeVisible();
   if (info.project.name === 'mobile') {
     const action = await page
-      .getByRole('link', { name: 'Continuar missão', exact: true })
+      .getByRole('link', { name: 'Começar missão', exact: true })
       .boundingBox();
     const navigation = await page
       .getByRole('navigation', { name: 'Navegação móvel', exact: true })
@@ -89,17 +89,20 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
   }
   await capture(page, info.project.name + '-pendentes');
   await page
-    .getByRole('link', { name: 'Continuar missão', exact: true })
+    .getByRole('link', { name: 'Começar missão', exact: true })
     .click();
+  await page.getByRole('button', { name: 'Iniciar missão', exact: true }).click();
   await page
     .getByRole('button', { name: 'Pausar e voltar', exact: true })
     .click();
+  await page.goto('/');
   await expect(
     page.getByRole('link', { name: 'Continuar missão', exact: true }),
   ).toBeVisible();
   await page
     .getByRole('link', { name: 'Continuar missão', exact: true })
     .click();
+  await page.getByRole('button', { name: 'Retomar missão', exact: true }).click();
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
@@ -108,7 +111,7 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
   ).toBeVisible();
   await page.goto('/');
   await page
-    .getByRole('link', { name: 'Continuar missão', exact: true })
+    .getByRole('link', { name: 'Começar missão', exact: true })
     .click();
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
