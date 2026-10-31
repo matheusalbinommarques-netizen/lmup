@@ -18,6 +18,8 @@ async function create(page: Page, title: string, steps = '', projectName = '') {
   await dialog
     .getByRole('button', { name: 'Criar missão', exact: true })
     .click();
+  // Creation now stays on the organizer; wait for the IndexedDB commit.
+  await expect(dialog).not.toBeVisible();
   await page.goto('/missoes');
   await page.getByRole('button', { name: 'Todas', exact: true }).click();
   await page.getByRole('link', { name: title, exact: true }).click();
