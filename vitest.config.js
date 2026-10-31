@@ -24,6 +24,7 @@ export default defineConfig({
   resolve: {
     alias: {
       $services: '/src/services',
+      $lib: '/src/lib',
     },
   },
 });
