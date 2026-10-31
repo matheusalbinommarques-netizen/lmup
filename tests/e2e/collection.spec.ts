@@ -101,7 +101,8 @@ test('compra confirma custo, troca de espaço e prévia coincidem com missão re
     .getByRole('combobox', { name: 'Esforço desta missão', exact: true })
     .selectOption('medium');
   await page.getByRole('button', { name: 'Criar missão', exact: true }).click();
-  await page.waitForURL(/missao/);
+  await page.goto('/missoes');
+  await page.getByRole('link', { name: 'Experimentar os novos bônus', exact: true }).click();
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
@@ -229,7 +230,8 @@ test('transformação usa recibo e estorno devolve o ambiente anterior', async (
     .getByLabel('O que você quer fazer?')
     .fill('Cultivar um marco real');
   await page.getByRole('button', { name: 'Criar missão', exact: true }).click();
-  await page.waitForURL(/missao/);
+  await page.goto('/missoes');
+  await page.getByRole('link', { name: 'Cultivar um marco real', exact: true }).click();
   const url = page.url();
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
