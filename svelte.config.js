@@ -11,7 +11,8 @@ const config = {
   },
 
   kit: {
-    adapter: adapter(),
+    // IDs de projetos são locais: o host deve servir este fallback nas URLs internas.
+    adapter: adapter({ fallback: '200.html' }),
     prerender: {
       entries: ['*'],
     },

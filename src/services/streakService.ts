@@ -36,8 +36,9 @@ function toDateOnly(d: Date | string): Date {
 }
 
 function diffInDays(a: Date, b: Date): number {
-  const ms = b.getTime() - a.getTime();
-  return Math.floor(ms / (1000 * 60 * 60 * 24));
+  const day = (date: Date) =>
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  return Math.round((day(b) - day(a)) / 86_400_000);
 }
 
 type StreakUpdateResult = {
@@ -60,7 +61,7 @@ type StreakUpdateResult = {
  *   - se diff === 1 → +1
  *   - se 1 < diff <= janela → NÃO reseta, mas também não soma (congela)
  */
-function computeStreakWithProtection(
+export function computeStreakWithProtection(
   currentStreak: number,
   lastCompletionDate: string | null | undefined,
   today: Date,
@@ -72,7 +73,7 @@ function computeStreakWithProtection(
     today.getMonth(),
     today.getDate(),
   );
-  const todayStr = todayOnly.toISOString().slice(0, 10); // "YYYY-MM-DD"
+  const todayStr = `${todayOnly.getFullYear()}-${String(todayOnly.getMonth() + 1).padStart(2, '0')}-${String(todayOnly.getDate()).padStart(2, '0')}`;
 
   // nunca completou nada
   if (!lastCompletionDate) {

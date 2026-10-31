@@ -1,0 +1,29 @@
+{
+  "tool": "image_gen built-in",
+  "assets": [
+    {
+      "key": "companion",
+      "prompt": "Original game art for Level Me Up productivity fantasy app. Cohesive sophisticated hand-painted stylized illustration, broad sculpted forms, restrained gouache grain, deep pine charcoal #121B20, jade foliage, warm muted amber highlights, dusk blue-violet shadows, atmospheric and mysterious yet welcoming. Mature indie adventure art, no photorealism, no text, no letters, no UI, no frame, no lanterns, no tents. Clear at small mobile sizes. Single asset: full-body young spectral wolf companion, three-quarter seated pose facing viewer, asymmetrical tufted ears, charcoal and pale sage fur, pale turquoise eyes, tail curling forward, three small jade markings on shoulder, hint of amber on chest. Alert curious expression, dignified rather than babyish, strong graphic silhouette, all paws and tail visible with margin. No collar, no clothing, no props. Transparent background cutout, isolated."
+    },
+    {
+      "key": "scene-1",
+      "prompt": "Original game art for Level Me Up productivity fantasy app. Cohesive sophisticated hand-painted stylized illustration, broad sculpted forms, restrained gouache grain, deep pine charcoal #121B20, jade foliage, warm muted amber highlights, dusk blue-violet shadows, atmospheric and mysterious yet welcoming. Mature indie adventure art, no photorealism, no text, no letters, no UI, no frame, no lanterns, no tents. Clear at small mobile sizes. Single landscape game environment asset, wide 3:2 composition. A quiet circular stone terrace on a mossy clifftop, a low central stone planter with one tiny luminous seed between two leaves. Weathered stepped stones on right, a single angular basalt standing stone on left, distant layered mountain valley, a small crescent in dusk sky. Stable front three-quarter camera, plant centered, terrace occupies bottom half, sky upper third. No characters, no buildings. Stage 1 of a growing sanctuary."
+    },
+    {
+      "key": "scene-2",
+      "prompt": "Edit the reference landscape as the next growth stage of the exact same sanctuary, maintaining its painterly indie fantasy art style and all stable environmental geometry. Replace only the tiny seed and its two leaves in the central stone planter with a small waist-high sapling with seven broad jade leaves and faint amber veins. Keep every mountain, terrace stone, standing stone, camera angle, crescent, sunset and image framing identical. No text, no UI, no characters, no additional buildings or props. Landscape 3:2 output."
+    },
+    {
+      "key": "scene-3",
+      "prompt": "Edit the reference landscape as the next growth stage of the exact same sanctuary, maintaining its painterly indie fantasy art style and all stable environmental geometry. Replace only the tiny seed and its two leaves in the central stone planter with a slender young tree, about twice the height of the standing stone on the left, compact broad jade canopy with a few amber leaf tips. Preserve every mountain, terrace stone, standing stone, camera angle, crescent, sunset and image framing. No text, no UI, no characters, no additional buildings or props. Landscape 3:2 output."
+    },
+    {
+      "key": "scene-4",
+      "prompt": "Edit the reference landscape as the next growth stage of the exact same sanctuary, maintaining its painterly indie fantasy art style and all stable environmental geometry. Replace only the tiny seed and its two leaves in the central stone planter with a mature graceful fantasy tree, gnarled trunk and sweeping jade canopy with a few luminous amber leaves. Canopy spreads across upper central third but the valley remains visible. Preserve terrace, standing stone, mountain positions, crescent, sunset and camera framing. A calm accomplished place, no giant explosion or oversaturated magic. No text, no UI, no characters, no additional buildings or props. Landscape 3:2 output."
+    },
+    {
+      "key": "objects",
+      "prompt": "Original game art for Level Me Up productivity fantasy app. Cohesive sophisticated hand-painted stylized illustration, broad sculpted forms, restrained gouache grain, deep pine charcoal #121B20, jade foliage, warm muted amber highlights, dusk blue-violet shadows, atmospheric and mysterious yet welcoming. Mature indie adventure art, no photorealism, no text, no letters, no UI, no frame, no lanterns, no tents. Clear at small mobile sizes. Single collection illustration asset: a small sculpted stone display plinth bearing an amber glass seed capsule, a closed worn teal notebook with blank brass clasp, and a single curved pale mineral fragment. Objects arranged together as one still life, readable silhouettes and limited tiny details, three-quarter view, ample margin. Transparent background cutout, no ground or backdrop."
+    }
+  ]
+}

@@ -1,218 +1,141 @@
-<!-- src/lib/EditProfileModal.svelte -->
 <script lang="ts">
-  import { db, type Profile } from '$services/db';
-  import { onMount } from 'svelte';
-  import { getXpForNextLevel, getTitleForLevel } from '$services/xpService';
-
-  // Props (runes Svelte 5)
+  import { untrack, onDestroy } from 'svelte';
+  import type { Profile } from '$services/db';
+  import { saveProfileIdentity } from '$services/profileIdentityService';
+  import { storageError } from '$services/storageErrors';
+  import { guardUpdates } from '$lib/journey/guardUpdates';
+  import Dialog from '$lib/ui/Dialog.svelte';
+  import Field from '$lib/ui/Field.svelte';
+  import Button from '$lib/ui/Button.svelte';
   let { profile, close } = $props<{ profile: Profile; close: () => void }>();
-
-  // --- Estado local para o formulário ---
-  let localName = $state(profile.name);
-  let localAvatarUrl = $state(profile.avatarUrl || '');
-  let isSaving = $state(false);
-
-  /**
-   * Sincroniza o estado local quando o 'profile' (vindo da Taverna)
-   * é carregado / atualizado.
-   */
+  // A draft snapshots identity once. Live profile changes must not overwrite typing.
+  const original = untrack(() => ({
+    name: profile.name,
+    avatarUrl: profile.avatarUrl ?? '',
+  }));
+  let name = $state(original.name),
+    avatarUrl = $state(original.avatarUrl);
+  let open = $state(true),
+    saving = $state(false),
+    uploading = $state(false),
+    error = $state('');
+  let reader: FileReader | undefined;
+  guardUpdates(() => true);
   $effect(() => {
-    // Evita sobrescrever com placeholder tipo "Carregando..."
-    if (profile?.name && profile.name !== 'Carregando...') {
-      localName = profile.name;
-      localAvatarUrl = profile.avatarUrl || '';
-    }
+    if (!open) close();
   });
-
-  // --- Escape fecha o modal ---
-  onMount(() => {
-    const handleKeydown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        close();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeydown);
-    return () => {
-      window.removeEventListener('keydown', handleKeydown);
-    };
+  onDestroy(() => {
+    if (reader?.readyState === FileReader.LOADING) reader.abort();
   });
-
-  // --- Overlay: clique fora + teclado ---
-  function handleOverlayClick(event: MouseEvent) {
-    if (event.currentTarget === event.target) {
-      close();
-    }
-  }
-
-  function handleOverlayKeydown(event: KeyboardEvent) {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      close();
-    }
-  }
-
-  // --- Upload de avatar (Base64) ---
-  function handleFileChange(e: Event) {
-    const target = e.target as HTMLInputElement;
-    const file = target.files?.[0];
+  function upload(event: Event) {
+    const input = event.target as HTMLInputElement,
+      file = input.files?.[0];
     if (!file) return;
-
-    const reader = new FileReader();
+    error = '';
+    if (
+      !['image/png', 'image/jpeg', 'image/webp'].includes(file.type) ||
+      file.size > 2 * 1024 * 1024
+    ) {
+      error = 'Use uma imagem PNG, JPEG ou WebP de até 2 MB.';
+      input.value = '';
+      return;
+    }
+    uploading = true;
+    reader = new FileReader();
     reader.onload = () => {
-      localAvatarUrl = reader.result as string;
+      avatarUrl = String(reader?.result ?? '');
+    };
+    reader.onerror = () => {
+      error = 'Não foi possível ler a imagem. Escolha o arquivo novamente.';
+    };
+    reader.onloadend = () => {
+      uploading = false;
     };
     reader.readAsDataURL(file);
   }
-
-  // --- Salvar perfil (cria se não existir) ---
-  async function handleSave(e: Event) {
-    e.preventDefault();
-    const trimmedName = localName.trim();
-    if (isSaving || !trimmedName) return;
-
-    isSaving = true;
-
+  async function save(event: SubmitEvent) {
+    event.preventDefault();
+    if (saving || uploading) return;
+    saving = true;
+    error = '';
     try {
-      const existing = await db.profile.get(1);
-
-      if (!existing) {
-        // Primeiro perfil após reset / instalação
-        const now = new Date();
-        const level = 1;
-        const xpNext = getXpForNextLevel(level);
-        const title = getTitleForLevel(level);
-
-        const newProfile: Profile = {
-          id: 1,
-          name: trimmedName,
-          title,
-          level,
-          xpCurrent: 0,
-          xpNext,
-          totalXpEarned: 0,
-          gold: 0,
-          avatarUrl: localAvatarUrl,
-          currentStreak: 0,
-          lastCompletionDate: null,
-          activeCompanionId: 1,
-          createdAt: now,
-          updatedAt: now,
-        };
-
-        await db.profile.put(newProfile);
-      } else {
-        // Atualiza somente identidade visual + updatedAt
-        await db.profile.update(1, {
-          name: trimmedName,
-          avatarUrl: localAvatarUrl,
-          updatedAt: new Date(),
-        });
-      }
-
-      close(); // Fecha o modal
-    } catch (err) {
-      console.error('Falha ao salvar perfil', err);
-      alert('Não foi possível salvar o perfil.');
+      await saveProfileIdentity({ name, avatarUrl }, original);
+      open = false;
+    } catch (cause) {
+      error = storageError(
+        cause,
+        'Não foi possível salvar. Seu rascunho continua aqui.',
+        true,
+      );
     } finally {
-      isSaving = false;
+      saving = false;
     }
   }
 </script>
 
-<div
-  class="fixed inset-0 bg-slate-950/70 z-50 flex items-center justify-center p-4"
-  onclick={handleOverlayClick}
-  onkeydown={handleOverlayKeydown}
-  role="button"
-  tabindex="0"
+<Dialog
+  bind:open
+  title="Editar perfil"
+  description="Seu nome e sua imagem acompanham a jornada neste navegador."
+  dismissible={!saving}
 >
-  <div
-    class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg w-full max-w-md"
-    role="dialog"
-    aria-modal="true"
-    tabindex="-1"
-    onclick={(e) => e.stopPropagation()}
-    onkeydown={(e) => e.stopPropagation()}
-  >
-    <h2 class="text-xl font-bold text-[#ffb74d] font-serif mb-6">
-      Editar Perfil
-    </h2>
-
-    <form onsubmit={handleSave} class="flex flex-col gap-4">
-      <label
-        for="avatar-upload"
-        class="block text-sm font-medium text-slate-300"
+  <form class="journey-stack profile-identity" onsubmit={save} novalidate>
+    <Field
+      label="Nome do herói"
+      bind:value={name}
+      data-initial-focus
+      required
+      maxlength={80}
+      disabled={saving}
+    />
+    <label class="journey-label"
+      >Avatar (opcional)<input
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        onchange={upload}
+        disabled={saving || uploading}
+      /></label
+    >
+    <p class="lmu-hint">
+      PNG, JPEG ou WebP, até 2 MB. O avatar fica nos seus dados locais e nos
+      backups exportados.
+    </p>
+    {#if uploading}<p role="status">Lendo sua imagem…</p>{/if}
+    {#if avatarUrl}<img
+        src={avatarUrl}
+        alt="Prévia do seu avatar"
+        width="80"
+        height="80"
+        style="border-radius:50%;object-fit:cover"
+      /><Button
+        variant="quiet"
+        disabled={saving || uploading}
+        onclick={() => {
+          avatarUrl = '';
+        }}>Remover avatar</Button
+      >{/if}
+    {#if error}<p role="alert" class="journey-error">{error}</p>{/if}
+    <footer>
+      <Button
+        variant="quiet"
+        disabled={saving}
+        onclick={() => {
+          open = false;
+        }}>Cancelar</Button
+      ><Button type="submit" loading={saving} disabled={uploading}
+        >Salvar perfil</Button
       >
-        Avatar
-      </label>
+    </footer>
+  </form>
+</Dialog>
 
-      <div class="flex items-center gap-4">
-        {#if localAvatarUrl}
-          <img
-            src={localAvatarUrl}
-            alt="Avatar do herói"
-            class="w-20 h-20 rounded-full object-cover border border-slate-700 shadow-md"
-          />
-        {:else}
-          <div
-            class="w-20 h-20 rounded-full bg-slate-700 flex items-center justify-center"
-          >
-            <span class="text-3xl opacity-50">👤</span>
-          </div>
-        {/if}
-
-        <input
-          id="avatar-upload"
-          type="file"
-          accept="image/*"
-          onchange={handleFileChange}
-          class="text-xs text-slate-400
-            file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0
-            file:bg-primary/20 file:text-primary hover:file:bg-primary/30"
-        />
-      </div>
-
-      <label
-        for="profileName"
-        class="block text-sm font-medium text-slate-300 mt-4"
-      >
-        Nome do herói
-      </label>
-      <input
-        id="profileName"
-        type="text"
-        bind:value={localName}
-        class="w-full rounded-lg border border-slate-700 bg-slate-800/70 px-3 py-2
-          text-sm text-slate-100 placeholder:text-slate-500
-          focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-        placeholder="Digite o nome do seu herói"
-      />
-
-      <p class="text-xs text-slate-500 mt-1">
-        Esse é o nome que aparecerá na Taverna, nos Clãs e nos rankings.
-      </p>
-
-      <div class="flex gap-4 mt-6">
-        <button
-          type="button"
-          onclick={close}
-          class="flex-1 py-2 rounded-lg bg-slate-700 hover:bg-slate-600
-            text-slate-100 text-sm font-medium transition-colors"
-        >
-          Cancelar
-        </button>
-
-        <button
-          type="submit"
-          disabled={isSaving}
-          class="flex-1 py-2 rounded-lg bg-primary hover:bg-primary/90
-            text-slate-950 text-sm font-bold transition-colors
-            disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isSaving ? 'Salvando...' : 'Salvar'}
-        </button>
-      </div>
-    </form>
-  </div>
-</div>
+<style>
+  .profile-identity {
+    min-width: 0;
+  }
+  .profile-identity input[type='file'] {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+</style>

@@ -1,0 +1,382 @@
+{
+  "/art/items/amuleto-do-cambista.png": {
+    "160": "/art/optimized/items-amuleto-do-cambista-160.webp",
+    "320": "/art/optimized/items-amuleto-do-cambista-320.webp"
+  },
+  "/art/items/amuleto-do-tesouro-vivo.png": {
+    "160": "/art/optimized/items-amuleto-do-tesouro-vivo-160.webp",
+    "320": "/art/optimized/items-amuleto-do-tesouro-vivo-320.webp"
+  },
+  "/art/items/amuleto-do-trocado.png": {
+    "160": "/art/optimized/items-amuleto-do-trocado-160.webp",
+    "320": "/art/optimized/items-amuleto-do-trocado-320.webp"
+  },
+  "/art/items/anel-da-brisa-serena.png": {
+    "160": "/art/optimized/items-anel-da-brisa-serena-160.webp",
+    "320": "/art/optimized/items-anel-da-brisa-serena-320.webp"
+  },
+  "/art/items/anel-da-cancao-silenciosa.png": {
+    "160": "/art/optimized/items-anel-da-cancao-silenciosa-160.webp",
+    "320": "/art/optimized/items-anel-da-cancao-silenciosa-320.webp"
+  },
+  "/art/items/anel-do-bosque-vivo.png": {
+    "160": "/art/optimized/items-anel-do-bosque-vivo-160.webp",
+    "320": "/art/optimized/items-anel-do-bosque-vivo-320.webp"
+  },
+  "/art/items/anel-do-guardiao-ancestral.png": {
+    "160": "/art/optimized/items-anel-do-guardiao-ancestral-160.webp",
+    "320": "/art/optimized/items-anel-do-guardiao-ancestral-320.webp"
+  },
+  "/art/items/armadura-do-foco-inabalavel.png": {
+    "160": "/art/optimized/items-armadura-do-foco-inabalavel-160.webp",
+    "320": "/art/optimized/items-armadura-do-foco-inabalavel-320.webp"
+  },
+  "/art/items/cota-da-rotina.png": {
+    "160": "/art/optimized/items-cota-da-rotina-160.webp",
+    "320": "/art/optimized/items-cota-da-rotina-320.webp"
+  },
+  "/art/items/elmo-do-planejador-visionario.png": {
+    "160": "/art/optimized/items-elmo-do-planejador-visionario-160.webp",
+    "320": "/art/optimized/items-elmo-do-planejador-visionario-320.webp"
+  },
+  "/art/items/espada-da-eficiencia.png": {
+    "160": "/art/optimized/items-espada-da-eficiencia-160.webp",
+    "320": "/art/optimized/items-espada-da-eficiencia-320.webp"
+  },
+  "/art/items/guarda-peito-da-perseveranca.png": {
+    "160": "/art/optimized/items-guarda-peito-da-perseveranca-160.webp",
+    "320": "/art/optimized/items-guarda-peito-da-perseveranca-320.webp"
+  },
+  "/art/items/lamina-da-otimizacao.png": {
+    "160": "/art/optimized/items-lamina-da-otimizacao-160.webp",
+    "320": "/art/optimized/items-lamina-da-otimizacao-320.webp"
+  },
+  "/art/items/lamina-do-tempo-dobrada.png": {
+    "160": "/art/optimized/items-lamina-do-tempo-dobrada-160.webp",
+    "320": "/art/optimized/items-lamina-do-tempo-dobrada-320.webp"
+  },
+  "/art/items/mochila-do-aventureiro-sem-fundo.png": {
+    "160": "/art/optimized/items-mochila-do-aventureiro-sem-fundo-160.webp",
+    "320": "/art/optimized/items-mochila-do-aventureiro-sem-fundo-320.webp"
+  },
+  "/art/items/placas-do-heroi-eterno.png": {
+    "160": "/art/optimized/items-placas-do-heroi-eterno-160.webp",
+    "320": "/art/optimized/items-placas-do-heroi-eterno-320.webp"
+  },
+  "/art/items/reliquia-do-cofre-infinito.png": {
+    "160": "/art/optimized/items-reliquia-do-cofre-infinito-160.webp",
+    "320": "/art/optimized/items-reliquia-do-cofre-infinito-320.webp"
+  },
+  "/art/badge-icons/a-fenix.png": {
+    "160": "/art/optimized/badge-icons-a-fenix-160.webp",
+    "320": "/art/optimized/badge-icons-a-fenix-320.webp"
+  },
+  "/art/badge-icons/acendendo-tocha.png": {
+    "160": "/art/optimized/badge-icons-acendendo-tocha-160.webp",
+    "320": "/art/optimized/badge-icons-acendendo-tocha-320.webp"
+  },
+  "/art/badge-icons/acumulador.png": {
+    "160": "/art/optimized/badge-icons-acumulador-160.webp",
+    "320": "/art/optimized/badge-icons-acumulador-320.webp"
+  },
+  "/art/badge-icons/arsenal-completo.png": {
+    "160": "/art/optimized/badge-icons-arsenal-completo-160.webp",
+    "320": "/art/optimized/badge-icons-arsenal-completo-320.webp"
+  },
+  "/art/badge-icons/arvore-vigorosa.png": {
+    "160": "/art/optimized/badge-icons-arvore-vigorosa-160.webp",
+    "320": "/art/optimized/badge-icons-arvore-vigorosa-320.webp"
+  },
+  "/art/badge-icons/aventureiro.png": {
+    "160": "/art/optimized/badge-icons-aventureiro-160.webp",
+    "320": "/art/optimized/badge-icons-aventureiro-320.webp"
+  },
+  "/art/badge-icons/brotando.png": {
+    "160": "/art/optimized/badge-icons-brotando-160.webp",
+    "320": "/art/optimized/badge-icons-brotando-320.webp"
+  },
+  "/art/badge-icons/cacador-missoes.png": {
+    "160": "/art/optimized/badge-icons-cacador-missoes-160.webp",
+    "320": "/art/optimized/badge-icons-cacador-missoes-320.webp"
+  },
+  "/art/badge-icons/cliente-fiel.png": {
+    "160": "/art/optimized/badge-icons-cliente-fiel-160.webp",
+    "320": "/art/optimized/badge-icons-cliente-fiel-320.webp"
+  },
+  "/art/badge-icons/colecionador.png": {
+    "160": "/art/optimized/badge-icons-colecionador-160.webp",
+    "320": "/art/optimized/badge-icons-colecionador-320.webp"
+  },
+  "/art/badge-icons/domador-lobos.png": {
+    "160": "/art/optimized/badge-icons-domador-lobos-160.webp",
+    "320": "/art/optimized/badge-icons-domador-lobos-320.webp"
+  },
+  "/art/badge-icons/em-chamas.png": {
+    "160": "/art/optimized/badge-icons-em-chamas-160.webp",
+    "320": "/art/optimized/badge-icons-em-chamas-320.webp"
+  },
+  "/art/badge-icons/especialista.png": {
+    "160": "/art/optimized/badge-icons-especialista-160.webp",
+    "320": "/art/optimized/badge-icons-especialista-320.webp"
+  },
+  "/art/badge-icons/exterminador.png": {
+    "160": "/art/optimized/badge-icons-exterminador-160.webp",
+    "320": "/art/optimized/badge-icons-exterminador-320.webp"
+  },
+  "/art/badge-icons/focado.png": {
+    "160": "/art/optimized/badge-icons-focado-160.webp",
+    "320": "/art/optimized/badge-icons-focado-320.webp"
+  },
+  "/art/badge-icons/fogo-controlado.png": {
+    "160": "/art/optimized/badge-icons-fogo-controlado-160.webp",
+    "320": "/art/optimized/badge-icons-fogo-controlado-320.webp"
+  },
+  "/art/badge-icons/guardiao-foco.png": {
+    "160": "/art/optimized/badge-icons-guardiao-foco-160.webp",
+    "320": "/art/optimized/badge-icons-guardiao-foco-320.webp"
+  },
+  "/art/badge-icons/guardião-floresta.png": {
+    "160": "/art/optimized/badge-icons-guardião-floresta-160.webp",
+    "320": "/art/optimized/badge-icons-guardião-floresta-320.webp"
+  },
+  "/art/badge-icons/heroi-lendario.png": {
+    "160": "/art/optimized/badge-icons-heroi-lendario-160.webp",
+    "320": "/art/optimized/badge-icons-heroi-lendario-320.webp"
+  },
+  "/art/badge-icons/lenda-santuario.png": {
+    "160": "/art/optimized/badge-icons-lenda-santuario-160.webp",
+    "320": "/art/optimized/badge-icons-lenda-santuario-320.webp"
+  },
+  "/art/badge-icons/lenda-viva.png": {
+    "160": "/art/optimized/badge-icons-lenda-viva-160.webp",
+    "320": "/art/optimized/badge-icons-lenda-viva-320.webp"
+  },
+  "/art/badge-icons/mae-pai-dragao.png": {
+    "160": "/art/optimized/badge-icons-mae-pai-dragao-160.webp",
+    "320": "/art/optimized/badge-icons-mae-pai-dragao-320.webp"
+  },
+  "/art/badge-icons/magnata.png": {
+    "160": "/art/optimized/badge-icons-magnata-160.webp",
+    "320": "/art/optimized/badge-icons-magnata-320.webp"
+  },
+  "/art/badge-icons/matador-gigantes.png": {
+    "160": "/art/optimized/badge-icons-matador-gigantes-160.webp",
+    "320": "/art/optimized/badge-icons-matador-gigantes-320.webp"
+  },
+  "/art/badge-icons/melhores-amigos.png": {
+    "160": "/art/optimized/badge-icons-melhores-amigos-160.webp",
+    "320": "/art/optimized/badge-icons-melhores-amigos-320.webp"
+  },
+  "/art/badge-icons/membro-fundador.png": {
+    "160": "/art/optimized/badge-icons-membro-fundador-160.webp",
+    "320": "/art/optimized/badge-icons-membro-fundador-320.webp"
+  },
+  "/art/badge-icons/mestre-area.png": {
+    "160": "/art/optimized/badge-icons-mestre-area-160.webp",
+    "320": "/art/optimized/badge-icons-mestre-area-320.webp"
+  },
+  "/art/badge-icons/mestre-areas.png": {
+    "160": "/art/optimized/badge-icons-mestre-areas-160.webp",
+    "320": "/art/optimized/badge-icons-mestre-areas-320.webp"
+  },
+  "/art/badge-icons/mestre.png": {
+    "160": "/art/optimized/badge-icons-mestre-160.webp",
+    "320": "/art/optimized/badge-icons-mestre-320.webp"
+  },
+  "/art/badge-icons/multitarefa.png": {
+    "160": "/art/optimized/badge-icons-multitarefa-160.webp",
+    "320": "/art/optimized/badge-icons-multitarefa-320.webp"
+  },
+  "/art/badge-icons/novato.png": {
+    "160": "/art/optimized/badge-icons-novato-160.webp",
+    "320": "/art/optimized/badge-icons-novato-320.webp"
+  },
+  "/art/badge-icons/novo-amigo.png": {
+    "160": "/art/optimized/badge-icons-novo-amigo-160.webp",
+    "320": "/art/optimized/badge-icons-novo-amigo-320.webp"
+  },
+  "/art/badge-icons/o-semeador.png": {
+    "160": "/art/optimized/badge-icons-o-semeador-160.webp",
+    "320": "/art/optimized/badge-icons-o-semeador-320.webp"
+  },
+  "/art/badge-icons/pao-duro.png": {
+    "160": "/art/optimized/badge-icons-pao-duro-160.webp",
+    "320": "/art/optimized/badge-icons-pao-duro-320.webp"
+  },
+  "/art/badge-icons/perito.png": {
+    "160": "/art/optimized/badge-icons-perito-160.webp",
+    "320": "/art/optimized/badge-icons-perito-320.webp"
+  },
+  "/art/badge-icons/polimata.png": {
+    "160": "/art/optimized/badge-icons-polimata-160.webp",
+    "320": "/art/optimized/badge-icons-polimata-320.webp"
+  },
+  "/art/badge-icons/primeira-centelha.png": {
+    "160": "/art/optimized/badge-icons-primeira-centelha-160.webp",
+    "320": "/art/optimized/badge-icons-primeira-centelha-320.webp"
+  },
+  "/art/badge-icons/primeira-compra.png": {
+    "160": "/art/optimized/badge-icons-primeira-compra-160.webp",
+    "320": "/art/optimized/badge-icons-primeira-compra-320.webp"
+  },
+  "/art/badge-icons/primeiro-passo.png": {
+    "160": "/art/optimized/badge-icons-primeiro-passo-160.webp",
+    "320": "/art/optimized/badge-icons-primeiro-passo-320.webp"
+  },
+  "/art/badge-icons/recruta.png": {
+    "160": "/art/optimized/badge-icons-recruta-160.webp",
+    "320": "/art/optimized/badge-icons-recruta-320.webp"
+  },
+  "/art/badge-icons/rotina-engatada.png": {
+    "160": "/art/optimized/badge-icons-rotina-engatada-160.webp",
+    "320": "/art/optimized/badge-icons-rotina-engatada-320.webp"
+  },
+  "/art/badge-icons/semideus.png": {
+    "160": "/art/optimized/badge-icons-semideus-160.webp",
+    "320": "/art/optimized/badge-icons-semideus-320.webp"
+  },
+  "/art/badge-icons/trabalho-equipe.png": {
+    "160": "/art/optimized/badge-icons-trabalho-equipe-160.webp",
+    "320": "/art/optimized/badge-icons-trabalho-equipe-320.webp"
+  },
+  "/art/badge-icons/veterano.png": {
+    "160": "/art/optimized/badge-icons-veterano-160.webp",
+    "320": "/art/optimized/badge-icons-veterano-320.webp"
+  },
+  "/art/icones/bag-icon.png": {
+    "160": "/art/optimized/icones-bag-icon-160.webp",
+    "320": "/art/optimized/icones-bag-icon-320.webp"
+  },
+  "/art/icones/book-icon.png": {
+    "160": "/art/optimized/icones-book-icon-160.webp",
+    "320": "/art/optimized/icones-book-icon-320.webp"
+  },
+  "/art/icones/encantamento-sombrio.png": {
+    "160": "/art/optimized/icones-encantamento-sombrio-160.webp",
+    "320": "/art/optimized/icones-encantamento-sombrio-320.webp"
+  },
+  "/art/icones/gold-icon.png": {
+    "160": "/art/optimized/icones-gold-icon-160.webp",
+    "320": "/art/optimized/icones-gold-icon-320.webp"
+  },
+  "/art/icones/grimorio-backup.png": {
+    "160": "/art/optimized/icones-grimorio-backup-160.webp",
+    "320": "/art/optimized/icones-grimorio-backup-320.webp"
+  },
+  "/art/icones/icon-cla.png": {
+    "160": "/art/optimized/icones-icon-cla-160.webp",
+    "320": "/art/optimized/icones-icon-cla-320.webp"
+  },
+  "/art/icones/icon-comida.png": {
+    "160": "/art/optimized/icones-icon-comida-160.webp",
+    "320": "/art/optimized/icones-icon-comida-320.webp"
+  },
+  "/art/icones/icon-config.png": {
+    "160": "/art/optimized/icones-icon-config-160.webp",
+    "320": "/art/optimized/icones-icon-config-320.webp"
+  },
+  "/art/icones/icon-fire-streak.png": {
+    "160": "/art/optimized/icones-icon-fire-streak-160.webp",
+    "320": "/art/optimized/icones-icon-fire-streak-320.webp"
+  },
+  "/art/icones/icon-leaf-eco.png": {
+    "160": "/art/optimized/icones-icon-leaf-eco-160.webp",
+    "320": "/art/optimized/icones-icon-leaf-eco-320.webp"
+  },
+  "/art/icones/icon-missoes.png": {
+    "160": "/art/optimized/icones-icon-missoes-160.webp",
+    "320": "/art/optimized/icones-icon-missoes-320.webp"
+  },
+  "/art/icones/icon-neurodiversity.png": {
+    "160": "/art/optimized/icones-icon-neurodiversity-160.webp",
+    "320": "/art/optimized/icones-icon-neurodiversity-320.webp"
+  },
+  "/art/icones/icon-projetos.png": {
+    "160": "/art/optimized/icones-icon-projetos-160.webp",
+    "320": "/art/optimized/icones-icon-projetos-320.webp"
+  },
+  "/art/icones/icon-taverna.png": {
+    "160": "/art/optimized/icones-icon-taverna-160.webp",
+    "320": "/art/optimized/icones-icon-taverna-320.webp"
+  },
+  "/art/icones/icon-xp.png": {
+    "160": "/art/optimized/icones-icon-xp-160.webp",
+    "320": "/art/optimized/icones-icon-xp-320.webp"
+  },
+  "/art/icones/logo lmu.png": {
+    "160": "/art/optimized/icones-logo lmu-160.webp",
+    "320": "/art/optimized/icones-logo lmu-320.webp"
+  },
+  "/art/icones/oneoff.png": {
+    "160": "/art/optimized/icones-oneoff-160.webp",
+    "320": "/art/optimized/icones-oneoff-320.webp"
+  },
+  "/art/icones/ritual-restauracao.png": {
+    "160": "/art/optimized/icones-ritual-restauracao-160.webp",
+    "320": "/art/optimized/icones-ritual-restauracao-320.webp"
+  },
+  "/art/icones/shop-icon.png": {
+    "160": "/art/optimized/icones-shop-icon-160.webp",
+    "320": "/art/optimized/icones-shop-icon-320.webp"
+  },
+  "/art/icones/sincronia-estelar.png": {
+    "160": "/art/optimized/icones-sincronia-estelar-160.webp",
+    "320": "/art/optimized/icones-sincronia-estelar-320.webp"
+  },
+  "/art/icones/trash-icon.png": {
+    "160": "/art/optimized/icones-trash-icon-160.webp",
+    "320": "/art/optimized/icones-trash-icon-320.webp"
+  },
+  "/art/icones/trophy-icon.png": {
+    "160": "/art/optimized/icones-trophy-icon-160.webp",
+    "320": "/art/optimized/icones-trophy-icon-320.webp"
+  },
+  "/art/companions-v2/wolf-1.webp": {
+    "160": "/art/companions-v2/wolf-1-160.webp",
+    "320": "/art/companions-v2/wolf-1-320.webp"
+  },
+  "/art/companions-v2/wolf-2.webp": {
+    "160": "/art/companions-v2/wolf-2-160.webp",
+    "320": "/art/companions-v2/wolf-2-320.webp"
+  },
+  "/art/companions-v2/wolf-3.webp": {
+    "160": "/art/companions-v2/wolf-3-160.webp",
+    "320": "/art/companions-v2/wolf-3-320.webp"
+  },
+  "/art/companions-v2/lich-1.webp": {
+    "160": "/art/companions-v2/lich-1-160.webp",
+    "320": "/art/companions-v2/lich-1-320.webp"
+  },
+  "/art/companions-v2/lich-2.webp": {
+    "160": "/art/companions-v2/lich-2-160.webp",
+    "320": "/art/companions-v2/lich-2-320.webp"
+  },
+  "/art/companions-v2/lich-3.webp": {
+    "160": "/art/companions-v2/lich-3-160.webp",
+    "320": "/art/companions-v2/lich-3-320.webp"
+  },
+  "/art/companions-v2/dragon-1.webp": {
+    "160": "/art/companions-v2/dragon-1-160.webp",
+    "320": "/art/companions-v2/dragon-1-320.webp"
+  },
+  "/art/companions-v2/dragon-2.webp": {
+    "160": "/art/companions-v2/dragon-2-160.webp",
+    "320": "/art/companions-v2/dragon-2-320.webp"
+  },
+  "/art/companions-v2/dragon-3.webp": {
+    "160": "/art/companions-v2/dragon-3-160.webp",
+    "320": "/art/companions-v2/dragon-3-320.webp"
+  },
+  "/art/companions-v2/aberration-1.webp": {
+    "160": "/art/companions-v2/aberration-1-160.webp",
+    "320": "/art/companions-v2/aberration-1-320.webp"
+  },
+  "/art/companions-v2/aberration-2.webp": {
+    "160": "/art/companions-v2/aberration-2-160.webp",
+    "320": "/art/companions-v2/aberration-2-320.webp"
+  },
+  "/art/companions-v2/aberration-3.webp": {
+    "160": "/art/companions-v2/aberration-3-160.webp",
+    "320": "/art/companions-v2/aberration-3-320.webp"
+  }
+}

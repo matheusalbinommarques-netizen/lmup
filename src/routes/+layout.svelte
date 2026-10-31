@@ -1,33 +1,77 @@
-<!-- src/routes/+layout.svelte -->
 <script lang="ts">
-  // ✅ garante que o Tailwind entre no bundle
+  import { initializePwa } from '$services/pwaService';
+  import { updateLocked } from '$services/updateSafety';
+  import { guardUpdates } from '$lib/journey/guardUpdates';
+  import { storageError } from '$services/storageErrors';
+  import PwaNotice from '$lib/journey/PwaNotice.svelte';
   import '../app.css';
-
-  import BottomNav from '$lib/BottomNav.svelte';
-  import DesktopNav from '$lib/DesktopNav.svelte';
-  import type { Snippet } from 'svelte';
-
-  // Svelte 5: filhos chegam como Snippet e rendemos com {@render}
-  const { children } = $props<{ children: Snippet }>();
+  import '$lib/design-system.css';
+  import '$lib/journey/journey.css';
+  import { page } from '$app/state';
+  import { onMount, type Snippet } from 'svelte';
+  import { initializeComfort } from '$services/comfortService';
+  import { initializeJourney } from '$services/profileService';
+  import AppShell from '$lib/journey/AppShell.svelte';
+  import Button from '$lib/ui/Button.svelte';
+  let { children }: { children: Snippet } = $props();
+  let ready = $state(false);
+  let failed = $state(false);
+  let initialized = false;
+  let failureMessage = $state('');
+  guardUpdates(() => !ready && !page.url.pathname.startsWith('/laboratorio'));
+  async function initialize() {
+    if (initialized) return;
+    initialized = true;
+    failed = false;
+    try {
+      await initializeJourney();
+      ready = true;
+    } catch (cause) {
+      failureMessage = storageError(
+        cause,
+        'Não foi possível abrir os dados locais. Tente novamente.',
+      );
+      failed = true;
+      initialized = false;
+    }
+  }
+  // The laboratory remains independent of the personal database, including client navigation.
+  onMount(() => {
+    const cleanupComfort = initializeComfort();
+    const cleanupPwa = initializePwa();
+    if (!page.url.pathname.startsWith('/laboratorio')) void initialize();
+    return () => {
+      cleanupComfort();
+      cleanupPwa();
+    };
+  });
+  $effect(() => {
+    if (!page.url.pathname.startsWith('/laboratorio') && !ready && !failed)
+      void initialize();
+  });
 </script>
 
-<div class="min-h-dvh bg-slate-950 text-slate-200 md:flex">
-  <!-- Navegação lateral (desktop) -->
-  <DesktopNav />
-
-  <!-- Conteúdo -->
-  <div class="flex-1 min-w-0 relative flex flex-col">
-    <main
-      class="flex-1 p-4 md:p-8 overflow-y-auto scroll-smooth pb-[100px] md:pb-8"
-    >
-      <div class="mx-auto w-full max-w-5xl">
-        {@render children()}
-      </div>
-    </main>
-  </div>
-
-  <!-- Bottom nav (mobile) -->
-  <div class="md:hidden fixed bottom-0 left-0 right-0 z-50">
-    <BottomNav />
-  </div>
+<div inert={$updateLocked}>
+  {#if page.url.pathname.startsWith('/laboratorio')}<div class="lmu-design">
+      {@render children()}
+    </div>{:else}<AppShell
+      ><PwaNotice />{#if ready}{@render children()}{:else if failed}<section
+          role="alert"
+        >
+          <h1>Não foi possível abrir seus dados</h1>
+          <p>
+            {failureMessage}
+          </p>
+          <Button onclick={initialize}>Tentar novamente</Button>
+        </section>{:else}<p role="status">
+          Preparando sua jornada…
+        </p>{/if}</AppShell
+    >{/if}
 </div>
+{#if $updateLocked}<div class="pwa-lock lmu-design" role="status">
+    <h1>Aplicando atualização</h1>
+    <p>
+      As abas foram pausadas depois de verificar as gravações. Aguarde o
+      aplicativo reabrir.
+    </p>
+  </div>{/if}

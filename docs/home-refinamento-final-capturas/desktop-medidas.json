@@ -1,0 +1,152 @@
+[
+  {
+    "size": {
+      "width": 1366,
+      "height": 768
+    },
+    "scale": 1,
+    "overflow": false,
+    "sidebarScroll": 0,
+    "listScroll": 0,
+    "nextScroll": 0,
+    "aligned": 0,
+    "labels": [
+      {
+        "height": 24.953125,
+        "lineHeight": 24.96
+      },
+      {
+        "height": 24.953125,
+        "lineHeight": 24.96
+      },
+      {
+        "height": 24.953125,
+        "lineHeight": 24.96
+      },
+      {
+        "height": 24.953125,
+        "lineHeight": 24.96
+      },
+      {
+        "height": 24.953125,
+        "lineHeight": 24.96
+      },
+      {
+        "height": 24.953125,
+        "lineHeight": 24.96
+      },
+      {
+        "height": 24.953125,
+        "lineHeight": 24.96
+      },
+      {
+        "height": 24.953125,
+        "lineHeight": 24.96
+      },
+      {
+        "height": 19.828125,
+        "lineHeight": 19.84
+      }
+    ]
+  },
+  {
+    "size": {
+      "width": 1440,
+      "height": 900
+    },
+    "scale": 1,
+    "overflow": false,
+    "sidebarScroll": 0,
+    "listScroll": 0,
+    "nextScroll": 0,
+    "aligned": 0,
+    "labels": [
+      {
+        "height": 24.953125,
+        "lineHeight": 24.96
+      },
+      {
+        "height": 24.953125,
+        "lineHeight": 24.96
+      },
+      {
+        "height": 24.953125,
+        "lineHeight": 24.96
+      },
+      {
+        "height": 24.953125,
+        "lineHeight": 24.96
+      },
+      {
+        "height": 24.953125,
+        "lineHeight": 24.96
+      },
+      {
+        "height": 24.953125,
+        "lineHeight": 24.96
+      },
+      {
+        "height": 24.953125,
+        "lineHeight": 24.96
+      },
+      {
+        "height": 24.953125,
+        "lineHeight": 24.96
+      },
+      {
+        "height": 19.828125,
+        "lineHeight": 19.84
+      }
+    ]
+  },
+  {
+    "size": {
+      "width": 1920,
+      "height": 1080
+    },
+    "scale": 1,
+    "overflow": false,
+    "sidebarScroll": 0,
+    "listScroll": 0,
+    "nextScroll": 0,
+    "aligned": 0,
+    "labels": [
+      {
+        "height": 24.953125,
+        "lineHeight": 24.96
+      },
+      {
+        "height": 24.953125,
+        "lineHeight": 24.96
+      },
+      {
+        "height": 24.953125,
+        "lineHeight": 24.96
+      },
+      {
+        "height": 24.953125,
+        "lineHeight": 24.96
+      },
+      {
+        "height": 24.953125,
+        "lineHeight": 24.96
+      },
+      {
+        "height": 24.953125,
+        "lineHeight": 24.96
+      },
+      {
+        "height": 24.953125,
+        "lineHeight": 24.96
+      },
+      {
+        "height": 24.953125,
+        "lineHeight": 24.96
+      },
+      {
+        "height": 19.828125,
+        "lineHeight": 19.84
+      }
+    ]
+  }
+]

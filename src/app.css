@@ -95,11 +95,6 @@ body {
   box-shadow: 0 6px 22px rgba(15, 23, 42, 0.85) !important;
 }
 
-/* overlays de brilho ficam mais discretos, mas ainda visíveis */
-:root[data-neuro-low-stimulus='true'] [aria-hidden='true'] {
-  opacity: 0.55 !important;
-}
-
 /* animações/transições bem curtas em estímulos suaves */
 :root[data-neuro-low-stimulus='true'] * {
   animation-duration: 120ms !important;
@@ -123,10 +118,6 @@ body {
   border-color: rgba(15, 23, 42, 0.9) !important;
 }
 
-/* overlays de brilho desligados totalmente no modo foco */
-:root[data-neuro-focus='true'] [aria-hidden='true'] {
-  opacity: 0 !important;
-}
 .lmup-bg-taverna {
   background-image: url('/art/bg/bg-taverna.webp');
   background-size: cover;

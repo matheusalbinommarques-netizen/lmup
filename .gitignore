@@ -8,6 +8,12 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+.husky/_/
+.svelte-kit/
+build/
+coverage/
+playwright-report/
+test-results/
 dist
 dist-ssr
 *.local
@@ -22,3 +28,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+test-results-pwa/
+
+# Local publication snapshots, process state and activation pointer.
+.local-app/

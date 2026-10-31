@@ -1,3 +1,4 @@
+import { companionContent } from '$lib/content/world';
 // src/services/companionService.ts
 import { db, type Companion, type Profile } from '$services/db';
 
@@ -24,28 +25,60 @@ const PET_EVOLUTIONS: PetEvolutionConfig[] = [
   {
     key: 'wolf',
     stages: [
-      { stage: 1, imagePath: '/art/pets/lobo-1.webp', totalFoodRequired: 0 },
-      { stage: 2, imagePath: '/art/pets/lobo-2.webp', totalFoodRequired: 40 },
-      { stage: 3, imagePath: '/art/pets/lobo-3.webp', totalFoodRequired: 120 },
+      {
+        stage: 1,
+        imagePath: companionContent.wolf.images[0],
+        totalFoodRequired: 0,
+      },
+      {
+        stage: 2,
+        imagePath: companionContent.wolf.images[1],
+        totalFoodRequired: 100,
+      },
+      {
+        stage: 3,
+        imagePath: companionContent.wolf.images[2],
+        totalFoodRequired: 300,
+      },
     ],
   },
   {
     key: 'lich',
     stages: [
-      { stage: 1, imagePath: '/art/pets/lich-1.webp', totalFoodRequired: 0 },
-      { stage: 2, imagePath: '/art/pets/lich-2.webp', totalFoodRequired: 50 },
-      { stage: 3, imagePath: '/art/pets/lich-3.webp', totalFoodRequired: 150 },
+      {
+        stage: 1,
+        imagePath: companionContent.lich.images[0],
+        totalFoodRequired: 0,
+      },
+      {
+        stage: 2,
+        imagePath: companionContent.lich.images[1],
+        totalFoodRequired: 100,
+      },
+      {
+        stage: 3,
+        imagePath: companionContent.lich.images[2],
+        totalFoodRequired: 300,
+      },
     ],
   },
   {
     key: 'dragon',
     stages: [
-      { stage: 1, imagePath: '/art/pets/dragao-1.webp', totalFoodRequired: 0 },
-      { stage: 2, imagePath: '/art/pets/dragao-2.webp', totalFoodRequired: 60 },
+      {
+        stage: 1,
+        imagePath: companionContent.dragon.images[0],
+        totalFoodRequired: 0,
+      },
+      {
+        stage: 2,
+        imagePath: companionContent.dragon.images[1],
+        totalFoodRequired: 100,
+      },
       {
         stage: 3,
-        imagePath: '/art/pets/dragao-3.webp',
-        totalFoodRequired: 180,
+        imagePath: companionContent.dragon.images[2],
+        totalFoodRequired: 300,
       },
     ],
   },
@@ -54,18 +87,18 @@ const PET_EVOLUTIONS: PetEvolutionConfig[] = [
     stages: [
       {
         stage: 1,
-        imagePath: '/art/pets/aberracao-1.webp',
+        imagePath: companionContent.aberration.images[0],
         totalFoodRequired: 0,
       },
       {
         stage: 2,
-        imagePath: '/art/pets/aberracao-2.webp',
-        totalFoodRequired: 60,
+        imagePath: companionContent.aberration.images[1],
+        totalFoodRequired: 100,
       },
       {
         stage: 3,
-        imagePath: '/art/pets/aberracao-3.webp',
-        totalFoodRequired: 180,
+        imagePath: companionContent.aberration.images[2],
+        totalFoodRequired: 300,
       },
     ],
   },
@@ -122,7 +155,10 @@ export function getCompanionEvolutionState(
   if (!cfg || cfg.stages.length === 0) return null;
 
   const foodInvested = companion.foodInvested ?? 0;
-  const evoStage = companion.evolutionStage ?? 1;
+  const evoStage = Math.max(
+    companion.evolutionStage ?? 1,
+    foodInvested >= 300 ? 3 : foodInvested >= 100 ? 2 : 1,
+  );
 
   const maxStage = cfg.stages[cfg.stages.length - 1].stage;
   const idx = cfg.stages.findIndex((s) => s.stage === evoStage);
@@ -166,7 +202,12 @@ export type EvolveResult =
     }
   | {
       ok: false;
-      reason: 'not_found' | 'max_stage' | 'not_enough_food' | 'no_config';
+      reason:
+        | 'not_found'
+        | 'max_stage'
+        | 'not_enough_food'
+        | 'no_config'
+        | 'locked';
     };
 
 /**
@@ -174,84 +215,137 @@ export type EvolveResult =
  * - Respeita a config de estágios (totalFoodRequired)
  * - Atualiza profile.food e Companion.evolutionStage/foodInvested
  */
+export function companionRequiredLevel(companion: Companion): number {
+  return (
+    companion.requiredLevel ??
+    { 1: 1, 2: 5, 3: 15, 4: 20 }[companion.id ?? 0] ??
+    Infinity
+  );
+}
+export function companionAvailable(
+  companion: Companion,
+  level: number,
+): boolean {
+  return (
+    !!getCompanionEvolutionState(companion) &&
+    level >= companionRequiredLevel(companion)
+  );
+}
+export function careQuote(companion: Companion, amount: number) {
+  const state = getCompanionEvolutionState(companion);
+  if (!state || !Number.isSafeInteger(amount) || amount <= 0)
+    throw new Error('Quantidade de comida inválida.');
+  if (!state.nextStage)
+    throw new Error('Este companheiro já alcançou a evolução máxima.');
+  const cost = Math.min(amount, Math.max(0, 300 - state.foodInvested));
+  const invested = state.foodInvested + cost;
+  const stage = Math.max(
+    state.currentStage.stage,
+    invested >= 300 ? 3 : invested >= 100 ? 2 : 1,
+  );
+  return { cost, invested, stage };
+}
+export async function selectCompanion(companionId: number) {
+  await db.transaction('rw', db.profile, db.companions, async () => {
+    const profile = await db.profile.get(1),
+      companion = await db.companions.get(companionId);
+    if (!profile || !companion || !companionAvailable(companion, profile.level))
+      throw new Error('Este companheiro ainda não está disponível.');
+    await db.profile.update(1, { activeCompanionId: companionId });
+  });
+}
+export async function feedCompanion(
+  companionId: number,
+  amount: number,
+  options?: { requestId: string; expectedInvested: number },
+): Promise<Companion> {
+  if (!Number.isSafeInteger(amount) || amount <= 0)
+    throw new Error('Quantidade de comida inválida.');
+  if (
+    options &&
+    (!options.requestId ||
+      options.requestId.length > 100 ||
+      !Number.isSafeInteger(options.expectedInvested) ||
+      options.expectedInvested < 0)
+  )
+    throw new Error('Reabra a prévia de cuidado.');
+  return db.transaction('rw', db.profile, db.companions, async () => {
+    const profile = await db.profile.get(1),
+      companion = await db.companions.get(companionId);
+    if (!profile || !companion || !companionAvailable(companion, profile.level))
+      throw new Error('Este companheiro ainda não está disponível.');
+    if (
+      options &&
+      companion.careHistory?.some((entry) => entry.id === options.requestId)
+    )
+      return companion;
+    if (options && (companion.foodInvested ?? 0) !== options.expectedInvested)
+      throw new Error(
+        'O investimento mudou em outra aba. Confira a nova prévia antes de alimentar.',
+      );
+    const quote = careQuote(companion, amount);
+    if ((profile.food ?? 0) < quote.cost)
+      throw new Error('Você não tem comida suficiente.');
+    const updated = {
+      ...companion,
+      foodInvested: quote.invested,
+      evolutionStage: quote.stage,
+      careHistory: [
+        ...(companion.careHistory ?? []),
+        {
+          id: options?.requestId ?? crypto.randomUUID(),
+          occurredAt: new Date().toISOString(),
+          amount: quote.cost,
+          fromStage: getCompanionEvolutionState(companion)!.currentStage.stage,
+          toStage: quote.stage,
+        },
+      ],
+    };
+    await db.profile.update(1, {
+      food: (profile.food ?? 0) - quote.cost,
+      updatedAt: new Date().toISOString(),
+    });
+    await db.companions.put(updated);
+    return updated;
+  });
+}
+
 export async function evolveCompanion(
   companionId: number,
+  expectedStage?: number,
 ): Promise<EvolveResult> {
-  const [profile, companion] = await Promise.all([
-    db.profile.get(1),
-    db.companions.get(companionId),
-  ]);
-
-  if (!profile) {
-    return { ok: false, reason: 'not_found' };
-  }
-
-  if (!companion || !companion.id) {
-    return { ok: false, reason: 'not_found' };
-  }
-
-  const evoState = getCompanionEvolutionState(companion);
-  if (!evoState) {
-    return { ok: false, reason: 'no_config' };
-  }
-
-  const { currentStage, nextStage, foodInvested } = evoState;
-
-  if (!nextStage) {
-    // Já está no último estágio
-    return { ok: false, reason: 'max_stage' };
-  }
-
-  const currentStageTotal = currentStage.totalFoodRequired;
-  const nextStageTotal = nextStage.totalFoodRequired;
-
-  // comida já investida pode ser maior que o total do estágio atual se você mudar
-  // as configs no futuro — garantimos que não fique negativa
-  const safeFoodInvested = Math.max(foodInvested, currentStageTotal);
-
-  // custo adicional pra chegar no próximo estágio
-  const additionalCost = Math.max(0, nextStageTotal - safeFoodInvested);
-
-  const currentFood = profile.food ?? 0;
-  if (currentFood < additionalCost) {
-    return { ok: false, reason: 'not_enough_food' };
-  }
-
-  const newFood = currentFood - additionalCost;
-  const newFoodInvested = safeFoodInvested + additionalCost;
-
-  const now = new Date();
-
-  await db.transaction('rw', db.profile, db.companions, async () => {
-    await db.profile.update(profile.id!, {
-      food: newFood,
-      updatedAt: now,
-    });
-
-    await db.companions.update(companion.id!, {
-      evolutionStage: nextStage.stage,
-      foodInvested: newFoodInvested,
-    } as any);
+  return db.transaction('rw', db.profile, db.companions, async () => {
+    const profile = await db.profile.get(1);
+    const companion = await db.companions.get(companionId);
+    if (!profile || !companion) return { ok: false, reason: 'not_found' };
+    const required =
+      companion.requiredLevel ??
+      { 1: 1, 2: 5, 3: 15, 4: 20 }[companionId] ??
+      Infinity;
+    if (profile.level < required) return { ok: false, reason: 'locked' };
+    const state = getCompanionEvolutionState(companion);
+    if (!state) return { ok: false, reason: 'no_config' };
+    if (!state.nextStage) return { ok: false, reason: 'max_stage' };
+    if (expectedStage != null && state.currentStage.stage !== expectedStage)
+      throw new Error('A evolução mudou em outra aba. Confira a nova prévia.');
+    const amount = Math.max(
+      0,
+      state.nextStage.totalFoodRequired - (companion.foodInvested ?? 0),
+    );
+    if ((profile.food ?? 0) < amount)
+      return { ok: false, reason: 'not_enough_food' };
+    if (amount > 0) await feedCompanion(companionId, amount);
+    else
+      await db.companions.update(companionId, {
+        evolutionStage: state.nextStage.stage,
+      });
+    return {
+      ok: true,
+      profile: (await db.profile.get(1))!,
+      companion: (await db.companions.get(companionId))!,
+      newStage: state.nextStage.stage,
+    };
   });
-
-  const updatedProfile: Profile = {
-    ...profile,
-    food: newFood,
-    updatedAt: now,
-  };
-
-  const updatedCompanion: Companion = {
-    ...companion,
-    evolutionStage: nextStage.stage,
-    foodInvested: newFoodInvested,
-  };
-
-  return {
-    ok: true,
-    profile: updatedProfile,
-    companion: updatedCompanion,
-    newStage: nextStage.stage,
-  };
 }
 
 /**
@@ -261,17 +355,12 @@ export type CompanionBuffs = {
   xpBonusPercent?: number;
   goldBonusPercent?: number;
   foodBonusPercent?: number;
-  /**
-   * Número de "subtarefas virtuais" extras
-   * usadas para calcular a raridade das missões.
-   */
-  raritySubtaskReduction?: number;
 };
 
 /**
  * Mapeia o estado de evolução de um pet em buffs numéricos.
  */
-function getCompanionBuffsForState(
+export function getCompanionBuffsForState(
   evo: CompanionEvolutionState | null,
 ): CompanionBuffs | null {
   if (!evo) return null;
@@ -303,16 +392,14 @@ function getCompanionBuffsForState(
 
     case 'aberration': {
       // Aberração:
-      //  - lvl 1 → 5% xp/gold/comida, 0 redução
-      //  - lvl 2 → 10% xp/gold/comida, 0 redução
-      //  - lvl 3 → 15% xp/gold/comida, 1 subtask a menos
-      const rarityReduction = stage === 3 ? 1 : 0;
+      //  - lvl 1 → 5% xp/gold/comida
+      //  - lvl 2 → 10% xp/gold/comida
+      //  - lvl 3 → 20% xp e 15% gold/comida
 
       return {
-        xpBonusPercent: percent,
+        xpBonusPercent: percent + (stage === 3 ? 5 : 0),
         goldBonusPercent: percent,
         foodBonusPercent: percent,
-        raritySubtaskReduction: rarityReduction,
       };
     }
 
@@ -331,7 +418,22 @@ export async function getActiveCompanionBuffs(): Promise<CompanionBuffs | null> 
   }
 
   const companion = await db.companions.get(profile.activeCompanionId);
+  if (!companion || !companionAvailable(companion, profile.level)) return null;
   const evo = getCompanionEvolutionState(companion);
-
   return getCompanionBuffsForState(evo);
+}
+
+export function companionBonusLabel(companion: Companion): string {
+  const buffs = getCompanionBuffsForState(
+    getCompanionEvolutionState(companion),
+  );
+  if (!buffs) return 'Sem bônus disponível';
+  return [
+    [buffs.xpBonusPercent, 'XP'],
+    [buffs.goldBonusPercent, 'Gold'],
+    [buffs.foodBonusPercent, 'Comida'],
+  ]
+    .filter(([value]) => value)
+    .map(([value, label]) => '+' + value + '% ' + label)
+    .join(' · ');
 }

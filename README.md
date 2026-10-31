@@ -1,43 +1,139 @@
-# Svelte + Vite
+# Level Me Up
 
-This template should help get you started developing with Svelte in Vite.
+Aplicativo pessoal para organizar missões e projetos, acompanhar progresso e evoluir um herói e seus companheiros. Feito com SvelteKit, TypeScript e Dexie/IndexedDB.
 
-## Recommended IDE Setup
+O produto está sendo evoluído por etapas. A base reproduzível está descrita em [E1](docs/E1-base-reproduzivel.md), os contratos de progresso e recuperação em [E2](docs/E2-progresso-confiavel.md), a jornada diária com dados reais em [E4](docs/E4-jornada-real.md), projetos, revisões e esforço em [E5](docs/E5-projetos-revisoes.md), Refúgio, companheiros e coleção em [E6](docs/E6-refugio-colecao.md), e histórico, conforto global e backup em [E7](docs/E7-progresso-configuracoes.md).
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode).
+O aplicativo abre em Hoje, com Missões, Projetos e Refúgio na navegação principal. Criação rápida, passos, notas, pausa, retomada, conclusão e desfazimento usam os dados reais do navegador. O organizador anterior está em `/arquivo/missoes`; o antigo início, com perfil e equipamentos, em `/perfil`. Projetos têm objetivo e etapas; revisões têm sessões e histórico em `/revisoes`. O esforço escolhido define o XP base, independentemente da quantidade de passos. O Refúgio reúne ambiente, companheiros, coleção, loja e conquistas. Compra e cuidado têm prévia e confirmação; equipamentos são exclusivos por espaço. Meu progresso (`/progresso`) separa missões, revisões, bônus, estornos, compras e cuidados pelos registros reais. Configurações (`/config`) aplica conforto global e reúne backup, recuperação e reinício com confirmação. As demais funções continuam acessíveis por Perfil e mais.
 
-## Need an official Svelte framework?
+O sistema visual e o piloto original estão em [E3](docs/E3-sistema-visual.md). `/laboratorio` e `/laboratorio?view=componentes` continuam sendo prévias com dados de exemplo em memória; não substituem a jornada real e não abrem o banco pessoal.
 
-Check out [SvelteKit](https://github.com/sveltejs/kit#readme), which is also powered by Vite. Deploy anywhere with its serverless-first approach and adapt to various platforms, with out of the box support for TypeScript, SCSS, and Less, and easily-added support for mdsvex, GraphQL, PostCSS, Tailwind CSS, and more.
+A conclusão de missões usa a [Recompensa Viva 0.1](docs/RECOMPENSA-VIVA-0.1.md), com recursos registrados, barras de progresso e destaques condicionais de nível e Refúgio. O documento reúne as capturas de desktop e celular e os detalhes de compatibilidade.
 
-## Technical considerations
+O organizador de [Missões e Organização Pessoal 1.0](docs/MISSOES-ORGANIZACAO-PESSOAL-1.0.md) reúne áreas personalizadas, planejamento por data, rotinas diárias e semanais e histórico por ocorrência, integrado à Recompensa Viva e disponível offline.
 
-**Why use this over SvelteKit?**
+O app instalado pelo Chrome recebe versões pela [sincronização isolada com o GitHub](docs/SINCRONIZACAO-GITHUB.md). O desenvolvimento ocorre em `feat/home-rpg-reference`; versões aprovadas são promovidas explicitamente para `release/lmup-local`. Uma tarefa local busca a branch estável, valida e publica sem alterar a pasta de desenvolvimento. A origem e os dados locais são preservados.
 
-- It brings its own routing solution which might not be preferable for some users.
-- It is first and foremost a framework that just happens to use Vite under the hood, not a Vite app.
+## Requisitos e instalação
 
-This template contains as little as possible to get started with Vite + Svelte, while taking into account the developer experience with regards to HMR and intellisense. It demonstrates capabilities on par with the other `create-vite` templates and is a good starting point for beginners dipping their toes into a Vite + Svelte project.
+Node.js 22.12+ ou 24.x. O desenvolvimento local desta entrega foi verificado com Node 24 e npm 11. A integração contínua está configurada para Node 22/24.
 
-Should you later need the extended capabilities and extensibility provided by SvelteKit, the template has been structured similarly to SvelteKit so that it is easy to migrate.
-
-**Why include `.vscode/extensions.json`?**
-
-Other templates indirectly recommend extensions via the README, but this file allows VS Code to prompt the user to install the recommended extension upon opening the project.
-
-**Why enable `checkJs` in the JS template?**
-
-It is likely that most cases of changing variable types in runtime are likely to be accidental, rather than deliberate. This provides advanced typechecking out of the box. Should you like to take advantage of the dynamically-typed nature of JavaScript, it is trivial to change the configuration.
-
-**Why is HMR not preserving my local component state?**
-
-HMR state preservation comes with a number of gotchas! It has been disabled by default in both `svelte-hmr` and `@sveltejs/vite-plugin-svelte` due to its often surprising behavior. You can read the details [here](https://github.com/sveltejs/svelte-hmr/tree/master/packages/svelte-hmr#preservation-of-local-state).
-
-If you have state that's important to retain within a component, consider creating an external store which would not be replaced by HMR.
-
-```js
-// store.js
-// An extremely simple external store
-import { writable } from 'svelte/store';
-export default writable(0);
+```sh
+npm ci
 ```
+
+Usar o lockfile versionado. `npm ci` executa a preparação do Husky para os hooks locais; em ambientes de verificação sem hooks é possível usar `npm ci --ignore-scripts` e depois executar explicitamente as verificações abaixo.
+
+## Desenvolvimento
+
+```sh
+npm run dev -- --host 127.0.0.1 --port 5175 --strictPort
+```
+
+Abrir `http://127.0.0.1:5175` para desenvolvimento. A instância acompanhada pelo usuário serve o build de produção em `http://127.0.0.1:5174`; não use Vite nessa origem depois de ativar o cache PWA. Manter a origem estável para cada finalidade: navegador, protocolo, host e porta definem onde os dados locais são armazenados.
+
+Antes de trocar de navegador, origem ou computador, exporte um backup pelo aplicativo. O LMU atual não sincroniza os dados com a nuvem. Não use o perfil pessoal do navegador nos testes automatizados.
+
+## Verificações
+
+```sh
+npm run verify
+npm run audit:security
+```
+
+`verify` executa lint, checagem de tipos/Svelte, testes sem modo de observação, testes da publicação local e build. Para rodar separadamente:
+
+```sh
+npm run lint
+npm run check
+npm run test:run
+npm run test:publication
+npm run build
+```
+
+Os testes de serviço usam IndexedDB em memória e não acessam o banco do usuário. `npm test` mantém o modo de observação para desenvolvimento.
+
+## Testes da versão de produção
+
+Depois de `npm run build`:
+
+```sh
+npx playwright install chromium
+npm run test:e2e
+```
+
+Os testes iniciam e encerram um servidor de arquivos na porta 4174, servindo somente `build/`, sem o runtime do SvelteKit. A instância do usuário na porta 5174 permanece separada. São usados contextos descartáveis e dados sintéticos, sem sincronização ou limpeza do perfil pessoal.
+
+No Windows, para usar o Chrome já instalado em vez de baixar o Chromium:
+
+```powershell
+$env:LMU_BROWSER_CHANNEL = 'chrome'
+npm run test:e2e
+```
+
+Os testes verificam as rotas principais, projetos com etapas, criação/edição/recarga, conclusão simultânea em duas abas, estorno, notas, revisões em dias distintos, datas em três fusos, esforço, coleção, compra concorrente, equipamento, cuidado, evolução e recusa de backup inválido em desktop e viewport móvel. A suíte separada `npm run test:pwa` usa service workers reais na porta 4274 e confere offline e atualização entre abas. Não certifica aparelhos físicos ou instalação nativa no sistema operacional.
+
+## Build e hospedagem estática
+
+```sh
+npm run build
+npm run preview -- --host 127.0.0.1 --port 4174 --strictPort
+```
+
+A saída está em `build/`. As rotas fixas têm shell pré-renderizado. Projetos são criados no navegador; seus IDs não existem durante o build. O host precisa servir `200.html` para caminhos que não correspondem a arquivos, preservando a URL solicitada.
+
+Para verificar exclusivamente os arquivos estáticos com o fallback previsto, use `npm run serve:build` em vez do preview. Esse servidor de teste escuta apenas em `127.0.0.1:4174` e não é destinado à exposição pública. Não devolve HTML para assets inexistentes.
+
+Exemplo de regra para hosts que suportam arquivo `_redirects`: `/* /200.html 200`. Configure a regra equivalente no host escolhido; não publique sem testar um acesso direto a `/projetos/1` e sua recarga.
+
+JavaScript é necessário para acessar o progresso local. `npm run preview` é para verificação, não um servidor de produção público. Nenhum instalador `.exe` é produzido por esses comandos.
+
+## Estrutura
+
+- `src/routes`: telas e carregamento de rotas.
+- `src/lib`: componentes de interface.
+- `src/services`: banco e regras de progresso, equipamentos, projetos e backup.
+- `src/test`: preparação do banco em memória.
+- `tests/e2e`: verificações de produção com Playwright.
+- `static`: artes e ícones de instalação.
+- `docs`: decisões, evidências resumidas e limitações por etapa.
+
+`.svelte-kit/`, `build/`, relatórios e dependências são gerados localmente e não devem ser versionados.
+
+## Dados e segurança
+
+O banco atual se chama `LevelMeUpDB`, versão 5. A migração preserva os dados v4 e guarda uma cópia local de recuperação. Conclusões novas registram recompensas efetivas; conclusões anteriores sem evento não permitem estorno exato. Importações são validadas antes da substituição e guardam o estado anterior. Reiniciar limpa toda a jornada e preserva somente nome e avatar. Configurações permite exportar a recuperação mais recente.
+
+As cinco recuperações recentes e a cópia da migração ficam no próprio navegador. Apagar dados do site remove essas cópias; exporte um backup externo. Exportações podem conter nomes, notas e histórico pessoal; mantenha seus backups em local confiável.
+
+Os avisos de dependências restantes e seu alcance estão documentados em [E1](docs/E1-base-reproduzivel.md). Não use `npm audit fix --force` sem revisar as migrações propostas e repetir as verificações pertinentes.
+
+## Offline e instalação
+
+A [entrega E8](docs/E8-offline-producao.md) descreve cache, atualização e limitações. `npm run build` gera também `sw.js`, manifesto e `release.json`. Configurações mostra preparação offline, atualização, instalação quando oferecida pelo navegador e proteção opcional do armazenamento. A primeira preparação precisa de rede. Instalar não sincroniza nem substitui backup externo.
+
+## Beta e personalidade provisória
+
+A [rodada inicial da E9](docs/E9-personalidade-beta.md) aplica voz compartilhada e exemplos opcionais à primeira missão. Um exemplo abre um rascunho editável; cancelar não cria dados. A tela Hoje distingue retomada, revisão futura e ausência de missões ativas. A Beta ainda aguarda sessões reais com participantes e os ajustes decorrentes delas.
+
+## Candidato técnico local
+
+Depois de `npm run build`, execute `npm run package:beta` para gerar uma pasta em `dist/` com os arquivos estáticos, servidor local, guia e manifesto de integridade. A identidade do pacote considera revisão, origem do código e hashes dos arquivos. `npm run test:package` confere o pacote e recusa alterações, arquivos ausentes, extras e caminhos inválidos. A conferência detecta corrupção; não é assinatura digital.
+
+O [guia da Beta](docs/GUIA-DA-BETA.md) explica instalação, atualização, backup e recuperação. A pasta gerada contém `iniciar.mjs`; executar `node iniciar.mjs` mantém a origem `127.0.0.1:5174`. Não inicie um segundo servidor nessa porta se a instância já estiver aberta. Não há dependências npm dentro do pacote, mas Node.js é necessário para o servidor local incluído. A avaliação com participantes continua pendente.
+
+## Perfil integrado
+
+A [rodada de Perfil e equipamentos](docs/E9-perfil-integrado.md) substitui a Taverna em `/perfil`, preservando a rota, os dados e os atalhos. Equipamentos e bônus são lidos de forma reativa, usando as regras canônicas. A companhia inicial compartilha a ilustração de Hoje; o restante da evolução usa as artes existentes. A validação final com participantes permanece pendente.
+
+## Marcos do Refúgio
+
+A [rodada de marcos e paisagens](docs/E9-refugio-marcos.md) separa ambiente alcançado de prêmio recebido, mantém recibos de estorno e permite explorar prévias sem alterar a jornada. `/santuario` continua como acesso ao mesmo Refúgio. Importações incoerentes entre recibos de marco e contador de prêmio são recusadas antes da substituição dos dados.
+
+Veja também [os cuidados e prévias dos companheiros](docs/E9-companheiros-cuidados.md).
+
+A Beta tem [escopo congelado para avaliação](docs/CONGELAMENTO-DA-BETA.md), com lista fechada de acabamento e critérios para correções.
+
+## Estado da versão publicada
+
+Consulte o [estado da Beta](docs/BETA-ATUAL.md), o [roadmap](docs/planejamento/ROADMAP-Level-Me-Up.md) e o [backlog](docs/planejamento/BACKLOG-Level-Me-Up.md). O escopo funcional está congelado para avaliação; a V1 ainda não foi encerrada.

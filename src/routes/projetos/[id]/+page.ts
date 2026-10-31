@@ -1,6 +1,8 @@
 // src/routes/projetos/[id]/+page.ts
 import type { PageLoad } from './$types';
 
+export const prerender = false;
+
 export const load: PageLoad = ({ params }) => {
   const rawId = params.id; // "1", "2", etc (string)
   const idNum = Number(rawId); // converte para número

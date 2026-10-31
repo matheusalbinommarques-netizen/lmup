@@ -1,0 +1,6 @@
+#!/bin/sh
+if test -f scripts/publish-local.mjs; then
+  if ! node scripts/publish-local.mjs --after-commit; then
+    printf '\nO commit foi criado. O aplicativo mantém a versão anterior; confira o motivo acima e execute npm run app:publicar depois de corrigir.\n'
+  fi
+fi

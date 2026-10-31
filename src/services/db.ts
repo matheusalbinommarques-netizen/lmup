@@ -1,5 +1,6 @@
 // src/services/db.ts
 import Dexie, { type Table } from 'dexie';
+import { trackWrite } from './updateSafety';
 
 // ---------------------------------------------
 // PROFILE (herói)
@@ -17,6 +18,14 @@ export interface Profile {
   gold: number; // usado no app inteiro
   food?: number; // NOVO – recurso de comida para alimentar/evoluir pets (opcional p/ não quebrar fallbacks)
   avatarUrl?: string;
+  /** Optional non-canonical narrative pilot. Stored with profile for existing backup compatibility. */
+  rpgPilot?: {
+    scene: number;
+    choice?: 'help' | 'follow';
+    chapterOneEndXp?: number;
+    chapterTwoUnlocked?: boolean;
+    chapterTwoScene?: number;
+  };
 
   // streak
   currentStreak: number;
@@ -28,7 +37,7 @@ export interface Profile {
   createdAt?: string | Date;
   updatedAt?: string | Date;
 
-  // usado no EcoPanel
+  // último marco de ambiente com recompensa já contabilizada
   ecoGoldClaimedUpToStage?: number;
 
   // conquistas em destaque na sala de troféus
@@ -51,12 +60,38 @@ export interface Area {
 // ---------------------------------------------
 export type TaskRarity = 'common' | 'rare' | 'epic' | 'legendary';
 export type TaskStatus = 'available' | 'todo' | 'completed';
+export type TaskRecurrence = {
+  kind: 'daily' | 'weekdays' | 'weekly';
+  startDate: string;
+  days?: number[]; // Local calendar weekdays, Sunday = 0.
+};
 
 export interface Task {
   id?: number;
 
   title: string;
-  description?: string;
+  description?: string | null;
+  subtasks?: string[];
+  completedSubtasks?: number[];
+  completionRevision?: number;
+  completionEventId?: string | null;
+  creationKey?: string;
+  plannedDate?: string | null;
+  recurrence?: TaskRecurrence | null;
+  occurrenceSession?: string;
+  lastOccurrenceDate?: string | null;
+  skippedDate?: string | null;
+  occurrenceOverride?: string | null;
+  pinned?: boolean;
+  executionState?: 'idle' | 'active' | 'paused';
+  executionNotes?: string;
+  notesRevision?: number;
+  reviewSession?: string;
+  effort?: 'small' | 'medium' | 'large' | 'deep';
+  definitionRevision?: number;
+  projectStageId?: string | null;
+  reviewDueDate?: string | null;
+  lastReviewDate?: string | null;
 
   areaId?: number;
 
@@ -93,6 +128,12 @@ export interface XpLog {
   areaId?: number | null;
   type?: 'gain' | 'spend';
   reason?: string;
+  eventId?: string;
+  kind?: ActivityKind;
+  taskId?: number;
+  projectId?: number;
+  goldDelta?: number;
+  foodDelta?: number;
 
   createdAt?: string | Date;
 }
@@ -209,6 +250,13 @@ export interface Companion {
 
   // NOVO – evolução do pet e comida investida
   evolutionStage?: number; // 1, 2, 3...
+  careHistory?: {
+    id: string;
+    occurredAt: string;
+    amount: number;
+    fromStage: number;
+    toStage: number;
+  }[];
   foodInvested?: number; // total de comida já gasta nesse pet
 }
 
@@ -250,7 +298,80 @@ export interface HeroProject {
 
   // pra Fase 4 (bônus de XP)
   rewardGranted?: boolean;
+  rewardEventId?: string | null;
+  rewardRevision?: number;
+  stages?: { id: string; title: string }[];
+  revision?: number;
+  creationKey?: string;
+  rewardPolicy?: 'effort-v1';
 }
+
+export type ActivityKind =
+  | 'task'
+  | 'review'
+  | 'project'
+  | 'adjustment'
+  | 'reversal';
+
+export interface ActivityEvent {
+  id: string;
+  kind: ActivityKind;
+  sequence: number;
+  occurredAt: string;
+  date: string;
+  taskId?: number;
+  occurrenceDate?: string;
+  taskTitle?: string;
+  areaName?: string;
+  areaId?: number;
+  projectId?: number;
+  sourceEventId?: string;
+  baseXp: number;
+  reviewOutcome?: 'recalled' | 'partial' | 'again';
+  reviewStateBefore?: {
+    completed: boolean;
+    status?: TaskStatus;
+    completionEventId?: string | null;
+    completedAt?: string | Date | null;
+    reviewStartedAt?: string | Date | null;
+    reviewDueDate?: string | null;
+    lastReviewDate?: string | null;
+  };
+  reward: { xp: number; gold: number; food: number };
+  /** XP at grant time; optional for receipts created before Recompensa Viva. */
+  progress?: { before: number; after: number };
+  modifiers: {
+    xpMultiplier: number;
+    goldMultiplier: number;
+    foodMultiplier: number;
+  };
+  awardedStages: number[];
+  ecoClaimedBefore: number;
+  protectionDays: number;
+  streakBefore?: { currentStreak: number; lastCompletionDate: string | null };
+  reversedAt?: string;
+}
+
+export interface RecoverySnapshot {
+  id: string;
+  reason: 'migration-v4' | 'before-import' | 'before-reset';
+  createdAt: string;
+  data: Record<string, unknown[]>;
+}
+
+export const LEGACY_STORES = {
+  profile: '++id',
+  tasks:
+    '++id, areaId, projectId, status, completed, archived, createdAt, completedAt, reviewEnabled',
+  xpLogs: '++id, date, areaId, createdAt',
+  areas: '++id',
+  inventory: '++id, key, type, owned, equipped',
+  shopItems: '++id, key, type, price',
+  ownedShopItems: '++id, itemId',
+  companions: '++id, key, rarity, unlocked',
+  items: '++id, areaId',
+  projects: '++id, status, createdAt, targetDate',
+};
 
 // ---------------------------------------------
 // BANCO DEXIE
@@ -270,9 +391,11 @@ export class LevelMeUpDB extends Dexie {
   items!: Table<LegacyItem, number>; // legado
 
   projects!: Table<HeroProject, number>; // Fase 2
+  activityEvents!: Table<ActivityEvent, string>;
+  recoverySnapshots!: Table<RecoverySnapshot, string>;
 
-  constructor() {
-    super('LevelMeUpDB');
+  constructor(name = 'LevelMeUpDB') {
+    super(name);
 
     // versão 4 (já estávamos nela, não muda o schema aqui)
     this.version(4).stores({
@@ -295,6 +418,44 @@ export class LevelMeUpDB extends Dexie {
 
       projects: '++id, status, createdAt, targetDate',
     });
+
+    this.version(5)
+      .stores({
+        ...LEGACY_STORES,
+        xpLogs: '++id, date, areaId, createdAt, eventId',
+        activityEvents:
+          'id, sequence, kind, taskId, projectId, sourceEventId, date',
+        recoverySnapshots: 'id, createdAt, reason',
+      })
+      .upgrade(async (transaction) => {
+        const data: Record<string, unknown[]> = {};
+        for (const name of Object.keys(LEGACY_STORES)) {
+          data[name] = await transaction.table(name).toArray();
+        }
+        if (Object.values(data).some((rows) => rows.length)) {
+          await transaction.table('recoverySnapshots').add({
+            id: 'migration-v4',
+            reason: 'migration-v4',
+            createdAt: new Date().toISOString(),
+            data,
+          });
+        }
+      });
+    for (const table of this.tables) {
+      table.hook('reading', (value) => {
+        if (Dexie.currentTransaction) trackWrite(Dexie.currentTransaction);
+        return value;
+      });
+      table.hook('creating', (_key, _value, transaction) => {
+        trackWrite(transaction);
+      });
+      table.hook('updating', (_changes, _key, _value, transaction) => {
+        trackWrite(transaction);
+      });
+      table.hook('deleting', (_key, _value, transaction) => {
+        trackWrite(transaction);
+      });
+    }
   }
 }
 

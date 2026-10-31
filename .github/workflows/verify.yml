@@ -1,0 +1,36 @@
+name: Verificar LMU
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    strategy:
+      # One Node version's known audit failure must not cancel browser checks.
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run verify
+      - if: matrix.node == 24
+        run: npx playwright install --with-deps chromium
+      - if: matrix.node == 24
+        run: npm run test:e2e
+      - if: matrix.node == 24
+        run: npm run test:pwa
+      - if: matrix.node == 24
+        run: npm run test:package
+      # Keep the strict audit mandatory; run functional checks before it so
+      # pre-existing advisories cannot hide unrelated regressions.
+      - run: npm run audit:security
