@@ -95,7 +95,7 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
   await page
     .getByRole('button', { name: 'Pausar e voltar', exact: true })
     .click();
-  await expect(page).toHaveURL(/\\/missoes$/);
+  await expect(page).toHaveURL(new RegExp('/missoes$'));
   await page.goto('/');
   await expect(
     page.getByRole('link', { name: 'Continuar missão', exact: true }),
@@ -103,7 +103,7 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
   await page
     .getByRole('link', { name: 'Continuar missão', exact: true })
     .click();
-  await expect(page).toHaveURL(/\\/missao\\/\\d+$/);
+  await expect(page).toHaveURL(new RegExp('/missao/[0-9]+$'));
   const resume = page.getByRole('button', { name: 'Retomar missão', exact: true });
   if (!(await resume.isVisible())) {
     console.log(
