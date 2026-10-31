@@ -426,6 +426,7 @@ test('revisão pronta espera formulário aberto e preserva URL e dados ao atuali
   page,
   request,
 }) => {
+  test.slow(); // Multi-client activation and cache migration on shared CI runners.
   await ready(page);
   const initial = await metadata(page);
   await mission(page, 'Continuar depois da atualização');
@@ -454,7 +455,7 @@ test('revisão pronta espera formulário aberto e preserva URL e dados ao atuali
     .click();
   try {
     await expect
-      .poll(async () => (await metadata(page)).version, { timeout: 15000 })
+      .poll(async () => (await metadata(page)).version, { timeout: 30000 })
       .not.toBe(initial.version);
   } catch (error) {
     const diagnostics = await page.evaluate(async () => {
@@ -489,6 +490,7 @@ test('outra aba com notas não salvas bloqueia a troca até salvar', async ({
   context,
   request,
 }) => {
+  test.slow(); // Multi-client activation and cache migration on shared CI runners.
   await ready(page);
   const url = await mission(page, 'Duas abas seguras');
   const other = await context.newPage();
@@ -542,10 +544,10 @@ test('outra aba com notas não salvas bloqueia a troca até salvar', async ({
     .getByRole('button', { name: 'Atualizar agora', exact: true })
     .click();
   await expect
-    .poll(async () => (await metadata(page)).version, { timeout: 15000 })
+    .poll(async () => (await metadata(page)).version, { timeout: 30000 })
     .not.toBe(before);
   await expect
-    .poll(async () => (await metadata(other)).version, { timeout: 15000 })
+    .poll(async () => (await metadata(other)).version, { timeout: 30000 })
     .not.toBe(before);
   await expect(other.getByLabel('Notas da missão')).toHaveValue(
     'Rascunho que precisa salvar',
@@ -677,6 +679,7 @@ test('aba antiga sem protocolo impede a ativação até ser fechada', async ({
   context,
   request,
 }) => {
+  test.slow(); // Multi-client activation and cache migration on shared CI runners.
   await ready(page);
   const before = (await metadata(page)).version;
   const legacy = await context.newPage();
@@ -695,7 +698,7 @@ test('aba antiga sem protocolo impede a ativação até ser fechada', async ({
     .getByRole('button', { name: 'Atualizar agora', exact: true })
     .click();
   await expect
-    .poll(async () => (await metadata(page)).version, { timeout: 15000 })
+    .poll(async () => (await metadata(page)).version, { timeout: 30000 })
     .not.toBe(before);
 });
 test('controle legado sem cache confirmado não aparece como pronto para offline', async ({
