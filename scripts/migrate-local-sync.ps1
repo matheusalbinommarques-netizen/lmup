@@ -22,8 +22,7 @@ function Invoke-GitChecked([string]$directory, [string[]]$gitArgs) {
 function Save-Json([string]$path, $value) {
   $temporary = $path + '.new'
   [IO.File]::WriteAllText($temporary, ($value | ConvertTo-Json -Depth 8), (New-Object Text.UTF8Encoding $false))
-  if (Test-Path -LiteralPath $path) { [IO.File]::Replace($temporary, $path, $null) }
-  else { Move-Item -LiteralPath $temporary -Destination $path }
+  Move-Item -LiteralPath $temporary -Destination $path -Force
 }
 function Check-Locks {
   foreach ($name in @('sync-daemon.lock', 'publish.lock')) {
@@ -74,8 +73,7 @@ function Restore-Backup {
     $restoring = Join-Path $store 'active.json.restoring'
     Copy-Item -LiteralPath $savedActivePath -Destination $restoring -Force
     $activePath = Join-Path $store 'active.json'
-    if (Test-Path -LiteralPath $activePath) { [IO.File]::Replace($restoring, $activePath, $null) }
-    else { Move-Item -LiteralPath $restoring -Destination $activePath }
+    Move-Item -LiteralPath $restoring -Destination $activePath -Force
   }
 }
 
