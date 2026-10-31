@@ -131,28 +131,10 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(response);
   }
 });
-// A rejected attempt must release locks in other tabs before the caller retries.
-// postMessage alone only queues delivery; an explicit acknowledgement closes the race.
 async function unlock(clients, id) {
   await Promise.all(
-    clients.map(
-      (client) =>
-        new Promise((resolve) => {
-          const channel = new MessageChannel();
-          const timer = setTimeout(() => {
-            channel.port1.close();
-            resolve(false);
-          }, 2500);
-          channel.port1.onmessage = (event) => {
-            clearTimeout(timer);
-            channel.port1.close();
-            resolve(event.data?.unlocked === true);
-          };
-          client.postMessage(
-            { type: 'LMU_UPDATE_ABORT', id, protocol: PROTOCOL },
-            [channel.port2],
-          );
-        }),
+    clients.map((client) =>
+      client.postMessage({ type: 'LMU_UPDATE_ABORT', id, protocol: PROTOCOL }),
     ),
   );
 }
@@ -178,7 +160,6 @@ async function update(event) {
     ready: new Set(),
     resolve,
   };
-  // Decline promptly when a client does not answer; unlock ACKs are awaited below.
   const timer = setTimeout(() => resolve(false), 3500);
   for (const client of clients)
     client.postMessage({
@@ -197,10 +178,9 @@ async function update(event) {
   const unchanged =
     current.length === clients.length &&
     current.every((client) => barrier.expected.has(client.id));
-  const locked = clients.filter((client) => barrier.ready.has(client.id));
   barrier = null;
   if (!ready || !unchanged) {
-    await unlock(locked, id);
+    await unlock(current.concat(clients), id);
     port.postMessage({ ok: false, reason: 'busy' });
     return;
   }

@@ -85,7 +85,7 @@ export async function applyUpdate() {
       id: crypto.randomUUID(),
       schema: APP_SCHEMA,
       protocol: UPDATE_PROTOCOL,
-    }, 16000);
+    });
     if (!result.ok)
       patch({
         message:
@@ -163,7 +163,6 @@ export function initializePwa() {
         updateLocked.set(false);
         lockedRequest = null;
       }
-      event.ports[0]?.postMessage({ unlocked: true });
       return;
     }
     if (data.type !== 'LMU_UPDATE_PREPARE') return;
