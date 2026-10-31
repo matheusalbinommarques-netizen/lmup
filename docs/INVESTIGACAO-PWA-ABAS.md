@@ -51,7 +51,13 @@ Em falhas do job Node 24, o workflow envia `test-results/` e `test-results-pwa/`
 
 Os nomes dos checks obrigatórios foram preservados. A conexão GitHub retornou 403 ao consultar a configuração administrativa de proteção, e a CLI local não tem autenticação. Não foi alterada nenhuma regra de proteção.
 
-## Limites
+## Evidência nova do PR de diagnóstico
+
+A execução [41252321680](https://github.com/matheusalbinommarques-netizen/lmup/actions/runs/41252321680) passou em Node 22 e falhou em Node 24 exatamente no cenário de notas (29/30 PWA; 188/188 E2E). Sem reexecução do job, foi possível recuperar pela primeira vez o [artefato completo](https://github.com/matheusalbinommarques-netizen/lmup/actions/runs/41252321680/artifacts/13061716875), SHA-256 `9bd150efa4d77588d3f3d6d2105adaeeb53640fcd07ff40390a7140e8cabc129`. O diagnóstico confirma, nas duas abas: notas salvas, tela Aplicando atualização, worker `a` ativo e `b` instalado em espera, ambos com schema 5/protocolo 1.
+
+Foi também identificada divergência de dependências no checkout local: Playwright 1.56.1/Dexie 4.2.1 instalados versus 1.64.1/4.4.7 no lockfile. Os números locais anteriores são evidência exploratória desse ambiente antigo, e não validação do lockfile. `npm ci` alinhou a cópia de desenvolvimento do C:, e foi instalado o Chromium 156 correspondente ao CI. Cinco reproduções dirigidas no ambiente alinhado, com instrumentação, passaram; isso ainda não prova correção.
+
+O próximo commit acrescenta uma etapa curta de estabilidade antes dos testes amplos no Node 24: apenas o cenário de notas, cinco vezes por plataforma, retries zero e parada na primeira falha. O servidor de teste pode registrar, somente mediante variável explícita, quem recebeu APPLY/ACK, o resultado da barreira e início/fim de skipWaiting. A suíte completa e as demais etapas obrigatórias permanecem. O worker de produção não foi alterado.
 
 ## Validação deste conjunto de diagnóstico
 
