@@ -27,7 +27,15 @@
   import Button from '$lib/ui/Button.svelte';
   import Card from '$lib/ui/Card.svelte';
   import Icon from '$lib/ui/Icon.svelte';
-  let { id }: { id: number } = $props();
+  let {
+    id,
+    sessionMode = false,
+    onSessionContinue,
+  }: {
+    id: number;
+    sessionMode?: boolean;
+    onSessionContinue?: () => void;
+  } = $props();
   let data = $state<JourneySnapshot>();
   let error = $state('');
   let editOpen = $state(false),
@@ -126,7 +134,7 @@
           notes = current.executionNotes ?? '';
           revision = current.notesRevision ?? 0;
         }
-        if (current) startCurrent(current);
+        // Opening mission details never begins execution automatically.
       },
       error: () => {
         error =
@@ -141,7 +149,7 @@
     };
     const refresh = () => {
       today = dateKey();
-      if (task) startCurrent(task);
+
     };
     const dayClock = setInterval(refresh, 30000);
     window.addEventListener('focus', refresh);
@@ -239,7 +247,7 @@
     try {
       await pauseTask(id);
       busy = false;
-      await goto('/');
+      await goto(sessionMode ? '/sessao' : '/missoes');
     } catch (cause) {
       error =
         cause instanceof Error ? cause.message : 'Não foi possível pausar.';
@@ -265,15 +273,15 @@
     await queue;
     dirty = false;
     noteError = '';
-    await goto('/');
+    await goto(sessionMode ? '/sessao' : '/missoes');
   }
 </script>
 
 <svelte:head><title>{task?.title ?? 'Missão'} · Level Me Up</title></svelte:head
 >
 <div class="journey-execution">
-  <a class="journey-link" href="/"
-    ><Icon name="back" size={18} />Voltar para hoje</a
+  <a class="journey-link" href={sessionMode ? '/sessao' : '/missoes'}
+    ><Icon name="back" size={18} />{sessionMode ? 'Voltar à sessão' : 'Voltar às missões'}</a
   >
   {#if error}<p role="alert" class="journey-error">{error}</p>{/if}
   {#if !finished && lastTaskEvent?.kind === 'reversal'}
@@ -300,6 +308,8 @@
         projectName={data.projects.find((item) => item.id === task.projectId)
           ?.name}
         fresh={!!event && event.id === freshEventId}
+        continueLabel={sessionMode ? 'Próxima missão' : 'Continuar'}
+        onContinue={sessionMode ? onSessionContinue : undefined}
       />
     {/key}
     <div class="completion-details">
@@ -337,6 +347,19 @@
           </p>{/if}
       </div>
     </header>
+    {#if canExecute && !['active', 'paused'].includes(task.executionState ?? '')}<div class="journey-actions">
+        <Button
+          variant="secondary"
+          disabled={starting > 0 || busy}
+          onclick={() => startCurrent(task)}
+          >Iniciar missão</Button
+        >
+        <p class="lmu-hint">Consultar a missão não inicia sua execução.</p>
+      </div>{:else if canExecute && task.executionState === 'paused'}<div class="journey-actions">
+        <Button variant="secondary" disabled={starting > 0 || busy} onclick={() => startCurrent(task)}
+          >Retomar missão</Button
+        >
+      </div>{/if}
     {#if !canExecute}<p class="journey-banner">
         {task.reviewEnabled
           ? 'Sua próxima revisão ainda não está disponível.'
@@ -422,7 +445,7 @@
         >{/if}
       <div class="journey-actions">
         <Button variant="secondary" disabled={busy || saves > 0} onclick={pause}
-          ><Icon name="pause" size={18} />Pausar e voltar</Button
+          ><Icon name="pause" size={18} />{sessionMode ? 'Pausar e voltar à sessão' : 'Pausar e voltar'}</Button
         ><Button
           disabled={!ready ||
             busy ||
