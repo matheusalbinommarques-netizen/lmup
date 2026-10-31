@@ -31,10 +31,12 @@
     id,
     sessionMode = false,
     onSessionContinue,
+    onSessionBusyChange,
   }: {
     id: number;
     sessionMode?: boolean;
     onSessionContinue?: () => void;
+    onSessionBusyChange?: (blocked: boolean) => void;
   } = $props();
   let data = $state<JourneySnapshot>();
   let error = $state('');
@@ -75,6 +77,9 @@
   let noteError = $state('');
   let revision = 0;
   let queue = Promise.resolve();
+  $effect(() => {
+    if (sessionMode) onSessionBusyChange?.(dirty || saves > 0 || busy || starting > 0 || !!noteError);
+  });
   const task = $derived(
     data?.tasks.find((item) => item.id === id && !item.archived),
   );
