@@ -233,7 +233,7 @@ test('transformação usa recibo e estorno devolve o ambiente anterior', async (
   await page.goto('/missoes');
   await page.getByRole('link', { name: 'Cultivar um marco real', exact: true }).click();
   // Navigation is client-side; click returning does not guarantee the URL has changed.
-  await expect(page).toHaveURL(/\\/missao\\/\\d+$/);
+  await expect(page).toHaveURL(new RegExp('/missao/[0-9]+$'));
   const url = page.url();
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
