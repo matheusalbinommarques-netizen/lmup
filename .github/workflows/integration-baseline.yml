@@ -24,6 +24,8 @@ jobs:
         run: npm run lint
       - name: Type and Svelte checks
         run: npm run check
+      - name: Unit tests
+        run: npm test -- --run
       - name: Build
         run: npm run build
       - name: Inventory dependency vulnerabilities (baseline only)
