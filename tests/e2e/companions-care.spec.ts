@@ -205,6 +205,8 @@ test('cuidar de companhia inativa não troca a seleção nem promete bônus apli
   await dialog
     .getByRole('button', { name: 'Confirmar · 100 Comida', exact: true })
     .click();
+  // The dialog closes after feedCompanion commits to IndexedDB.
+  await expect(dialog).not.toBeVisible();
   await expect(
     page.getByRole('region', { name: 'Sua companhia atual' }),
   ).toContainText('Lobo Etéreo');
