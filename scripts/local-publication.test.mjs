@@ -119,6 +119,29 @@ test('servidor mantém a versão publicada durante uma nova compilação e ofere
         (await (await fetch(origin + '/__lmup/status')).json()).service,
         'lmup-local-publications',
       );
+      // The update monitor may read status, but must not leak paths or raw errors.
+      await writeFile(join(storage, 'sync-status.json'), JSON.stringify({
+        state: 'validating',
+        step: 'pwa',
+        checkedAt: '2026-10-31T18:00:00.000Z',
+        checkout: 'C:\\private\\publication',
+        token: 'do-not-expose',
+      }));
+      const monitorResponse = await fetch(origin + '/__lmup/status');
+      assert.equal(monitorResponse.headers.get('cache-control'), 'no-store');
+      const monitor = await monitorResponse.json();
+      assert.equal(monitor.sync.state, 'validating');
+      assert.equal(monitor.sync.step, 'pwa');
+      assert.equal(monitor.sync.checkedAt, '2026-10-31T18:00:00.000Z');
+      assert.equal(JSON.stringify(monitor).includes('do-not-expose'), false);
+      assert.equal(JSON.stringify(monitor).includes('private'), false);
+      await writeFile(join(storage, 'sync-status.json'), JSON.stringify({
+        state: 'error',
+        message: 'secret file: C:\\private\\log',
+      }));
+      const failure = await (await fetch(origin + '/__lmup/status')).json();
+      assert.equal(failure.sync.state, 'error');
+      assert.equal(JSON.stringify(failure).includes('private'), false);
       const saved = await readFile(join(storage, 'active.json'));
       await writeFile(
         join(storage, 'active.json'),
