@@ -1,5 +1,39 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+
+test('Home RPG mantém cena, personagem e atlas disponíveis sem conexão', async ({
+  page,
+  context,
+}) => {
+  await ready(page);
+  await expect(
+    page.getByRole('region', { name: 'Seu personagem', exact: true }),
+  ).toBeVisible();
+  await context.setOffline(true);
+  await page.reload();
+  const scene = page.getByRole('img', {
+    name: 'Viajante diante de Védria, representação visual provisória',
+    exact: true,
+  });
+  await expect(scene).toBeVisible();
+  await expect
+    .poll(() => scene.evaluate((el) => (el as HTMLImageElement).naturalWidth))
+    .toBeGreaterThan(0);
+  const atlas = page.locator('#home-map img');
+  await atlas.scrollIntoViewIfNeeded();
+  await expect
+    .poll(() => atlas.evaluate((el) => (el as HTMLImageElement).naturalWidth))
+    .toBeGreaterThan(0);
+  await expect(
+    page.getByRole('link', { name: 'Ver lugares do refúgio', exact: true }),
+  ).toHaveAttribute('href', '/refugio');
+  await page
+    .getByRole('link', { name: 'Ver lugares do refúgio', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Refúgio', level: 1, exact: true }),
+  ).toBeVisible();
+});
 test.beforeEach(async ({ request }) => {
   await request.post('/__network', { data: 'online' });
   await request.post('/__release', { data: 'a' });

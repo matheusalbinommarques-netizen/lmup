@@ -117,12 +117,13 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
   await expect(
     page.getByRole('heading', { name: 'Você está em dia.', exact: true }),
   ).toBeVisible();
-  await page.getByText('2 missões concluídas', { exact: true }).click();
+  await page.getByRole('button', { name: 'Concluídas', exact: true }).click();
   await expect(
-    page.locator('.home-completed').getByRole('link', {
-      name: 'Revisar minhas anotações Concluída',
-      exact: true,
-    }),
+    page
+      .getByRole('region', { name: 'Lista de missões', exact: true })
+      .getByRole('link', {
+        name: /Revisar minhas anotações Concluída/,
+      }),
   ).toBeVisible();
   await noOverflow(page);
   await capture(page, info.project.name + '-concluidas');
@@ -201,7 +202,7 @@ test('Home mostra perfil, equipamento, ambiente e capítulo dos dados acumulados
   );
   await page.reload();
   await expect(
-    page.getByRole('heading', { name: 'Helena da Aurora' }),
+    page.getByRole('heading', { name: 'Helena da Aurora', exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole('heading', { name: 'Árvore Jovem', exact: true }),

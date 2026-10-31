@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
-const routes = [
-  ['/', 'Hoje, no seu mundo.'],
+const routes: [string, string | RegExp][] = [
+  ['/', /^Bo(m dia|a tarde|a noite), /],
   ['/missoes', 'Missões'],
   ['/arquivo/missoes', 'Quadro de Missões'],
   ['/perfil', 'Perfil e equipamentos'],
