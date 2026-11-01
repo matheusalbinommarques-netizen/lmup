@@ -1,0 +1,135 @@
+{
+  "durationSeconds": 9.234933400000001,
+  "results": [
+    {
+      "spriteCount": 2,
+      "independentSelection": true,
+      "assetRequests": 1,
+      "spriteGeometry": [
+        {
+          "id": "forge",
+          "left": "1170px",
+          "top": "700px",
+          "depth": "700",
+          "src": "/art/lab/camp/forge-feudalwars.png",
+          "width": 300
+        },
+        {
+          "id": "forge-copy",
+          "left": "1290px",
+          "top": "760px",
+          "depth": "760",
+          "src": "/art/lab/camp/forge-feudalwars.png",
+          "width": 300
+        }
+      ],
+      "size": {
+        "width": 1440,
+        "height": 1000
+      },
+      "status": 200,
+      "dragWorks": true,
+      "zoomButtons": true,
+      "zoomRange": [0.45, 1.5],
+      "shortcuts": true,
+      "selectionAfterDrag": true,
+      "errors": [],
+      "databaseCalls": [],
+      "boundary": {
+        "x": 303.75,
+        "y": 113,
+        "width": 832.5,
+        "height": 630,
+        "vw": 1440,
+        "vh": 856
+      }
+    },
+    {
+      "spriteCount": 2,
+      "independentSelection": true,
+      "assetRequests": 1,
+      "spriteGeometry": [
+        {
+          "id": "forge",
+          "left": "1170px",
+          "top": "700px",
+          "depth": "700",
+          "src": "/art/lab/camp/forge-feudalwars.png",
+          "width": 300
+        },
+        {
+          "id": "forge-copy",
+          "left": "1290px",
+          "top": "760px",
+          "depth": "760",
+          "src": "/art/lab/camp/forge-feudalwars.png",
+          "width": 300
+        }
+      ],
+      "size": {
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "status": 200,
+      "dragWorks": true,
+      "zoomButtons": true,
+      "zoomRange": [0.45, 1.5],
+      "shortcuts": true,
+      "selectionAfterDrag": true,
+      "errors": [],
+      "databaseCalls": [],
+      "boundary": {
+        "x": -178.5,
+        "y": 45,
+        "width": 832.5,
+        "height": 630,
+        "vw": 390,
+        "vh": 720
+      }
+    },
+    {
+      "spriteCount": 2,
+      "independentSelection": true,
+      "assetRequests": 1,
+      "spriteGeometry": [
+        {
+          "id": "forge",
+          "left": "1170px",
+          "top": "700px",
+          "depth": "700",
+          "src": "/art/lab/camp/forge-feudalwars.png",
+          "width": 300
+        },
+        {
+          "id": "forge-copy",
+          "left": "1290px",
+          "top": "760px",
+          "depth": "760",
+          "src": "/art/lab/camp/forge-feudalwars.png",
+          "width": 300
+        }
+      ],
+      "size": {
+        "width": 320,
+        "height": 740
+      },
+      "status": 200,
+      "dragWorks": true,
+      "zoomButtons": true,
+      "zoomRange": [0.45, 1.5],
+      "shortcuts": true,
+      "selectionAfterDrag": true,
+      "errors": [],
+      "databaseCalls": [],
+      "boundary": {
+        "x": -213.5,
+        "y": 0,
+        "width": 832.5,
+        "height": 630,
+        "vw": 320,
+        "vh": 616
+      }
+    }
+  ]
+}
