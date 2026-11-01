@@ -77,7 +77,9 @@ test('áreas no cadastro, edição, exclusão com transferência e criação ape
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
   await expect(form).not.toBeVisible();
   await expect(page).toHaveURL(/\/missoes$/);
-  await page.getByRole('link', { name: 'Organizar a cozinha', exact: true }).click();
+  await page
+    .getByRole('link', { name: 'Organizar a cozinha', exact: true })
+    .click();
   const url = page.url();
   await expect(
     page.getByRole('heading', { name: 'Organizar a cozinha', exact: true }),
@@ -294,7 +296,7 @@ test('hoje, amanhã, outra data e dias da semana mostram agenda real em desktop 
   });
   await page.goto('/');
   const home = page.getByRole('region', {
-    name: 'Lista de missões',
+    name: 'Suas missões',
     exact: true,
   });
   await expect(home).toContainText('Estudar uma ideia');

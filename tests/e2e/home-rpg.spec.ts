@@ -66,7 +66,7 @@ test('Home RPG alinha a primeira faixa e os quatro destinos, sem espaço abaixo 
     name: 'Lista de missões',
     exact: true,
   });
-  await expect(list.getByRole('listitem')).toHaveCount(24);
+  await expect(list.getByRole('listitem')).toHaveCount(2);
   const world = (await page
     .getByRole('region', { name: 'Personagem e mundo', exact: true })
     .boundingBox())!;
@@ -89,13 +89,6 @@ test('Home RPG alinha a primeira faixa e os quatro destinos, sem espaço abaixo 
     const gap = cards[3]!.y - missions.y - missions.height;
     expect(gap).toBeGreaterThanOrEqual(12);
     expect(gap).toBeLessThanOrEqual(16);
-    await list.focus();
-    await page.keyboard.press('PageDown');
-    await expect
-      .poll(() => list.evaluate((el) => el.scrollTop))
-      .toBeGreaterThan(0);
-    await page.keyboard.press('Home');
-    await expect.poll(() => list.evaluate((el) => el.scrollTop)).toBe(0);
     await page
       .getByRole('heading', { name: 'Boa noite, Herói sem nome.', exact: true })
       .click();
@@ -111,7 +104,7 @@ test('Home RPG alinha a primeira faixa e os quatro destinos, sem espaço abaixo 
   }
   expect(
     await list.evaluate((el) => el.scrollHeight > el.clientHeight + 100),
-  ).toBe(true);
+  ).toBe(false);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth + 1,
@@ -197,16 +190,169 @@ test('Home RPG alinha a primeira faixa e os quatro destinos, sem espaço abaixo 
       }
     }
   }
-  const filters = page.getByRole('group', {
-    name: 'Filtrar missões da Home',
-    exact: true,
-  });
-  await filters
-    .getByRole('button', { name: 'Concluídas', exact: true })
+  await expect(
+    page.getByRole('group', { name: 'Filtrar missões da Home' }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('link', { name: 'Ver todas', exact: true }),
+  ).toHaveAttribute('href', '/missoes');
+});
+
+test('prioridade manual persiste, não duplica e volta ao automático ao concluir, arquivar ou excluir', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect(
+    page.getByRole('region', { name: 'Seu personagem', exact: true }),
+  ).toBeVisible();
+  await populateTasks(page);
+  const priority = page.locator('.rpg-priority');
+  for (const change of ['completed', 'archived', 'deleted']) {
+    const row = page.locator('.rpg-task-list li').first();
+    const title = await row.locator('strong').innerText();
+    await row
+      .getByRole('button', {
+        name: `Fixar ${title} como prioritária`,
+        exact: true,
+      })
+      .focus();
+    await page.keyboard.press('Enter');
+    await expect(
+      priority.getByRole('heading', { name: title, exact: true }),
+    ).toBeVisible();
+    await expect(priority.getByText('Manual', { exact: true })).toBeVisible();
+    await expect(
+      page.locator('.rpg-task-list').getByText(title, { exact: true }),
+    ).toHaveCount(0);
+    await page.reload();
+    await expect(
+      priority.getByRole('heading', { name: title, exact: true }),
+    ).toBeVisible();
+    await page.evaluate(
+      (change) =>
+        new Promise<void>((resolve, reject) => {
+          const request = indexedDB.open('LevelMeUpDB');
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => {
+            const database = request.result;
+            const tx = database.transaction('tasks', 'readwrite');
+            const store = tx.objectStore('tasks');
+            const id = Number(localStorage.getItem('lmup.home-priority.v1'));
+            const task = store.get(id);
+            task.onsuccess = () => {
+              if (change === 'deleted') store.delete(id);
+              else store.put({ ...task.result, [change]: true });
+            };
+            tx.oncomplete = () => {
+              database.close();
+              resolve();
+            };
+            tx.onerror = () => {
+              database.close();
+              reject(tx.error);
+            };
+          };
+        }),
+      change,
+    );
+    await page.reload();
+    await expect(
+      priority.getByText('Automática', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      priority.getByRole('heading', { name: title, exact: true }),
+    ).toHaveCount(0);
+    expect(
+      await page.evaluate(() => localStorage.getItem('lmup.home-priority.v1')),
+    ).toBeNull();
+  }
+  await priority.getByRole('button', { name: /^Fixar / }).click();
+  await expect(priority.getByText('Manual', { exact: true })).toBeVisible();
+  await priority
+    .getByRole('button', { name: 'Voltar à prioridade automática' })
     .click();
-  await expect(list.getByRole('listitem')).toHaveCount(8);
-  await filters.getByRole('button', { name: /^Hoje / }).click();
-  await expect(list.getByRole('listitem')).toHaveCount(32);
-  await filters.getByRole('button', { name: 'Todas', exact: true }).click();
-  await expect(list.getByRole('listitem')).toHaveCount(96);
+  await expect(priority.getByText('Automática', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Nova missão', exact: true }).click();
+  await expect(
+    page.getByRole('dialog', { name: 'Uma nova missão' }),
+  ).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.getByRole('link', { name: 'Ver todas', exact: true }).click();
+  await expect(page).toHaveURL(/\/missoes$/);
+});
+
+test('recorrências contam a ocorrência de hoje e não reutilizam etapas antigas nem executam missão futura', async ({
+  page,
+}) => {
+  await page.clock.setFixedTime(new Date('2026-10-31T19:00:00-03:00'));
+  await page.goto('/');
+  await expect(
+    page.getByRole('region', { name: 'Seu personagem', exact: true }),
+  ).toBeVisible();
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open('LevelMeUpDB');
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const database = request.result;
+          const tx = database.transaction('tasks', 'readwrite');
+          const store = tx.objectStore('tasks');
+          store.clear();
+          const base = {
+            xp: 50,
+            rarity: 'common',
+            effort: 'small',
+            createdAt: '2026-10-30T12:00:00Z',
+          };
+          store.put({
+            ...base,
+            id: 201,
+            title: 'Rotina concluída hoje',
+            completed: true,
+            recurrence: { kind: 'daily', startDate: '2026-10-30' },
+            lastOccurrenceDate: '2026-10-31',
+          });
+          store.put({
+            ...base,
+            id: 202,
+            title: 'Rotina pausada',
+            completed: true,
+            executionState: 'paused',
+            recurrence: { kind: 'daily', startDate: '2026-10-30' },
+            lastOccurrenceDate: '2026-10-30',
+            occurrenceSession: '2026-10-30',
+            subtasks: ['Primeiro passo', 'Segundo passo'],
+            completedSubtasks: [0, 1],
+          });
+          store.put({
+            ...base,
+            id: 203,
+            title: 'Missão futura',
+            plannedDate: '2026-11-01',
+          });
+          localStorage.setItem('lmup.home-priority.v1', '203');
+          tx.oncomplete = () => {
+            database.close();
+            resolve();
+          };
+          tx.onerror = () => {
+            database.close();
+            reject(tx.error);
+          };
+        };
+      }),
+  );
+  await page.reload();
+  const panel = page.getByRole('region', { name: 'Suas missões', exact: true });
+  await expect(panel).toContainText('1 de 2 concluídas hoje');
+  await expect(
+    panel.getByRole('link', { name: 'Continuar missão', exact: true }),
+  ).toHaveAttribute('href', '/missao/202');
+  await expect(
+    panel.getByRole('progressbar', { name: 'Etapas da missão prioritária' }),
+  ).toHaveAttribute('value', '0');
+  await expect(panel.getByText('Automática', { exact: true })).toBeVisible();
+  await expect(panel).not.toContainText('Missão futura');
+  await expect(panel.getByRole('listitem')).toHaveCount(0);
 });

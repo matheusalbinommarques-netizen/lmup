@@ -11,8 +11,6 @@
   import { selectNext, isAvailable, taskSteps } from '$services/journeyService';
   import { scheduledOn } from '$services/recurrence';
   import { dateKey } from '$services/rewardService';
-  import { reviewDueDate } from '$services/reviewRules';
-  import { formatCalendar } from '$services/calendar';
   import { getEcoStageForTotalXp } from '$services/ecoConfig';
   import { sanctuaryContent } from '$lib/content/world';
   import Button from '$lib/ui/Button.svelte';
@@ -30,18 +28,37 @@
   import RpgTrim from '$lib/ui/RpgTrim.svelte';
   import { collectionStats } from '$services/collectionRules';
   import { ALL_ACHIEVEMENTS } from '$services/achievementsCatalog';
+  import {
+    PRIORITY_KEY,
+    readPriority,
+    savePriority,
+    priorityTask,
+  } from './homePriority';
   let data = $state<JourneySnapshot>();
   let error = $state('');
   let open = $state(false);
   let starter = $state<MissionStarter>();
   let greeting = $state('Boa jornada');
-  let filter = $state<'pending' | 'all' | 'today' | 'completed'>('pending');
+  let pinnedId = $state<number | null>(null);
+  let priorityNotice = $state('');
+  function pin(id: number | null) {
+    pinnedId = id;
+    priorityNotice = savePriority(id)
+      ? ''
+      : 'A prioridade vale nesta visita, mas não foi possível salvá-la neste navegador.';
+  }
   function createMission(example?: MissionStarter) {
     starter = example;
     open = true;
   }
   let today = $state(dateKey());
   onMount(() => {
+    pinnedId = readPriority();
+    const syncPriority = (event: StorageEvent) => {
+      if (event.key === PRIORITY_KEY || event.key === null)
+        pinnedId = readPriority();
+    };
+    window.addEventListener('storage', syncPriority);
     const subscription = journeyQuery().subscribe({
       next: (value) => {
         data = value;
@@ -62,11 +79,12 @@
     const clock = setInterval(refreshDay, 30000);
     return () => {
       subscription.unsubscribe();
+      window.removeEventListener('storage', syncPriority);
       window.removeEventListener('focus', refreshDay);
       clearInterval(clock);
     };
   });
-  const next = $derived(
+  const automatic = $derived(
     data
       ? selectNext(
           data.tasks.filter((task) => scheduledOn(task, today)),
@@ -74,6 +92,21 @@
         )
       : null,
   );
+  const manual = $derived(
+    data ? priorityTask(data.tasks, pinnedId, today) : null,
+  );
+  const next = $derived(
+    manual
+      ? {
+          task: manual,
+          reason: 'Fixada por você',
+          explanation: 'Você escolheu manter esta missão em destaque.',
+        }
+      : automatic,
+  );
+  $effect(() => {
+    if (data && pinnedId !== null && !manual) pin(null);
+  });
   const hasVisibleTasks = $derived(
     data?.tasks.some((task) => !task.archived) ?? false,
   );
@@ -100,18 +133,47 @@
   );
   const availableToday = (task: (typeof activeTasks)[number]) =>
     isAvailable(task, new Date(`${today}T12:00:00`));
-  const visibleTasks = $derived(
-    filter === 'all'
-      ? activeTasks
-      : dayTasks.filter(
-          (task) =>
-            filter === 'today' ||
-            (filter === 'pending'
-              ? availableToday(task) || !task.completed
-              : !availableToday(task) && !!task.completed),
-        ),
+  const otherTasks = $derived.by(() => {
+    const remaining = dayTasks.filter(
+      (task) => task.id !== next?.task.id && availableToday(task),
+    );
+    const result: typeof remaining = [];
+    while (remaining.length && result.length < 2) {
+      const candidate = selectNext(remaining, today)?.task;
+      if (!candidate) break;
+      result.push(candidate);
+      remaining.splice(remaining.indexOf(candidate), 1);
+    }
+    return result;
+  });
+  const steps = $derived(next ? taskSteps(next.task) : []);
+  const currentStepSession = $derived.by(() => {
+    const task = next?.task;
+    if (!task) return false;
+    if (task.recurrence) return task.occurrenceSession === today;
+    if (!task.reviewEnabled) return true;
+    const base = new Date(task.reviewStartedAt ?? task.createdAt).toISOString();
+    return (
+      task.reviewSession === `${base}:${task.completionRevision ?? 0}` ||
+      (task.reviewSession === base &&
+        ['active', 'paused'].includes(task.executionState ?? ''))
+    );
+  });
+  const doneSteps = $derived(
+    currentStepSession
+      ? steps.filter((step) =>
+          next?.task.completedSubtasks?.includes(step.index),
+        ).length
+      : 0,
   );
-  const plan = $derived(dayTasks);
+  const status = (task: (typeof activeTasks)[number]) =>
+    task.executionState === 'active'
+      ? 'Em andamento'
+      : task.executionState === 'paused'
+        ? 'Pausada'
+        : task.reviewEnabled
+          ? 'Revisão disponível'
+          : 'Disponível';
   const stage = $derived(
     getEcoStageForTotalXp(data?.profile?.totalXpEarned ?? 0).id,
   );
@@ -128,7 +190,14 @@
     ),
   );
   const completed = $derived(
-    dayTasks.filter((task) => !availableToday(task) && !!task.completed),
+    dayTasks.filter(
+      (task) =>
+        !availableToday(task) &&
+        (!!task.completed ||
+          task.status === 'completed' ||
+          task.lastOccurrenceDate === today ||
+          task.lastReviewDate === today),
+    ),
   );
   const projects = $derived(
     data?.projects.filter((project) =>
@@ -211,88 +280,75 @@
         <header class="rpg-missions-heading">
           <Icon name="today" size={25} />
           <h2 id="rpg-missions-title">Suas missões</h2>
-          <span
-            >{completed.length}/{dayTasks.length}<small>concluídas</small></span
-          >
+          <span>{completed.length} de {dayTasks.length} concluídas hoje</span>
         </header>
+        <progress
+          class="rpg-day-progress"
+          max={dayTasks.length || 1}
+          value={completed.length}
+          aria-label="Missões concluídas hoje"
+        ></progress>
         <div
-          class="rpg-task-filters"
-          role="group"
-          aria-label="Filtrar missões da Home"
-        >
-          <button
-            type="button"
-            aria-pressed={filter === 'pending'}
-            onclick={() => {
-              filter = 'pending';
-            }}>Pendentes</button
-          >
-          <button
-            type="button"
-            aria-pressed={filter === 'all'}
-            onclick={() => {
-              filter = 'all';
-            }}>Todas</button
-          >
-          <button
-            type="button"
-            aria-pressed={filter === 'today'}
-            onclick={() => {
-              filter = 'today';
-            }}>Hoje <span>{plan.length}</span></button
-          >
-          <button
-            type="button"
-            aria-pressed={filter === 'completed'}
-            onclick={() => {
-              filter = 'completed';
-            }}>Concluídas</button
-          >
-        </div>
-        <!-- Keyboard focus lets the user scroll the task region without a pointer. -->
-        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-        <div
-          class="rpg-task-scroll"
+          class="rpg-mission-content"
           role="region"
           aria-label="Lista de missões"
-          tabindex="0"
         >
-          {#if next && filter !== 'completed' && (filter !== 'today' || scheduledOn(next.task, today))}
-            <div class="rpg-next">
-              <div class="rpg-next-label">
-                <span>{next.reason}</span>{#if reward}<small
-                    >Prévia: +{reward.xp} XP</small
+          {#if next}
+            <article class="rpg-priority" aria-labelledby="priority-title">
+              <div class="rpg-priority-heading">
+                <span class="rpg-priority-label"
+                  ><Icon name="spark" size={19} />Missão prioritária</span
+                >
+                <span class="rpg-priority-mode"
+                  >{manual ? 'Manual' : 'Automática'}</span
+                >
+                <button
+                  type="button"
+                  class="rpg-pin"
+                  aria-label={manual
+                    ? 'Voltar à prioridade automática'
+                    : 'Fixar ' + next.task.title + ' como prioritária'}
+                  aria-pressed={!!manual}
+                  onclick={() => pin(manual ? null : next!.task.id!)}
+                  ><Icon name="spark" size={18} /></button
+                >
+              </div>
+              <div class="rpg-priority-body">
+                <span class="rpg-priority-art"
+                  ><Icon name="missions" size={32} /></span
+                >
+                <div class="rpg-priority-copy">
+                  <h3 id="priority-title">{next.task.title}</h3>
+                  <span class="rpg-priority-status">{status(next.task)}</span>
+                  <p>
+                    {['active', 'paused'].includes(
+                      next.task.executionState ?? '',
+                    )
+                      ? homeCopy.resume
+                      : next.explanation}
+                  </p>
+                </div>
+                {#if reward}<span class="rpg-task-reward"
+                    >+{reward.xp} XP<span class="sr-only">
+                      previstos</span
+                    ></span
                   >{/if}
               </div>
-              <h2>{next.task.title}</h2>
-              <p class="lmu-hint">
-                {next.reason === 'Em andamento'
-                  ? homeCopy.resume
-                  : next.explanation}
-              </p>
-              {#if taskSteps(next.task).length}<progress
-                  max={taskSteps(next.task).length}
-                  value={taskSteps(next.task).filter((step) =>
-                    next.task.completedSubtasks?.includes(step.index),
-                  ).length}
-                  aria-label="Passos da próxima missão"
-                ></progress>
-                <p class="lmu-hint">
-                  {taskSteps(next.task).find(
-                    (step) =>
-                      !next.task.completedSubtasks?.includes(step.index),
-                  )?.label ?? 'Pronta para concluir'}
-                </p>{/if}
+              {#if steps.length}<progress
+                  max={steps.length}
+                  value={doneSteps}
+                  aria-label="Etapas da missão prioritária"
+                ></progress>{/if}
               <a
                 class="lmu-button lmu-button--primary"
                 href={`/missao/${next.task.id}`}
-                >{next.reason === 'Em andamento'
+                >{['active', 'paused'].includes(next.task.executionState ?? '')
                   ? 'Continuar missão'
-                  : 'Começar missão'}<Icon name="arrow" size={16} /></a
+                  : 'Começar missão'}<Icon name="arrow" size={19} /></a
               >
-            </div>
+            </article>
           {/if}
-          {#if !next && filter !== 'completed'}
+          {#if !next}
             <div
               class="rpg-empty"
               class:rpg-empty-compact={data.tasks.length > 0}
@@ -339,79 +395,50 @@
                 >{/if}
             </div>
           {/if}
-          {#if visibleTasks.length}
+          {#if otherTasks.length}
+            <div class="rpg-other-heading">
+              <Icon name="missions" size={20} />
+              <h3>Outras missões</h3>
+            </div>
             <ul class="rpg-task-list">
-              {#each visibleTasks as task (task.id)}
-                {@const available = availableToday(task)}
-                {@const recorded = task.completionEventId
-                  ? data.events.find(
-                      (event) =>
-                        event.id === task.completionEventId &&
-                        !event.reversedAt,
-                    )
-                  : undefined}
-                {@const taskReward = available
-                  ? data.rewards[task.id!]
-                  : recorded?.reward}
-                <li
-                  class:rpg-task-done={!available &&
-                    (task.completed || task.status === 'completed')}
-                >
+              {#each otherTasks as task (task.id)}
+                <li>
                   <a href={`/missao/${task.id}`}>
                     <span class="rpg-task-mark"
-                      ><Icon
-                        name={!available &&
-                        (task.completed || task.status === 'completed')
-                          ? 'check'
-                          : task.executionState === 'active'
-                            ? 'pause'
-                            : 'book'}
-                        size={18}
-                      /></span
+                      ><Icon name="missions" size={22} /></span
                     >
                     <span class="rpg-task-copy"
-                      ><strong>{task.title}</strong><small
-                        >{available
-                          ? task.executionState === 'active'
-                            ? 'Em execução'
-                            : task.executionState === 'paused'
-                              ? 'Pausada'
-                              : scheduledOn(task, today)
-                                ? 'Planejada para hoje'
-                                : 'Disponível'
-                          : task.reviewEnabled
-                            ? task.lastReviewDate === today
-                              ? 'Revisão realizada hoje'
-                              : 'Próxima revisão: ' +
-                                formatCalendar(reviewDueDate(task))
-                            : 'Concluída'}</small
+                      ><strong>{task.title}</strong><small>{status(task)}</small
                       ></span
                     >
-                    {#if taskReward}<span class="rpg-task-reward"
-                        ><span>+{taskReward.xp} XP</span><small
-                          >+{taskReward.gold} Gold</small
-                        ><span class="sr-only"
-                          >{available ? 'Prévia' : 'Registrado'}</span
+                    {#if data.rewards[task.id!]}<span class="rpg-task-reward"
+                        >+{data.rewards[task.id!].xp} XP<span class="sr-only">
+                          previstos</span
                         ></span
                       >{/if}
-                    <Icon name="arrow" size={14} />
+                    <Icon name="arrow" size={16} />
                   </a>
+                  <button
+                    type="button"
+                    class="rpg-pin"
+                    aria-label={`Fixar ${task.title} como prioritária`}
+                    onclick={() => pin(task.id!)}
+                    ><Icon name="spark" size={18} /></button
+                  >
                 </li>
               {/each}
             </ul>
-          {:else if filter === 'completed'}<p class="rpg-list-empty">
-              Nenhuma missão concluída para mostrar.
-            </p>{:else if filter === 'today' && next}<p class="rpg-list-empty">
-              Você ainda não escolheu missões para hoje. <a href="/missoes"
-                >Abrir planejamento</a
-              >
-            </p>{/if}
+          {/if}
         </div>
+        {#if priorityNotice}<p class="rpg-priority-notice" role="status">
+            {priorityNotice}
+          </p>{/if}
         <footer class="rpg-missions-footer">
+          <a class="lmu-button lmu-button--secondary" href="/missoes"
+            ><Icon name="missions" size={18} />Ver todas</a
+          >
           <Button aria-label="Nova missão" onclick={() => createMission()}
             ><Icon name="plus" size={18} />Nova missão</Button
-          ><a href="/missoes" aria-label="Abrir planejamento"
-            ><Icon name="missions" size={22} /></a
           >
         </footer>
       </section>

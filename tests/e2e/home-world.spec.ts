@@ -16,22 +16,35 @@ async function capture(page: Page, name: string) {
 }
 
 async function awaitStoredMission(page: Page, title: string) {
-  await expect.poll(() => page.evaluate(async (name) => {
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('LevelMeUpDB');
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    try {
-      return await new Promise<boolean>((resolve, reject) => {
-        const request = db.transaction('tasks', 'readonly').objectStore('tasks').getAll();
-        request.onsuccess = () => resolve(request.result.some((task) => task.title === name));
-        request.onerror = () => reject(request.error);
-      });
-    } finally {
-      db.close();
-    }
-  }, title), { timeout: 15000, message: 'Missão deve estar persistida antes de navegar' }).toBe(true);
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async (name) => {
+          const db = await new Promise<IDBDatabase>((resolve, reject) => {
+            const request = indexedDB.open('LevelMeUpDB');
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+          });
+          try {
+            return await new Promise<boolean>((resolve, reject) => {
+              const request = db
+                .transaction('tasks', 'readonly')
+                .objectStore('tasks')
+                .getAll();
+              request.onsuccess = () =>
+                resolve(request.result.some((task) => task.title === name));
+              request.onerror = () => reject(request.error);
+            });
+          } finally {
+            db.close();
+          }
+        }, title),
+      {
+        timeout: 15000,
+        message: 'Missão deve estar persistida antes de navegar',
+      },
+    )
+    .toBe(true);
 }
 
 async function createMission(page: Page, title: string) {
@@ -108,10 +121,10 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
     expect(action!.y + action!.height).toBeLessThan(navigation!.y);
   }
   await capture(page, info.project.name + '-pendentes');
+  await page.getByRole('link', { name: 'Começar missão', exact: true }).click();
   await page
-    .getByRole('link', { name: 'Começar missão', exact: true })
+    .getByRole('button', { name: 'Iniciar missão', exact: true })
     .click();
-  await page.getByRole('button', { name: 'Iniciar missão', exact: true }).click();
   await page
     .getByRole('button', { name: 'Pausar e voltar', exact: true })
     .click();
@@ -124,7 +137,10 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
     .getByRole('link', { name: 'Continuar missão', exact: true })
     .click();
   await expect(page).toHaveURL(new RegExp('/missao/[0-9]+$'));
-  const resume = page.getByRole('button', { name: 'Retomar missão', exact: true });
+  const resume = page.getByRole('button', {
+    name: 'Retomar missão',
+    exact: true,
+  });
   if (!(await resume.isVisible())) {
     console.log(
       'LMUP_HOME_PAUSE_DIAGNOSTIC',
@@ -142,9 +158,7 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
     page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
   await page.goto('/');
-  await page
-    .getByRole('link', { name: 'Começar missão', exact: true })
-    .click();
+  await page.getByRole('link', { name: 'Começar missão', exact: true }).click();
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
@@ -155,14 +169,12 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
   await expect(
     page.getByRole('heading', { name: 'Você está em dia.', exact: true }),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Concluídas', exact: true }).click();
   await expect(
-    page
-      .getByRole('region', { name: 'Lista de missões', exact: true })
-      .getByRole('link', {
-        name: /Revisar minhas anotações Concluída/,
-      }),
-  ).toBeVisible();
+    page.getByRole('region', { name: 'Suas missões', exact: true }),
+  ).toContainText('2 de 2 concluídas hoje');
+  await expect(
+    page.getByRole('link', { name: 'Ver todas', exact: true }),
+  ).toHaveAttribute('href', '/missoes');
   await noOverflow(page);
   await capture(page, info.project.name + '-concluidas');
   await page.reload();
