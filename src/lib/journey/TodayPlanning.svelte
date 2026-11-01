@@ -8,11 +8,20 @@
   } from '$services/occurrenceService';
   import { dateKey } from '$services/rewardService';
   import type { Occurrence } from '$services/productivityTypes';
-  import { occurrenceSituation } from '$services/productivityInsights';
+  import {
+    occurrenceSituation,
+    recommendations,
+  } from '$services/productivityInsights';
   import Button from '$lib/ui/Button.svelte';
   let rows = $state<Occurrence[]>([]),
     error = $state(''),
     today = $state(dateKey());
+  let dismissed = $state<string[]>([]);
+  const suggestion = $derived(
+    recommendations(rows.filter((row) => row.plannedTime || row.deadline)).find(
+      (row) => !dismissed.includes(row.id),
+    ),
+  );
   onMount(() => {
     const timer = setInterval(() => (today = dateKey()), 30000);
     return () => clearInterval(timer);
@@ -60,6 +69,15 @@
           ><Button onclick={() => open(row)}>Executar</Button>
         </li>{/each}
     </ol>
+    {#if suggestion}<p class="lmu-hint">
+        Sugestão: <strong>{suggestion.title}</strong>. {suggestion.reason}
+        <Button
+          variant="quiet"
+          onclick={() =>
+            suggestion && (dismissed = [...dismissed, suggestion.id])}
+          >Dispensar sugestão</Button
+        >
+      </p>{/if}
   </section>{/if}
 
 <style>

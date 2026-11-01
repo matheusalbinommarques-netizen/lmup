@@ -75,7 +75,9 @@ export function recommendations(rows: Occurrence[], now = new Date()) {
               ? 'É uma missão de alta importância.'
               : row.value > 0
                 ? 'Você já avançou; retomar evita perder o fio.'
-                : 'Cabe em um pequeno intervalo do dia.';
+                : row.estimatedMinutes && row.estimatedMinutes <= 20
+                  ? 'Cabe em um pequeno intervalo do dia.'
+                  : 'Está prevista para hoje; você pode escolher começar por ela.';
       return { id: row.id, title: row.title, reason, score };
     })
     .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))

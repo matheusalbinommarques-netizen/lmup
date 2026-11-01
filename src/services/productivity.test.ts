@@ -40,6 +40,22 @@ beforeEach(async () => {
   await initializeJourney();
 });
 afterEach(() => vi.useRealTimers());
+it('não reconstrói com nova recompensa uma conclusão recorrente legada conhecida sem recibo', async () => {
+  const id = await db.tasks.add({
+    title: 'Atividade antiga',
+    xp: 50,
+    rarity: 'common',
+    createdAt: '2020-01-01',
+    completed: true,
+    recurrence: { kind: 'daily', startDate: '2020-01-01' },
+    lastOccurrenceDate: '2026-11-01',
+  });
+  await expect(ensureOccurrence(id, '2026-11-01', true)).rejects.toThrow(
+    'conclusão legada',
+  );
+  expect(await db.occurrences.count()).toBe(0);
+  expect(await db.activityEvents.count()).toBe(0);
+});
 it('recusa confirmação com impacto econômico desatualizado sem alterar o débito', async () => {
   const row = await mission();
   await progress(row.id, 40);

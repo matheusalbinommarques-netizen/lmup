@@ -236,14 +236,17 @@ export async function ensureOccurrence(
       await db.activityEvents.where('taskId').equals(taskId).toArray()
     ).some(
       (event) =>
-        event.kind === 'task' &&
+        ['task', 'review'].includes(event.kind) &&
         !event.reversedAt &&
         !event.occurrenceId &&
         (!task.recurrence || (event.occurrenceDate ?? event.date) === origin),
     );
     if (
       legacyReward ||
-      (!task.recurrence && task.completed && !task.completionEventId)
+      (!task.recurrence && task.completed && !task.completionEventId) ||
+      (!!task.recurrence &&
+        task.lastOccurrenceDate === origin &&
+        !task.completionEventId)
     )
       throw new Error(
         'Esta atividade já possui conclusão legada. O registro anterior foi preservado sem nova recompensa.',
