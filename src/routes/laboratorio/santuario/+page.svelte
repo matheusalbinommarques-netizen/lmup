@@ -2,12 +2,12 @@
   import { sanctuaryContent } from '$lib/content/world';
 
   type BuildingState = 'empty' | 'building' | 'built';
-  let state = $state<BuildingState>('empty');
-  let selected = $state(false);
-  let stage = $state<1 | 2 | 3 | 4>(2);
-  const label = $derived(state === 'empty' ? 'Terreno disponível' : state === 'building' ? 'Forja em construção' : 'Forja concluída');
+  let buildingState = $buildingState<BuildingState>('empty');
+  let selected = $buildingState(false);
+  let stage = $buildingState<1 | 2 | 3 | 4>(2);
+  const label = $derived(buildingState === 'empty' ? 'Terreno disponível' : buildingState === 'building' ? 'Forja em construção' : 'Forja concluída');
   function advance() {
-    state = state === 'empty' ? 'building' : state === 'building' ? 'built' : 'empty';
+    buildingState = buildingState === 'empty' ? 'building' : buildingState === 'building' ? 'built' : 'empty';
   }
 </script>
 
@@ -31,13 +31,13 @@
       <button
         class="plot"
         class:chosen={selected}
-        class:complete={state === 'built'}
-        class:working={state === 'building'}
+        class:complete={buildingState === 'built'}
+        class:working={buildingState === 'building'}
         onclick={() => (selected = !selected)}
         aria-pressed={selected}
         aria-label="Selecionar espaço de construção: {label}"
       >
-        <span class="symbol" aria-hidden="true">{state === 'empty' ? '+' : state === 'building' ? '⚒' : '♜'}</span>
+        <span class="symbol" aria-hidden="true">{buildingState === 'empty' ? '+' : buildingState === 'building' ? '⚒' : '♜'}</span>
         <span class="plot-label">{label}</span>
       </button>
       <div class="scene-footer">Selecione o espaço destacado para consultar a construção</div>
@@ -47,10 +47,10 @@
       <p class="eyebrow">Construção demonstrativa</p>
       <h2>{selected ? label : 'Selecione um espaço'}</h2>
       {#if selected}
-        <p>{state === 'empty' ? 'Um terreno livre para estabelecer a primeira forja.' : state === 'building' ? 'A estrutura está sendo erguida. Este estado poderá receber arte própria.' : 'A forja está pronta. O próximo passo será definir níveis, aparência e benefícios reais.'}</p>
+        <p>{buildingState === 'empty' ? 'Um terreno livre para estabelecer a primeira forja.' : buildingState === 'building' ? 'A estrutura está sendo erguida. Este estado poderá receber arte própria.' : 'A forja está pronta. O próximo passo será definir níveis, aparência e benefícios reais.'}</p>
         <div class="meta"><span>Edifício</span><strong>Forja</strong></div>
-        <div class="meta"><span>Estado</span><strong>{state === 'empty' ? 'Livre' : state === 'building' ? 'Em construção' : 'Concluído'}</strong></div>
-        <button class="primary" onclick={advance}>{state === 'empty' ? 'Simular construção' : state === 'building' ? 'Simular conclusão' : 'Reiniciar demonstração'}</button>
+        <div class="meta"><span>Estado</span><strong>{buildingState === 'empty' ? 'Livre' : buildingState === 'building' ? 'Em construção' : 'Concluído'}</strong></div>
+        <button class="primary" onclick={advance}>{buildingState === 'empty' ? 'Simular construção' : buildingState === 'building' ? 'Simular conclusão' : 'Reiniciar demonstração'}</button>
       {:else}
         <p>Clique ou toque no marcador da cena. O painel apresenta somente as ações relacionadas ao espaço selecionado.</p>
       {/if}
