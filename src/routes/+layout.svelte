@@ -11,6 +11,7 @@
   import { onMount, type Snippet } from 'svelte';
   import { initializeComfort } from '$services/comfortService';
   import { initializeJourney } from '$services/profileService';
+  import { refreshAchievementReceipts } from '$services/productivityAchievements';
   import AppShell from '$lib/journey/AppShell.svelte';
   import Button from '$lib/ui/Button.svelte';
   let { children }: { children: Snippet } = $props();
@@ -25,6 +26,7 @@
     failed = false;
     try {
       await initializeJourney();
+      await refreshAchievementReceipts();
       ready = true;
     } catch (cause) {
       failureMessage = storageError(

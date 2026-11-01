@@ -1,11 +1,7 @@
 import type { Task, ActivityEvent, HeroProject } from './db';
 
 export type ProjectDifficultyKey =
-  | 'none'
-  | 'facil'
-  | 'media'
-  | 'dificil'
-  | 'expert';
+  'none' | 'facil' | 'media' | 'dificil' | 'expert';
 
 export function getProjectBaseXp(tasks: Task[]): number {
   return tasks
@@ -42,6 +38,7 @@ export function projectRewardTasks(
     if (
       event.taskId &&
       ['task', 'review'].includes(event.kind) &&
+      event.executionComplete !== false &&
       !event.reversedAt &&
       !first.has(event.taskId)
     )

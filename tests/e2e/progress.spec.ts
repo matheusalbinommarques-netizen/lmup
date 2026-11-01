@@ -58,15 +58,19 @@ test('primeiro acesso cria perfil; duas abas não duplicam conclusão; estorno p
   await page
     .getByRole('button', { name: 'Voltar para disponível', exact: true })
     .click();
+  await page
+    .getByRole('button', { name: 'Confirmar correção', exact: true })
+    .click();
   await expect(
     page.getByRole('button', { name: 'Voltar para disponível', exact: true }),
   ).not.toBeVisible();
   await page.reload();
   const reversed = await backup(page);
   expect(reversed.data.profile).toMatchObject({
-    totalXpEarned: 0,
-    gold: 0,
-    food: 0,
+    totalXpEarned: 53,
+    gold: 25,
+    food: 2,
+    rewardDebt: { xp: 53, gold: 25, food: 2 },
     currentStreak: 0,
   });
   expect(reversed.data.activityEvents).toHaveLength(2);

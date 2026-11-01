@@ -59,14 +59,14 @@ describe('memória das transformações', () => {
     expect(tasks).not.toHaveBeenCalled();
     expect(logs).not.toHaveBeenCalled();
   });
-  it('mantém referência ao recibo estornado e não o apresenta como prêmio ativo', async () => {
+  it('mantém o prêmio único e a referência ao recibo após correção', async () => {
     const { id } = await cross();
     await undoTask(id);
     const row = (await readRefugeSnapshot()).milestones[1];
     expect(row).toMatchObject({
-      rewardStatus: 'reversed',
-      reached: false,
-      markedReceived: false,
+      rewardStatus: 'recorded',
+      reached: true,
+      markedReceived: true,
     });
     expect(row.source?.reversedAt).toBeTruthy();
   });
@@ -130,14 +130,14 @@ describe('memória das transformações', () => {
     expect(await db.profile.get(1)).toEqual(before);
     expect(await db.recoverySnapshots.count()).toBe(recoveries);
   });
-  it('aceita estorno válido e marcação legada sem recibo ativo', async () => {
+  it('aceita correção com débito e mantém o marco registrado', async () => {
     const { id } = await cross();
     await undoTask(id);
     const reversed = await createJourneyBackup();
     expect(() => validateBackup(reversed)).not.toThrow();
     await db.profile.update(1, { ecoGoldClaimedUpToStage: 2 });
     expect((await readRefugeSnapshot()).milestones[1].rewardStatus).toBe(
-      'legacy',
+      'recorded',
     );
     const legacy = await createJourneyBackup();
     expect(() => validateBackup(legacy)).not.toThrow();

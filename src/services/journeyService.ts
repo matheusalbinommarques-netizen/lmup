@@ -3,6 +3,7 @@ import { dateKey } from './rewardService';
 import { saveTaskDefinition } from './taskDefinitionService';
 import { reviewDueDate } from './reviewRules';
 import { scheduledOn } from './recurrence';
+import { savePlanVersion } from './occurrenceService';
 
 export function taskSteps(task: Task) {
   return (task.subtasks ?? [])
@@ -76,7 +77,7 @@ async function editable(id: number) {
 
 export const createQuickTask = saveTaskDefinition;
 export async function planTask(id: number, selected: boolean) {
-  await db.transaction('rw', db.tasks, async () => {
+  await db.transaction('rw', db.tables, async () => {
     const task = await editable(id);
     await db.tasks.update(id, {
       plannedDate: selected ? dateKey() : null,
@@ -90,6 +91,7 @@ export async function planTask(id: number, selected: boolean) {
           }
         : {}),
     });
+    await savePlanVersion((await db.tasks.get(id))!);
   });
 }
 export async function pinTask(id: number, pinned: boolean) {
@@ -143,7 +145,9 @@ export async function setTaskStep(id: number, index: number, checked: boolean) {
       throw new Error('A missão mudou em outra aba. Reabra para continuar.');
     if (!taskSteps(task).some((step) => step.index === index))
       throw new Error('O passo foi alterado. Reabra a missão.');
-    const reviewBase = new Date(task.reviewStartedAt ?? task.createdAt).toISOString();
+    const reviewBase = new Date(
+      task.reviewStartedAt ?? task.createdAt,
+    ).toISOString();
     const expectedReviewSession = `${reviewBase}:${task.completionRevision ?? 0}`;
     const legacyReviewInProgress =
       task.reviewSession === reviewBase &&
@@ -154,7 +158,7 @@ export async function setTaskStep(id: number, index: number, checked: boolean) {
       legacyReviewInProgress;
     const completed = new Set(
       (task.recurrence && task.occurrenceSession !== dateKey()) ||
-      !reviewIsCurrent
+        !reviewIsCurrent
         ? []
         : (task.completedSubtasks ?? []),
     );

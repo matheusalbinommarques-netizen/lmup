@@ -183,14 +183,20 @@ for (const state of [
     await page
       .getByRole('button', { name: 'Desfazer conclusão', exact: true })
       .click();
+    await page
+      .getByRole('button', { name: 'Confirmar correção', exact: true })
+      .click();
     await expect(
-      page.getByRole('status').filter({ hasText: 'Recompensa estornada' }),
+      page
+        .getByRole('status')
+        .filter({ hasText: 'Conclusão desfeita' })
+        .first(),
     ).toBeVisible();
     await expect(summary).toHaveCount(0);
     expect(await receipt(page)).toMatchObject({
-      total: state.total,
-      gold: 0,
-      food: 0,
+      total: granted.total,
+      gold: granted.gold,
+      food: granted.food,
     });
   });
 }

@@ -59,9 +59,10 @@ describe('backup e recuperação', () => {
     expect(JSON.parse(JSON.stringify(restored.data))).toEqual(backup.data);
     await undoTask(id);
     expect(await db.profile.get(1)).toMatchObject({
-      gold: 0,
-      food: 0,
-      totalXpEarned: 0,
+      gold: 27,
+      food: 3,
+      totalXpEarned: 58,
+      rewardDebt: { xp: 58, gold: 27, food: 3 },
     });
   });
 

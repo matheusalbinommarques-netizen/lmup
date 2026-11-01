@@ -9,7 +9,18 @@
   } from '$services/db';
   import { liveQuery } from 'dexie';
   import { onMount } from 'svelte';
-  import { completeTask, undoTask } from '$services/taskService';
+  import {
+    completeTask,
+    undoTask,
+    previewTaskUndo,
+  } from '$services/taskService';
+  import Dialog from '$lib/ui/Dialog.svelte';
+  import Button from '$lib/ui/Button.svelte';
+  import type { Resources } from '$services/productivityTypes';
+  let undoOpen = $state(false),
+    undoBusy = $state(false);
+  let undoTaskSelection = $state<Task>();
+  let undoImpact = $state<Resources>();
   import ReviewForm from '$lib/journey/ReviewForm.svelte';
   import { reviewDueDate } from '$services/reviewRules';
   import { isAvailable } from '$services/journeyService';
@@ -644,16 +655,26 @@
   }
 
   // O estorno usa os valores efetivamente registrados na conclusão.
-  async function revertCompletedToAvailable(task: Task) {
-    if (!task.id) return;
+  async function revertCompletedToAvailable(task: Task, confirmed = false) {
+    if (!task.id || undoBusy) return;
+    undoBusy = true;
     try {
-      await undoTask(task.id);
+      if (!confirmed) {
+        undoImpact = await previewTaskUndo(task.id);
+        undoTaskSelection = task;
+        undoOpen = true;
+        return;
+      }
+      await undoTask(task.id, undefined, undoImpact);
+      undoOpen = false;
     } catch (error) {
       alert(
         error instanceof Error
           ? error.message
           : 'Não foi possível desfazer. Seus dados foram preservados.',
       );
+    } finally {
+      undoBusy = false;
     }
   }
 
@@ -699,6 +720,24 @@
     })(),
   );
 </script>
+
+<Dialog bind:open={undoOpen} title="Revisar correção">
+  {#if undoTaskSelection && undoImpact}<p>
+      Débito a compensar: {undoImpact.xp} XP · {undoImpact.gold} Ouro · {undoImpact.food}
+      Comida.
+    </p>
+    <p>
+      Ganhos futuros compensarão o débito. Níveis, compras, construções e
+      prêmios de estágio já alcançados serão preservados.
+    </p>
+    <Button
+      disabled={undoBusy}
+      onclick={() =>
+        undoTaskSelection &&
+        revertCompletedToAvailable(undoTaskSelection, true)}
+      >Confirmar correção</Button
+    >{/if}
+</Dialog>
 
 {#if isModalOpen}
   <AddTaskModal {taskToEdit} close={closeModal} />

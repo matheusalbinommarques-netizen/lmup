@@ -54,9 +54,24 @@ test('publicação muda o ponteiro somente depois de conferir uma cópia complet
     const second = await publishBuild(build, storage, { commit: 'second' });
     assert.equal((await activeRelease(storage)).id, second.id);
     assert.notEqual(first.build, second.build);
-    await candidate(build, '3333333333333333', { schema: 6 });
+    await candidate(build, '3333333333333333', { schema: 7 });
     await assert.rejects(publishBuild(build, storage, {}), /migração/);
     assert.equal((await activeRelease(storage)).id, second.id);
+  }));
+
+test('controlador compatível publica esquema 6 e mantém a cópia anterior', () =>
+  fixture(async ({ build, storage }) => {
+    await candidate(build, '1111111111111111');
+    const previous = await publishBuild(build, storage, { commit: 'legacy' });
+    await candidate(build, '2222222222222222', { schema: 6 });
+    const next = await publishBuild(build, storage, {
+      commit: 'migration-tested',
+    });
+    assert.equal(next.version, '2222222222222222');
+    assert.match(
+      await readFile(join(previous.build, '200.html'), 'utf8'),
+      /1111111111111111/,
+    );
   }));
 test('retém três versões e preserva diretórios que não pertencem ao publicador', () =>
   fixture(async ({ build, storage }) => {
@@ -120,13 +135,16 @@ test('servidor mantém a versão publicada durante uma nova compilação e ofere
         'lmup-local-publications',
       );
       // The update monitor may read status, but must not leak paths or raw errors.
-      await writeFile(join(storage, 'sync-status.json'), JSON.stringify({
-        state: 'validating',
-        step: 'pwa',
-        checkedAt: '2026-10-31T18:00:00.000Z',
-        checkout: 'C:\\private\\publication',
-        token: 'do-not-expose',
-      }));
+      await writeFile(
+        join(storage, 'sync-status.json'),
+        JSON.stringify({
+          state: 'validating',
+          step: 'pwa',
+          checkedAt: '2026-10-31T18:00:00.000Z',
+          checkout: 'C:\\private\\publication',
+          token: 'do-not-expose',
+        }),
+      );
       const monitorResponse = await fetch(origin + '/__lmup/status');
       assert.equal(monitorResponse.headers.get('cache-control'), 'no-store');
       const monitor = await monitorResponse.json();
@@ -135,10 +153,13 @@ test('servidor mantém a versão publicada durante uma nova compilação e ofere
       assert.equal(monitor.sync.checkedAt, '2026-10-31T18:00:00.000Z');
       assert.equal(JSON.stringify(monitor).includes('do-not-expose'), false);
       assert.equal(JSON.stringify(monitor).includes('private'), false);
-      await writeFile(join(storage, 'sync-status.json'), JSON.stringify({
-        state: 'error',
-        message: 'secret file: C:\\private\\log',
-      }));
+      await writeFile(
+        join(storage, 'sync-status.json'),
+        JSON.stringify({
+          state: 'error',
+          message: 'secret file: C:\\private\\log',
+        }),
+      );
       const failure = await (await fetch(origin + '/__lmup/status')).json();
       assert.equal(failure.sync.state, 'error');
       assert.equal(JSON.stringify(failure).includes('private'), false);

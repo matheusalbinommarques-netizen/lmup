@@ -26,7 +26,7 @@
   import '$lib/rpg-theme.css';
   import './home.css';
   import RpgTrim from '$lib/ui/RpgTrim.svelte';
-  import { collectionStats } from '$services/collectionRules';
+  import TodayPlanning from './TodayPlanning.svelte';
   import { ALL_ACHIEVEMENTS } from '$services/achievementsCatalog';
   import {
     PRIORITY_KEY,
@@ -179,14 +179,16 @@
   );
   const reward = $derived(next ? data?.rewards[next.task.id!] : null);
   const achievementStats = $derived(
-    data?.profile
-      ? collectionStats(data.profile, data.tasks, data.companions, data.owned)
-      : null,
+    data?.profile ? data.achievementStats : null,
   );
   const achievements = $derived(
     ALL_ACHIEVEMENTS.filter(
       (item) =>
-        !item.future && achievementStats && item.condition(achievementStats),
+        !item.future &&
+        !data?.achievementReceipts.find((row) => row.id === item.id)
+          ?.invalidatedAt &&
+        (!!data?.achievementReceipts.some((row) => row.id === item.id) ||
+          (!!achievementStats && item.condition(achievementStats))),
     ),
   );
   const completed = $derived(
@@ -206,7 +208,11 @@
   );
   const pilot = $derived(sanitizePilot(data?.profile?.rpgPilot));
   const chapter = $derived(
-    chapterTwoProgress(pilot, data?.profile?.totalXpEarned ?? 0),
+    chapterTwoProgress(
+      pilot,
+      data?.profile?.totalXpEarned ?? 0,
+      data?.profile?.rewardDebt?.xp ?? 0,
+    ),
   );
   const adventureStatus = $derived(
     pilot.scene < 6
@@ -238,6 +244,7 @@
       <Icon name="world" size={36} />Abrindo sua jornada…
     </div>
   {:else}
+    <TodayPlanning />
     <div class="rpg-top">
       <section
         class="rpg-world-panel rpg-frame"

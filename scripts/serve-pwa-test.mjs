@@ -82,7 +82,7 @@ createServer(async (request, response) => {
               "recordProtocol({ phase: 'skip-start' }); await self.skipWaiting(); recordProtocol({ phase: 'skip-end' });",
             );
       if (release === 'incompatible')
-        code = code.replace('const SCHEMA = 5', 'const SCHEMA = 6');
+        code = code.replace('const SCHEMA = 6', 'const SCHEMA = 7');
       if (release === 'cache-failure')
         code = code.replace(
           'await cache.addAll(',

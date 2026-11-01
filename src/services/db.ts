@@ -1,11 +1,23 @@
 // src/services/db.ts
 import Dexie, { type Table } from 'dexie';
 import { trackWrite } from './updateSafety';
+import type {
+  AchievementReceipt,
+  ExecutionRecord,
+  Occurrence,
+  Planning,
+  PlanVersion,
+  ProductivityAudit,
+  Resources,
+  Routine,
+  SavedMissionSession,
+} from './productivityTypes';
 
 // ---------------------------------------------
 // PROFILE (herói)
 // ---------------------------------------------
 export interface Profile {
+  rewardDebt?: Resources;
   id?: number;
   name: string;
   title?: string;
@@ -66,7 +78,10 @@ export type TaskRecurrence = {
   days?: number[]; // Local calendar weekdays, Sunday = 0.
 };
 
-export interface Task {
+export interface Task extends Planning {
+  productivityVersion?: 1;
+  routineId?: string | null;
+  planningPaused?: boolean;
   id?: number;
 
   title: string;
@@ -142,12 +157,7 @@ export interface XpLog {
 // INVENTÁRIO / LOJA
 // ---------------------------------------------
 export type InventoryItemType =
-  | 'frame'
-  | 'avatar'
-  | 'background'
-  | 'aura'
-  | 'weapon-skin'
-  | 'gear'; // NOVO – itens com efeitos de gameplay
+  'frame' | 'avatar' | 'background' | 'aura' | 'weapon-skin' | 'gear'; // NOVO – itens com efeitos de gameplay
 
 // Raridade de itens da loja/gear
 export type ItemRarity = 'common' | 'rare' | 'epic' | 'legendary';
@@ -275,11 +285,7 @@ export interface LegacyItem {
 // HERO PROJECT (FASE 2)
 // ---------------------------------------------
 export type HeroProjectStatus =
-  | 'planejando'
-  | 'em_andamento'
-  | 'concluido'
-  | 'pausado'
-  | 'arquivado';
+  'planejando' | 'em_andamento' | 'concluido' | 'pausado' | 'arquivado';
 
 export interface HeroProject {
   id?: number;
@@ -307,13 +313,15 @@ export interface HeroProject {
 }
 
 export type ActivityKind =
-  | 'task'
-  | 'review'
-  | 'project'
-  | 'adjustment'
-  | 'reversal';
+  'task' | 'review' | 'project' | 'adjustment' | 'reversal';
 
 export interface ActivityEvent {
+  occurrenceId?: string;
+  executionComplete?: boolean;
+  grossReward?: Resources;
+  compensation?: Resources;
+  debtAdded?: Resources;
+  milestoneGold?: number;
   id: string;
   kind: ActivityKind;
   sequence: number;
@@ -350,11 +358,12 @@ export interface ActivityEvent {
   protectionDays: number;
   streakBefore?: { currentStreak: number; lastCompletionDate: string | null };
   reversedAt?: string;
+  reversalPolicy?: 'debt';
 }
 
 export interface RecoverySnapshot {
   id: string;
-  reason: 'migration-v4' | 'before-import' | 'before-reset';
+  reason: 'migration-v4' | 'migration-v5' | 'before-import' | 'before-reset';
   createdAt: string;
   data: Record<string, unknown[]>;
 }
@@ -393,6 +402,13 @@ export class LevelMeUpDB extends Dexie {
   projects!: Table<HeroProject, number>; // Fase 2
   activityEvents!: Table<ActivityEvent, string>;
   recoverySnapshots!: Table<RecoverySnapshot, string>;
+  occurrences!: Table<Occurrence, string>;
+  routines!: Table<Routine, string>;
+  planVersions!: Table<PlanVersion, string>;
+  executionRecords!: Table<ExecutionRecord, string>;
+  productivityAudit!: Table<ProductivityAudit, string>;
+  savedMissionSessions!: Table<SavedMissionSession, string>;
+  achievementReceipts!: Table<AchievementReceipt, string>;
 
   constructor(name = 'LevelMeUpDB') {
     super(name);
@@ -438,6 +454,43 @@ export class LevelMeUpDB extends Dexie {
             reason: 'migration-v4',
             createdAt: new Date().toISOString(),
             data,
+          });
+        }
+      });
+    this.version(6)
+      .stores({
+        occurrences: 'id, taskId, originDate, plannedDate, routineId, status',
+        routines: 'id, status',
+        planVersions: 'id, taskId, effectiveFrom',
+        executionRecords: 'id, occurrenceId, localDate, recordedAt',
+        productivityAudit: 'id, entityId, recordedAt',
+        savedMissionSessions: 'id, status',
+        achievementReceipts: 'id, earnedAt',
+      })
+      .upgrade(async (transaction) => {
+        const data: Record<string, unknown[]> = {};
+        for (const name of [...Object.keys(LEGACY_STORES), 'activityEvents']) {
+          data[name] = await transaction.table(name).toArray();
+        }
+        const now = new Date();
+        if (Object.values(data).some((rows) => rows.length)) {
+          await transaction.table('recoverySnapshots').add({
+            id: 'migration-v5',
+            reason: 'migration-v5',
+            createdAt: now.toISOString(),
+            data,
+          });
+        }
+        // No invented past schedules or recomputed legacy rewards.
+        const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        for (const task of data.tasks as Task[]) {
+          await transaction.table('planVersions').add({
+            id: `migration:${task.id}`,
+            sequence: 0,
+            taskId: task.id,
+            effectiveFrom: day,
+            recordedAt: now.toISOString(),
+            definition: task,
           });
         }
       });

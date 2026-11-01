@@ -12,6 +12,8 @@ import {
   getTitleForLevel,
 } from './progression';
 import { computeStreakWithProtection } from './streakService';
+import { settleResources } from './productivityRules';
+import { ZERO_RESOURCES, type Resources } from './productivityTypes';
 
 export const progressTransaction = <T>(work: () => Promise<T>) =>
   db.transaction('rw', db.tables, work);
@@ -44,6 +46,11 @@ export async function grantReward(input: {
   taskId?: number;
   projectId?: number;
   areaId?: number | null;
+  fixedReward?: Resources;
+  fixedModifiers?: ActivityEvent['modifiers'];
+  occurrenceId?: string;
+  countsCompletion?: boolean;
+  executedAt?: string;
 }): Promise<{ profile: Profile; event: ActivityEvent; applied: boolean }> {
   if (!Number.isSafeInteger(input.baseXp) || input.baseXp <= 0)
     throw new Error('A recompensa precisa ter XP inteiro e positivo.');
@@ -53,10 +60,56 @@ export async function grantReward(input: {
     if (previous) return { profile, event: previous, applied: false };
     const mods = await buildHeroModifiersFromOwned();
     const buffs = await getActiveCompanionBuffs();
-    const { xp, gold, food, total, modifiers, awarded, ecoClaimedBefore } =
-      calculateReward(input.baseXp, profile, mods, buffs, input.kind);
+    const calculated = calculateReward(
+      input.baseXp,
+      profile,
+      mods,
+      buffs,
+      input.kind,
+    );
+    const ordinary = input.fixedReward ?? {
+      xp: calculated.xp,
+      gold:
+        calculated.gold -
+        calculated.awarded.reduce(
+          (sum, stage) => sum + stage.goldRewardOnEnter,
+          0,
+        ),
+      food: calculated.food,
+    };
+    const settled = settleResources(
+      ordinary,
+      profile.rewardDebt ?? ZERO_RESOURCES,
+    );
+    const total = profile.totalXpEarned + settled.net.xp;
+    const ecoClaimedBefore = profile.ecoGoldClaimedUpToStage ?? 1;
+    const awarded = ECO_STAGES.filter(
+      (stage) =>
+        stage.id > ecoClaimedBefore &&
+        stage.id <= getEcoStageForTotalXp(total).id,
+    );
+    const milestoneGold = awarded.reduce(
+      (sum, stage) => sum + stage.goldRewardOnEnter,
+      0,
+    );
+    const milestone = settleResources(
+      { xp: 0, gold: milestoneGold, food: 0 },
+      settled.remaining,
+    );
+    const xp = settled.net.xp,
+      gold = settled.net.gold + milestone.net.gold,
+      food = settled.net.food;
+    if (
+      ![total, profile.gold + gold, (profile.food ?? 0) + food].every(
+        Number.isSafeInteger,
+      )
+    )
+      throw new Error('Saldo fora do limite seguro.');
+    const modifiers = input.fixedModifiers ?? calculated.modifiers;
     const now = new Date();
-    const isExecution = input.kind === 'task' || input.kind === 'review';
+    const isExecution =
+      (input.kind === 'task' || input.kind === 'review') &&
+      input.countsCompletion !== false;
     const event: ActivityEvent = {
       id: input.id,
       kind: input.kind,
@@ -67,6 +120,18 @@ export async function grantReward(input: {
       projectId: input.projectId,
       baseXp: input.baseXp,
       reward: { xp, gold, food },
+      grossReward: {
+        xp: ordinary.xp,
+        gold: ordinary.gold + milestoneGold,
+        food: ordinary.food,
+      },
+      compensation: {
+        ...settled.compensation,
+        gold: settled.compensation.gold + milestone.compensation.gold,
+      },
+      milestoneGold,
+      occurrenceId: input.occurrenceId,
+      executionComplete: input.countsCompletion,
       progress: { before: profile.totalXpEarned, after: total },
       modifiers,
       awardedStages: awarded.map((stage) => stage.id),
@@ -85,7 +150,7 @@ export async function grantReward(input: {
       ? computeStreakWithProtection(
           profile.currentStreak,
           profile.lastCompletionDate,
-          now,
+          input.executedAt ? new Date(input.executedAt) : now,
           mods.streakProtectionDays,
         )
       : null;
@@ -94,6 +159,7 @@ export async function grantReward(input: {
       ...levelFields(total),
       gold: profile.gold + gold,
       food: (profile.food ?? 0) + food,
+      rewardDebt: milestone.remaining,
       ecoGoldClaimedUpToStage: Math.max(
         ecoClaimedBefore,
         ...event.awardedStages,
@@ -127,109 +193,118 @@ export async function grantReward(input: {
 export async function revokeRewards(ids: string[]): Promise<Profile> {
   return progressTransaction(async () => {
     const profile = await ensureProfile();
-    const events: ActivityEvent[] = [];
+    const debt = { ...(profile.rewardDebt ?? ZERO_RESOURCES) };
     for (const id of new Set(ids)) {
       const event = await db.activityEvents.get(id);
       if (!event || !['task', 'review', 'project'].includes(event.kind))
         throw new Error(
-          'Não há registro suficiente para desfazer esta conclusão antiga com segurança.',
+          'Não há registro suficiente para corrigir esta conclusão antiga com segurança.',
         );
-      if (!event.reversedAt) events.push(event);
-    }
-    if (!events.length) return profile;
-    const reward = events.reduce(
-      (sum, event) => ({
-        xp: sum.xp + event.reward.xp,
-        gold: sum.gold + event.reward.gold,
-        food: sum.food + event.reward.food,
-      }),
-      { xp: 0, gold: 0, food: 0 },
-    );
-    if (
-      profile.totalXpEarned < reward.xp ||
-      profile.gold < reward.gold ||
-      (profile.food ?? 0) < reward.food
-    ) {
-      throw new Error(
-        'Parte da recompensa já foi utilizada. O estorno foi cancelado para preservar seus saldos e itens.',
-      );
-    }
-    const now = new Date();
-    for (const event of events) {
-      await db.activityEvents.update(event.id, {
+      if (event.reversedAt) continue;
+      const added = ordinaryReward(event);
+      for (const key of ['xp', 'gold', 'food'] as const) {
+        debt[key] += added[key];
+        if (!Number.isSafeInteger(debt[key]))
+          throw new Error('Débito fora do limite seguro.');
+      }
+      const now = new Date();
+      await db.activityEvents.update(id, {
         reversedAt: now.toISOString(),
+        reversalPolicy: 'debt',
       });
       const reversal: ActivityEvent = {
         ...event,
-        id: `reversal:${event.id}`,
+        id: 'reversal:' + id,
         kind: 'reversal',
         sequence: await nextSequence(),
-        sourceEventId: event.id,
-        progress: undefined,
+        sourceEventId: id,
         occurredAt: now.toISOString(),
         date: dateKey(now),
-        reward: {
-          xp: -event.reward.xp,
-          gold: -event.reward.gold,
-          food: -event.reward.food,
-        },
+        reward: { xp: 0, gold: 0, food: 0 },
+        grossReward: undefined,
+        compensation: undefined,
+        debtAdded: added,
+        milestoneGold: 0,
+        progress: undefined,
         awardedStages: [],
         streakBefore: undefined,
         reversedAt: undefined,
       };
       await db.activityEvents.add(reversal);
-      const log = await db.xpLogs.where('eventId').equals(event.id).first();
       await db.xpLogs.add({
         date: reversal.date,
-        amount: reversal.reward.xp,
-        areaId: log?.areaId ?? null,
+        amount: 0,
         createdAt: now,
         eventId: reversal.id,
         kind: 'reversal',
         taskId: event.taskId,
         projectId: event.projectId,
-        goldDelta: reversal.reward.gold,
-        foodDelta: reversal.reward.food,
+        goldDelta: 0,
+        foodDelta: 0,
       });
     }
-    const history = (await db.activityEvents.toArray())
-      .filter((event) => event.kind !== 'reversal')
-      .sort((a, b) => a.sequence - b.sequence);
-    const executions = history.filter((event) => event.streakBefore);
-    let streak = executions[0]?.streakBefore ?? {
-      currentStreak: profile.currentStreak,
-      lastCompletionDate: profile.lastCompletionDate ?? null,
-    };
-    for (const event of executions.filter((entry) => !entry.reversedAt)) {
-      const next = computeStreakWithProtection(
-        streak.currentStreak,
-        streak.lastCompletionDate,
-        new Date(event.occurredAt),
-        event.protectionDays,
-      );
-      streak = {
-        currentStreak: next.newStreak,
-        lastCompletionDate: next.newLastCompletionDate,
-      };
-    }
-    const claimed = Math.max(
-      history[0]?.ecoClaimedBefore ?? 1,
-      ...history
-        .filter((event) => !event.reversedAt)
-        .flatMap((event) => event.awardedStages),
-    );
-    const updated: Profile = {
-      ...profile,
-      ...levelFields(profile.totalXpEarned - reward.xp),
-      gold: profile.gold - reward.gold,
-      food: (profile.food ?? 0) - reward.food,
-      ...streak,
-      ecoGoldClaimedUpToStage: claimed,
-      updatedAt: now,
-    };
+    const updated = { ...profile, rewardDebt: debt, updatedAt: new Date() };
     await db.profile.put(updated);
+    await refreshCompletionStreak();
     return updated;
   });
+}
+
+export function ordinaryReward(event: ActivityEvent): Resources {
+  const gross = event.grossReward ?? event.reward;
+  const stageGold =
+    event.milestoneGold ??
+    event.awardedStages.reduce(
+      (sum, id) =>
+        sum +
+        (ECO_STAGES.find((stage) => stage.id === id)?.goldRewardOnEnter ?? 0),
+      0,
+    );
+  return {
+    xp: gross.xp,
+    gold: Math.max(0, gross.gold - stageGold),
+    food: gross.food,
+  };
+}
+
+export async function refreshCompletionStreak() {
+  const profile = await db.profile.get(1);
+  if (!profile) return;
+  const history = (await db.activityEvents.toArray())
+    .filter((event) => event.streakBefore)
+    .sort((a, b) => a.sequence - b.sequence);
+  const initial = history[0]?.streakBefore;
+  if (!initial) return;
+  const completions = history
+    .filter((event) => !event.occurrenceId && !event.reversedAt)
+    .map((event) => ({ day: event.date, protection: event.protectionDays }));
+  for (const row of await db.occurrences.toArray())
+    if (row.status === 'completed' && row.completedLocalDate) {
+      const event = row.completionEventId
+        ? await db.activityEvents.get(row.completionEventId)
+        : undefined;
+      completions.push({
+        day: row.completedLocalDate,
+        protection: event?.protectionDays ?? 0,
+      });
+    }
+  let currentStreak = initial.currentStreak,
+    lastCompletionDate = initial.lastCompletionDate;
+  for (const row of completions.sort((a, b) => a.day.localeCompare(b.day))) {
+    const next = computeStreakWithProtection(
+      currentStreak,
+      lastCompletionDate,
+      new Date(`${row.day}T12:00:00`),
+      row.protection,
+    );
+    currentStreak = next.newStreak;
+    lastCompletionDate = next.newLastCompletionDate;
+  }
+  if (
+    profile.currentStreak !== currentStreak ||
+    profile.lastCompletionDate !== lastCompletionDate
+  )
+    await db.profile.update(1, { currentStreak, lastCompletionDate });
 }
 
 // Ajuste administrativo legado; não é um estorno de missão.

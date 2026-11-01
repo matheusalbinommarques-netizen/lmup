@@ -82,18 +82,24 @@ test('histórico separa missão e revisão e mantém concessão e estorno no lí
   await page
     .getByRole('button', { name: 'Desfazer última sessão', exact: true })
     .click();
+  await page
+    .getByRole('button', { name: 'Confirmar correção', exact: true })
+    .click();
   await expect(
     page.getByRole('button', { name: 'Concluir missão', exact: true }),
   ).toBeVisible();
   await page.goto('/progresso');
-  await expect(metric(page, 'XP líquido no período')).toHaveText('+53');
+  await expect(metric(page, 'XP líquido no período')).toHaveText('+106');
   await expect(metric(page, 'Missões distintas')).toHaveText('1');
   await expect(metric(page, 'Sessões de revisão válidas')).toHaveText('0');
   await page.getByLabel('Mostrar', { exact: true }).selectOption('reversal');
   await expect(page.locator('.progress-ledger>li')).toHaveCount(1);
   await expect(page.locator('.progress-receipt')).toHaveText(
-    '-53 XP · -25 Gold · -2 Comida',
+    '0 XP · 0 Gold · 0 Comida',
   );
+  await page.getByText('Ver recibo', { exact: true }).click();
+  await expect(page.locator('.progress-ledger')).toContainText('53 XP');
+  await expect(page.locator('.progress-ledger')).toContainText('Débito');
 });
 test('compras e cuidado entram como gasto sem fabricar XP e saldos correspondem ao backup', async ({
   page,

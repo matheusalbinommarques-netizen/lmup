@@ -12,6 +12,8 @@ A conclusão de missões usa a [Recompensa Viva 0.1](docs/RECOMPENSA-VIVA-0.1.md
 
 O organizador de [Missões e Organização Pessoal 1.0](docs/MISSOES-ORGANIZACAO-PESSOAL-1.0.md) reúne áreas personalizadas, planejamento por data, rotinas diárias e semanais e histórico por ocorrência, integrado à Recompensa Viva e disponível offline.
 
+A [evolução de missões e produtividade](docs/MISSOES-PRODUTIVIDADE.md) acrescenta agenda diária/semanal, rotinas com horários, progresso proporcional, recuperação de ocorrências e sessões salvas. Correções geram débitos compensados com ganhos futuros, preservando níveis, investimentos e prêmios de estágio já alcançados.
+
 O app instalado pelo Chrome recebe versões pela [sincronização isolada com o GitHub](docs/SINCRONIZACAO-GITHUB.md). O desenvolvimento ocorre em branches próprias e as alterações aprovadas entram por Pull Request na `main`. Uma tarefa local acompanha a `main`, valida e publica sem alterar a pasta de desenvolvimento. A origem e os dados locais são preservados.
 
 ## Requisitos e instalação
@@ -102,7 +104,7 @@ JavaScript é necessário para acessar o progresso local. `npm run preview` é p
 
 ## Dados e segurança
 
-O banco atual se chama `LevelMeUpDB`, versão 5. A migração preserva os dados v4 e guarda uma cópia local de recuperação. Conclusões novas registram recompensas efetivas; conclusões anteriores sem evento não permitem estorno exato. Importações são validadas antes da substituição e guardam o estado anterior. Reiniciar limpa toda a jornada e preserva somente nome e avatar. Configurações permite exportar a recuperação mais recente.
+O banco atual se chama `LevelMeUpDB`, versão 6. Migrações aditivas preservam os dados v4/v5 e guardam cópias locais de recuperação. O backup formato 4 inclui ocorrências, planejamento, execuções e auditoria; formatos anteriores continuam aceitos. Conclusões anteriores sem evento não permitem correção econômica exata. Importações são validadas antes da substituição e guardam o estado anterior. Reiniciar limpa toda a jornada e preserva somente nome e avatar. Configurações permite exportar a recuperação mais recente. Depois de abrir v6, não voltar a um aplicativo que conheça somente v5; consultar os cuidados de publicação na documentação de produtividade.
 
 As cinco recuperações recentes e a cópia da migração ficam no próprio navegador. Apagar dados do site remove essas cópias; exporte um backup externo. Exportações podem conter nomes, notas e histórico pessoal; mantenha seus backups em local confiável.
 

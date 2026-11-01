@@ -23,7 +23,17 @@
     setTaskStep,
     taskSteps,
   } from '$services/journeyService';
-  import { completeTask, undoTask } from '$services/taskService';
+  import {
+    completeTask,
+    undoTask,
+    previewTaskUndo,
+  } from '$services/taskService';
+  import Dialog from '$lib/ui/Dialog.svelte';
+  import type { Resources } from '$services/productivityTypes';
+  let undoOpen = $state(false),
+    undoImpact = $state<Resources>();
+  let correctionNotice = $state('');
+  import { ensureOccurrence } from '$services/occurrenceService';
   import Button from '$lib/ui/Button.svelte';
   import Card from '$lib/ui/Card.svelte';
   import Icon from '$lib/ui/Icon.svelte';
@@ -80,7 +90,10 @@
   let revision = 0;
   let queue = Promise.resolve();
   $effect(() => {
-    if (sessionMode) onSessionBusyChange?.(dirty || saves > 0 || busy || starting > 0 || !!noteError);
+    if (sessionMode)
+      onSessionBusyChange?.(
+        dirty || saves > 0 || busy || starting > 0 || !!noteError,
+      );
   });
   const task = $derived(
     data?.tasks.find((item) => item.id === id && !item.archived),
@@ -137,7 +150,10 @@
     currentStepSession ? (task?.completedSubtasks ?? []) : [],
   );
   const ready = $derived(
-    steps.every((step) => checkedSteps.includes(step.index)),
+    (task?.productivityVersion &&
+      !task.reviewEnabled &&
+      task.tracking?.method !== 'steps') ||
+      steps.every((step) => checkedSteps.includes(step.index)),
   );
   const reward = $derived(data?.rewards[id]);
   const lastTaskEvent = $derived(
@@ -170,7 +186,6 @@
     };
     const refresh = () => {
       today = dateKey();
-
     };
     const dayClock = setInterval(refresh, 30000);
     window.addEventListener('focus', refresh);
@@ -275,16 +290,45 @@
       busy = false;
     }
   }
-  async function undo() {
+  async function undo(confirmed = false) {
     if (busy) return;
     busy = true;
     error = '';
     try {
-      await undoTask(id, event?.id);
+      if (!confirmed) {
+        undoImpact = await previewTaskUndo(id, event?.id);
+        undoOpen = true;
+        return;
+      }
+      await undoTask(id, event?.id, undoImpact);
+      undoOpen = false;
       freshEventId = '';
+      correctionNotice = `Conclusão desfeita. Débito a compensar: ${undoImpact?.xp ?? 0} XP · ${undoImpact?.gold ?? 0} Ouro · ${undoImpact?.food ?? 0} Comida.`;
+      busy = false;
+      if (requestedReceipt) await goto(`/missao/${id}`, { replaceState: true });
     } catch (cause) {
       error =
         cause instanceof Error ? cause.message : 'Não foi possível desfazer.';
+    } finally {
+      busy = false;
+    }
+  }
+  async function openProgress() {
+    if (!task) return;
+    busy = true;
+    error = '';
+    try {
+      const row = await ensureOccurrence(
+        task.id!,
+        task.recurrence ? today : (task.plannedDate ?? today),
+      );
+      busy = false;
+      await goto('/ocorrencia/' + encodeURIComponent(row.id));
+    } catch (cause) {
+      error =
+        cause instanceof Error
+          ? cause.message
+          : 'Não foi possível abrir o progresso.';
     } finally {
       busy = false;
     }
@@ -304,10 +348,16 @@
       ><Icon name="back" size={18} />Voltar às missões</a
     >{/if}
   {#if error}<p role="alert" class="journey-error">{error}</p>{/if}
+  {#if correctionNotice}<p role="status" class="journey-banner">
+      {correctionNotice}
+    </p>{/if}
   {#if !finished && lastTaskEvent?.kind === 'reversal'}
     <p role="status" class="journey-banner">
-      Conclusão desfeita. Recompensa estornada: {lastTaskEvent.reward.xp} XP · {lastTaskEvent
-        .reward.gold} Ouro · {lastTaskEvent.reward.food} Comida.
+      Conclusão desfeita. {#if lastTaskEvent.debtAdded}Débito a compensar: {lastTaskEvent
+          .debtAdded.xp} XP · {lastTaskEvent.debtAdded.gold} Ouro · {lastTaskEvent
+          .debtAdded.food} Comida.{:else}Recompensa estornada: {lastTaskEvent
+          .reward.xp} XP · {lastTaskEvent.reward.gold} Ouro · {lastTaskEvent
+          .reward.food} Comida.{/if}
     </p>
   {/if}
   {#if !data}<p role="status">Abrindo sua missão…</p>{:else if !task}<Card
@@ -336,7 +386,7 @@
       {#if event && !event.reversedAt && (event.occurrenceDate || task.completionEventId === event.id)}<Button
           variant="quiet"
           disabled={busy}
-          onclick={undo}
+          onclick={() => undo()}
           >{event.kind === 'review'
             ? 'Desfazer última sessão'
             : 'Desfazer conclusão'}</Button
@@ -367,17 +417,22 @@
           </p>{/if}
       </div>
     </header>
-    {#if canExecute && !['active', 'paused'].includes(task.executionState ?? '')}<div class="journey-actions">
+    {#if canExecute && !['active', 'paused'].includes(task.executionState ?? '')}<div
+        class="journey-actions"
+      >
         <Button
           variant="secondary"
           disabled={starting > 0 || busy}
-          onclick={() => startCurrent(task)}
-          >Iniciar missão</Button
+          onclick={() => startCurrent(task)}>Iniciar missão</Button
         >
         <p class="lmu-hint">Consultar a missão não inicia sua execução.</p>
-      </div>{:else if canExecute && task.executionState === 'paused'}<div class="journey-actions">
-        <Button variant="secondary" disabled={starting > 0 || busy} onclick={() => startCurrent(task)}
-          >Retomar missão</Button
+      </div>{:else if canExecute && task.executionState === 'paused'}<div
+        class="journey-actions"
+      >
+        <Button
+          variant="secondary"
+          disabled={starting > 0 || busy}
+          onclick={() => startCurrent(task)}>Retomar missão</Button
         >
       </div>{/if}
     {#if !canExecute}<p class="journey-banner">
@@ -388,15 +443,13 @@
             : 'Esta missão está planejada para uma data futura.'}
       </p>{:else}<Card
         >{#if steps.length}<p class="lmu-muted">
-            {steps.filter((step) =>
-              checkedSteps.includes(step.index),
-            ).length} de {steps.length} passos
+            {steps.filter((step) => checkedSteps.includes(step.index)).length} de
+            {steps.length} passos
           </p>
           <progress
             max={steps.length}
-            value={steps.filter((step) =>
-              checkedSteps.includes(step.index),
-            ).length}
+            value={steps.filter((step) => checkedSteps.includes(step.index))
+              .length}
             aria-label="Passos concluídos"
           ></progress>
           <ul class="journey-step-list">
@@ -463,8 +516,12 @@
           }}>Consultar e editar notas</Button
         >{/if}
       <div class="journey-actions">
-        <Button variant="secondary" disabled={busy || saves > 0 || starting > 0} onclick={pause}
-          ><Icon name="pause" size={18} />{!task || !['active', 'paused'].includes(task.executionState ?? '')
+        <Button
+          variant="secondary"
+          disabled={busy || saves > 0 || starting > 0}
+          onclick={pause}
+          ><Icon name="pause" size={18} />{!task ||
+          !['active', 'paused'].includes(task.executionState ?? '')
             ? 'Voltar às missões'
             : sessionMode
               ? 'Pausar e voltar às missões'
@@ -516,7 +573,17 @@
         >Voltar sem salvar notas</Button
       >
     </section>{/if}
-  {#if task && data}<div class="journey-actions" class:session-mission-actions={sessionMode}>
+  {#if task && data}<div
+      class="journey-actions"
+      class:session-mission-actions={sessionMode}
+    >
+      {#if task.productivityVersion && !task.reviewEnabled}<Button
+          disabled={busy || saves > 0 || dirty}
+          onclick={openProgress}
+          >{finished
+            ? 'Corrigir progresso'
+            : 'Registrar progresso parcial'}</Button
+        >{/if}
       <Button
         variant="secondary"
         disabled={busy || saves > 0 || dirty}
@@ -531,7 +598,12 @@
         }}>Configurar revisão</Button
       >
       {#if sessionMode && onSessionSkip}
-        <Button variant="quiet" disabled={busy || saves > 0 || dirty || starting > 0 || !!noteError} onclick={onSessionSkip}>Pular por agora <Icon name="arrow" size={16} /></Button>
+        <Button
+          variant="quiet"
+          disabled={busy || saves > 0 || dirty || starting > 0 || !!noteError}
+          onclick={onSessionSkip}
+          >Pular por agora <Icon name="arrow" size={16} /></Button
+        >
       {/if}
     </div>
     <ReviewHistory {task} events={data.events} /><QuickCreate
@@ -540,6 +612,24 @@
       editTask={task}
     /><ReviewForm bind:open={reviewOpen} {task} />{/if}
 </div>
+<Dialog
+  bind:open={undoOpen}
+  title="Corrigir esta conclusão?"
+  dismissible={!busy}
+>
+  {#if undoImpact}<p>
+      Débito a compensar: {undoImpact.xp} XP · {undoImpact.gold} ouro · {undoImpact.food}
+      comida.
+    </p>
+    <p>
+      Nível, recursos disponíveis, compras e cuidados já realizados serão
+      preservados. Os próximos ganhos compensam o débito.
+    </p>{/if}
+  <Button disabled={busy} onclick={() => undo(true)}>Confirmar correção</Button
+  ><Button variant="quiet" disabled={busy} onclick={() => (undoOpen = false)}
+    >Cancelar</Button
+  >
+</Dialog>
 
 <style>
   .session-mission-actions {

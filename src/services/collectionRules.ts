@@ -19,12 +19,7 @@ export const slotLabels: Record<string, string> = {
   helm: 'Elmo',
 };
 export type MilestoneRewardStatus =
-  | 'initial'
-  | 'recorded'
-  | 'legacy'
-  | 'reversed'
-  | 'pending'
-  | 'locked';
+  'initial' | 'recorded' | 'legacy' | 'reversed' | 'pending' | 'locked';
 export function discoveryRows(profile: Profile, events: ActivityEvent[]) {
   return ECO_STAGES.map((stage) => {
     const sources = events
@@ -33,7 +28,9 @@ export function discoveryRows(profile: Profile, events: ActivityEvent[]) {
           event.kind !== 'reversal' && event.awardedStages.includes(stage.id),
       )
       .sort((a, b) => b.sequence - a.sequence);
-    const active = sources.find((event) => !event.reversedAt);
+    const active = sources.find(
+      (event) => !event.reversedAt || (event.milestoneGold ?? 0) > 0,
+    );
     const reached = profile.totalXpEarned >= stage.minXp;
     const markedReceived = (profile.ecoGoldClaimedUpToStage ?? 1) >= stage.id;
     const rewardStatus: MilestoneRewardStatus =

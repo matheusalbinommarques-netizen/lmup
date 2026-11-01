@@ -1,7 +1,7 @@
 import { dev } from '$app/environment';
 import { writable, get } from 'svelte/store';
 import { unsafeToUpdate, updateLocked } from './updateSafety';
-export const APP_SCHEMA = 5,
+export const APP_SCHEMA = 6,
   UPDATE_PROTOCOL = 1;
 export const pwaState = writable({
   supported: false,

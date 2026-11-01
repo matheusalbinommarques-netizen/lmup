@@ -10,7 +10,9 @@ import type {
 } from './db';
 import { dateKey } from './rewardService';
 import { addCalendarDays } from './calendar';
+import type { Occurrence } from './productivityTypes';
 export type ReportInput = {
+  occurrences?: Occurrence[];
   profile: Profile;
   events: ActivityEvent[];
   tasks: Task[];
@@ -130,7 +132,18 @@ export function reportFor(
       range === 'all' || ((!from || row.date >= from) && row.date <= today),
   );
   const executions = rows.filter(
-    (row) => ['task', 'review'].includes(row.kind) && !row.reversed,
+    (row) =>
+      ['task', 'review'].includes(row.kind) &&
+      !row.reversed &&
+      row.event?.executionComplete !== false &&
+      (!row.event?.occurrenceId ||
+        !data.occurrences ||
+        data.occurrences.some(
+          (occurrence) =>
+            occurrence.id === row.event!.occurrenceId &&
+            occurrence.status === 'completed' &&
+            occurrence.completionEventId === row.event!.id,
+        )),
   );
   const net = rows.reduce(
     (sum, row) => ({

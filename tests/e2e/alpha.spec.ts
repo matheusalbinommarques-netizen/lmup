@@ -119,6 +119,9 @@ test('primeira missão real persiste passos e notas, retoma, conclui e desfaz ap
   await page
     .getByRole('button', { name: 'Desfazer conclusão', exact: true })
     .click();
+  await page
+    .getByRole('button', { name: 'Confirmar correção', exact: true })
+    .click();
   await expect(
     page.getByRole('heading', { name: 'Aprender com uma ideia', level: 1 }),
   ).toBeVisible();
@@ -133,9 +136,10 @@ test('primeira missão real persiste passos e notas, retoma, conclui e desfaz ap
     completedSubtasks: [0, 1],
   });
   expect(result.data.profile).toMatchObject({
-    totalXpEarned: 0,
-    gold: 0,
-    food: 0,
+    totalXpEarned: 53,
+    gold: 25,
+    food: 2,
+    rewardDebt: { xp: 53, gold: 25, food: 2 },
   });
   await page.goto(url);
   await expect(
@@ -327,6 +331,9 @@ test('conclusão real distingue bônus de projeto e desfaz os dois eventos junto
   await page
     .getByRole('button', { name: 'Desfazer conclusão', exact: true })
     .click();
+  await page
+    .getByRole('button', { name: 'Confirmar correção', exact: true })
+    .click();
   await expect(
     page.getByRole('heading', {
       name: 'Entregar uma primeira versão',
@@ -336,9 +343,10 @@ test('conclusão real distingue bônus de projeto e desfaz os dois eventos junto
   ).toBeVisible();
   const result = await backup(page);
   expect(result.data.profile).toMatchObject({
-    totalXpEarned: 0,
-    gold: 0,
-    food: 0,
+    totalXpEarned: 58,
+    gold: 27,
+    food: 3,
+    rewardDebt: { xp: 58, gold: 27, food: 3 },
   });
   expect(result.data.projects[0]).toMatchObject({
     status: 'em_andamento',

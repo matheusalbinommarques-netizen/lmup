@@ -242,7 +242,9 @@
             </p>{/if}
           {#if row.source}<p class="lmu-hint">
               {row.source.reversedAt
-                ? 'O recibo de origem foi estornado.'
+                ? row.source.milestoneGold
+                  ? 'A missão foi corrigida; o prêmio único do marco foi preservado.'
+                  : 'O recibo de origem foi estornado.'
                 : 'Recibo de origem preservado.'}
             </p>
             <details>
@@ -258,7 +260,8 @@
                 O total pode incluir outros ganhos da ação, além do marco.
               </p>
               {#if row.source.reversedAt}<p class="lmu-hint">
-                  Estornado em {dateLabel(row.source.reversedAt)}.
+                  {row.source.milestoneGold ? 'Missão corrigida' : 'Estornado'} em
+                  {dateLabel(row.source.reversedAt)}.
                 </p>{/if}<a href="/progresso" class="journey-link"
                 >Abrir histórico →</a
               >

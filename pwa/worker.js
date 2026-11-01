@@ -1,6 +1,6 @@
 /* Static files only. Personal journey data remains in IndexedDB. */
 const RELEASE = '__LMU_RELEASE__';
-const SCHEMA = 5,
+const SCHEMA = 6,
   PROTOCOL = 1;
 const MANIFEST = self.__WB_MANIFEST;
 const SHELL = 'lmu-shell-' + RELEASE,
@@ -37,7 +37,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 const route =
-  /^\/(?:$|missoes\/?$|progresso\/?$|config\/?$|refugio\/?$|aventura\/?$|bestiario\/?$|inventario\/?$|loja\/?$|trofeus\/?$|perfil\/?$|santuario\/?$|revisoes\/?$|cla\/?$|arquivo\/missoes\/?$|laboratorio\/?$|(?:missao|projetos)\/\d+\/?$|projetos\/?$)/;
+  /^\/(?:$|missoes\/?$|sessao\/?$|sessoes\/?$|ocorrencia\/mission(?::|%3A)\d+(?::|%3A)(?:once|\d{4}-\d{2}-\d{2})\/?$|progresso\/?$|config\/?$|refugio\/?$|aventura\/?$|bestiario\/?$|inventario\/?$|loja\/?$|trofeus\/?$|perfil\/?$|santuario\/?$|revisoes\/?$|cla\/?$|arquivo\/missoes\/?$|laboratorio\/?$|(?:missao|projetos)\/\d+\/?$|projetos\/?$)/;
 async function storeArt(request, response) {
   try {
     if (

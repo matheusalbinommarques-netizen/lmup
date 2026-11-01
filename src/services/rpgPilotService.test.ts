@@ -40,7 +40,7 @@ async function completeReal(title = 'Atividade real') {
 describe('capítulos experimentais', () => {
   it('permite terminar a história inicial sem pedir tarefas no meio', async () => {
     for (let i = 0; i < 5; i++) await advancePilot(i);
-    expect((await db.activityEvents.count())).toBe(0);
+    expect(await db.activityEvents.count()).toBe(0);
     await expect(advancePilot(5)).rejects.toThrow('Escolha');
     await advancePilot(5, 'follow');
     expect(await readPilot()).toMatchObject({
@@ -61,7 +61,10 @@ describe('capítulos experimentais', () => {
     await expect(unlockChapterTwo()).rejects.toThrow('ainda não');
 
     await completeReal('Uma atividade nova');
-    expect(chapterTwoProgress(finished, (await db.profile.get(1))!.totalXpEarned).earned).toBeGreaterThan(0);
+    expect(
+      chapterTwoProgress(finished, (await db.profile.get(1))!.totalXpEarned)
+        .earned,
+    ).toBeGreaterThan(0);
     // We do not assume a fixed reward multiplier, only the published XP threshold.
     while ((await db.profile.get(1))!.totalXpEarned - base < CHAPTER_TWO_XP) {
       await completeReal('Mais uma atividade');
@@ -74,7 +77,13 @@ describe('capítulos experimentais', () => {
     await finishFirst();
     const id = await completeReal('Pode ser desfeito');
     await undoTask(id);
-    expect(chapterTwoProgress(await readPilot(), (await db.profile.get(1))!.totalXpEarned).earned).toBe(0);
+    expect(
+      chapterTwoProgress(
+        await readPilot(),
+        (await db.profile.get(1))!.totalXpEarned,
+        (await db.profile.get(1))!.rewardDebt?.xp ?? 0,
+      ).earned,
+    ).toBe(0);
     await expect(unlockChapterTwo()).rejects.toThrow('ainda não');
     const ids: number[] = [];
     while ((await db.profile.get(1))!.totalXpEarned < CHAPTER_TWO_XP)
