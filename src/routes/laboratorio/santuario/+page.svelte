@@ -2,9 +2,9 @@
   import { sanctuaryContent } from '$lib/content/world';
 
   type BuildingState = 'empty' | 'building' | 'built';
-  let buildingState = $buildingState<BuildingState>('empty');
-  let selected = $buildingState(false);
-  let stage = $buildingState<1 | 2 | 3 | 4>(2);
+  let buildingState = $state<BuildingState>('empty');
+  let selected = $state(false);
+  let stage = $state<1 | 2 | 3 | 4>(2);
   const label = $derived(buildingState === 'empty' ? 'Terreno disponível' : buildingState === 'building' ? 'Forja em construção' : 'Forja concluída');
   function advance() {
     buildingState = buildingState === 'empty' ? 'building' : buildingState === 'building' ? 'built' : 'empty';
