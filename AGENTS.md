@@ -15,6 +15,15 @@ Este arquivo complementa o [README](README.md); não substitui as regras de segu
 - Não alegue que testes ou experiência visual passaram sem executá-los. Os testes selecionados não substituem as verificações obrigatórias do PR.
 - Não execute `npm run verify` e as suítes completas repetidamente por rotina a cada edição; rode-as quando o risco pedir e mantenha a CI obrigatória na integração.
 
+## Melhoria contínua da velocidade
+- Enquanto implementa, identifique gargalos observáveis (leitura de código, testes, build, ferramentas, retrabalho). Priorize concluir o comportamento pedido.
+- Se uma melhoria for pequena, segura, diretamente relacionada e reduzir trabalho repetido, implemente-a na tarefa; mantenha o diff mínimo e valide o comportamento.
+- Para gargalos recorrentes, prefira mecanismos reutilizáveis (componentes, funções, scripts ou orientação curta) a soluções copiadas. Não antecipe abstrações sem segundo caso de uso ou necessidade clara.
+- Não interrompa a entrega para refatorações extensas, mudanças arriscadas ou otimizações sem evidência; registre-as separadamente com custo e benefício esperados.
+- Evite gastar mais tempo otimizando o processo do que o benefício plausível para as próximas entregas. Se a otimização aumentar o escopo, finalize primeiro a tarefa principal.
+- Quando houver medidas reais, registre tempo de investigação, implementação, testes e CI separadamente. Não confunda tempo de execução de um teste com duração total da tarefa nem invente economia futura.
+- Documente apenas aprendizados reutilizáveis e relevantes, sem repetir regras existentes. Proteções e testes obrigatórios permanecem inalterados.
+
 ## Proteções inegociáveis
 - Trabalhe em branch própria; não faça push direto na `main` nem modifique a origem instalada `http://127.0.0.1:5174`.
 - Use dados sintéticos nos testes. Não importe, reinicie ou manipule o banco pessoal do navegador.
