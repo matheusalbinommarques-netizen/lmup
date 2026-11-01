@@ -50,6 +50,9 @@ test('primeira missão real persiste passos e notas, retoma, conclui e desfaz ap
     'Aprender com uma ideia',
     'Escolher referência\nCriar um rascunho',
   );
+  await page
+    .getByRole('button', { name: 'Iniciar missão', exact: true })
+    .click();
   await expect(
     page.getByRole('button', { name: 'Concluir missão', exact: true }),
   ).toBeDisabled();
@@ -65,8 +68,9 @@ test('primeira missão real persiste passos e notas, retoma, conclui e desfaz ap
   await page
     .getByRole('button', { name: 'Pausar e voltar', exact: true })
     .click();
+  await expect(page).toHaveURL(/\/missoes$/);
   await page.goto('/');
-  await expect(page.getByText('Em andamento', { exact: true })).toBeVisible();
+  await expect(page.getByText('Pausada', { exact: true })).toBeVisible();
   const contrast = await page
     .getByRole('link', { name: 'Continuar missão', exact: true })
     .evaluate((element) => {

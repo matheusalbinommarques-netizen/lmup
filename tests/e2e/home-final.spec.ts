@@ -94,11 +94,11 @@ test('Home final mantém navegação inteira, poucas missões sem rolagem intern
       name: 'Lista de missões',
       exact: true,
     });
-    await expect(list.getByRole('listitem')).toHaveCount(2);
+    await expect(list.getByRole('listitem')).toHaveCount(1);
     const geometry = await page.evaluate(() => {
       const sidebar = document.querySelector('.journey-sidebar')!;
-      const list = document.querySelector('.rpg-task-scroll')!;
-      const next = document.querySelector('.rpg-next')!;
+      const list = document.querySelector('.rpg-mission-content')!;
+      const next = document.querySelector('.rpg-priority')!;
       const world = document
         .querySelector('.rpg-world-panel')!
         .getBoundingClientRect();
@@ -156,13 +156,13 @@ test('Home final mantém navegação inteira, poucas missões sem rolagem intern
     expect(empty!.height).toBeLessThan(150);
     if (size.width === 390 || size.width === 1366)
       await capture(page, `${size.width}x${size.height}-em-dia`);
-    await page.getByRole('button', { name: 'Concluídas', exact: true }).click();
-    await expect(list.getByRole('listitem')).toHaveCount(2);
-    expect(
-      await list.evaluate((el) => el.scrollHeight - el.clientHeight),
-    ).toBeLessThanOrEqual(1);
-    const action = list.getByRole('link', {
-      name: /Estudar por 30 minutos Concluída/,
+    await expect(
+      page.getByRole('link', { name: 'Ver todas', exact: true }),
+    ).toHaveAttribute('href', '/missoes');
+    await setTasks(page, false);
+    const action = page.getByRole('link', {
+      name: 'Começar missão',
+      exact: true,
     });
     await action.focus();
     await page.keyboard.press('Enter');
