@@ -967,6 +967,14 @@
     flex-wrap: wrap;
     margin-top: 8px;
   }
+  .placement-actions button {
+    flex: 1;
+    min-width: 0;
+    padding-inline: 8px;
+  }
+  .placement-actions button:first-child {
+    flex: 2;
+  }
   .placement-actions button:nth-child(2) {
     background: #27342f;
     color: #f0e9db;

@@ -272,6 +272,13 @@ for (const width of [undefined, 320]) {
       );
     const place = async (x: number, y: number) => {
       const p = await point(x, y);
+      expect(
+        await page.evaluate(
+          (p) => !!document.elementFromPoint(p.x, p.y)?.closest('.viewport'),
+          p,
+        ),
+        'O ponto no terreno deve estar livre dos painéis',
+      ).toBe(true);
       if (mobile) await page.touchscreen.tap(p.x, p.y);
       else await page.mouse.click(p.x, p.y);
     };
@@ -279,6 +286,12 @@ for (const width of [undefined, 320]) {
     await activate(build);
     await expect(preview.locator('img')).toBeVisible();
     await expect(confirm).toBeEnabled();
+    const confirmBounds = (await confirm.boundingBox())!;
+    const cancelBounds = (await cancel.boundingBox())!;
+    expect(
+      Math.abs(confirmBounds.y - cancelBounds.y),
+      'Confirmar e cancelar devem compartilhar a mesma linha',
+    ).toBeLessThan(1);
     // Cancellation of a real active pointer must not reposition the ghost.
     const beforeCancel = await preview.getAttribute('style');
     const bounds = (await viewport.boundingBox())!;

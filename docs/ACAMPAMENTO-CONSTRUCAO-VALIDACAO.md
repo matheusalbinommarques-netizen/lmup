@@ -27,6 +27,10 @@ URL efetiva: `http://127.0.0.1:5176/laboratorio/acampamento`. `scripts/preview-l
 
 Gargalos observados: geometria por centros exigia correções caso a caso; a função isolada usa o contrato visual já existente e aceita footprints de dimensões diferentes. Testes manuais separados do servidor real criariam retrabalho: o mesmo arquivo Playwright foi reutilizado com configuração temporária apontando à prévia e capturas opcionais. Limitação de espaço móvel resolvida só nos controles afetados. Não foram instaladas bibliotecas ou introduzidas abstrações de engine, economia ou persistência. Tempos informados são de execução dos testes, sem estimativa de duração total ou ganho de desempenho.
 
+## Falha identificada pela CI e correção
+
+A execução 41274006522 aprovou Node 22 e 216/218 testes E2E de Node 24. Os dois casos em 320 px falharam ao posicionar a segunda forja. Captura e trace da CI mostraram os botões de confirmação/cancelamento quebrando em duas linhas no Linux; o painel mais alto interceptava a coordenada do toque, mantendo a posição inválida anterior. As métricas de fonte do Windows não reproduziam essa quebra. Correção mínima: distribuição flexível 2:1 dos botões, largura mínima zero e padding horizontal menor; ambos ficam na mesma linha, com texto interno podendo quebrar. Regressão confere a mesma linha e que o ponto clicado pertence à viewport, sem relaxar colisão ou remover casos de 320 px. Resultado da nova CI na descrição do PR.
+
 ## Limitações
 
 Tudo é demonstração em memória: recarregar descarta as forjas construídas. Colisão valida edifícios e mapa, não árvores, água ou regras futuras de terreno. Bases dos dois edifícios CSS são aproximações explícitas, a substituir pelos metadados de seus futuros sprites. Recorte do telhado/sombra junto à borda não é impedido: o limite aplica-se ao footprint no solo. Toque é emulado, sem certificação de aparelho físico; pinça continua fora de escopo. Assets e qualidade visual continuam os de avaliação. PR #43 deve permanecer em rascunho e sem merge até aprovação visual e funcional.
