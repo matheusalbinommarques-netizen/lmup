@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import SceneSprite from '$lib/lab/SceneSprite.svelte';
+  import { campSprites } from '$lib/lab/campSprites';
 
   type Building = {
     id: string;
@@ -9,6 +11,7 @@
     y: number;
     icon: string;
     roof: string;
+    sprite?: keyof typeof campSprites;
     status: 'ready' | 'site';
   };
   const buildings: Building[] = [
@@ -30,6 +33,18 @@
       y: 700,
       icon: '⚒',
       roof: 'forge',
+      sprite: 'forge',
+      status: 'ready',
+    },
+    {
+      id: 'forge-copy',
+      name: 'Forja 2',
+      purpose: 'Segunda instância da mesma forja, com seleção independente.',
+      x: 1290,
+      y: 760,
+      icon: '',
+      roof: 'forge',
+      sprite: 'forge',
       status: 'ready',
     },
     {
@@ -216,35 +231,49 @@
             class="tree"
             style:left={tree[0] + 'px'}
             style:top={tree[1] + 'px'}
+            style:z-index={tree[1] + 86}
             aria-hidden="true"
           >
             <i></i><b></b>
           </div>
         {/each}
         {#each buildings as building (building.id)}
-          <button
-            class="building"
-            class:active={selection?.id === building.id}
-            class:site={building.status === 'site'}
-            style:left={building.x + 'px'}
-            style:top={building.y + 'px'}
-            onclick={() => choose(building)}
-            aria-label={'Selecionar ' + building.name}
-            aria-pressed={selection?.id === building.id}
-          >
-            <span
-              class="building-art"
-              class:forge={building.roof === 'forge'}
-              class:hall={building.roof === 'hall'}
-              class:store={building.roof === 'store'}
-              class:site-art={building.roof === 'site'}
+          {#if building.sprite}
+            <SceneSprite
+              id={building.id}
+              name={building.name}
+              x={building.x}
+              y={building.y}
+              sprite={campSprites[building.sprite]}
+              selected={selection?.id === building.id}
+              onselect={() => choose(building)}
+            />
+          {:else}
+            <button
+              class="building"
+              class:active={selection?.id === building.id}
+              class:site={building.status === 'site'}
+              style:left={building.x + 'px'}
+              style:top={building.y + 'px'}
+              style:z-index={Math.round(building.y + 82.5)}
+              onclick={() => choose(building)}
+              aria-label={'Selecionar ' + building.name}
+              aria-pressed={selection?.id === building.id}
             >
-              <span class="roof"></span><span class="walls"></span><span
-                class="glyph">{building.icon}</span
+              <span
+                class="building-art"
+                class:forge={building.roof === 'forge'}
+                class:hall={building.roof === 'hall'}
+                class:store={building.roof === 'store'}
+                class:site-art={building.roof === 'site'}
               >
-            </span>
-            <span class="building-name">{building.name}</span>
-          </button>
+                <span class="roof"></span><span class="walls"></span><span
+                  class="glyph">{building.icon}</span
+                >
+              </span>
+              <span class="building-name">{building.name}</span>
+            </button>
+          {/if}
         {/each}
       </div>
     </div>
@@ -264,7 +293,7 @@
           <h2>Escolha uma construção</h2>
           <p>
             Arraste o mapa, aproxime com a roda do mouse ou selecione um
-            edifício.
+            edifício. Nas forjas, selecione a base destacada ou use os atalhos.
           </p>
         {/if}
       </div>
@@ -279,9 +308,9 @@
     </div>
   </section>
   <p class="disclaimer">
-    Protótipo técnico: arte vetorial/CSS provisória, sem construção real,
-    persistência, economia ou acesso ao IndexedDB. Não é a identidade visual
-    final do jogo.
+    Forjas: sprite de avaliação CC0 (feudalwars), reutilizado duas vezes. Demais
+    elementos CSS provisórios. Sem construção real, persistência, economia ou
+    acesso ao IndexedDB. Não é a identidade visual final do jogo.
   </p>
 </div>
 
