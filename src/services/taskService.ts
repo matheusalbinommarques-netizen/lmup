@@ -16,6 +16,9 @@ import {
 import { addCalendarDays } from './calendar';
 import { dateKey } from './rewardService';
 import { reviewDueDate as dueDateForReview } from './reviewRules';
+import { ensureOccurrence, recordProgress } from './occurrenceService';
+import { progressTarget } from './productivityRules';
+import { refreshAchievementReceipts } from './productivityAchievements';
 
 export async function completeProjectIfReady(
   projectId: number,
@@ -82,6 +85,48 @@ export async function completeTask(
     const task = await db.tasks.get(taskId);
     if (!task || task.archived)
       throw new Error('Esta missão não está disponível.');
+    if (task.productivityVersion && !task.reviewEnabled) {
+      if (
+        task.recurrence &&
+        options.occurrenceDate &&
+        options.occurrenceDate !== dateKey()
+      )
+        throw new Error(
+          'O dia mudou. Abra a ocorrência específica para recuperar uma atividade antiga.',
+        );
+      if (task.recurrence && task.lastReviewDate === dateKey()) return null;
+      if (task.recurrence && !scheduledOn(task, dateKey()))
+        throw new Error('Esta rotina não está prevista para hoje.');
+      if (!task.recurrence && task.plannedDate && task.plannedDate > dateKey())
+        throw new Error('Esta missão está planejada para uma data futura.');
+      const occurrence = await ensureOccurrence(
+        taskId,
+        task.recurrence ? dateKey() : (task.plannedDate ?? dateKey()),
+      );
+      if (occurrence.status === 'completed') return null;
+      const target = progressTarget(occurrence);
+      if (
+        occurrence.tracking?.method === 'steps' &&
+        ((task.recurrence && task.occurrenceSession !== dateKey()) ||
+          taskSteps(task).some(
+            (step) => !task.completedSubtasks?.includes(step.index),
+          ))
+      )
+        throw new Error(
+          'Abra a ocorrência de hoje e conclua os passos ou registre progresso parcial.',
+        );
+      return recordProgress({
+        requestId: `complete:${occurrence.id}:${occurrence.revision}`,
+        occurrenceId: occurrence.id,
+        expectedRevision: occurrence.revision,
+        value: target,
+        executedAt: new Date().toISOString(),
+        checkedSteps:
+          occurrence.tracking?.method === 'steps'
+            ? occurrence.steps.map((_, index) => index)
+            : occurrence.checkedSteps,
+      });
+    }
     if (task.recurrence)
       return completeOccurrence(task, options.occurrenceDate);
     if (task.plannedDate && task.plannedDate > dateKey())
@@ -186,6 +231,7 @@ export async function completeTask(
         : {}),
     });
     if (task.projectId) await completeProjectIfReady(task.projectId);
+    await refreshAchievementReceipts();
     return result.event;
   });
 }
@@ -201,6 +247,21 @@ export async function undoTask(
     const occurrence = requested
       ? await db.activityEvents.get(requested)
       : undefined;
+    if (occurrence?.occurrenceId) {
+      const row = await db.occurrences.get(occurrence.occurrenceId);
+      if (!row || row.taskId !== taskId)
+        throw new Error('Este recibo pertence a outra missão.');
+      await recordProgress({
+        requestId: `undo:${row.id}:${row.revision}`,
+        occurrenceId: row.id,
+        expectedRevision: row.revision,
+        value: 0,
+        checkedSteps: [],
+        executedAt: new Date().toISOString(),
+        correction: true,
+      });
+      return;
+    }
     if (occurrence?.taskId !== undefined && occurrence.taskId !== taskId)
       throw new Error('Este recibo pertence a outra missão.');
     if (occurrence?.occurrenceDate) {
@@ -363,6 +424,7 @@ async function completeOccurrence(
     updatedAt: new Date(),
   });
   if (task.projectId) await completeProjectIfReady(task.projectId);
+  await refreshAchievementReceipts();
   return result.event;
 }
 

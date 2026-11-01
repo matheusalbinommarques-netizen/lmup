@@ -4,7 +4,10 @@ import { reopenProjectForWork } from './projectLifecycle';
 import { dateKey } from './rewardService';
 import { calendarDate } from './calendar';
 import { validateRecurrence } from './recurrence';
-export type TaskDefinitionInput = {
+import type { Planning } from './productivityTypes';
+import { validatePlanning } from './productivityRules';
+import { savePlanVersion } from './occurrenceService';
+export type TaskDefinitionInput = Planning & {
   title: string;
   requestId: string;
   steps?: string[];
@@ -100,6 +103,11 @@ export async function saveTaskDefinition(
         .modify({ pinned: false });
     const now = new Date().toISOString();
     const content: Partial<Task> = {
+      ...validatePlanning({ ...current, ...input }, steps),
+      productivityVersion:
+        current && !current.productivityVersion && !input.tracking
+          ? undefined
+          : 1,
       title,
       plannedDate,
       recurrence,
@@ -136,7 +144,12 @@ export async function saveTaskDefinition(
     };
     let id: number;
     if (current) {
-      if (JSON.stringify(current.subtasks ?? []) !== JSON.stringify(steps))
+      if (!(await db.planVersions.where('taskId').equals(current.id!).count()))
+        await savePlanVersion(current);
+      if (
+        JSON.stringify(current.subtasks ?? []) !== JSON.stringify(steps) &&
+        !current.productivityVersion
+      )
         content.completedSubtasks = [];
       await db.tasks.update(current.id!, content);
       id = current.id!;
@@ -152,6 +165,7 @@ export async function saveTaskDefinition(
         creationKey: input.requestId,
         plannedDate,
       } as Task);
+    await savePlanVersion((await db.tasks.get(id))!);
     if (input.heroName?.trim())
       await db.profile.update(1, { name: input.heroName.trim().slice(0, 80) });
     return id;

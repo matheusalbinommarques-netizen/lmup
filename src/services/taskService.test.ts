@@ -68,9 +68,10 @@ describe('conclusão e estorno', () => {
       await completeTask(id);
       await undoTask(id);
       expect(await db.profile.get(1)).toMatchObject({
-        totalXpEarned: 0,
-        gold: 0,
-        food: 0,
+        totalXpEarned: 53,
+        gold: 25,
+        food: 2,
+        rewardDebt: { xp: 53, gold: 25, food: 2 },
         currentStreak: 0,
         lastCompletionDate: null,
       });
@@ -86,13 +87,14 @@ describe('conclusão e estorno', () => {
     await db.profile.update(1, { activeCompanionId: 3 });
     await undoTask(id);
     expect(await db.profile.get(1)).toMatchObject({
-      totalXpEarned: 0,
-      gold: 0,
-      food: 0,
+      totalXpEarned: 53,
+      gold: 25,
+      food: 2,
+      rewardDebt: { xp: 53, gold: 25, food: 2 },
     });
     expect(
-      (await db.activityEvents.get(`reversal:task:${id}:0`))?.reward.xp,
-    ).toBe(-53);
+      (await db.activityEvents.get(`reversal:task:${id}:0`))?.debtAdded?.xp,
+    ).toBe(53);
   });
 
   it('não concede recurso para tarefa arquivada ou XP inválido', async () => {
@@ -130,14 +132,15 @@ describe('conclusão e estorno', () => {
     expect(await db.activityEvents.count()).toBe(0);
   });
 
-  it('preserva compra e conclusão quando parte do Gold foi gasta', async () => {
+  it('preserva compra e permite correção quando parte do Gold foi gasta', async () => {
     const id = await mission({ xp: 2000 });
     await completeTask(id);
     const item = getShopItemById(101)!;
     expect(item).toBeTruthy();
     expect(await buyItem(item)).toMatchObject({ ok: true });
-    await expect(undoTask(id)).rejects.toThrow('utilizada');
-    expect((await db.tasks.get(id))?.completed).toBe(true);
+    await undoTask(id);
+    expect((await db.profile.get(1))?.rewardDebt?.gold).toBeGreaterThan(0);
+    expect((await db.tasks.get(id))?.completed).toBe(false);
     expect(await db.ownedShopItems.count()).toBe(1);
   });
 
@@ -153,11 +156,12 @@ describe('conclusão e estorno', () => {
     ).toHaveLength(1);
     expect((await db.profile.get(1))?.food).toBe(0);
     expect((await db.companions.get(1))?.foodInvested).toBe(2);
-    await expect(undoTask(id)).rejects.toThrow('utilizada');
-    expect((await db.tasks.get(id))?.completed).toBe(true);
+    await undoTask(id);
+    expect((await db.profile.get(1))?.rewardDebt?.food).toBe(2);
+    expect((await db.tasks.get(id))?.completed).toBe(false);
   });
 
-  it('estorna o baú do Santuário e permite uma nova concessão legítima', async () => {
+  it('preserva o baú do Refúgio e impede nova concessão após correção', async () => {
     await db.profile.update(1, { totalXpEarned: 2490 });
     const id = await mission();
     await completeTask(id);
@@ -167,9 +171,10 @@ describe('conclusão e estorno', () => {
     });
     await undoTask(id);
     expect(await db.profile.get(1)).toMatchObject({
-      totalXpEarned: 2490,
-      gold: 0,
-      ecoGoldClaimedUpToStage: 1,
+      totalXpEarned: 2543,
+      gold: 225,
+      ecoGoldClaimedUpToStage: 2,
+      rewardDebt: { xp: 53, gold: 25, food: 2 },
     });
     await completeTask(id);
     expect((await db.profile.get(1))?.gold).toBe(225);
@@ -207,9 +212,10 @@ describe('projetos e revisões', () => {
     });
     await undoTask(id);
     expect(await db.profile.get(1)).toMatchObject({
-      totalXpEarned: 0,
-      gold: 0,
-      food: 0,
+      totalXpEarned: 58,
+      gold: 27,
+      food: 3,
+      rewardDebt: { xp: 58, gold: 27, food: 3 },
     });
     expect(await db.projects.get(projectId)).toMatchObject({
       status: 'em_andamento',
@@ -219,7 +225,7 @@ describe('projetos e revisões', () => {
     expect((await db.profile.get(1))?.totalXpEarned).toBe(58);
   });
 
-  it('estorno combinado insuficiente preserva projeto e missão', async () => {
+  it('correção combinada registra débitos e preserva comida já investida', async () => {
     const projectId = await db.projects.add({
       name: 'Projeto',
       status: 'planejando',
@@ -228,11 +234,19 @@ describe('projetos e revisões', () => {
     const id = await mission({ projectId });
     await completeTask(id);
     await feedCompanion(1, 1);
-    await expect(undoTask(id)).rejects.toThrow('utilizada');
-    expect((await db.projects.get(projectId))?.rewardGranted).toBe(true);
-    expect((await db.tasks.get(id))?.completed).toBe(true);
+    await undoTask(id);
+    expect((await db.profile.get(1))?.rewardDebt).toEqual({
+      xp: 58,
+      gold: 27,
+      food: 3,
+    });
+    expect((await db.companions.get(1))?.foodInvested).toBe(1);
+    expect((await db.projects.get(projectId))?.rewardGranted).toBe(false);
+    expect((await db.tasks.get(id))?.completed).toBe(false);
     expect(
-      (await db.activityEvents.toArray()).every((event) => !event.reversedAt),
+      (await db.activityEvents.toArray()).some(
+        (event) => event.kind === 'reversal' && event.debtAdded,
+      ),
     ).toBe(true);
   });
 
@@ -250,7 +264,8 @@ describe('projetos e revisões', () => {
     await completeTask(id);
     expect((await db.profile.get(1))?.totalXpEarned).toBe(106);
     await undoTask(id);
-    expect((await db.profile.get(1))?.totalXpEarned).toBe(53);
+    expect((await db.profile.get(1))?.totalXpEarned).toBe(106);
+    expect((await db.profile.get(1))?.rewardDebt?.xp).toBe(53);
     await completeTask(id);
     expect((await db.profile.get(1))?.totalXpEarned).toBe(106);
   });
@@ -314,7 +329,8 @@ it('desfazer a primeira revisão após conclusão normal restaura a prática no 
   expect(restored.completed).toBe(true);
   expect(restored.lastReviewDate).toBeNull();
   expect(isAvailable(restored)).toBe(true);
-  expect((await db.profile.get(1))?.totalXpEarned).toBe(53);
+  expect((await db.profile.get(1))?.totalXpEarned).toBe(106);
+  expect((await db.profile.get(1))?.rewardDebt?.xp).toBe(53);
   expect(
     (await db.activityEvents.toArray()).filter(
       (event) => event.kind === 'review' && !event.reversedAt,

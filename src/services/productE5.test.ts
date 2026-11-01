@@ -109,9 +109,10 @@ describe('calendário e projetos', () => {
     expect((await db.profile.get(1))?.totalXpEarned).toBe(58);
     await changeProjectStatus(pid, 'em_andamento');
     expect(await db.profile.get(1)).toMatchObject({
-      totalXpEarned: 53,
-      gold: 25,
-      food: 2,
+      totalXpEarned: 58,
+      gold: 27,
+      food: 3,
+      rewardDebt: { xp: 5, gold: 2, food: 1 },
     });
     expect((await db.tasks.get(id))?.completed).toBe(true);
     await changeProjectStatus(pid, 'concluido');
@@ -124,7 +125,7 @@ describe('calendário e projetos', () => {
     await completeTask(a);
     await edit(a, { effort: 'deep' });
     const b = await mission({ projectId: pid });
-    expect((await db.profile.get(1))?.totalXpEarned).toBe(53);
+    expect((await db.profile.get(1))?.totalXpEarned).toBe(58);
     await completeTask(b);
     const bonus = (await db.activityEvents.toArray()).filter(
       (event) => event.kind === 'project' && !event.reversedAt,
@@ -133,14 +134,20 @@ describe('calendário e projetos', () => {
     expect(bonus[0].baseXp).toBe(10);
     expect((await db.profile.get(1))?.totalXpEarned).toBe(117);
   });
-  it('saldo gasto impede reabertura e inclusão parcial de missão', async () => {
+  it('reabertura com saldo gasto preserva recursos investidos e registra débito', async () => {
     const pid = await project();
     const id = await mission({ projectId: pid });
     await completeTask(id);
     await feedCompanion(1, 3);
-    await expect(mission({ projectId: pid })).rejects.toThrow('utilizada');
-    expect(await db.tasks.count()).toBe(1);
-    expect((await db.projects.get(pid))?.rewardGranted).toBe(true);
+    await mission({ projectId: pid });
+    expect((await db.profile.get(1))?.rewardDebt).toEqual({
+      xp: 5,
+      gold: 2,
+      food: 1,
+    });
+    expect((await db.companions.get(1))?.foodInvested).toBe(3);
+    expect(await db.tasks.count()).toBe(2);
+    expect((await db.projects.get(pid))?.rewardGranted).toBe(false);
   });
   it('arquivar preserva vínculos e restaurar não concede recompensa', async () => {
     const pid = await project();
@@ -296,7 +303,8 @@ describe('sessões de revisão', () => {
     await completeTask(id, { reviewOutcome: 'recalled' });
     expect((await db.profile.get(1))?.totalXpEarned).toBe(111);
     await undoTask(id);
-    expect((await db.profile.get(1))?.totalXpEarned).toBe(58);
+    expect((await db.profile.get(1))?.totalXpEarned).toBe(111);
+    expect((await db.profile.get(1))?.rewardDebt?.xp).toBe(53);
     expect((await db.projects.get(pid))?.rewardGranted).toBe(true);
     expect((await db.tasks.get(id))?.completed).toBe(true);
     await completeTask(id, { reviewOutcome: 'again' });
@@ -337,7 +345,8 @@ describe('sessões de revisão', () => {
       completionEventId: null,
     });
     expect((await db.projects.get(pid))?.rewardGranted).toBe(true);
-    expect((await db.profile.get(1))?.totalXpEarned).toBe(0);
+    expect((await db.profile.get(1))?.rewardDebt?.xp).toBe(53);
+    expect((await db.profile.get(1))?.totalXpEarned).toBe(53);
   });
   it('falha ao registrar metadados da sessão reverte tarefa, evento e saldo', async () => {
     const id = await mission();

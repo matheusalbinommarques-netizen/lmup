@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { invalidateAchievement } from '$services/productivityAchievements';
   import { journeyQuery, type JourneySnapshot } from '$services/journeyQuery';
-  import { collectionStats } from '$services/collectionRules';
   import { ALL_ACHIEVEMENTS } from '$services/achievementsCatalog';
   import CollectionNav from './CollectionNav.svelte';
   import Card from '$lib/ui/Card.svelte';
@@ -23,14 +23,29 @@
     });
     return () => sub.unsubscribe();
   });
-  const stats = $derived(
-    data?.profile
-      ? collectionStats(data.profile, data.tasks, data.companions, data.owned)
-      : null,
-  );
+  const stats = $derived(data?.profile ? data.achievementStats : null);
+  function isEarned(id: string) {
+    const receipt = data?.achievementReceipts.find((row) => row.id === id);
+    return receipt
+      ? !receipt.invalidatedAt
+      : !!stats &&
+          !!ALL_ACHIEVEMENTS.find((item) => item.id === id)?.condition(stats);
+  }
+  let correctionId = $state(''),
+    correctionReason = $state('');
+  async function correctAchievement() {
+    try {
+      await invalidateAchievement(correctionId, correctionReason);
+      correctionId = '';
+      correctionReason = '';
+    } catch (cause) {
+      error =
+        cause instanceof Error ? cause.message : 'Não foi possível corrigir.';
+    }
+  }
   const earned = $derived(
     stats
-      ? ALL_ACHIEVEMENTS.filter((item) => !item.future && item.condition(stats))
+      ? ALL_ACHIEVEMENTS.filter((item) => !item.future && isEarned(item.id))
       : [],
   );
   const rows = $derived(
@@ -39,9 +54,7 @@
         (filter === 'future'
           ? item.future
           : !item.future &&
-            (filter === 'earned'
-              ? !!stats && item.condition(stats)
-              : !stats || !item.condition(stats))) &&
+            (filter === 'earned' ? isEarned(item.id) : !isEarned(item.id))) &&
         (item.title + ' ' + item.description)
           .toLocaleLowerCase('pt-BR')
           .includes(search.toLocaleLowerCase('pt-BR')),
@@ -62,6 +75,22 @@
   </p>
 </header>
 <CollectionNav />
+<details>
+  <summary>Corrigir reconhecimento indevido</summary>
+  <p>A correção preserva o histórico e não altera recursos.</p>
+  <label
+    >Conquista<select bind:value={correctionId}
+      ><option value="">Escolher conquista</option
+      >{#each earned as item (item.id)}<option value={item.id}
+          >{item.title}</option
+        >{/each}</select
+    ></label
+  ><label>Motivo<input bind:value={correctionReason} /></label><Button
+    variant="quiet"
+    disabled={!correctionId || !correctionReason.trim()}
+    onclick={correctAchievement}>Invalidar reconhecimento</Button
+  >
+</details>
 <p class="journey-banner">
   Conquistas acompanham seus dados atuais. Desfazer missões ou gastar um saldo
   pode alterar os critérios atendidos. Metas de versões futuras ficam em uma

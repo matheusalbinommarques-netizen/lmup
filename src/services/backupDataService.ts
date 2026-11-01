@@ -12,9 +12,17 @@ import { createDefaultProfile, initializeJourney } from './profileService';
 import { invalidateHeroModifiersCache } from './gearService';
 import { calendarDate } from './calendar';
 import { effortDefinition, type Effort } from './effort';
+import {
+  validateProductivityBackup,
+  PRODUCTIVITY_TABLES,
+} from './productivityBackup';
 
 export const BACKUP_LIMIT = 25 * 1024 * 1024;
-const tableNames = [...Object.keys(LEGACY_STORES), 'activityEvents'];
+const tableNames = [
+  ...Object.keys(LEGACY_STORES),
+  'activityEvents',
+  ...PRODUCTIVITY_TABLES,
+];
 type Row = Record<string, any>;
 export interface JourneyBackup {
   meta: { app: 'Level Me Up!'; formatVersion: number; exportedAt: string };
@@ -78,7 +86,8 @@ function rows(value: unknown, label: string): Row[] {
   const seen = new Set();
   return value.map((entry) => {
     const row = object(entry, label);
-    if (label === 'activityEvents') text(row.id, `${label}.id`);
+    if (label === 'activityEvents' || PRODUCTIVITY_TABLES.includes(label))
+      text(row.id, `${label}.id`);
     else integer(row.id, `${label}.id`, 1);
     if (seen.has(row.id)) fail(`${label} tem IDs duplicados.`);
     seen.add(row.id);
@@ -90,7 +99,7 @@ export function validateBackup(input: unknown): JourneyBackup {
   safeTree(input);
   const envelope = object(input, 'arquivo');
   const meta = object(envelope.meta, 'meta');
-  if (meta.app !== 'Level Me Up!' || ![1, 2, 3].includes(meta.formatVersion))
+  if (meta.app !== 'Level Me Up!' || ![1, 2, 3, 4].includes(meta.formatVersion))
     fail('aplicativo ou versão não reconhecidos.');
   date(meta.exportedAt, 'meta.exportedAt');
   const data = object(envelope.data, 'data');
@@ -98,7 +107,9 @@ export function validateBackup(input: unknown): JourneyBackup {
   const lists: Record<string, Row[]> = {};
   const required = ['areas', 'tasks', 'companions', 'xpLogs'];
   for (const name of tableNames.filter((key) => key !== 'profile')) {
-    const needed = required.includes(name) || meta.formatVersion === 3;
+    const needed =
+      required.includes(name) ||
+      meta.formatVersion >= (PRODUCTIVITY_TABLES.includes(name) ? 4 : 3);
     lists[name] = rows(data[name] ?? (needed ? undefined : []), name);
   }
   const profile = data.profile == null ? null : object(data.profile, 'profile');
@@ -438,7 +449,9 @@ export function validateBackup(input: unknown): JourneyBackup {
       calendar(event.occurrenceDate, 'activityEvents.occurrenceDate');
       if (
         !['task', 'reversal'].includes(event.kind) ||
-        (event.kind === 'task' && event.occurrenceDate !== event.date)
+        (event.kind === 'task' &&
+          !event.occurrenceId &&
+          event.occurrenceDate !== event.date)
       )
         fail('data de ocorrência inválida.');
     }
@@ -490,15 +503,19 @@ export function validateBackup(input: unknown): JourneyBackup {
       const source = byId.get(event.sourceEventId);
       if (!source || source.kind === 'reversal' || !source.reversedAt)
         fail('estorno sem evento de origem.');
-      for (const key of ['xp', 'gold', 'food'])
-        if (reward[key] !== -source.reward?.[key])
-          fail('estorno difere da recompensa original.');
+      if (!event.debtAdded)
+        for (const key of ['xp', 'gold', 'food'])
+          if (reward[key] !== -source.reward?.[key])
+            fail('estorno difere da recompensa original.');
     }
   }
   const occurrences = new Set<string>();
   for (const event of events.filter(
     (entry) =>
-      entry.kind === 'task' && entry.occurrenceDate && !entry.reversedAt,
+      entry.kind === 'task' &&
+      entry.occurrenceDate &&
+      !entry.occurrenceId &&
+      !entry.reversedAt,
   )) {
     const key = `${event.taskId}:${event.occurrenceDate}`;
     if (occurrences.has(key)) fail('ocorrência com recompensas duplicadas.');
@@ -582,10 +599,11 @@ export function validateBackup(input: unknown): JourneyBackup {
       )
         fail('bônus não corresponde ao projeto.');
     }
+  validateProductivityBackup(lists, profile);
   return structuredClone({
     meta: {
       app: 'Level Me Up!',
-      formatVersion: 3,
+      formatVersion: 4,
       exportedAt: meta.exportedAt,
     },
     data: { ...lists, profile: profile as Profile | null },
@@ -602,11 +620,14 @@ function envelope(data: Record<string, unknown[]>): JourneyBackup {
   return {
     meta: {
       app: 'Level Me Up!',
-      formatVersion: 3,
+      formatVersion: 4,
       exportedAt: new Date().toISOString(),
     },
     data: {
       ...data,
+      ...Object.fromEntries(
+        PRODUCTIVITY_TABLES.map((name) => [name, data[name] ?? []]),
+      ),
       activityEvents: data.activityEvents ?? [],
       profile: (data.profile[0] as Profile) ?? null,
     },
@@ -628,7 +649,9 @@ async function saveRecovery(reason: RecoverySnapshot['reason']) {
   });
   const records = await db.recoverySnapshots.orderBy('createdAt').toArray();
   const removable = records
-    .filter((record) => record.reason !== 'migration-v4')
+    .filter(
+      (record) => !['migration-v4', 'migration-v5'].includes(record.reason),
+    )
     .slice(0, -5);
   if (removable.length)
     await db.recoverySnapshots.bulkDelete(removable.map((record) => record.id));

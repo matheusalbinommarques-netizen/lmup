@@ -24,6 +24,7 @@
     taskSteps,
   } from '$services/journeyService';
   import { completeTask, undoTask } from '$services/taskService';
+  import { ensureOccurrence } from '$services/occurrenceService';
   import Button from '$lib/ui/Button.svelte';
   import Card from '$lib/ui/Card.svelte';
   import Icon from '$lib/ui/Icon.svelte';
@@ -80,7 +81,10 @@
   let revision = 0;
   let queue = Promise.resolve();
   $effect(() => {
-    if (sessionMode) onSessionBusyChange?.(dirty || saves > 0 || busy || starting > 0 || !!noteError);
+    if (sessionMode)
+      onSessionBusyChange?.(
+        dirty || saves > 0 || busy || starting > 0 || !!noteError,
+      );
   });
   const task = $derived(
     data?.tasks.find((item) => item.id === id && !item.archived),
@@ -170,7 +174,6 @@
     };
     const refresh = () => {
       today = dateKey();
-
     };
     const dayClock = setInterval(refresh, 30000);
     window.addEventListener('focus', refresh);
@@ -289,6 +292,26 @@
       busy = false;
     }
   }
+  async function openProgress() {
+    if (!task) return;
+    busy = true;
+    error = '';
+    try {
+      const row = await ensureOccurrence(
+        task.id!,
+        task.recurrence ? today : (task.plannedDate ?? today),
+      );
+      busy = false;
+      await goto('/ocorrencia/' + encodeURIComponent(row.id));
+    } catch (cause) {
+      error =
+        cause instanceof Error
+          ? cause.message
+          : 'Não foi possível abrir o progresso.';
+    } finally {
+      busy = false;
+    }
+  }
   async function leaveUnsaved() {
     await queue;
     dirty = false;
@@ -367,17 +390,22 @@
           </p>{/if}
       </div>
     </header>
-    {#if canExecute && !['active', 'paused'].includes(task.executionState ?? '')}<div class="journey-actions">
+    {#if canExecute && !['active', 'paused'].includes(task.executionState ?? '')}<div
+        class="journey-actions"
+      >
         <Button
           variant="secondary"
           disabled={starting > 0 || busy}
-          onclick={() => startCurrent(task)}
-          >Iniciar missão</Button
+          onclick={() => startCurrent(task)}>Iniciar missão</Button
         >
         <p class="lmu-hint">Consultar a missão não inicia sua execução.</p>
-      </div>{:else if canExecute && task.executionState === 'paused'}<div class="journey-actions">
-        <Button variant="secondary" disabled={starting > 0 || busy} onclick={() => startCurrent(task)}
-          >Retomar missão</Button
+      </div>{:else if canExecute && task.executionState === 'paused'}<div
+        class="journey-actions"
+      >
+        <Button
+          variant="secondary"
+          disabled={starting > 0 || busy}
+          onclick={() => startCurrent(task)}>Retomar missão</Button
         >
       </div>{/if}
     {#if !canExecute}<p class="journey-banner">
@@ -388,15 +416,13 @@
             : 'Esta missão está planejada para uma data futura.'}
       </p>{:else}<Card
         >{#if steps.length}<p class="lmu-muted">
-            {steps.filter((step) =>
-              checkedSteps.includes(step.index),
-            ).length} de {steps.length} passos
+            {steps.filter((step) => checkedSteps.includes(step.index)).length} de
+            {steps.length} passos
           </p>
           <progress
             max={steps.length}
-            value={steps.filter((step) =>
-              checkedSteps.includes(step.index),
-            ).length}
+            value={steps.filter((step) => checkedSteps.includes(step.index))
+              .length}
             aria-label="Passos concluídos"
           ></progress>
           <ul class="journey-step-list">
@@ -463,8 +489,12 @@
           }}>Consultar e editar notas</Button
         >{/if}
       <div class="journey-actions">
-        <Button variant="secondary" disabled={busy || saves > 0 || starting > 0} onclick={pause}
-          ><Icon name="pause" size={18} />{!task || !['active', 'paused'].includes(task.executionState ?? '')
+        <Button
+          variant="secondary"
+          disabled={busy || saves > 0 || starting > 0}
+          onclick={pause}
+          ><Icon name="pause" size={18} />{!task ||
+          !['active', 'paused'].includes(task.executionState ?? '')
             ? 'Voltar às missões'
             : sessionMode
               ? 'Pausar e voltar às missões'
@@ -516,7 +546,17 @@
         >Voltar sem salvar notas</Button
       >
     </section>{/if}
-  {#if task && data}<div class="journey-actions" class:session-mission-actions={sessionMode}>
+  {#if task && data}<div
+      class="journey-actions"
+      class:session-mission-actions={sessionMode}
+    >
+      {#if task.productivityVersion && !task.reviewEnabled}<Button
+          disabled={busy || saves > 0 || dirty}
+          onclick={openProgress}
+          >{finished
+            ? 'Corrigir progresso'
+            : 'Registrar progresso parcial'}</Button
+        >{/if}
       <Button
         variant="secondary"
         disabled={busy || saves > 0 || dirty}
@@ -531,7 +571,12 @@
         }}>Configurar revisão</Button
       >
       {#if sessionMode && onSessionSkip}
-        <Button variant="quiet" disabled={busy || saves > 0 || dirty || starting > 0 || !!noteError} onclick={onSessionSkip}>Pular por agora <Icon name="arrow" size={16} /></Button>
+        <Button
+          variant="quiet"
+          disabled={busy || saves > 0 || dirty || starting > 0 || !!noteError}
+          onclick={onSessionSkip}
+          >Pular por agora <Icon name="arrow" size={16} /></Button
+        >
       {/if}
     </div>
     <ReviewHistory {task} events={data.events} /><QuickCreate

@@ -2,6 +2,7 @@
   import '$lib/rpg-theme.css';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { page } from '$app/state';
   import { journeyQuery, type JourneySnapshot } from '$services/journeyQuery';
   import {
     isAvailable,
@@ -32,6 +33,15 @@
   import Button from '$lib/ui/Button.svelte';
   import Icon from '$lib/ui/Icon.svelte';
   import RpgTrim from '$lib/ui/RpgTrim.svelte';
+  import ProductivityWorkspace from './ProductivityWorkspace.svelte';
+  let workspaceView = $state<
+    'list' | 'agenda' | 'routines' | 'recovery' | 'sessions'
+  >('list');
+  onMount(() => {
+    const value = page.url.searchParams.get('view');
+    if (value && ['agenda', 'routines', 'recovery', 'sessions'].includes(value))
+      workspaceView = value as typeof workspaceView;
+  });
   let data = $state<JourneySnapshot>();
   let error = $state(''),
     notice = $state('');
@@ -232,7 +242,10 @@
       error = '';
       await goto('/sessao');
     } catch (cause) {
-      error = cause instanceof Error ? cause.message : 'Não foi possível criar a sessão.';
+      error =
+        cause instanceof Error
+          ? cause.message
+          : 'Não foi possível criar a sessão.';
     }
   }
 </script>
@@ -250,307 +263,356 @@
   {#if error}<p role="alert" class="journey-error">{error}</p>{/if}
   <p role="status" class="journey-save-status">{notice}</p>
   {#if !data}<p>Abrindo suas missões…</p>{:else}
-    <div class="rpg-frame organizer-toolbar">
-      <RpgTrim />
-      <nav class="organizer-tabs" aria-label="Agenda de missões">
-        {#each [{ key: 'today', label: 'Hoje' }, { key: 'upcoming', label: 'Próximas' }, { key: 'all', label: 'Todas' }, { key: 'completed', label: 'Concluídas' }] as tab (tab.key)}<Button
-            variant="secondary"
-            aria-label={tab.label}
-            aria-pressed={filter === tab.key}
-            onclick={() => (filter = tab.key as typeof filter)}
-            >{tab.label}<small aria-hidden="true"
-              >{tab.key === 'completed'
-                ? history.filter((event) => !event.reversedAt).length +
-                  legacy.length
-                : counts[tab.key as keyof typeof counts]}</small
-            ></Button
-          >{/each}
-      </nav>
-      <div class="mission-session-tools">
-        {#if selecting}
-          <span>{eligibleSelection.length} {eligibleSelection.length === 1 ? 'missão selecionada' : 'missões selecionadas'}</span>
-          <Button disabled={!eligibleSelection.length} onclick={beginSession}>Iniciar sessão</Button>
-          <Button variant="quiet" onclick={() => { selecting = false; selected = []; }}>Cancelar seleção</Button>
-        {:else}
-          <Button variant="secondary" onclick={() => { selecting = true; filter = 'today'; selected = []; }}>
-            <Icon name="missions" size={18} />Montar sessão
-          </Button>
-          {#if storedSession}<a class="lmu-button lmu-button--secondary" href="/sessao">Retomar sessão do dia</a>{/if}
-        {/if}
-      </div>
-      <div class="organizer-compact-filters">
-        <label class="journey-label lmu-field search-field"
-        ><span class="sr-only">Buscar missão</span><input
-          type="search"
-          bind:value={search}
-          placeholder="Buscar missão…"
-        /></label
-      >
-      <div class="organizer-filters">
-        <label class="journey-label"
-          >Área<select bind:value={area}
-            ><option value="all">Todas as áreas</option><option value="0"
-              >Geral</option
-            >{#each data.areas as item (item.id)}<option value={String(item.id)}
-                >{item.nome}</option
-              >{/each}</select
-          ></label
+    <nav class="journey-actions" aria-label="Visualização das missões">
+      {#each [{ id: 'list', label: 'Lista' }, { id: 'agenda', label: 'Agenda' }, { id: 'routines', label: 'Rotinas' }, { id: 'recovery', label: 'Recuperar ocorrências' }, { id: 'sessions', label: 'Sessões salvas' }] as tab (tab.id)}
+        <Button
+          variant="secondary"
+          aria-pressed={workspaceView === tab.id}
+          onclick={() => (workspaceView = tab.id as typeof workspaceView)}
+          >{tab.label}</Button
         >
-        <Button variant="secondary" onclick={() => (areasOpen = true)}
-          >Gerenciar áreas</Button
-        >
-      </div>
-      </div>
-      <details class="extra-filters">
-        <summary>Mais filtros{project || pinnedOnly ? ' · ativos' : ''}</summary
-        >
-        <label class="journey-label"
-          >Projeto<select bind:value={project}
-            ><option value="">Todos os projetos</option
-            >{#each data.projects as item (item.id)}<option
-                value={String(item.id)}>{item.name}</option
-              >{/each}</select
-          ></label
-        >
-        <div class="organizer-options">
-          <label class="journey-check"
-            ><input type="checkbox" bind:checked={groupAreas} />Agrupar por área</label
-          ><label class="journey-check"
-            ><input type="checkbox" bind:checked={pinnedOnly} />Apenas fixadas</label
-          >
+      {/each}
+    </nav>
+    {#if workspaceView !== 'list'}<ProductivityWorkspace
+        view={workspaceView}
+        snapshot={data}
+      />{:else}
+      <div class="rpg-frame organizer-toolbar">
+        <RpgTrim />
+        <nav class="organizer-tabs" aria-label="Agenda de missões">
+          {#each [{ key: 'today', label: 'Hoje' }, { key: 'upcoming', label: 'Próximas' }, { key: 'all', label: 'Todas' }, { key: 'completed', label: 'Concluídas' }] as tab (tab.key)}<Button
+              variant="secondary"
+              aria-label={tab.label}
+              aria-pressed={filter === tab.key}
+              onclick={() => (filter = tab.key as typeof filter)}
+              >{tab.label}<small aria-hidden="true"
+                >{tab.key === 'completed'
+                  ? history.filter((event) => !event.reversedAt).length +
+                    legacy.length
+                  : counts[tab.key as keyof typeof counts]}</small
+              ></Button
+            >{/each}
+        </nav>
+        <div class="mission-session-tools">
+          {#if selecting}
+            <span
+              >{eligibleSelection.length}
+              {eligibleSelection.length === 1
+                ? 'missão selecionada'
+                : 'missões selecionadas'}</span
+            >
+            <Button disabled={!eligibleSelection.length} onclick={beginSession}
+              >Iniciar sessão</Button
+            >
+            <Button
+              variant="quiet"
+              onclick={() => {
+                selecting = false;
+                selected = [];
+              }}>Cancelar seleção</Button
+            >
+          {:else}
+            <Button
+              variant="secondary"
+              onclick={() => {
+                selecting = true;
+                filter = 'today';
+                selected = [];
+              }}
+            >
+              <Icon name="missions" size={18} />Montar sessão
+            </Button>
+            {#if storedSession}<a
+                class="lmu-button lmu-button--secondary"
+                href="/sessao">Retomar sessão do dia</a
+              >{/if}
+          {/if}
         </div>
-      </details>
-      {#if search || area !== 'all' || project || pinnedOnly}<Button
-          variant="quiet"
-          onclick={() => {
-            search = '';
-            area = 'all';
-            project = '';
-            pinnedOnly = false;
-          }}>Limpar filtros</Button
-        >{/if}
-    </div>
-    <section
-      class="rpg-frame organizer-list"
-      aria-label={filter === 'completed'
-        ? 'Histórico de conclusões'
-        : 'Lista de missões'}
-    >
-      <RpgTrim />
-      <h2>
-        {filter === 'today'
-          ? 'Hoje'
-          : filter === 'upcoming'
-            ? 'Próximas atividades'
-            : filter === 'completed'
-              ? 'Suas conclusões'
-              : 'Todas as missões'}
-      </h2>
-      {#if filter === 'completed'}
-        {#if history.length || legacy.length}<ul>
-            {#each history as event (event.id)}
-              {@const task = data.tasks.find(
-                (item) => item.id === event.taskId,
-              )}
-              <li
-                class="mission-row history-row"
-                class:reversed={!!event.reversedAt}
-              >
-                <Icon name={event.reversedAt ? 'back' : 'check'} size={21} />
-                <div class="mission-copy">
-                  {#if task && !task.archived}<a
-                      href={`/missao/${task.id}?evento=${encodeURIComponent(event.id)}`}
-                      >{event.taskTitle ?? task.title}</a
-                    >{:else}<strong
-                      >{event.taskTitle ??
-                        task?.title ??
-                        'Missão registrada'}</strong
-                    >{/if}<small
-                    >{formatCalendar(event.occurrenceDate ?? event.date)} · {event.areaName ??
-                      areaName(task?.areaId)} · {event.reversedAt
-                      ? 'Estornada'
-                      : event.kind === 'review'
-                        ? 'Revisão realizada'
-                        : event.occurrenceDate
-                          ? 'Rotina realizada'
-                          : 'Concluída'}</small
+        <div class="organizer-compact-filters">
+          <label class="journey-label lmu-field search-field"
+            ><span class="sr-only">Buscar missão</span><input
+              type="search"
+              bind:value={search}
+              placeholder="Buscar missão…"
+            /></label
+          >
+          <div class="organizer-filters">
+            <label class="journey-label"
+              >Área<select bind:value={area}
+                ><option value="all">Todas as áreas</option><option value="0"
+                  >Geral</option
+                >{#each data.areas as item (item.id)}<option
+                    value={String(item.id)}>{item.nome}</option
+                  >{/each}</select
+              ></label
+            >
+            <Button variant="secondary" onclick={() => (areasOpen = true)}
+              >Gerenciar áreas</Button
+            >
+          </div>
+        </div>
+        <details class="extra-filters">
+          <summary
+            >Mais filtros{project || pinnedOnly ? ' · ativos' : ''}</summary
+          >
+          <label class="journey-label"
+            >Projeto<select bind:value={project}
+              ><option value="">Todos os projetos</option
+              >{#each data.projects as item (item.id)}<option
+                  value={String(item.id)}>{item.name}</option
+                >{/each}</select
+            ></label
+          >
+          <div class="organizer-options">
+            <label class="journey-check"
+              ><input type="checkbox" bind:checked={groupAreas} />Agrupar por
+              área</label
+            ><label class="journey-check"
+              ><input type="checkbox" bind:checked={pinnedOnly} />Apenas fixadas</label
+            >
+          </div>
+        </details>
+        {#if search || area !== 'all' || project || pinnedOnly}<Button
+            variant="quiet"
+            onclick={() => {
+              search = '';
+              area = 'all';
+              project = '';
+              pinnedOnly = false;
+            }}>Limpar filtros</Button
+          >{/if}
+      </div>
+      <section
+        class="rpg-frame organizer-list"
+        aria-label={filter === 'completed'
+          ? 'Histórico de conclusões'
+          : 'Lista de missões'}
+      >
+        <RpgTrim />
+        <h2>
+          {filter === 'today'
+            ? 'Hoje'
+            : filter === 'upcoming'
+              ? 'Próximas atividades'
+              : filter === 'completed'
+                ? 'Suas conclusões'
+                : 'Todas as missões'}
+        </h2>
+        {#if filter === 'completed'}
+          {#if history.length || legacy.length}<ul>
+              {#each history as event (event.id)}
+                {@const task = data.tasks.find(
+                  (item) => item.id === event.taskId,
+                )}
+                <li
+                  class="mission-row history-row"
+                  class:reversed={!!event.reversedAt}
+                >
+                  <Icon name={event.reversedAt ? 'back' : 'check'} size={21} />
+                  <div class="mission-copy">
+                    {#if task && !task.archived}<a
+                        href={`/missao/${task.id}?evento=${encodeURIComponent(event.id)}`}
+                        >{event.taskTitle ?? task.title}</a
+                      >{:else}<strong
+                        >{event.taskTitle ??
+                          task?.title ??
+                          'Missão registrada'}</strong
+                      >{/if}<small
+                      >{formatCalendar(event.occurrenceDate ?? event.date)} · {event.areaName ??
+                        areaName(task?.areaId)} · {event.reversedAt
+                        ? 'Estornada'
+                        : event.kind === 'review'
+                          ? 'Revisão realizada'
+                          : event.occurrenceDate
+                            ? 'Rotina realizada'
+                            : 'Concluída'}</small
+                    >
+                  </div>
+                  <div class="mission-reward">
+                    <span
+                      >{event.reversedAt ? '−' : '+'}{event.reward.xp} XP</span
+                    ><small
+                      >{event.reversedAt ? '−' : '+'}{event.reward.gold} Ouro{event
+                        .reward.food
+                        ? ` · ${event.reversedAt ? '−' : '+'}${event.reward.food} Comida`
+                        : ''}</small
+                    >
+                  </div>
+                  {#if !event.reversedAt && task && (event.occurrenceDate || task.completionEventId === event.id)}<Button
+                      variant="quiet"
+                      disabled={pending.includes(event.id)}
+                      aria-label={`Desfazer ${event.taskTitle ?? task.title} de ${formatCalendar(event.date)}`}
+                      onclick={() =>
+                        act(
+                          event.id,
+                          () => undoTask(task.id!, event.id),
+                          'Conclusão desfeita e recompensa estornada.',
+                        )}>Desfazer</Button
+                    >{/if}
+                </li>{/each}
+              {#each legacy as task (task.id)}<li class="mission-row">
+                  <Icon name="check" size={21} />
+                  <div class="mission-copy">
+                    <a href={`/missao/${task.id}`}>{task.title}</a><small
+                      >Conclusão antiga · Histórico preservado</small
+                    >
+                  </div>
+                </li>{/each}
+            </ul>
+          {:else}<p class="organizer-empty">
+              Nenhuma conclusão nesta seleção. Cada atividade realizada ficará
+              registrada aqui.
+            </p>{/if}
+        {:else if visible.length}<ul>
+            {#each visible as task, index (task.id)}
+              {#if groupAreas && (index === 0 || areaName(visible[index - 1].areaId) !== areaName(task.areaId))}<li
+                  class="area-group"
+                >
+                  <h3>{areaName(task.areaId)}</h3>
+                </li>{/if}
+              {@const canComplete = available(task)}
+              {@const done = task.recurrence
+                ? task.lastOccurrenceDate === today
+                : !!task.completed && !canComplete}
+              {@const reward =
+                done && task.completionEventId
+                  ? data.events.find(
+                      (entry) =>
+                        entry.id === task.completionEventId &&
+                        !entry.reversedAt,
+                    )?.reward
+                  : data.rewards[task.id!]}
+              <li class="mission-row" class:mission-done={done}>
+                {#if selecting && filter === 'today'}<label
+                    class="mission-selection"
                   >
-                </div>
-                <div class="mission-reward">
-                  <span>{event.reversedAt ? '−' : '+'}{event.reward.xp} XP</span
-                  ><small
-                    >{event.reversedAt ? '−' : '+'}{event.reward.gold} Ouro{event
-                      .reward.food
-                      ? ` · ${event.reversedAt ? '−' : '+'}${event.reward.food} Comida`
-                      : ''}</small
-                  >
-                </div>
-                {#if !event.reversedAt && task && (event.occurrenceDate || task.completionEventId === event.id)}<Button
-                    variant="quiet"
-                    disabled={pending.includes(event.id)}
-                    aria-label={`Desfazer ${event.taskTitle ?? task.title} de ${formatCalendar(event.date)}`}
-                    onclick={() =>
-                      act(
-                        event.id,
-                        () => undoTask(task.id!, event.id),
-                        'Conclusão desfeita e recompensa estornada.',
-                      )}>Desfazer</Button
+                    <input
+                      type="checkbox"
+                      aria-label={`Incluir ${task.title} na sessão`}
+                      disabled={!canComplete || !scheduledOn(task, today)}
+                      checked={selected.includes(task.id!)}
+                      onchange={() => toggleSelection(task.id!)}
+                    />
+                  </label>{:else if canComplete && !taskSteps(task).length && filter !== 'upcoming'}<button
+                    class="mission-check"
+                    disabled={pending.includes(String(task.id))}
+                    aria-label={`Concluir ${task.title}`}
+                    onclick={() => complete(task)}
+                    ><Icon name="check" size={18} /></button
+                  >{:else}<span class="mission-check-static"
+                    ><Icon
+                      name={done ? 'check' : task.recurrence ? 'today' : 'book'}
+                      size={20}
+                    /></span
                   >{/if}
-              </li>{/each}
-            {#each legacy as task (task.id)}<li class="mission-row">
-                <Icon name="check" size={21} />
                 <div class="mission-copy">
                   <a href={`/missao/${task.id}`}>{task.title}</a><small
-                    >Conclusão antiga · Histórico preservado</small
+                    >{areaName(task.areaId)} · {recurrenceLabel(
+                      task,
+                    )}{task.pinned ? ' · Fixada' : ''}{canComplete &&
+                    ['active', 'paused'].includes(task.executionState ?? '')
+                      ? ' · Em andamento'
+                      : ''}</small
+                  ><small
+                    >{filter === 'upcoming'
+                      ? `Próxima: ${formatCalendar(nextPlannedDate(task, today))}`
+                      : done
+                        ? 'Concluída'
+                        : task.recurrence
+                          ? scheduledOn(task, today)
+                            ? `Ocorrência: ${formatCalendar(today)}`
+                            : `Próxima: ${formatCalendar(nextPlannedDate(task, today))}`
+                          : task.plannedDate
+                            ? `Planejada: ${formatCalendar(task.plannedDate)}`
+                            : 'Sem data'}</small
                   >
                 </div>
-              </li>{/each}
-          </ul>
-        {:else}<p class="organizer-empty">
-            Nenhuma conclusão nesta seleção. Cada atividade realizada ficará
-            registrada aqui.
-          </p>{/if}
-      {:else if visible.length}<ul>
-          {#each visible as task, index (task.id)}
-            {#if groupAreas && (index === 0 || areaName(visible[index - 1].areaId) !== areaName(task.areaId))}<li
-                class="area-group"
-              >
-                <h3>{areaName(task.areaId)}</h3>
-              </li>{/if}
-            {@const canComplete = available(task)}
-            {@const done = task.recurrence
-              ? task.lastOccurrenceDate === today
-              : !!task.completed && !canComplete}
-            {@const reward =
-              done && task.completionEventId
-                ? data.events.find(
-                    (entry) =>
-                      entry.id === task.completionEventId && !entry.reversedAt,
-                  )?.reward
-                : data.rewards[task.id!]}
-            <li class="mission-row" class:mission-done={done}>
-              {#if selecting && filter === 'today'}<label class="mission-selection">
-                  <input
-                    type="checkbox"
-                    aria-label={`Incluir ${task.title} na sessão`}
-                    disabled={!canComplete || !scheduledOn(task, today)}
-                    checked={selected.includes(task.id!)}
-                    onchange={() => toggleSelection(task.id!)}
-                  />
-                </label>{:else if canComplete && !taskSteps(task).length && filter !== 'upcoming'}<button
-                  class="mission-check"
-                  disabled={pending.includes(String(task.id))}
-                  aria-label={`Concluir ${task.title}`}
-                  onclick={() => complete(task)}
-                  ><Icon name="check" size={18} /></button
-                >{:else}<span class="mission-check-static"
-                  ><Icon
-                    name={done ? 'check' : task.recurrence ? 'today' : 'book'}
-                    size={20}
-                  /></span
-                >{/if}
-              <div class="mission-copy">
-                <a href={`/missao/${task.id}`}>{task.title}</a><small
-                  >{areaName(task.areaId)} · {recurrenceLabel(task)}{task.pinned
-                    ? ' · Fixada'
-                    : ''}{canComplete &&
-                  ['active', 'paused'].includes(task.executionState ?? '')
-                    ? ' · Em andamento'
-                    : ''}</small
-                ><small
-                  >{filter === 'upcoming'
-                    ? `Próxima: ${formatCalendar(nextPlannedDate(task, today))}`
-                    : done
-                      ? 'Concluída'
-                      : task.recurrence
-                        ? scheduledOn(task, today)
-                          ? `Ocorrência: ${formatCalendar(today)}`
-                          : `Próxima: ${formatCalendar(nextPlannedDate(task, today))}`
-                        : task.plannedDate
-                          ? `Planejada: ${formatCalendar(task.plannedDate)}`
-                          : 'Sem data'}</small
-                >
-              </div>
-              {#if reward}<div class="mission-reward">
-                  <span>+{reward.xp} XP</span><small>+{reward.gold} Ouro</small>
-                </div>{/if}
-              <details class="mission-menu">
-                <summary aria-label={`Ações para ${task.title}`}>⋯</summary>
-                <div>
-                  <Button
-                    variant="quiet"
-                    onclick={() => {
-                      editTask = task;
-                      open = true;
-                    }}>Editar missão</Button
-                  ><a class="journey-link" href={`/missao/${task.id}`}
-                    >Abrir missão</a
-                  ><Button
-                    variant="quiet"
-                    disabled={pending.includes(String(task.id))}
-                    onclick={() =>
-                      act(
-                        String(task.id),
-                        () => planTask(task.id!, !scheduledOn(task, today)),
-                        'Plano atualizado.',
-                      )}
-                    >{scheduledOn(task, today)
-                      ? 'Tirar de hoje'
-                      : 'Planejar para hoje'}</Button
-                  ><Button
-                    variant="quiet"
-                    aria-pressed={!!task.pinned}
-                    disabled={pending.includes(String(task.id))}
-                    onclick={() =>
-                      act(
-                        String(task.id),
-                        () => pinTask(task.id!, !task.pinned),
-                        'Destaque atualizado.',
-                      )}>{task.pinned ? 'Desafixar' : 'Fixar'}</Button
-                  >{#if canComplete && !taskSteps(task).length && filter !== 'upcoming'}<Button
-                      disabled={pending.includes(String(task.id))}
-                      onclick={() => complete(task)}>Completar missão</Button
-                    >{/if}{#if done && task.completionEventId}<Button
+                {#if reward}<div class="mission-reward">
+                    <span>+{reward.xp} XP</span><small
+                      >+{reward.gold} Ouro</small
+                    >
+                  </div>{/if}
+                <details class="mission-menu">
+                  <summary aria-label={`Ações para ${task.title}`}>⋯</summary>
+                  <div>
+                    <Button
+                      variant="quiet"
+                      onclick={() => {
+                        editTask = task;
+                        open = true;
+                      }}>Editar missão</Button
+                    ><a class="journey-link" href={`/missao/${task.id}`}
+                      >Abrir missão</a
+                    ><Button
                       variant="quiet"
                       disabled={pending.includes(String(task.id))}
                       onclick={() =>
                         act(
                           String(task.id),
-                          () => undoTask(task.id!),
-                          'Conclusão desfeita e recompensa estornada.',
-                        )}>Desfazer conclusão</Button
-                    >{/if}
-                </div>
-              </details>
-            </li>
-          {/each}
-        </ul>{:else}<div class="organizer-empty">
-          <Icon name="missions" size={30} />
-          <h3>
-            {filter === 'today'
-              ? 'Seu dia está livre.'
-              : 'Nenhuma missão nesta seleção.'}
-          </h3>
-          <p>
-            {filter === 'today'
-              ? 'Planeje uma atividade para hoje ou consulte suas próximas missões.'
-              : 'Experimente outro filtro ou registre uma nova atividade.'}
-          </p>
-          <Button variant="secondary" onclick={create}>Criar missão</Button>
-        </div>{/if}
-    </section>
-    <div class="organizer-links">
-      <a class="journey-link" href="/revisoes">Revisões e suas sessões</a><a
-        class="journey-link"
-        href="/arquivo/missoes">Organização avançada</a
-      >
-    </div>
+                          () => planTask(task.id!, !scheduledOn(task, today)),
+                          'Plano atualizado.',
+                        )}
+                      >{scheduledOn(task, today)
+                        ? 'Tirar de hoje'
+                        : 'Planejar para hoje'}</Button
+                    ><Button
+                      variant="quiet"
+                      aria-pressed={!!task.pinned}
+                      disabled={pending.includes(String(task.id))}
+                      onclick={() =>
+                        act(
+                          String(task.id),
+                          () => pinTask(task.id!, !task.pinned),
+                          'Destaque atualizado.',
+                        )}>{task.pinned ? 'Desafixar' : 'Fixar'}</Button
+                    >{#if canComplete && !taskSteps(task).length && filter !== 'upcoming'}<Button
+                        disabled={pending.includes(String(task.id))}
+                        onclick={() => complete(task)}>Completar missão</Button
+                      >{/if}{#if done && task.completionEventId}<Button
+                        variant="quiet"
+                        disabled={pending.includes(String(task.id))}
+                        onclick={() =>
+                          act(
+                            String(task.id),
+                            () => undoTask(task.id!),
+                            'Conclusão desfeita e recompensa estornada.',
+                          )}>Desfazer conclusão</Button
+                      >{/if}
+                  </div>
+                </details>
+              </li>
+            {/each}
+          </ul>{:else}<div class="organizer-empty">
+            <Icon name="missions" size={30} />
+            <h3>
+              {filter === 'today'
+                ? 'Seu dia está livre.'
+                : 'Nenhuma missão nesta seleção.'}
+            </h3>
+            <p>
+              {filter === 'today'
+                ? 'Planeje uma atividade para hoje ou consulte suas próximas missões.'
+                : 'Experimente outro filtro ou registre uma nova atividade.'}
+            </p>
+            <Button variant="secondary" onclick={create}>Criar missão</Button>
+          </div>{/if}
+      </section>
+      <div class="organizer-links">
+        <a class="journey-link" href="/revisoes">Revisões e suas sessões</a><a
+          class="journey-link"
+          href="/arquivo/missoes">Organização avançada</a
+        >
+      </div>
+    {/if}
     <QuickCreate
       bind:open
       snapshot={data}
       {editTask}
       defaultAreaId={area === 'all' ? undefined : Number(area)}
-      oncreated={() => (notice = editTask ? 'Missão atualizada.' : 'Missão salva. Você pode criar outra ou continuar seu planejamento.')}
+      oncreated={() =>
+        (notice = editTask
+          ? 'Missão atualizada.'
+          : 'Missão salva. Você pode criar outra ou continuar seu planejamento.')}
     /><AreasDialog bind:open={areasOpen} snapshot={data} />
   {/if}
 </section>
@@ -564,10 +626,10 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: .55rem;
-    margin: 0 0 .85rem;
+    gap: 0.55rem;
+    margin: 0 0 0.85rem;
     color: #dcc79c;
-    font-size: .85rem;
+    font-size: 0.85rem;
   }
   .mission-selection {
     display: grid;

@@ -38,7 +38,8 @@ export function validateRecurrence(value: TaskRecurrence | null | undefined) {
 }
 
 export function scheduledOn(task: Task, day: string): boolean {
-  if (task.archived || task.skippedDate === day) return false;
+  if (task.archived || task.planningPaused || task.skippedDate === day)
+    return false;
   if (task.recurrence) {
     if (day < task.recurrence.startDate) return false;
     return (

@@ -129,14 +129,19 @@ describe('organizador e recorrência cotidiana', () => {
     });
     expect(await completeTask(id)).toBeNull();
     expect(await db.profile.get(1)).toMatchObject({
-      totalXpEarned: second.reward.xp,
+      totalXpEarned: first.reward.xp + second.reward.xp,
+      rewardDebt: {
+        xp: first.reward.xp,
+        gold: first.reward.gold,
+        food: first.reward.food,
+      },
     });
     await undoTask(id, second.id);
     const repeated = (await completeTask(id))!;
     expect(repeated.id).not.toBe(second.id);
     expect(repeated.occurrenceDate).toBe(second.occurrenceDate);
     expect(await db.profile.get(1)).toMatchObject({
-      totalXpEarned: repeated.reward.xp,
+      totalXpEarned: first.reward.xp + second.reward.xp,
     });
     const copy = JSON.parse(JSON.stringify(await createJourneyBackup()));
     expect(() => validateBackup(copy)).not.toThrow();
@@ -274,6 +279,14 @@ describe('organizador e recorrência cotidiana', () => {
         event.kind === 'task' && !event.reversedAt,
     );
     copy.data.activityEvents.push({ ...last, id: 'duplicate', sequence: 999 });
+    copy.data.xpLogs.push({
+      id: 999,
+      eventId: 'duplicate',
+      date: last.date,
+      amount: last.reward.xp,
+      goldDelta: last.reward.gold,
+      foodDelta: last.reward.food,
+    });
     expect(() => validateBackup(copy)).toThrow('duplicadas');
   });
 
@@ -296,6 +309,8 @@ describe('organizador e recorrência cotidiana', () => {
     expect((await db.projects.get(projectId))?.rewardGranted).toBe(true);
     await undoTask(id, second.id);
     expect((await db.projects.get(projectId))?.rewardGranted).toBe(false);
-    expect((await db.profile.get(1))?.totalXpEarned).toBe(0);
+    const finalProfile = (await db.profile.get(1))!;
+    expect(finalProfile.totalXpEarned).toBe(111);
+    expect(finalProfile.rewardDebt?.xp).toBe(111);
   });
 });

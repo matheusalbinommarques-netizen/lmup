@@ -4,6 +4,7 @@ import { liveQuery } from 'dexie';
 import { buildHeroModifiersFromOwned } from './gearService';
 import { getActiveCompanionBuffs } from './companionService';
 import { calculateReward } from './rewardService';
+import { readAchievementStats } from './productivityAchievements';
 
 export async function readJourneySnapshot() {
   return db.transaction('r', db.tables, async () => {
@@ -16,6 +17,8 @@ export async function readJourneySnapshot() {
     const projects = await db.projects.toArray();
     const events = await db.activityEvents.toArray();
     const logs = await db.xpLogs.toArray();
+    const achievementReceipts = await db.achievementReceipts.toArray();
+    const achievementStats = await readAchievementStats();
     const eventsById = new Map(events.map((event) => [event.id, event]));
     const companion = profile?.activeCompanionId
       ? await db.companions.get(profile.activeCompanionId)
@@ -49,6 +52,8 @@ export async function readJourneySnapshot() {
       projects,
       events,
       logs,
+      achievementReceipts,
+      achievementStats,
       companion,
       rewards,
       mods,

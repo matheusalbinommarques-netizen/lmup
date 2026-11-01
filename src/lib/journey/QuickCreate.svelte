@@ -13,6 +13,8 @@
   import Field from '$lib/ui/Field.svelte';
   import AreasDialog from './AreasDialog.svelte';
   import ScheduleFields from './ScheduleFields.svelte';
+  import PlanningDetails from './PlanningDetails.svelte';
+  import type { Planning } from '$services/productivityTypes';
   import { dateKey } from '$services/rewardService';
   let {
     open = $bindable(false),
@@ -42,6 +44,7 @@
     area = $state('0'),
     error = $state('');
   let plannedDate = $state('');
+  let planning = $state<Planning>({});
   let recurrenceKind = $state('none');
   let recurrenceDays = $state<number[]>([1]);
   let areasOpen = $state(false);
@@ -71,6 +74,13 @@
         recurrenceKind = editTask?.recurrence?.kind ?? 'none';
         recurrenceDays = [...(editTask?.recurrence?.days ?? [1])];
         pinned = editTask?.pinned ?? false;
+        planning = {
+          plannedTime: editTask?.plannedTime,
+          estimatedMinutes: editTask?.estimatedMinutes,
+          importance: editTask?.importance,
+          deadline: editTask?.deadline,
+          tracking: editTask?.tracking,
+        };
         today = true;
         name = '';
         requestId = crypto.randomUUID();
@@ -104,6 +114,7 @@
     error = '';
     try {
       const id = await createQuickTask({
+        ...planning,
         title,
         requestId,
         steps: steps.split('\n'),
@@ -192,8 +203,9 @@
             · +{preview.food}
             Comida.
           </p>{/if}{#if editTask}<p class="lmu-hint">
-            Mudar passos reinicia as marcações. Notas e recompensas já recebidas
-            são preservadas. Desfaça a conclusão antes de mover uma missão
+            Alterações valem para próximas ocorrências; uma ocorrência iniciada
+            mantém sua configuração. Use a correção na execução para mudar
+            progresso premiado. Desfaça a conclusão antes de mover uma missão
             concluída para outro projeto.
           </p>{/if}
         {#key requestId}
@@ -204,6 +216,10 @@
             review={!!editTask?.reviewEnabled}
           />
         {/key}
+        <PlanningDetails
+          bind:value={planning}
+          legacy={!!editTask && !editTask.productivityVersion}
+        />
         <details bind:open={detailsOpen}>
           <summary>Passos e outros detalhes</summary>
           <div class="journey-form-details">
@@ -270,8 +286,7 @@
             type="submit"
             variant="secondary"
             loading={busy}
-            onclick={() => (saveAnother = true)}
-            >Salvar e criar outra</Button
+            onclick={() => (saveAnother = true)}>Salvar e criar outra</Button
           >{/if}
       </footer>
     </form></Dialog

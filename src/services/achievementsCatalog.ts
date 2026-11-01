@@ -13,6 +13,9 @@ export type Category =
   | 'economia';
 
 export type AchievementStats = {
+  activityMinutes: number;
+  completedProjects: number;
+  returnedAfterBreak: boolean;
   totalXp: number;
   streak: number;
   level: number;
@@ -60,6 +63,9 @@ export function createAchievementStats(
   partial: Partial<AchievementStats>,
 ): AchievementStats {
   return {
+    activityMinutes: 0,
+    completedProjects: 0,
+    returnedAfterBreak: false,
     totalXp: 0,
     streak: 0,
     level: 1,
@@ -87,6 +93,34 @@ export function createAchievementStats(
 // =============================================================
 
 export const ALL_ACHIEVEMENTS: AchievementDef[] = [
+  {
+    id: 'horas-de-pratica',
+    title: 'Horas de prática',
+    description: 'Registre 10 horas de atividades realizadas.',
+    icon: '/art/badge-icons/aventureiro.png',
+    rarity: 'raro',
+    category: 'progresso',
+    condition: ({ activityMinutes }) => activityMinutes >= 600,
+  },
+  {
+    id: 'objetivo-alcancado',
+    title: 'Objetivo alcançado',
+    description: 'Conclua um projeto com todas as suas etapas.',
+    icon: '/art/badge-icons/primeiro-passo.png',
+    rarity: 'raro',
+    category: 'progresso',
+    condition: ({ completedProjects }) => completedProjects >= 1,
+  },
+  {
+    id: 'de-volta-ao-caminho',
+    title: 'De volta ao caminho',
+    description:
+      'Retome uma atividade após pelo menos 7 dias sem execução registrada.',
+    icon: '/art/badge-icons/a-fenix.png',
+    rarity: 'raro',
+    category: 'consistencia',
+    condition: ({ returnedAfterBreak }) => returnedAfterBreak,
+  },
   // 1. Missões (Core Loop)
   {
     id: 'primeiro-passo',
@@ -527,11 +561,7 @@ export const SECTIONS: SectionMeta[] = [
 // =============================================================
 
 export type HighlightAchievementId =
-  | 'acendendo-tocha'
-  | 'em-chamas'
-  | 'novato'
-  | 'perito'
-  | 'acumulador';
+  'acendendo-tocha' | 'em-chamas' | 'novato' | 'perito' | 'acumulador';
 
 export const HIGHLIGHT_ACHIEVEMENT_IDS: HighlightAchievementId[] = [
   'acendendo-tocha',

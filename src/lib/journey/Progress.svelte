@@ -7,6 +7,7 @@
   import { getLevelStateFromTotalXp, MAX_LEVEL } from '$services/progression';
   import Card from '$lib/ui/Card.svelte';
   import Button from '$lib/ui/Button.svelte';
+  import ProductivityProgress from './ProductivityProgress.svelte';
   let data = $state<JourneySnapshot>();
   let error = $state(''),
     range = $state<'7' | '30' | 'all'>('7'),
@@ -90,6 +91,15 @@
       aria-label="Progresso no nível"
     ></progress></Card
   >
+  {#if data.profile.rewardDebt}<div class="journey-banner">
+      <strong>Débitos a compensar</strong>
+      <p>
+        {data.profile.rewardDebt.xp} XP · {data.profile.rewardDebt.gold} ouro · {data
+          .profile.rewardDebt.food} comida. Ganhos futuros compensam esses valores
+        antes de aumentar seus saldos.
+      </p>
+    </div>{/if}
+  <ProductivityProgress />
   <div class="journey-filters" aria-label="Período do progresso">
     {#each [['7', '7 dias'], ['30', '30 dias'], ['all', 'Todo o histórico']] as [value, label] (value)}<Button
         variant="secondary"
@@ -253,6 +263,19 @@
                     )} · Gold {row.event.modifiers.goldMultiplier.toFixed(2)} · Comida
                     {row.event.modifiers.foodMultiplier.toFixed(2)}.
                   </p>
+                  {#if row.event.grossReward}<p>
+                      Bruto: {row.event.grossReward.xp} XP · {row.event
+                        .grossReward.gold} ouro · {row.event.grossReward.food} comida.
+                      Compensação: {row.event.compensation?.xp ?? 0} XP · {row
+                        .event.compensation?.gold ?? 0} ouro · {row.event
+                        .compensation?.food ?? 0} comida. O movimento mostra o ganho
+                      líquido.
+                    </p>{/if}
+                  {#if row.event.debtAdded}<p>
+                      Débito gerado: {row.event.debtAdded.xp} XP · {row.event
+                        .debtAdded.gold} ouro · {row.event.debtAdded.food} comida.
+                      Nenhum recurso disponível foi retirado.
+                    </p>{/if}
                   {#if row.event.taskId}<a
                       class="journey-link"
                       href={'/missao/' + row.event.taskId}>Abrir missão →</a
