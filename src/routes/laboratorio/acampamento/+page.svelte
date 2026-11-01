@@ -4,6 +4,11 @@
   import { campSprites } from '$lib/lab/campSprites';
   import TerrainRegion from '$lib/lab/TerrainRegion.svelte';
   import { forgeRegion } from '$lib/lab/campRegion';
+  import {
+    footprintCorners,
+    placementError,
+    type Point,
+  } from '$lib/lab/campPlacement';
 
   type Building = {
     id: string;
@@ -70,20 +75,95 @@
       status: 'site',
     },
   ];
+  const WORLD_W = 1850;
+  const WORLD_H = 1400;
   let buildings = $state<Building[]>(initialBuildings);
   let placing = $state(false);
-  let proposed = $state<{x: number; y: number} | null>(null);
-  let placeError = $state('');
+  let proposed = $state<Point | null>(null);
   let movedDuringDrag = false;
   let nextForge = 3;
-  const occupied = (x: number, y: number) => buildings.some((b) => b.status === 'ready' && Math.abs(b.x - x) < 190 && Math.abs(b.y - y) < 115);
-  const canPlace = (x: number, y: number) => x >= 140 && x <= WORLD_W - 140 && y >= 160 && y <= WORLD_H - 110 && !occupied(x, y);
-  function beginBuilding() { placing = true; proposed = { x: 1000, y: 980 }; placeError = ''; selection = null; limitCamera(1000, 980); }
-  function cancelBuilding() { placing = false; proposed = null; placeError = ''; }
+  const forgeFootprint = (point: Point) => ({
+    ...point,
+    ...campSprites.forge.footprint,
+  });
+  function buildingFootprint(building: Building) {
+    if (building.sprite)
+      return {
+        x: building.x,
+        y: building.y,
+        ...campSprites[building.sprite].footprint,
+      };
+    // Ground base of the provisional CSS walls (not their roof/button rectangle).
+    return { x: building.x, y: building.y + 47, width: 104, height: 52 };
+  }
+  const proposedError = $derived(
+    proposed
+      ? placementError(
+          forgeFootprint(proposed),
+          buildings.filter((b) => b.status === 'ready').map(buildingFootprint),
+          { width: WORLD_W, height: WORLD_H },
+        )
+      : 'Escolha uma posição no terreno.',
+  );
+  const previewPoints = $derived(
+    footprintCorners(forgeFootprint({ x: 0, y: 0 }))
+      .map((p) => `${p.x},${p.y}`)
+      .join(' '),
+  );
+  function beginBuilding() {
+    placing = true;
+    proposed = { x: 1000, y: 980 };
+    selection = null;
+    limitCamera(1000, 980);
+    viewport.focus({ preventScroll: true });
+  }
+  function cancelBuilding() {
+    placing = false;
+    proposed = null;
+  }
   function confirmBuilding() {
-    if (!proposed || !canPlace(proposed.x, proposed.y)) { placeError = 'Posição indisponível: escolha uma área livre do terreno.'; return; }
-    const created: Building = { id: `forge-user-${nextForge}`, name: `Forja ${nextForge}`, purpose: 'Construção demonstrativa posicionada por você.', x: proposed.x, y: proposed.y, icon: '⚒', roof: 'forge', sprite: 'forge', status: 'ready' };
-    nextForge += 1; buildings = [...buildings, created]; selection = created; placing = false; proposed = null; placeError = '';
+    if (!proposed || proposedError) return;
+    const created: Building = {
+      id: `forge-user-${nextForge}`,
+      name: `Forja ${nextForge}`,
+      purpose: 'Construção demonstrativa posicionada por você.',
+      x: proposed.x,
+      y: proposed.y,
+      icon: '⚒',
+      roof: 'forge',
+      sprite: 'forge',
+      status: 'ready',
+    };
+    nextForge += 1;
+    buildings = [...buildings, created];
+    selection = created;
+    placing = false;
+    proposed = null;
+  }
+  function placementKey(event: KeyboardEvent) {
+    if (!placing || event.target !== viewport) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      cancelBuilding();
+      return;
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      confirmBuilding();
+      return;
+    }
+    const directions: Record<string, Point> = {
+      ArrowLeft: { x: -16, y: 0 },
+      ArrowRight: { x: 16, y: 0 },
+      ArrowUp: { x: 0, y: -16 },
+      ArrowDown: { x: 0, y: 16 },
+    };
+    const delta = directions[event.key];
+    if (delta && proposed) {
+      event.preventDefault();
+      proposed = { x: proposed.x + delta.x, y: proposed.y + delta.y };
+      limitCamera(proposed.x, proposed.y);
+    }
   }
   const trees = [
     [360, 270],
@@ -107,8 +187,6 @@
     [1070, 1040],
     [770, 380],
   ];
-  const WORLD_W = 1850;
-  const WORLD_H = 1400;
   let viewport: HTMLDivElement;
   let viewWidth = $state(900);
   let viewHeight = $state(590);
@@ -141,7 +219,10 @@
     limitCamera(900, 700);
   }
   function pointerDown(event: PointerEvent) {
-    if (event.button !== 0 || (event.target as HTMLElement).closest('button'))
+    if (
+      event.button !== 0 ||
+      (!placing && (event.target as HTMLElement).closest('button'))
+    )
       return;
     dragging = true;
     pointer = event.pointerId;
@@ -164,20 +245,26 @@
     const wasDrag = movedDuringDrag;
     dragging = false;
     pointer = null;
-    if (placing && !wasDrag) {
+    if (placing && !wasDrag && event.type !== 'pointercancel') {
       const bounds = viewport.getBoundingClientRect();
-      const x = Math.round((cameraX + (event.clientX - bounds.left - viewWidth / 2) / zoom) / 16) * 16;
-      const y = Math.round((cameraY + (event.clientY - bounds.top - viewHeight / 2) / zoom) / 16) * 16;
-      proposed = { x, y }; placeError = canPlace(x, y) ? '' : 'Local ocupado ou fora da área permitida.';
+      const x =
+        Math.round(
+          (cameraX + (event.clientX - bounds.left - viewWidth / 2) / zoom) / 16,
+        ) * 16;
+      const y =
+        Math.round(
+          (cameraY + (event.clientY - bounds.top - viewHeight / 2) / zoom) / 16,
+        ) * 16;
+      proposed = { x, y };
     }
     if (viewport.hasPointerCapture(event.pointerId))
       viewport.releasePointerCapture(event.pointerId);
   }
   function choose(building: Building) {
-    selection = building;
+    if (!placing) selection = building;
   }
   function focus(building: Building) {
-    selection = building;
+    if (!placing) selection = building;
     limitCamera(building.x, building.y);
   }
   onMount(() => {
@@ -202,6 +289,8 @@
   });
 </script>
 
+<svelte:window onkeydown={placementKey} />
+
 <svelte:head
   ><title>Acampamento navegável — Laboratório LMUP</title><meta
     name="robots"
@@ -223,7 +312,11 @@
         >Arraste para explorar · Roda para zoom</span
       >
     </div>
-    <div class="build-tools"><button type="button" onclick={beginBuilding} disabled={placing}>+ Construir forja</button></div>
+    <div class="build-tools">
+      <button type="button" onclick={beginBuilding} disabled={placing}
+        >+ Construir forja</button
+      >
+    </div>
     <div class="zoom-tools" aria-label="Controle da câmera">
       <button onclick={() => setZoom(zoom + 0.15)} aria-label="Aproximar"
         >+</button
@@ -237,6 +330,7 @@
       class="viewport"
       bind:this={viewport}
       class:dragging
+      tabindex="-1"
       onpointerdown={pointerDown}
       onpointermove={pointerMove}
       onpointerup={pointerUp}
@@ -266,9 +360,35 @@
           </div>
         {/each}
         {#if placing && proposed}
-          <div class="placement-preview" class:invalid={!canPlace(proposed.x, proposed.y)} style:left={proposed.x + 'px'} style:top={proposed.y + 'px'} style:z-index={Math.round(proposed.y)}>
-            <img src={campSprites.forge.src} alt="" draggable="false" style:width={campSprites.forge.worldWidth + 'px'} style:left={(-campSprites.forge.pivot.x * campSprites.forge.worldWidth / campSprites.forge.source.width) + 'px'} style:top={(-campSprites.forge.pivot.y * campSprites.forge.worldWidth / campSprites.forge.source.width) + 'px'} />
-            <span>{canPlace(proposed.x, proposed.y) ? 'Prévia de construção' : 'Local indisponível'}</span>
+          <div
+            class="placement-preview"
+            class:invalid={!!proposedError}
+            style:left={proposed.x + 'px'}
+            style:top={proposed.y + 'px'}
+            style:z-index={Math.round(proposed.y)}
+          >
+            <svg class="placement-base" aria-hidden="true"
+              ><polygon points={previewPoints} /></svg
+            >
+            <img
+              src={campSprites.forge.src}
+              alt=""
+              draggable="false"
+              style:width={campSprites.forge.worldWidth + 'px'}
+              style:left={(-campSprites.forge.pivot.x *
+                campSprites.forge.worldWidth) /
+                campSprites.forge.source.width +
+                'px'}
+              style:top={(-campSprites.forge.pivot.y *
+                campSprites.forge.worldWidth) /
+                campSprites.forge.source.width +
+                'px'}
+            />
+            <span
+              >{proposedError
+                ? '✕ Local indisponível'
+                : '✓ Posição livre'}</span
+            >
           </div>
         {/if}
         {#each buildings as building (building.id)}
@@ -314,12 +434,23 @@
     <div class="bottom">
       <div class="build-info">
         {#if placing}
-          <span class="eyebrow">Modo construção · demonstração</span><h2>Posicionar forja</h2>
-          <p>Clique no terreno para posicionar a prévia; arraste para mover a câmera. Depois confirme ou cancele.</p>
-          {#if placeError}<p role="alert">{placeError}</p>{/if}
-          <div class="placement-actions"><button type="button" onclick={confirmBuilding} disabled={!proposed || !canPlace(proposed.x, proposed.y)}>Confirmar posição</button><button type="button" onclick={cancelBuilding}>Cancelar</button></div>
-        {:else}
-        {#if selection}
+          <span class="eyebrow">Modo construção · demonstração</span>
+          <h2>Posicionar forja</h2>
+          <p>
+            Toque ou clique no terreno para posicionar; arraste para explorar.
+            No teclado, use as setas, Enter e Esc.
+          </p>
+          <p role="status" class:placement-error={!!proposedError}>
+            {proposedError || 'Posição livre. Confirme para criar a forja.'}
+          </p>
+          <div class="placement-actions">
+            <button
+              type="button"
+              onclick={confirmBuilding}
+              disabled={!proposed || !!proposedError}>Confirmar posição</button
+            ><button type="button" onclick={cancelBuilding}>Cancelar</button>
+          </div>
+        {:else if selection}
           <span class="eyebrow">Espaço selecionado</span>
           <h2>{selection.name}</h2>
           <p>{selection.purpose}</p>
@@ -336,22 +467,24 @@
             edifício. Nas forjas, selecione a base destacada ou use os atalhos.
           </p>
         {/if}
-        {/if}
       </div>
-      <div class="shortcuts">
-        {#each buildings as building (building.id)}
-          <button
-            onclick={() => focus(building)}
-            class:active={selection?.id === building.id}>{building.name}</button
-          >
-        {/each}
-      </div>
+      {#if !placing}
+        <div class="shortcuts">
+          {#each buildings as building (building.id)}
+            <button
+              onclick={() => focus(building)}
+              class:active={selection?.id === building.id}
+              >{building.name}</button
+            >
+          {/each}
+        </div>
+      {/if}
     </div>
   </section>
   <p class="disclaimer">
     Região da forja: arte de avaliação CC0 de rubberduck e feudalwars. Restante
-    do mapa em CSS provisório. Sem construção real, persistência, economia ou
-    acesso ao IndexedDB. Não é a identidade visual final do jogo.
+    do mapa em CSS provisório. Construções apenas em memória, sem persistência,
+    economia ou acesso ao IndexedDB. Não é a identidade visual final do jogo.
   </p>
 </div>
 
@@ -752,14 +885,100 @@
       font-size: 0.7rem;
     }
   }
-  .build-tools {position:absolute;z-index:3;top:15px;left:235px}
-  .build-tools button,.placement-actions button {background:#e3c182;color:#1b211b;border:1px solid #eacb96;border-radius:7px;padding:10px 13px;min-height:44px;font-weight:700;cursor:pointer}
-  .build-tools button:disabled,.placement-actions button:disabled {opacity:.55;cursor:default}
-  .placement-preview {position:absolute;width:0;height:0;pointer-events:none;opacity:.8;filter:drop-shadow(0 0 4px #a6ffd0)}
-  .placement-preview.invalid {filter:drop-shadow(0 0 8px #ef6f6f);opacity:.6}
-  .placement-preview img {position:absolute;max-width:none;pointer-events:none}
-  .placement-preview span {position:absolute;top:12px;left:-60px;white-space:nowrap;background:#17281eef;color:#f8e7bd;padding:5px;border-radius:5px;font-size:12px}
-  .placement-actions {display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-  .placement-actions button:nth-child(2) {background:#27342f;color:#f0e9db}
-  @media(max-width:700px){.build-tools{top:85px;left:8px}.build-tools button{font-size:12px;padding:8px}}
+  .build-tools {
+    position: absolute;
+    z-index: 3;
+    top: 100px;
+    left: 16px;
+  }
+  .build-tools button,
+  .placement-actions button {
+    background: #e3c182;
+    color: #1b211b;
+    border: 1px solid #eacb96;
+    border-radius: 7px;
+    padding: 10px 13px;
+    min-height: 44px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .build-tools button:disabled,
+  .placement-actions button:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+  .placement-preview {
+    position: absolute;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    opacity: 0.8;
+    filter: drop-shadow(0 0 4px #a6ffd0);
+  }
+  .placement-base {
+    position: absolute;
+    overflow: visible;
+    width: 1px;
+    height: 1px;
+  }
+  .placement-base polygon {
+    fill: #3edb8f55;
+    stroke: #85ffc0;
+    stroke-width: 3;
+  }
+  .invalid .placement-base polygon {
+    fill: #ee525266;
+    stroke: #ff8e8e;
+  }
+  .placement-error {
+    color: #ffb5a9 !important;
+  }
+  .shortcuts {
+    max-height: 130px;
+    overflow: auto;
+  }
+  .viewport:focus-visible {
+    outline: 2px solid #ffe4a3;
+    outline-offset: -3px;
+  }
+  .placement-preview.invalid {
+    filter: drop-shadow(0 0 8px #ef6f6f);
+    opacity: 0.6;
+  }
+  .placement-preview img {
+    position: absolute;
+    max-width: none;
+    pointer-events: none;
+  }
+  .placement-preview span {
+    position: absolute;
+    top: 12px;
+    left: -60px;
+    white-space: nowrap;
+    background: #17281eef;
+    color: #f8e7bd;
+    padding: 5px;
+    border-radius: 5px;
+    font-size: 12px;
+  }
+  .placement-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .placement-actions button:nth-child(2) {
+    background: #27342f;
+    color: #f0e9db;
+  }
+  @media (max-width: 700px) {
+    .build-tools {
+      top: 100px;
+      left: 8px;
+    }
+    .build-tools button {
+      font-size: 12px;
+      padding: 8px;
+    }
+  }
 </style>

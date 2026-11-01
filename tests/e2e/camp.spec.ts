@@ -217,3 +217,210 @@ test('região texturizada usa atlas reutilizados e não intercepta a seleção',
   expect(resources.length).toBe(4);
   expect(errors).toEqual([]);
 });
+
+for (const width of [undefined, 320]) {
+  test(`construção: confirmar, selecionar, colidir, cancelar e explorar (${width ?? 'padrão'})`, async ({
+    page,
+    context,
+  }, info) => {
+    if (width) await page.setViewportSize({ width, height: 740 });
+    const errors: string[] = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    page.on('console', (m) => {
+      if (m.type() === 'error') errors.push(m.text());
+    });
+    await context.addInitScript(() => {
+      Object.defineProperty(window, '__labDatabaseCalls', { value: [] });
+      IDBFactory.prototype.open = function (name: string): IDBOpenDBRequest {
+        (
+          window as unknown as { __labDatabaseCalls: string[] }
+        ).__labDatabaseCalls.push(name);
+        throw new Error('Laboratório não deve abrir IndexedDB');
+      };
+    });
+    const response = await page.goto('/laboratorio/acampamento');
+    expect(response?.status()).toBe(200);
+    const mobile = info.project.name === 'mobile';
+    const activate = async (locator: ReturnType<typeof page.getByRole>) =>
+      mobile ? locator.tap() : locator.click();
+    const viewport = page.getByRole('region', {
+      name: 'Terreno do acampamento, arrastável',
+      exact: true,
+    });
+    const preview = page.locator('.placement-preview');
+    const sprites = page.locator('.scene-sprite');
+    const build = page.getByRole('button', {
+      name: '+ Construir forja',
+      exact: true,
+    });
+    const confirm = page.getByRole('button', {
+      name: 'Confirmar posição',
+      exact: true,
+    });
+    const cancel = page.getByRole('button', { name: 'Cancelar', exact: true });
+    const point = async (x: number, y: number) =>
+      page.locator('.world').evaluate(
+        (node, p) => {
+          const m = new DOMMatrix(getComputedStyle(node).transform);
+          const bounds = node.parentElement!.getBoundingClientRect();
+          return {
+            x: bounds.left + m.e + p.x * m.a,
+            y: bounds.top + m.f + p.y * m.a,
+          };
+        },
+        { x, y },
+      );
+    const place = async (x: number, y: number) => {
+      const p = await point(x, y);
+      if (mobile) await page.touchscreen.tap(p.x, p.y);
+      else await page.mouse.click(p.x, p.y);
+    };
+    await expect(build).toBeVisible();
+    await activate(build);
+    await expect(preview.locator('img')).toBeVisible();
+    await expect(confirm).toBeEnabled();
+    // Cancellation of a real active pointer must not reposition the ghost.
+    const beforeCancel = await preview.getAttribute('style');
+    const bounds = (await viewport.boundingBox())!;
+    const cancelPoint = { x: bounds.x + 20, y: bounds.y + 210 };
+    if (mobile) {
+      const cdp = await context.newCDPSession(page);
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchStart',
+        touchPoints: [cancelPoint],
+      });
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchCancel',
+        touchPoints: [],
+      });
+    } else {
+      await page.mouse.move(cancelPoint.x, cancelPoint.y);
+      await page.mouse.down();
+      await viewport.dispatchEvent('pointercancel', {
+        pointerId: 1,
+        ...cancelPoint,
+      });
+      await page.mouse.up();
+    }
+    await expect(preview).toHaveAttribute('style', beforeCancel!);
+    // A real drag changes the camera, without changing the proposal or creating a building.
+    const beforeCamera = await page.locator('.world').getAttribute('style');
+    const start = { x: bounds.x + 20, y: bounds.y + 210 };
+    if (mobile) {
+      const cdp = await context.newCDPSession(page);
+      await cdp.send('Input.synthesizeScrollGesture', {
+        ...start,
+        xDistance: -70,
+        yDistance: -25,
+        gestureSourceType: 'touch',
+        speed: 600,
+      });
+    } else {
+      await page.mouse.move(start.x, start.y);
+      await page.mouse.down();
+      await page.mouse.move(start.x + 70, start.y + 25, { steps: 8 });
+      await page.mouse.up();
+    }
+    await expect(page.locator('.world')).not.toHaveAttribute(
+      'style',
+      beforeCamera!,
+    );
+    await expect(preview).toHaveAttribute('style', beforeCancel!);
+    await expect(sprites).toHaveCount(2);
+    await activate(cancel);
+    await activate(build);
+    await viewport.focus();
+    for (let i = 0; i < 20; i++) await page.keyboard.press('ArrowUp');
+    await place(1170, 672);
+    await expect(confirm).toBeDisabled();
+    await expect(page.getByRole('status')).toContainText('sobrepõe');
+    await viewport.focus();
+    for (let i = 0; i < 22; i++) await page.keyboard.press('ArrowLeft');
+    for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowUp');
+    await place(830, 600);
+    await expect(confirm).toBeDisabled();
+    await expect(page.getByRole('status')).toContainText('sobrepõe');
+    await activate(cancel);
+    await activate(build);
+    await place(1008, 976);
+    await expect(preview).toHaveCSS('left', '1008px');
+    await expect(preview).toHaveCSS('top', '976px');
+    await expect(confirm).toBeEnabled();
+    if (process.env.LMU_CAMP_CAPTURES)
+      await page.screenshot({
+        path: `${process.env.LMU_CAMP_CAPTURES}/${info.project.name}-${width ?? 'padrao'}-previa.png`,
+        fullPage: true,
+      });
+    const previewImage = await preview.locator('img').boundingBox();
+    await activate(confirm);
+    const created = page.locator('[data-instance-id="forge-user-3"]');
+    await expect(created).toHaveCSS('left', '1008px');
+    await expect(created).toHaveCSS('top', '976px');
+    const builtImage = (await created.locator('img').boundingBox())!;
+    expect(builtImage.x).toBeCloseTo(previewImage!.x, 1);
+    expect(builtImage.y).toBeCloseTo(previewImage!.y, 1);
+    await expect(sprites).toHaveCount(3);
+    await expect(
+      page.getByRole('heading', { name: 'Forja 3', exact: true }),
+    ).toBeVisible();
+    await activate(build);
+    // Click/touch an existing building footprint: it must reject placement, not select it.
+    await place(1008, 944);
+    await expect(preview).toHaveClass(/invalid/);
+    await expect(confirm).toBeDisabled();
+    await expect(page.getByRole('status')).toContainText('sobrepõe');
+    await place(1200, 1008);
+    await expect(confirm).toBeEnabled();
+    await activate(confirm);
+    await expect(sprites).toHaveCount(4);
+    for (const name of ['Forja', 'Forja 2', 'Forja 3', 'Forja 4']) {
+      await activate(page.getByRole('button', { name, exact: true }));
+      await activate(
+        page.getByRole('button', { name: `Selecionar ${name}`, exact: true }),
+      );
+      await expect(sprites.locator('[aria-pressed="true"]')).toHaveCount(1);
+      await expect(
+        page.getByRole('heading', { name, exact: true }),
+      ).toBeVisible();
+    }
+    if (process.env.LMU_CAMP_CAPTURES)
+      await page.screenshot({
+        path: `${process.env.LMU_CAMP_CAPTURES}/${info.project.name}-${width ?? 'padrao'}-construidas.png`,
+        fullPage: true,
+      });
+    await activate(build);
+    await viewport.focus();
+    for (let i = 0; i < 27; i++) await page.keyboard.press('ArrowDown');
+    await expect(confirm).toBeDisabled();
+    await expect(page.getByRole('status')).toContainText('dentro do mapa');
+    await page.keyboard.press('Enter');
+    await expect(sprites).toHaveCount(4);
+    await page.keyboard.press('Escape');
+    await expect(preview).toHaveCount(0);
+    await expect(sprites).toHaveCount(4);
+    const worldBeforeZoom = await page.locator('.world').getAttribute('style');
+    await activate(
+      page.getByRole('button', { name: 'Aproximar', exact: true }),
+    );
+    await expect(page.locator('.world')).not.toHaveAttribute(
+      'style',
+      worldBeforeZoom!,
+    );
+    await activate(
+      page.getByRole('button', { name: 'Centralizar mapa', exact: true }),
+    );
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    expect(
+      await page.evaluate(
+        () =>
+          (window as unknown as { __labDatabaseCalls: string[] })
+            .__labDatabaseCalls,
+      ),
+    ).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+}
