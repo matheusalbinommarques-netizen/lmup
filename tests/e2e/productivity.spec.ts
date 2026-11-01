@@ -82,6 +82,42 @@ async function stored(page: Page) {
       }),
   );
 }
+test('conclusão direta mantém passos auxiliares sem exigir sua marcação', async ({
+  page,
+}) => {
+  await create(page, 'Uma entrega direta', async (form) => {
+    await form.getByText('Passos e outros detalhes', { exact: true }).click();
+    await form
+      .getByLabel('Passos, um por linha')
+      .fill('Referência opcional\nConferência opcional');
+    await form
+      .getByText('Horário, prioridade e acompanhamento', { exact: true })
+      .click();
+    await form.getByLabel('Acompanhar progresso por').selectOption('direct');
+  });
+  await page
+    .getByRole('link', { name: 'Uma entrega direta', exact: true })
+    .click();
+  await expect(
+    page.getByRole('checkbox', { name: 'Referência opcional', exact: true }),
+  ).not.toBeChecked();
+  await expect(
+    page.getByRole('button', { name: 'Concluir missão', exact: true }),
+  ).toBeEnabled();
+  await page
+    .getByRole('button', { name: 'Concluir missão', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
+  ).toBeVisible();
+  const copy = await stored(page);
+  expect(copy.occurrences[0]).toMatchObject({
+    status: 'completed',
+    tracking: { method: 'direct' },
+    checkedSteps: [],
+  });
+  expect(copy.profile[0].totalXpEarned).toBe(53);
+});
 test('criação avançada, parcelas, correção, compensação e persistência em outra aba', async ({
   page,
   context,

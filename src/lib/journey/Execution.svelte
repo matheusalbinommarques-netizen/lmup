@@ -150,7 +150,10 @@
     currentStepSession ? (task?.completedSubtasks ?? []) : [],
   );
   const ready = $derived(
-    steps.every((step) => checkedSteps.includes(step.index)),
+    (task?.productivityVersion &&
+      !task.reviewEnabled &&
+      task.tracking?.method !== 'steps') ||
+      steps.every((step) => checkedSteps.includes(step.index)),
   );
   const reward = $derived(data?.rewards[id]);
   const lastTaskEvent = $derived(
