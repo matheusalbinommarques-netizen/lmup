@@ -37,12 +37,27 @@ export function readMissionSession(today: string): MissionSession | null {
   }
 }
 
-export function saveMissionSession(value: MissionSession): void {
+export function removeMissionFromSession(
+  session: MissionSession,
+  taskId: number,
+): MissionSession | null {
+  const index = session.taskIds.indexOf(taskId);
+  if (index < 0) return session;
+  const taskIds = session.taskIds.filter((id) => id !== taskId);
+  if (!taskIds.length) return null;
+  const cursor = index < session.cursor ? session.cursor - 1 : session.cursor;
+  return { ...session, taskIds, cursor };
+}
+
+export function saveMissionSession(value: MissionSession | null): void {
   if (typeof window === 'undefined') return;
-  const valid = normalizeMissionSession(value, value.date);
-  if (!valid) throw new Error('Sessão inválida. Selecione novamente suas missões.');
+  const valid = value && normalizeMissionSession(value, value.date);
+  if (value && !valid)
+    throw new Error('Sessão inválida. Selecione novamente suas missões.');
   try {
-    window.localStorage.setItem(MISSION_SESSION_KEY, JSON.stringify(valid));
+    if (valid)
+      window.localStorage.setItem(MISSION_SESSION_KEY, JSON.stringify(valid));
+    else window.localStorage.removeItem(MISSION_SESSION_KEY);
   } catch {
     throw new Error('Não foi possível salvar a sessão neste navegador.');
   }

@@ -31,11 +31,13 @@
     id,
     sessionMode = false,
     onSessionContinue,
+    onSessionSkip,
     onSessionBusyChange,
   }: {
     id: number;
     sessionMode?: boolean;
     onSessionContinue?: () => void;
+    onSessionSkip?: () => void;
     onSessionBusyChange?: (blocked: boolean) => void;
   } = $props();
   let data = $state<JourneySnapshot>();
@@ -514,7 +516,7 @@
         >Voltar sem salvar notas</Button
       >
     </section>{/if}
-  {#if task && data}<div class="journey-actions">
+  {#if task && data}<div class="journey-actions" class:session-mission-actions={sessionMode}>
       <Button
         variant="secondary"
         disabled={busy || saves > 0 || dirty}
@@ -528,6 +530,9 @@
           reviewOpen = true;
         }}>Configurar revisão</Button
       >
+      {#if sessionMode && onSessionSkip}
+        <Button variant="quiet" disabled={busy || saves > 0 || dirty || starting > 0 || !!noteError} onclick={onSessionSkip}>Pular por agora <Icon name="arrow" size={16} /></Button>
+      {/if}
     </div>
     <ReviewHistory {task} events={data.events} /><QuickCreate
       bind:open={editOpen}
@@ -535,3 +540,10 @@
       editTask={task}
     /><ReviewForm bind:open={reviewOpen} {task} />{/if}
 </div>
+
+<style>
+  .session-mission-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  }
+</style>

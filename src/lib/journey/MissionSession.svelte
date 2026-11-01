@@ -9,6 +9,7 @@
     MISSION_SESSION_KEY,
     clearMissionSession,
     readMissionSession,
+    removeMissionFromSession,
     saveMissionSession,
     type MissionSession,
   } from '$services/missionSession';
@@ -110,6 +111,18 @@
     }
   }
 
+  function remove(id: number) {
+    if (!session || navigationBlocked || completedIds.has(id)) return;
+    const next = removeMissionFromSession(session, id);
+    try {
+      saveMissionSession(next);
+      session = next;
+      error = '';
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : 'Não foi possível remover da sessão.';
+    }
+  }
+
   function advance() {
     if (!session) return;
     const next = session.taskIds.findIndex(
@@ -193,6 +206,9 @@
                   <button type="button" disabled={navigationBlocked || index === session!.taskIds.length - 1} aria-label={`Mover ${task?.title ?? 'missão'} para baixo`} onclick={() => reorder(index, 1)}>↓</button>
                 </div>
               </div>
+              {#if !completedIds.has(id)}
+                <button class="queue-remove" type="button" disabled={navigationBlocked} aria-label={`Remover da sessão: ${task?.title ?? 'missão'}`} onclick={() => remove(id)}>Remover da sessão</button>
+              {/if}
             </li>
           {/each}
         </ol>
@@ -214,10 +230,9 @@
         {:else if currentTask?.id}
           <div class="session-current-heading">
             <span>Missão {session.cursor + 1} de {session.taskIds.length}</span>
-            <Button variant="quiet" disabled={navigationBlocked} onclick={advance}>Pular por agora <Icon name="arrow" size={16}/></Button>
           </div>
           {#key currentTask.id}
-            <Execution id={currentTask.id} sessionMode onSessionContinue={advance} onSessionBusyChange={(blocked) => (navigationBlocked = blocked)} />
+            <Execution id={currentTask.id} sessionMode onSessionContinue={advance} onSessionSkip={advance} onSessionBusyChange={(blocked) => (navigationBlocked = blocked)} />
           {/key}
         {:else}
           <div class="rpg-frame session-empty">
@@ -246,6 +261,9 @@
   .queue-entry { display: flex; align-items: center; }
   .session-queue li .queue-entry > button { flex: 1; min-width: 0; border: 0; border-left: 3px solid transparent; background: none; color: #e8e1d3; display: flex; gap: .7rem; align-items: center; text-align: left; padding: .7rem .25rem; cursor: pointer; }
   .queue-reorder { display: flex; flex-direction: column; }
+  .queue-remove { display: block; max-width: 100%; margin: 0 .25rem .6rem; padding: .4rem; color: #d8b16e; border: 1px solid #a27c4377; border-radius: .3rem; background: transparent; font: inherit; font-size: .78rem; cursor: pointer; }
+  .queue-remove:hover { background: #a27c4326; }
+  .queue-remove:disabled { opacity: .4; cursor: default; }
   .queue-reorder button { color: #d8b16e; border: 0; background: transparent; padding: .15rem .4rem; cursor: pointer; }
   .queue-reorder button:disabled { opacity: .22; cursor: default; }
   .session-queue li .queue-entry > button:hover, .session-queue li .queue-entry > button.chosen { background: #a27c4326; border-left-color: #deb466; }
@@ -259,7 +277,7 @@
   .session-empty { padding: 1.5rem; display: grid; justify-items: start; gap: .7rem; }
   .session-empty p { color: #bcc7bb; }
   @media (max-width: 800px) {
-    .session-columns { grid-template-columns: 1fr; }
+    .session-columns { grid-template-columns: minmax(0, 1fr); }
     .session-queue { padding: .8rem; }
     .session-queue ol { display: flex; overflow-x: auto; gap: .4rem; }
     .session-queue li { flex: 0 0 165px; border-top: 0; border: 1px solid #a27c433b; }
