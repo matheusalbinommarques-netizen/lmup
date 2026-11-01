@@ -157,3 +157,63 @@ test('duas forjas compartilham o sprite e preservam seleção, profundidade e zo
     ),
   ).toBe(1);
 });
+
+test('região texturizada usa atlas reutilizados e não intercepta a seleção', async ({
+  page,
+}, info) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  await page.goto('/laboratorio/acampamento');
+  const terrain = page.locator('[data-region="forge-clearing"]');
+  await expect(terrain).toHaveCount(1);
+  await expect(terrain.locator('[data-material="grass"]')).not.toHaveCount(0);
+  await expect(terrain.locator('[data-material="dirt"]')).not.toHaveCount(0);
+  expect(
+    await terrain.evaluate((node) => getComputedStyle(node).pointerEvents),
+  ).toBe('none');
+  const trees = page.locator('.region-decoration');
+  await expect(trees).toHaveCount(3);
+  await expect
+    .poll(() =>
+      trees.evaluateAll((nodes) =>
+        nodes.every(
+          (node) =>
+            (node as HTMLImageElement).complete &&
+            (node as HTMLImageElement).naturalWidth === 384,
+        ),
+      ),
+    )
+    .toBe(true);
+  const depths = await trees.evaluateAll((nodes) =>
+    nodes.map((node) => Number(getComputedStyle(node).zIndex)),
+  );
+  expect(depths.some((y) => y < 700)).toBe(true);
+  expect(depths.some((y) => y > 760)).toBe(true);
+  for (const name of ['Forja', 'Forja 2']) {
+    const shortcut = page.getByRole('button', { name, exact: true });
+    const footprint = page.getByRole('button', {
+      name: `Selecionar ${name}`,
+      exact: true,
+    });
+    if (info.project.name === 'mobile') {
+      await shortcut.tap();
+      await footprint.tap();
+    } else {
+      await shortcut.click();
+      await footprint.click();
+    }
+    await expect(footprint).toHaveAttribute('aria-pressed', 'true');
+  }
+  const resources = await page.evaluate(() =>
+    performance
+      .getEntriesByType('resource')
+      .filter((resource) => resource.name.includes('/art/lab/camp/region/'))
+      .map((resource) => resource.name),
+  );
+  expect(new Set(resources).size).toBe(4);
+  expect(resources.length).toBe(4);
+  expect(errors).toEqual([]);
+});

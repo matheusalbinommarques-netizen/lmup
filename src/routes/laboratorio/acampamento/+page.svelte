@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import SceneSprite from '$lib/lab/SceneSprite.svelte';
   import { campSprites } from '$lib/lab/campSprites';
+  import TerrainRegion from '$lib/lab/TerrainRegion.svelte';
+  import { forgeRegion } from '$lib/lab/campRegion';
 
   type Building = {
     id: string;
@@ -226,6 +228,7 @@
         <div class="road road-a"></div>
         <div class="road road-b"></div>
         <div class="lake"></div>
+        <TerrainRegion region={forgeRegion} />
         {#each trees as tree, i (i)}
           <div
             class="tree"
@@ -308,8 +311,8 @@
     </div>
   </section>
   <p class="disclaimer">
-    Forjas: sprite de avaliação CC0 (feudalwars), reutilizado duas vezes. Demais
-    elementos CSS provisórios. Sem construção real, persistência, economia ou
+    Região da forja: arte de avaliação CC0 de rubberduck e feudalwars. Restante
+    do mapa em CSS provisório. Sem construção real, persistência, economia ou
     acesso ao IndexedDB. Não é a identidade visual final do jogo.
   </p>
 </div>
