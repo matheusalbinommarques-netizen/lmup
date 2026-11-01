@@ -11,7 +11,9 @@ async function storedData(page: Page) {
             open.onerror = () => reject(open.error);
             open.onsuccess = () => {
               const db = open.result;
-              const names = [...db.objectStoreNames];
+              const names = [...db.objectStoreNames].filter(
+                (name) => name !== 'savedMissionSessions',
+              );
               const transaction = db.transaction(names, 'readonly');
               const data: Record<string, unknown> = {};
               for (const store of names) {
@@ -78,9 +80,7 @@ for (const removed of ['Primeira', 'Intermediária', 'Última']) {
         exact: true,
       })
       .click();
-    await expect(
-      page.getByText('0 de 2 missões concluídas hoje'),
-    ).toBeVisible();
+    await expect(page.getByText('0 de 2 missões concluídas')).toBeVisible();
     await expect(
       page.getByRole('heading', {
         name: removed === 'Primeira' ? 'Intermediária' : 'Primeira',
@@ -88,9 +88,7 @@ for (const removed of ['Primeira', 'Intermediária', 'Última']) {
       }),
     ).toBeVisible();
     await page.reload();
-    await expect(
-      page.getByText('0 de 2 missões concluídas hoje'),
-    ).toBeVisible();
+    await expect(page.getByText('0 de 2 missões concluídas')).toBeVisible();
     await expect(
       page.getByRole('complementary', { name: 'Fila de missões' }),
     ).not.toContainText(removed);
@@ -116,11 +114,11 @@ test('remover todas as pendentes limpa a sessão e mantém as missões', async (
       .click();
   }
   await expect(
-    page.getByRole('heading', { name: 'Nenhuma sessão ativa para hoje.' }),
+    page.getByRole('heading', { name: 'Nenhuma sessão em foco.' }),
   ).toBeVisible();
   await page.reload();
   await expect(
-    page.getByRole('heading', { name: 'Nenhuma sessão ativa para hoje.' }),
+    page.getByRole('heading', { name: 'Nenhuma sessão em foco.' }),
   ).toBeVisible();
   expect(
     await page.evaluate(() => localStorage.getItem('lmup.mission-session.v1')),
@@ -170,7 +168,7 @@ test('pular fica junto de editar e revisão e preserva os dados da missão', asy
   await expect(
     page.getByRole('heading', { name: 'Intermediária', exact: true }),
   ).toBeVisible();
-  await expect(page.getByText('0 de 3 missões concluídas hoje')).toBeVisible();
+  await expect(page.getByText('0 de 3 missões concluídas')).toBeVisible();
   expect(await storedData(page)).toEqual(before);
 });
 
@@ -199,10 +197,10 @@ test('remoção preserva recompensas, histórico e progresso das outras missões
   await page
     .getByRole('button', { name: 'Remover da sessão: Última', exact: true })
     .click();
-  await expect(page.getByText('1 de 2 missões concluídas hoje')).toBeVisible();
+  await expect(page.getByText('1 de 2 missões concluídas')).toBeVisible();
   await expect(page.getByLabel('Notas da missão')).toHaveValue('Retomar daqui');
   await page.reload();
-  await expect(page.getByText('1 de 2 missões concluídas hoje')).toBeVisible();
+  await expect(page.getByText('1 de 2 missões concluídas')).toBeVisible();
   expect(await storedData(page)).toEqual(before);
 });
 
@@ -211,8 +209,17 @@ test('falha ao persistir remoção mantém a fila até conseguir salvar', async 
 }) => {
   await createSession(page);
   await page.evaluate(() => {
-    Storage.prototype.setItem = () => {
-      throw new Error('Armazenamento indisponível');
+    const original = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function (
+      this: IDBObjectStore,
+      ...args: Parameters<IDBObjectStore['put']>
+    ) {
+      if (this.name === 'savedMissionSessions')
+        throw new DOMException(
+          'Armazenamento indisponível',
+          'QuotaExceededError',
+        );
+      return original.apply(this, args);
     };
   });
   await page
@@ -221,9 +228,9 @@ test('falha ao persistir remoção mantém a fila até conseguir salvar', async 
   await expect(page.getByRole('alert')).toContainText(
     'Não foi possível salvar a sessão',
   );
-  await expect(page.getByText('0 de 3 missões concluídas hoje')).toBeVisible();
+  await expect(page.getByText('0 de 3 missões concluídas')).toBeVisible();
   await page.reload();
-  await expect(page.getByText('0 de 3 missões concluídas hoje')).toBeVisible();
+  await expect(page.getByText('0 de 3 missões concluídas')).toBeVisible();
   await page
     .getByRole('button', { name: 'Remover da sessão: Primeira', exact: true })
     .click();
@@ -233,9 +240,19 @@ test('falha ao persistir remoção mantém a fila até conseguir salvar', async 
       exact: true,
     })
     .click();
+  await expect(page.getByText('0 de 1 missões concluídas')).toBeVisible();
   await page.evaluate(() => {
-    Storage.prototype.removeItem = () => {
-      throw new Error('Armazenamento indisponível');
+    const original = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function (
+      this: IDBObjectStore,
+      ...args: Parameters<IDBObjectStore['put']>
+    ) {
+      if (this.name === 'savedMissionSessions')
+        throw new DOMException(
+          'Armazenamento indisponível',
+          'QuotaExceededError',
+        );
+      return original.apply(this, args);
     };
   });
   await page
@@ -244,9 +261,9 @@ test('falha ao persistir remoção mantém a fila até conseguir salvar', async 
   await expect(page.getByRole('alert')).toContainText(
     'Não foi possível salvar a sessão',
   );
-  await expect(page.getByText('0 de 1 missões concluídas hoje')).toBeVisible();
+  await expect(page.getByText('0 de 1 missões concluídas')).toBeVisible();
   await page.reload();
-  await expect(page.getByText('0 de 1 missões concluídas hoje')).toBeVisible();
+  await expect(page.getByText('0 de 1 missões concluídas')).toBeVisible();
 });
 
 test('remover a última missão em foco permite voltar às pendentes', async ({
@@ -267,7 +284,7 @@ test('remover a última missão em foco permite voltar às pendentes', async ({
   await expect(
     page.getByRole('heading', { name: 'Fim da sequência', exact: true }),
   ).toBeVisible();
-  await expect(page.getByText('0 de 2 missões concluídas hoje')).toBeVisible();
+  await expect(page.getByText('0 de 2 missões concluídas')).toBeVisible();
   await page.reload();
   await expect(
     page.getByRole('heading', { name: 'Fim da sequência', exact: true }),
@@ -343,13 +360,13 @@ test('sessão executa missões em sequência, persiste e não gera XP ao pular',
   await page
     .getByRole('button', { name: 'Iniciar sessão', exact: true })
     .click();
-  await expect(page).toHaveURL(/\/sessao$/);
-  await expect(page.getByText('0 de 2 missões concluídas hoje')).toBeVisible();
+  await expect(page).toHaveURL(/\/sessoes$/);
+  await expect(page.getByText('0 de 2 missões concluídas')).toBeVisible();
   await page.reload();
   await expect(
     page.getByRole('heading', { name: 'Sessão de Missões' }),
   ).toBeVisible();
-  await expect(page.getByText('0 de 2 missões concluídas hoje')).toBeVisible();
+  await expect(page.getByText('0 de 2 missões concluídas')).toBeVisible();
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
@@ -359,7 +376,7 @@ test('sessão executa missões em sequência, persiste e não gera XP ao pular',
   await page
     .getByRole('button', { name: 'Próxima missão', exact: true })
     .click();
-  await expect(page.getByText('1 de 2 missões concluídas hoje')).toBeVisible();
+  await expect(page.getByText('1 de 2 missões concluídas')).toBeVisible();
   await page.getByRole('button', { name: 'Pular por agora' }).click();
   await expect(
     page.getByRole('heading', { name: 'Fim da sequência' }),
@@ -369,7 +386,7 @@ test('sessão executa missões em sequência, persiste e não gera XP ao pular',
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
   await page.getByRole('button', { name: 'Próxima missão' }).click();
-  await expect(page.getByText('2 de 2 missões concluídas hoje')).toBeVisible();
+  await expect(page.getByText('2 de 2 missões concluídas')).toBeVisible();
   await page.getByRole('button', { name: 'Finalizar sessão' }).click();
   await expect(page).toHaveURL(/\/missoes$/);
   await page.getByRole('button', { name: 'Concluídas', exact: true }).click();

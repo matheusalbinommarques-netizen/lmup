@@ -44,6 +44,32 @@ export async function readAchievementStats() {
   return {
     ...base,
     completedMissions: legacy.length + completed.length,
+    recurringStreak: Math.max(
+      0,
+      ...tasks
+        .filter((task) => task.recurrence)
+        .map(
+          (task) =>
+            consistency(
+              schedule.filter((row) => row.taskId === task.id),
+              today,
+            ).streak,
+        ),
+    ),
+    completedProjectStages: (await db.projects.toArray()).reduce(
+      (sum, project) =>
+        sum +
+        (project.stages ?? []).filter((stage) => {
+          const members = tasks.filter(
+            (task) =>
+              !task.archived &&
+              task.projectId === project.id &&
+              task.projectStageId === stage.id,
+          );
+          return members.length > 0 && members.every((task) => task.completed);
+        }).length,
+      0,
+    ),
     completedEpicOrLegendary:
       legacy.filter((task) => ['epic', 'legendary'].includes(task.rarity))
         .length + completed.filter((row) => row.baseXp >= 150).length,

@@ -5,6 +5,9 @@ import { buildHeroModifiersFromOwned } from './gearService';
 import { getActiveCompanionBuffs } from './companionService';
 import { calculateReward } from './rewardService';
 import { readAchievementStats } from './productivityAchievements';
+import { plannedOccurrences } from './occurrenceService';
+import { dateKey } from './rewardService';
+import { Observable } from 'rxjs';
 
 export async function readJourneySnapshot() {
   return db.transaction('r', db.tables, async () => {
@@ -17,6 +20,8 @@ export async function readJourneySnapshot() {
     const projects = await db.projects.toArray();
     const events = await db.activityEvents.toArray();
     const logs = await db.xpLogs.toArray();
+    const occurrences = await db.occurrences.toArray();
+    const plannedToday = await plannedOccurrences(dateKey(), dateKey());
     const achievementReceipts = await db.achievementReceipts.toArray();
     const achievementStats = await readAchievementStats();
     const eventsById = new Map(events.map((event) => [event.id, event]));
@@ -52,6 +57,8 @@ export async function readJourneySnapshot() {
       projects,
       events,
       logs,
+      occurrences,
+      plannedToday,
       achievementReceipts,
       achievementStats,
       companion,
@@ -62,6 +69,32 @@ export async function readJourneySnapshot() {
   });
 }
 export function journeyQuery() {
-  return liveQuery(readJourneySnapshot);
+  return new Observable<JourneySnapshot>((subscriber) => {
+    let lastDay = dateKey();
+    const subscription = liveQuery(readJourneySnapshot).subscribe({
+      next: (value) => {
+        lastDay = dateKey();
+        subscriber.next(value);
+      },
+      error: (error) => subscriber.error(error),
+    });
+    const refresh = () => {
+      if (lastDay === dateKey()) return;
+      lastDay = dateKey();
+      void readJourneySnapshot().then(
+        (value) => subscriber.next(value),
+        (error) => subscriber.error(error),
+      );
+    };
+    const timer = setInterval(refresh, 15000);
+    if (typeof window !== 'undefined')
+      window.addEventListener('focus', refresh);
+    return () => {
+      subscription.unsubscribe();
+      clearInterval(timer);
+      if (typeof window !== 'undefined')
+        window.removeEventListener('focus', refresh);
+    };
+  });
 }
 export type JourneySnapshot = Awaited<ReturnType<typeof readJourneySnapshot>>;

@@ -1,4 +1,5 @@
 import { db, type ActivityEvent, type Task } from './db';
+import type { Resources } from './productivityTypes';
 import { initializeJourney } from './profileService';
 import { taskSteps } from './journeyService';
 import { scheduledOn } from './recurrence';
@@ -6,6 +7,7 @@ import {
   grantReward,
   progressTransaction,
   revokeRewards,
+  ordinaryReward,
 } from './rewardService';
 import { buildHeroModifiersFromOwned } from './gearService';
 import {
@@ -16,9 +18,71 @@ import {
 import { addCalendarDays } from './calendar';
 import { dateKey } from './rewardService';
 import { reviewDueDate as dueDateForReview } from './reviewRules';
-import { ensureOccurrence, recordProgress } from './occurrenceService';
+import {
+  ensureOccurrence,
+  recordProgress,
+  previewProgress,
+} from './occurrenceService';
 import { progressTarget } from './productivityRules';
 import { refreshAchievementReceipts } from './productivityAchievements';
+
+export async function previewTaskUndo(taskId: number, eventId?: string) {
+  return db.transaction('r', db.tables, async () => {
+    const task = await db.tasks.get(taskId);
+    const event = await db.activityEvents.get(
+      eventId ?? task?.completionEventId ?? '',
+    );
+    if (!task || !event || event.taskId !== taskId || event.reversedAt)
+      throw new Error('Não há recibo seguro para corrigir esta conclusão.');
+    if (event.occurrenceId) {
+      const row = await db.occurrences.get(event.occurrenceId);
+      if (!row) throw new Error('Ocorrência indisponível.');
+      const result = await previewProgress({
+        occurrenceId: row.id,
+        requestId: 'preview',
+        expectedRevision: row.revision,
+        value: 0,
+        correction: true,
+        executedAt: new Date().toISOString(),
+      });
+      return {
+        xp: result.debt.xp + result.projectDebt.xp,
+        gold: result.debt.gold + result.projectDebt.gold,
+        food: result.debt.food + result.projectDebt.food,
+      };
+    }
+    const result = ordinaryReward(event);
+    const others = (
+      await db.activityEvents.where('taskId').equals(taskId).toArray()
+    ).filter(
+      (row) =>
+        row.id !== event.id &&
+        ['task', 'review'].includes(row.kind) &&
+        !row.reversedAt,
+    );
+    const remains =
+      event.kind === 'review'
+        ? (event.reviewStateBefore?.completed ?? others.length > 0)
+        : event.occurrenceDate
+          ? others.length > 0
+          : false;
+    const project = task.projectId
+      ? await db.projects.get(task.projectId)
+      : undefined;
+    if (!remains && project?.rewardGranted) {
+      if (!project.rewardEventId)
+        throw new Error('O bônus legado não permite correção exata.');
+      const source = await db.activityEvents.get(project.rewardEventId);
+      if (source && !source.reversedAt) {
+        const bonus = ordinaryReward(source);
+        result.xp += bonus.xp;
+        result.gold += bonus.gold;
+        result.food += bonus.food;
+      }
+    }
+    return result;
+  });
+}
 
 export async function completeProjectIfReady(
   projectId: number,
@@ -162,7 +226,9 @@ export async function completeTask(
         await db.activityEvents.where('taskId').equals(taskId).toArray()
       ).some(
         (event) =>
-          (event.kind === 'review' || !!event.occurrenceDate) &&
+          (event.kind === 'review' ||
+            (!!event.occurrenceDate &&
+              !event.occurrenceId?.endsWith(':once'))) &&
           !event.reversedAt &&
           event.date === dateKey(now),
       );
@@ -239,8 +305,22 @@ export async function completeTask(
 export async function undoTask(
   taskId: number,
   eventId?: string,
+  expectedImpact?: Resources,
 ): Promise<void> {
   await progressTransaction(async () => {
+    if (expectedImpact) {
+      const actual = await previewTaskUndo(taskId, eventId);
+      if (
+        ['xp', 'gold', 'food'].some(
+          (key) =>
+            actual[key as keyof Resources] !==
+            expectedImpact[key as keyof Resources],
+        )
+      )
+        throw new Error(
+          'O impacto da correção mudou. Revise os valores novamente antes de confirmar.',
+        );
+    }
     const task = await db.tasks.get(taskId);
     if (!task) return;
     const requested = eventId ?? task.completionEventId;

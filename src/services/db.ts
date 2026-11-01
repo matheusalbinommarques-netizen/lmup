@@ -358,6 +358,7 @@ export interface ActivityEvent {
   protectionDays: number;
   streakBefore?: { currentStreak: number; lastCompletionDate: string | null };
   reversedAt?: string;
+  reversalPolicy?: 'debt';
 }
 
 export interface RecoverySnapshot {

@@ -23,9 +23,7 @@ export function sanitizePilot(value: unknown): PilotState {
     Number(state.chapterOneEndXp) >= 0
       ? { chapterOneEndXp: state.chapterOneEndXp }
       : {}),
-    ...(state.chapterTwoUnlocked === true
-      ? { chapterTwoUnlocked: true }
-      : {}),
+    ...(state.chapterTwoUnlocked === true ? { chapterTwoUnlocked: true } : {}),
     ...(Number.isInteger(state.chapterTwoScene) &&
     Number(state.chapterTwoScene) >= 0
       ? {
@@ -38,11 +36,15 @@ export function sanitizePilot(value: unknown): PilotState {
   };
 }
 
-export function chapterTwoProgress(state: PilotState, currentXp: number) {
+export function chapterTwoProgress(
+  state: PilotState,
+  currentXp: number,
+  xpDebt = 0,
+) {
   const earned =
     state.chapterOneEndXp === undefined
       ? 0
-      : Math.max(0, currentXp - state.chapterOneEndXp);
+      : Math.max(0, currentXp - xpDebt - state.chapterOneEndXp);
   return {
     earned,
     required: CHAPTER_TWO_XP,
@@ -103,7 +105,13 @@ export async function unlockChapterTwo(): Promise<PilotState> {
     if (current.scene !== 6) throw new Error('Termine o primeiro capítulo.');
     if (current.chapterOneEndXp === undefined)
       throw new Error('Ative primeiro o progresso do próximo capítulo.');
-    if (!chapterTwoProgress(current, profile.totalXpEarned).available)
+    if (
+      !chapterTwoProgress(
+        current,
+        profile.totalXpEarned,
+        profile.rewardDebt?.xp ?? 0,
+      ).available
+    )
       throw new Error('O próximo capítulo ainda não está disponível.');
     const updated = {
       ...current,
@@ -122,7 +130,10 @@ export async function advanceChapterTwo(expected: number): Promise<PilotState> {
     const current = sanitizePilot(profile.rpgPilot);
     if (!current.chapterTwoUnlocked)
       throw new Error('O capítulo ainda não foi liberado.');
-    if ((current.chapterTwoScene ?? 0) !== expected || expected >= chapterTwoScenes.length)
+    if (
+      (current.chapterTwoScene ?? 0) !== expected ||
+      expected >= chapterTwoScenes.length
+    )
       return current;
     const updated = { ...current, chapterTwoScene: expected + 1 };
     await db.profile.update(1, { rpgPilot: updated });

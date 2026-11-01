@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { beforeNavigate } from '$app/navigation';
   import { liveQuery } from 'dexie';
   import { db } from '$services/db';
   import {
@@ -9,13 +10,25 @@
     type ProgressInput,
   } from '$services/occurrenceService';
   import { fraction, progressTarget } from '$services/productivityRules';
-  import type { Occurrence, Planning } from '$services/productivityTypes';
+  import type {
+    Occurrence,
+    Planning,
+    ExecutionRecord,
+    ProductivityAudit,
+  } from '$services/productivityTypes';
   import { justifyPause } from '$services/routineService';
   import { guardUpdates } from './guardUpdates';
   import Button from '$lib/ui/Button.svelte';
   import PlanningDetails from './PlanningDetails.svelte';
-  let { id }: { id: string } = $props();
+  import { EFFORTS } from '$services/effort';
+  let {
+    id,
+    onBusyChange,
+  }: { id: string; onBusyChange?: (busy: boolean) => void } = $props();
   let row = $state<Occurrence>();
+  let history = $state<ExecutionRecord[]>([]),
+    changes = $state<ProductivityAudit[]>([]),
+    historyLimit = $state(10);
   let error = $state(''),
     notice = $state('');
   let value = $state(0),
@@ -32,8 +45,37 @@
     time = $state(''),
     reason = $state('');
   let payload: ProgressInput | undefined;
-  let loaded = '';
-  guardUpdates(() => saving || !!preview);
+  let loaded = '',
+    draftRevision = 0;
+  const draftDirty = $derived(
+    !!row &&
+      (value !== row.value ||
+        selected.join(',') !== row.checkedSteps.join(',') ||
+        minutes !== undefined ||
+        (config &&
+          (xp !== row.baseXp ||
+            JSON.stringify(planning) !== JSON.stringify(row)))),
+  );
+  guardUpdates(() => saving || !!preview || draftDirty);
+  $effect(() => onBusyChange?.(saving || !!preview || draftDirty));
+  beforeNavigate(({ cancel }) => {
+    if (saving || draftDirty) {
+      cancel();
+      error = 'Salve ou descarte as alterações não salvas antes de sair.';
+    }
+  });
+  function sync(next: Occurrence) {
+    loaded = next.id + ':' + next.revision;
+    draftRevision = next.revision;
+    value = next.value;
+    selected = [...next.checkedSteps];
+    actual = localNow();
+    date = next.plannedDate;
+    time = next.plannedTime ?? '';
+    planning = { ...next };
+    xp = next.baseXp;
+    minutes = undefined;
+  }
   $effect(() => {
     void value;
     void actual;
@@ -52,18 +94,25 @@
       .slice(0, 16);
   }
   onMount(() => {
-    const sub = liveQuery(() => db.occurrences.get(id)).subscribe({
-      next: (next) => {
+    const sub = liveQuery(async () => ({
+      occurrence: await db.occurrences.get(id),
+      records: await db.executionRecords
+        .where('occurrenceId')
+        .equals(id)
+        .toArray(),
+      audit: await db.productivityAudit.where('entityId').equals(id).toArray(),
+    })).subscribe({
+      next: (data) => {
+        history = data.records.sort((a, b) => b.revision - a.revision);
+        changes = data.audit;
+        const next = data.occurrence;
+        const dirty = draftDirty;
         row = next;
-        if (next && loaded !== `${next.id}:${next.revision}`) {
-          loaded = `${next.id}:${next.revision}`;
-          value = next.value;
-          selected = [...next.checkedSteps];
-          actual = localNow();
-          date = next.plannedDate;
-          time = next.plannedTime ?? '';
-          planning = { ...next };
-          xp = next.baseXp;
+        if (next && loaded !== next.id + ':' + next.revision) {
+          if (dirty && !saving && loaded) {
+            error =
+              'A ocorrência mudou em outra aba. Seu rascunho foi preservado; reabra para comparar.';
+          } else sync(next);
         }
       },
       error: () => (error = 'Não foi possível abrir a ocorrência.'),
@@ -76,7 +125,7 @@
     return {
       requestId: crypto.randomUUID(),
       occurrenceId: row.id,
-      expectedRevision: row.revision,
+      expectedRevision: draftRevision,
       value,
       checkedSteps: [...selected],
       executedAt: new Date(actual).toISOString(),
@@ -95,6 +144,8 @@
     notice = '';
     try {
       await work();
+      const latest = await db.occurrences.get(id);
+      if (latest && latest.revision !== draftRevision) sync(latest);
       if (message) notice = message;
     } catch (cause) {
       error =
@@ -108,7 +159,13 @@
   async function prepare() {
     await run(async () => {
       payload = input();
-      preview = await previewProgress(payload!);
+      const result = await previewProgress(payload!);
+      payload = {
+        ...payload!,
+        expectedDue: result.due,
+        expectedProjectDebt: result.projectDebt,
+      };
+      preview = result;
     }, 'Confira os valores antes de confirmar.');
   }
   async function save() {
@@ -126,6 +183,16 @@
 
 <section class="rpg-theme occurrence-execution rpg-frame">
   {#if error}<p role="alert" class="journey-error">{error}</p>{/if}
+  {#if draftDirty || error.includes('outra aba')}<Button
+      variant="quiet"
+      onclick={async () => {
+        const current = await db.occurrences.get(id);
+        if (current) sync(current);
+        preview = undefined;
+        payload = undefined;
+        error = '';
+      }}>Reabrir ocorrência e descartar rascunho</Button
+    >{/if}
   <p role="status">{notice}</p>
   {#if row}
     <p class="lmu-eyebrow">
@@ -151,94 +218,102 @@
           ? 'Parcialmente realizada'
           : row.status === 'excused'
             ? 'Pausa justificada'
-            : row.status === 'discarded'
+            : ['discarded', 'excused'].includes(row.status)
               ? 'Fora do planejamento ativo'
               : 'Em planejamento'}
     </p>
     {#if !['excused', 'discarded'].includes(row.status)}
-      <div class="execution-fields">
-        {#if row.tracking?.method === 'steps'}
-          <fieldset>
-            <legend>Etapas realizadas</legend
-            >{#each row.steps as step, index (index)}<label class="step"
-                ><input
-                  type="checkbox"
-                  checked={selected.includes(index)}
-                  onchange={(e) => {
-                    selected = e.currentTarget.checked
-                      ? [...selected, index]
-                      : selected.filter((item) => item !== index);
-                    value = selected.length;
-                    preview = undefined;
-                    payload = undefined;
-                  }}
-                />{step}</label
-              >{/each}
-          </fieldset>
-        {:else if row.tracking?.method === 'direct' || !row.tracking}<label
-            >Conclusão<select bind:value
-              ><option value={0}>Pendente</option><option value={1}
-                >Concluída</option
-              ></select
-            ></label
+      <fieldset disabled={saving || !!preview} class="progress-controls">
+        <legend class="sr-only">Registrar execução</legend>
+        <div class="execution-fields">
+          {#if row.tracking?.method === 'steps'}
+            <fieldset>
+              <legend>Etapas realizadas</legend
+              >{#each row.steps as step, index (index)}<label class="step"
+                  ><input
+                    type="checkbox"
+                    checked={selected.includes(index)}
+                    onchange={(e) => {
+                      selected = e.currentTarget.checked
+                        ? [...selected, index]
+                        : selected.filter((item) => item !== index);
+                      value = selected.length;
+                      preview = undefined;
+                      payload = undefined;
+                    }}
+                  />{step}</label
+                >{/each}
+            </fieldset>
+          {:else if row.tracking?.method === 'direct' || !row.tracking}<label
+              >Conclusão<select bind:value
+                ><option value={0}>Pendente</option><option value={1}
+                  >Concluída</option
+                ></select
+              ></label
+            >
+          {:else}<label
+              >{row.tracking.method === 'time'
+                ? 'Minutos acumulados realizados'
+                : row.tracking.method === 'quantity'
+                  ? `Quantidade acumulada (${row.tracking.unit ?? 'unidades'})`
+                  : 'Porcentagem realizada'}<input
+                type="number"
+                min="0"
+                step="any"
+                bind:value
+              />
+              <small
+                >Meta: {target}{row.tracking.method === 'time'
+                  ? ' minutos'
+                  : ''}</small
+              ></label
+            >{/if}
+          <label
+            >Quando você executou<input
+              type="datetime-local"
+              bind:value={actual}
+            /></label
           >
-        {:else}<label
-            >{row.tracking.method === 'time'
-              ? 'Minutos acumulados realizados'
-              : row.tracking.method === 'quantity'
-                ? `Quantidade acumulada (${row.tracking.unit ?? 'unidades'})`
-                : 'Porcentagem realizada'}<input
-              type="number"
-              min="0"
-              step="any"
-              bind:value
-            />
-            <small
-              >Meta: {target}{row.tracking.method === 'time'
-                ? ' minutos'
-                : ''}</small
-            ></label
-          >{/if}
-        <label
-          >Quando você executou<input
-            type="datetime-local"
-            bind:value={actual}
-          /></label
-        >
-        {#if row.tracking?.method !== 'time'}<label
-            >Minutos desta execução (opcional)<input
-              type="number"
-              min="0"
-              step="any"
-              bind:value={minutes}
-            /></label
-          >{/if}
-      </div>
-      <label class="step"
-        ><input
-          type="checkbox"
-          bind:checked={correction}
-          onchange={() => {
-            preview = undefined;
-            payload = undefined;
-          }}
-        />Corrigir registro anterior</label
-      >
-      {#if correction}<p class="lmu-hint">
-          A correção preserva recursos já disponíveis e pode gerar débitos
-          compensados por ganhos futuros.
-        </p>
+          {#if row.tracking?.method !== 'time'}<label
+              >{correction
+                ? 'Tempo total corrigido (minutos)'
+                : 'Minutos desta execução (opcional)'}<input
+                type="number"
+                min="0"
+                step="any"
+                bind:value={minutes}
+              /></label
+            >{/if}
+        </div>
         <label class="step"
-          ><input type="checkbox" bind:checked={config} />Corrigir também a
-          configuração desta ocorrência</label
-        >{#if config}<PlanningDetails bind:value={planning} /><label
-            >XP-base desta ocorrência<input
-              type="number"
-              min="1"
-              step="1"
-              bind:value={xp}
-            /></label
-          >{/if}{/if}
+          ><input
+            type="checkbox"
+            bind:checked={correction}
+            onchange={() => {
+              preview = undefined;
+              payload = undefined;
+            }}
+          />Corrigir registro anterior</label
+        >
+        {#if correction}<p class="lmu-hint">
+            A correção preserva recursos já disponíveis e pode gerar débitos
+            compensados por ganhos futuros.
+          </p>
+          <label class="step"
+            ><input type="checkbox" bind:checked={config} />Corrigir também a
+            configuração desta ocorrência</label
+          >{#if config}<PlanningDetails bind:value={planning} /><label
+              >Dificuldade desta ocorrência<select bind:value={xp}
+                >{#if !EFFORTS.some((effort) => effort.xp === row?.baseXp)}<option
+                    value={row.baseXp}
+                    >Manter recompensa legada ({row.baseXp} XP)</option
+                  >{/if}{#each EFFORTS as effort (effort.key)}<option
+                    value={effort.xp}
+                    >{effort.label} · {effort.xp} XP-base</option
+                  >{/each}</select
+              ></label
+            >{/if}{/if}
+      </fieldset>
       {#if preview}<div class="rpg-frame impact" role="status">
           <h3>Impacto da alteração</h3>
           <p>
@@ -249,6 +324,11 @@
             Débito: {preview.debt.xp} XP · {preview.debt.gold} ouro · {preview
               .debt.food} comida.
           </p>
+          {#if Object.values(preview.projectDebt).some((amount) => amount > 0)}<p
+            >
+              Débito adicional ao reabrir o projeto: {preview.projectDebt.xp} XP ·
+              {preview.projectDebt.gold} ouro · {preview.projectDebt.food} comida.
+            </p>{/if}
           <Button disabled={saving} onclick={save}>Confirmar registro</Button
           ><Button
             variant="quiet"
@@ -339,6 +419,32 @@
             )}>Justificar pausa</Button
         >{/if}
     </details>
+    <details>
+      <summary>Histórico desta ocorrência</summary>
+      <p>
+        {row.actualMinutes ?? 0} minutos realizados registrados · {changes.filter(
+          (entry) => entry.action === 'reschedule',
+        ).length} reagendamentos.
+      </p>
+      {#each history.slice(0, historyLimit) as record (record.id)}<p>
+          <strong>{record.correction ? 'Correção' : 'Execução'}</strong> · {record.localDate}
+          às {record.localTime} · {record.timezone}<br />Progresso: {record.before}
+          → {record.after}{record.minutes !== null
+            ? ' · Tempo: ' + record.minutes + ' min'
+            : ''}
+        </p>{/each}
+      {#if history.length > historyLimit}<Button
+          variant="quiet"
+          onclick={() => (historyLimit += 10)}>Mostrar mais registros</Button
+        >{/if}
+      {#each changes.filter((entry) => entry.action === 'reschedule') as entry (entry.id)}{@const before =
+          entry.before as Occurrence}{@const after = entry.after as Occurrence}
+        <p>
+          Planejamento: {before.plannedDate}
+          {before.plannedTime ?? 'flexível'} → {after.plannedDate}
+          {after.plannedTime ?? 'flexível'}.
+        </p>{/each}
+    </details>
     <a class="journey-link" href={'/missao/' + row.taskId}
       >Abrir definição da missão →</a
     >
@@ -352,6 +458,12 @@
     margin: 1rem auto;
     display: grid;
     gap: 0.85rem;
+  }
+  .progress-controls {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
   }
   h2 {
     font: 500 1.8rem var(--lmu-display);

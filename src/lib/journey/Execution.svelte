@@ -23,7 +23,16 @@
     setTaskStep,
     taskSteps,
   } from '$services/journeyService';
-  import { completeTask, undoTask } from '$services/taskService';
+  import {
+    completeTask,
+    undoTask,
+    previewTaskUndo,
+  } from '$services/taskService';
+  import Dialog from '$lib/ui/Dialog.svelte';
+  import type { Resources } from '$services/productivityTypes';
+  let undoOpen = $state(false),
+    undoImpact = $state<Resources>();
+  let correctionNotice = $state('');
   import { ensureOccurrence } from '$services/occurrenceService';
   import Button from '$lib/ui/Button.svelte';
   import Card from '$lib/ui/Card.svelte';
@@ -278,13 +287,22 @@
       busy = false;
     }
   }
-  async function undo() {
+  async function undo(confirmed = false) {
     if (busy) return;
     busy = true;
     error = '';
     try {
-      await undoTask(id, event?.id);
+      if (!confirmed) {
+        undoImpact = await previewTaskUndo(id, event?.id);
+        undoOpen = true;
+        return;
+      }
+      await undoTask(id, event?.id, undoImpact);
+      undoOpen = false;
       freshEventId = '';
+      correctionNotice = `Conclusão desfeita. Débito a compensar: ${undoImpact?.xp ?? 0} XP · ${undoImpact?.gold ?? 0} Ouro · ${undoImpact?.food ?? 0} Comida.`;
+      busy = false;
+      if (requestedReceipt) await goto(`/missao/${id}`, { replaceState: true });
     } catch (cause) {
       error =
         cause instanceof Error ? cause.message : 'Não foi possível desfazer.';
@@ -327,10 +345,16 @@
       ><Icon name="back" size={18} />Voltar às missões</a
     >{/if}
   {#if error}<p role="alert" class="journey-error">{error}</p>{/if}
+  {#if correctionNotice}<p role="status" class="journey-banner">
+      {correctionNotice}
+    </p>{/if}
   {#if !finished && lastTaskEvent?.kind === 'reversal'}
     <p role="status" class="journey-banner">
-      Conclusão desfeita. Recompensa estornada: {lastTaskEvent.reward.xp} XP · {lastTaskEvent
-        .reward.gold} Ouro · {lastTaskEvent.reward.food} Comida.
+      Conclusão desfeita. {#if lastTaskEvent.debtAdded}Débito a compensar: {lastTaskEvent
+          .debtAdded.xp} XP · {lastTaskEvent.debtAdded.gold} Ouro · {lastTaskEvent
+          .debtAdded.food} Comida.{:else}Recompensa estornada: {lastTaskEvent
+          .reward.xp} XP · {lastTaskEvent.reward.gold} Ouro · {lastTaskEvent
+          .reward.food} Comida.{/if}
     </p>
   {/if}
   {#if !data}<p role="status">Abrindo sua missão…</p>{:else if !task}<Card
@@ -359,7 +383,7 @@
       {#if event && !event.reversedAt && (event.occurrenceDate || task.completionEventId === event.id)}<Button
           variant="quiet"
           disabled={busy}
-          onclick={undo}
+          onclick={() => undo()}
           >{event.kind === 'review'
             ? 'Desfazer última sessão'
             : 'Desfazer conclusão'}</Button
@@ -585,6 +609,24 @@
       editTask={task}
     /><ReviewForm bind:open={reviewOpen} {task} />{/if}
 </div>
+<Dialog
+  bind:open={undoOpen}
+  title="Corrigir esta conclusão?"
+  dismissible={!busy}
+>
+  {#if undoImpact}<p>
+      Débito a compensar: {undoImpact.xp} XP · {undoImpact.gold} ouro · {undoImpact.food}
+      comida.
+    </p>
+    <p>
+      Nível, recursos disponíveis, compras e cuidados já realizados serão
+      preservados. Os próximos ganhos compensam o débito.
+    </p>{/if}
+  <Button disabled={busy} onclick={() => undo(true)}>Confirmar correção</Button
+  ><Button variant="quiet" disabled={busy} onclick={() => (undoOpen = false)}
+    >Cancelar</Button
+  >
+</Dialog>
 
 <style>
   .session-mission-actions {

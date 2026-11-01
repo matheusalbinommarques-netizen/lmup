@@ -25,7 +25,8 @@ export async function configureReview(
       await db.activityEvents.where('taskId').equals(id).toArray()
     ).some(
       (event) =>
-        (event.kind === 'review' || !!event.occurrenceDate) &&
+        (event.kind === 'review' ||
+          (!!event.occurrenceDate && !event.occurrenceId?.endsWith(':once'))) &&
         !event.reversedAt &&
         event.date === today,
     );

@@ -29,7 +29,19 @@ Não é seguro voltar apenas os arquivos do aplicativo para uma versão que conh
 
 ## Padrões provisórios
 
-Importância: baixa, normal e alta; ausência equivale a normal. Etapas têm pesos iguais. Pausas: duas por período fixo de 30 dias, configuráveis por rotina. Sugestão inicial de horários: 08h–22h, sem aplicar mudanças. Ausência de duração reserva 30 minutos somente no cálculo da sugestão, nunca como tempo executado. Baixo cumprimento por área exige ao menos três ocorrências previstas e menos de 50% concluídas.
+Importância: baixa, normal e alta; ausência equivale a normal. Etapas têm pesos iguais. Pausas: duas por período fixo de 30 dias, configuráveis por rotina e contadas por dia de origem; os períodos começam na data inicial da rotina. Sugestão inicial de horários: 08h–22h, sem aplicar mudanças. Ausência de duração reserva 30 minutos somente no cálculo da sugestão, nunca como tempo executado. Baixo cumprimento por área exige ao menos três ocorrências previstas e menos de 50% concluídas.
+
+Tempo manual em métodos não temporais é somado por registro. Em correções explícitas, informa-se o total corrigido; o histórico conserva a diferença, inclusive negativa, sem fabricar outra execução.
+
+## Integração e publicação do esquema 6
+
+A CI obrigatória permanece em Node 22 e 24, incluindo desktop, mobile, PWA, persistência entre abas, pacote e auditoria. Nenhuma proteção da `main` foi alterada. Instalações pessoais não participam das prévias ou dos testes.
+
+O controlador desta entrega aceita somente os esquemas conhecidos 5 e 6. Controladores antigos que aceitam somente 5 recusam a publicação de 6 de forma segura. O controlador instalado é uma cópia: não se atualiza apenas por integrar o PR.
+
+Antes de publicar 6 em uma instalação existente, atualizar o controlador a partir de uma cópia limpa da `main`, seguindo `scripts/install-local-sync.ps1 -Branch main`. Primeiro conferir a tarefa, aguardar qualquer ciclo em andamento, preservar configuração e controlador anteriores e conferir os bloqueios de publicação. Não substituir arquivos durante um ciclo ativo. A instalação só deve ser reativada depois dessas verificações. Não usar a migração de branch como atalho para atualizar o esquema.
+
+Após a publicação, a atualização do aplicativo mantém o fluxo existente de confirmação entre abas e proteção de rascunhos. Não forçar recarga nem abrir o banco pessoal em testes. Depois de migrar para 6, voltar a um pacote 5 não é um rollback compatível; usar uma correção compatível com 6 e preservar os backups.
 
 ## Execução e medições
 

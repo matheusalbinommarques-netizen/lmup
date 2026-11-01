@@ -9,7 +9,7 @@ export async function saveSession(
     !input.id ||
     !input.name.trim() ||
     input.name.length > 160 ||
-    !input.occurrenceIds.length ||
+    (!input.occurrenceIds.length && input.status !== 'ended') ||
     new Set(input.occurrenceIds).size !== input.occurrenceIds.length ||
     !Number.isSafeInteger(input.cursor) ||
     input.cursor < 0 ||

@@ -11,6 +11,8 @@ import {
 } from './occurrenceService';
 import { occurrenceDue, validatePlanning } from './productivityRules';
 import { grantReward, revokeRewards } from './rewardService';
+import { completeTask, previewTaskUndo, undoTask } from './taskService';
+import { configureReview } from './reviewService';
 import { saveRoutine, justifyPause } from './routineService';
 import { newSavedSession, saveSession } from './savedSessionService';
 import {
@@ -18,6 +20,16 @@ import {
   restoreJourneyBackup,
   validateBackup,
 } from './backupDataService';
+import {
+  freeSlot,
+  recommendations,
+  consistency,
+  productivityReport,
+} from './productivityInsights';
+import {
+  refreshAchievementReceipts,
+  invalidateAchievement,
+} from './productivityAchievements';
 
 beforeEach(async () => {
   vi.useFakeTimers({ toFake: ['Date'] });
@@ -28,6 +40,93 @@ beforeEach(async () => {
   await initializeJourney();
 });
 afterEach(() => vi.useRealTimers());
+it('recusa confirmação com impacto econômico desatualizado sem alterar o débito', async () => {
+  const row = await mission();
+  await progress(row.id, 40);
+  const impact = await previewTaskUndo(row.taskId);
+  await progress(row.id, 60);
+  const before = await db.profile.get(1);
+  await expect(undoTask(row.taskId, undefined, impact)).rejects.toThrow(
+    'impacto da correção mudou',
+  );
+  expect(await db.profile.get(1)).toEqual(before);
+});
+it('mantém a revisão independente de uma execução única no mesmo dia', async () => {
+  const taskId = await saveTaskDefinition({
+    title: 'Revisar conhecimento',
+    requestId: 'review-independent',
+    plannedDate: '2026-11-02',
+  });
+  await completeTask(taskId);
+  await configureReview(taskId, {
+    enabled: true,
+    intervalDays: 7,
+    dueDate: '2026-11-02',
+  });
+  await completeTask(taskId, { reviewOutcome: 'partial' });
+  await completeTask(taskId, { reviewOutcome: 'recalled' });
+  expect(
+    await db.activityEvents
+      .where('taskId')
+      .equals(taskId)
+      .filter((event) => event.kind === 'review')
+      .count(),
+  ).toBe(1);
+  expect(await db.occurrences.where('taskId').equals(taskId).count()).toBe(1);
+});
+it('alterações futuras de calendário podem ser desfeitas sem perder ocorrências não iniciadas', async () => {
+  const row = await mission();
+  const future = await ensureOccurrence(row.taskId, '2026-11-03');
+  for (const days of [[1], [1, 2]]) {
+    const task = (await db.tasks.get(row.taskId))!;
+    await saveTaskDefinition({
+      title: task.title,
+      requestId: crypto.randomUUID(),
+      editId: task.id,
+      expectedRevision: task.definitionRevision,
+      plannedDate: task.plannedDate,
+      recurrence: { kind: 'weekdays', startDate: '2026-11-02', days },
+    });
+  }
+  expect((await db.occurrences.get(future.id))!.status).toBe('planned');
+  expect(
+    (await plannedOccurrences('2026-11-03', '2026-11-03')).map((row) => row.id),
+  ).toEqual([future.id]);
+});
+it('corrige tempo manual e conserva a soma no histórico e nas estatísticas', async () => {
+  const row = await mission('quantity');
+  await recordProgress({
+    requestId: 'manual-time',
+    occurrenceId: row.id,
+    expectedRevision: 0,
+    value: 20,
+    minutes: 30,
+    executedAt: '2026-11-02T14:00:00',
+  });
+  await recordProgress({
+    requestId: 'correct-time',
+    occurrenceId: row.id,
+    expectedRevision: 1,
+    value: 10,
+    minutes: 15,
+    executedAt: '2026-11-02T14:00:00',
+    correction: true,
+  });
+  const updated = (await db.occurrences.get(row.id))!;
+  expect(updated.actualMinutes).toBe(15);
+  expect(
+    productivityReport(
+      [updated],
+      await db.executionRecords.toArray(),
+      [],
+      [],
+      '2026-11-02',
+      '2026-11-02',
+    ).minutes,
+  ).toBe(15);
+  const copy = await createJourneyBackup();
+  expect(() => validateBackup(copy)).not.toThrow();
+});
 async function mission(
   method: 'time' | 'quantity' | 'percentage' | 'steps' | 'direct' = 'time',
 ) {
@@ -326,5 +425,144 @@ describe('rotinas, sessões e backup', () => {
     const wrong = structuredClone(backup);
     wrong.data.occurrences[0].due.gold++;
     expect(() => validateBackup(wrong)).toThrow('orçamento');
+  });
+});
+
+describe('proteções de atualização, histórico e indicadores', () => {
+  it('mudanças normais não reavaliam a configuração nem modificadores de uma ocorrência premiada', async () => {
+    const row = await mission();
+    await progress(row.id, 10);
+    const before = (await db.occurrences.get(row.id))!;
+    const task = (await db.tasks.get(row.taskId))!;
+    await saveTaskDefinition({
+      title: 'Outra meta futura',
+      requestId: crypto.randomUUID(),
+      editId: task.id,
+      expectedRevision: task.definitionRevision,
+      effort: 'deep',
+      plannedDate: task.plannedDate,
+      recurrence: task.recurrence,
+      tracking: { method: 'time', target: 80 },
+    });
+    await db.profile.update(1, { totalXpEarned: 8000, activeCompanionId: 3 });
+    await progress(row.id, 40);
+    expect((await db.occurrences.get(row.id))!.modifiers).toEqual(
+      before.modifiers,
+    );
+    expect((await db.occurrences.get(row.id))!.baseXp).toBe(100);
+    expect(
+      (await plannedOccurrences('2026-11-03', '2026-11-03'))[0],
+    ).toMatchObject({ baseXp: 250, tracking: { target: 80 } });
+  });
+  it('sugestões são determinísticas e não alteram o planejamento', async () => {
+    const row = await mission();
+    const before = await db.occurrences.get(row.id);
+    expect(recommendations([row])).toEqual(recommendations([row]));
+    expect(freeSlot([row], row.plannedDate, 30)).toBe('08:00');
+    expect(await db.occurrences.get(row.id)).toEqual(before);
+  });
+  it('recuperação posterior não reescreve pontualidade e pausas não contam como execução', async () => {
+    const row = await mission();
+    vi.setSystemTime(new Date('2026-11-03T15:00:00'));
+    await recordProgress({
+      requestId: 'late',
+      occurrenceId: row.id,
+      expectedRevision: 0,
+      value: 40,
+      executedAt: '2026-11-03T14:00:00',
+    });
+    const completed = (await db.occurrences.get(row.id))!;
+    expect(completed.recovered).toBe(true);
+    expect(consistency([completed], '2026-11-03').streak).toBe(0);
+    const report = productivityReport(
+      [completed],
+      await db.executionRecords.toArray(),
+      [],
+      [],
+      '2026-11-02',
+      '2026-11-03',
+    );
+    expect(report).toMatchObject({ completed: 1, recovered: 1, minutes: 40 });
+    expect(report.neglected).toEqual([]);
+  });
+  it('execução pontual lançada depois conta no dia real, sem mover o último dia da sequência para trás', async () => {
+    const row = await mission();
+    vi.setSystemTime(new Date('2026-11-03T15:00:00'));
+    const today = await ensureOccurrence(row.taskId, '2026-11-03');
+    await recordProgress({
+      requestId: 'today',
+      occurrenceId: today.id,
+      expectedRevision: 0,
+      value: 40,
+      executedAt: '2026-11-03T14:00:00',
+    });
+    await recordProgress({
+      requestId: 'yesterday',
+      occurrenceId: row.id,
+      expectedRevision: 0,
+      value: 40,
+      executedAt: '2026-11-02T14:00:00',
+    });
+    expect((await db.occurrences.get(row.id))!.recovered).toBe(false);
+    expect(await db.profile.get(1)).toMatchObject({
+      currentStreak: 2,
+      lastCompletionDate: '2026-11-03',
+    });
+  });
+  it('recibo de conquista é único, persistente e pode ser invalidado com histórico', async () => {
+    const row = await mission();
+    await progress(row.id, 40);
+    await refreshAchievementReceipts();
+    expect(
+      await db.achievementReceipts.where('id').equals('primeiro-passo').count(),
+    ).toBe(1);
+    await progress(row.id, 0, true);
+    await refreshAchievementReceipts();
+    expect(
+      (await db.achievementReceipts.get('primeiro-passo'))!.invalidatedAt,
+    ).toBeUndefined();
+    await invalidateAchievement(
+      'primeiro-passo',
+      'Reconhecimento indevido confirmado',
+    );
+    await refreshAchievementReceipts();
+    expect(
+      (await db.achievementReceipts.get('primeiro-passo'))!.invalidatedAt,
+    ).toBeTruthy();
+  });
+  it('falha na migração reverte o esquema e permite retomar sem perder registros', async () => {
+    const name = `failed-migration-${crypto.randomUUID()}`;
+    const old = new Dexie(name);
+    old.version(5).stores({
+      ...LEGACY_STORES,
+      activityEvents:
+        'id, sequence, kind, taskId, projectId, sourceEventId, date',
+      recoverySnapshots: 'id, createdAt, reason',
+      xpLogs: '++id, date, areaId, createdAt, eventId',
+    });
+    await old.table('tasks').put({
+      id: 17,
+      title: 'Preservar',
+      xp: 50,
+      rarity: 'common',
+      createdAt: '2020-01-01',
+    });
+    old.close();
+    const failing = new LevelMeUpDB(name);
+    const failure = () => {
+      throw new Error('Falha sintética de migração');
+    };
+    failing.planVersions.hook('creating', failure);
+    await expect(failing.open()).rejects.toThrow('Falha sintética');
+    failing.close();
+    const restored = new LevelMeUpDB(name);
+    await restored.open();
+    expect((await restored.tasks.get(17))!.title).toBe('Preservar');
+    expect(await restored.recoverySnapshots.count()).toBe(1);
+    restored.close();
+    await restored.open();
+    expect(await restored.recoverySnapshots.count()).toBe(1);
+    restored.close();
+    await Dexie.delete(name);
   });
 });

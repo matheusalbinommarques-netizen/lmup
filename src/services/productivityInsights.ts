@@ -1,4 +1,4 @@
-import { fraction } from './productivityRules';
+import { fraction, progressTarget } from './productivityRules';
 import type {
   ExecutionRecord,
   Occurrence,
@@ -26,19 +26,26 @@ export function freeSlot(
   const blocks = rows
     .filter(
       (row) =>
-        row.plannedDate === day &&
-        row.plannedTime &&
-        !['discarded', 'excused'].includes(row.status),
+        row.plannedTime && !['discarded', 'excused'].includes(row.status),
     )
-    .map((row) => ({
-      from: number(row.plannedTime!),
-      to: number(row.plannedTime!) + (row.estimatedMinutes ?? 30),
-    }))
+    .map((row) => {
+      const from =
+        ((Date.parse(row.plannedDate + 'T12:00:00Z') -
+          Date.parse(day + 'T12:00:00Z')) /
+          86400000) *
+          1440 +
+        number(row.plannedTime!);
+      return { from, to: from + (row.estimatedMinutes ?? 30) };
+    })
+    .filter(
+      (block) => block.to > number(earliest) && block.from < number(latest),
+    )
     .sort((a, b) => a.from - b.from);
   let cursor = number(earliest);
   for (const block of blocks) {
     if (cursor + duration <= block.from) break;
-    if (block.to > cursor && block.from < cursor + duration) cursor = block.to;
+    if (block.to > cursor && block.from < cursor + duration)
+      cursor = Math.ceil(block.to);
   }
   return cursor + duration <= number(latest)
     ? `${String(Math.floor(cursor / 60)).padStart(2, '0')}:${String(cursor % 60).padStart(2, '0')}`
@@ -160,7 +167,7 @@ export function productivityReport(
         record.localTime.slice(0, 2),
         (hours.get(record.localTime.slice(0, 2)) ?? 0) +
           Math.max(0, record.after - record.before) /
-            Math.max(1, row.tracking?.target ?? 100),
+            Math.max(1, progressTarget(row)),
       );
   }
   const routineProgress = routines.map((routine) => {
@@ -207,6 +214,16 @@ export function productivityReport(
       .sort((a, b) => b[1] - a[1])
       .map(([hour]) => hour),
     routineProgress,
+    monthly: [...new Set(rows.map((row) => row.originDate.slice(0, 7)))]
+      .sort()
+      .slice(-6)
+      .map((month) => ({
+        month,
+        completed: rows.filter(
+          (row) =>
+            row.originDate.startsWith(month) && row.status === 'completed',
+        ).length,
+      })),
     weekly: Array.from(
       {
         length:

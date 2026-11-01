@@ -10,7 +10,13 @@
     pinTask,
     taskSteps,
   } from '$services/journeyService';
-  import { completeTask, undoTask } from '$services/taskService';
+  import {
+    completeTask,
+    undoTask,
+    previewTaskUndo,
+  } from '$services/taskService';
+  import Dialog from '$lib/ui/Dialog.svelte';
+  import type { Resources } from '$services/productivityTypes';
   import { celebrateReward } from '$services/rewardPresentation';
   import {
     MISSION_SESSION_KEY,
@@ -34,6 +40,9 @@
   import Icon from '$lib/ui/Icon.svelte';
   import RpgTrim from '$lib/ui/RpgTrim.svelte';
   import ProductivityWorkspace from './ProductivityWorkspace.svelte';
+  import { ensureOccurrence } from '$services/occurrenceService';
+  import { newSavedSession, saveSession } from '$services/savedSessionService';
+  import { fraction } from '$services/productivityRules';
   let workspaceView = $state<
     'list' | 'agenda' | 'routines' | 'recovery' | 'sessions'
   >('list');
@@ -43,6 +52,38 @@
       workspaceView = value as typeof workspaceView;
   });
   let data = $state<JourneySnapshot>();
+  let undoOpen = $state(false);
+  let undoSelection = $state<{
+    taskId: number;
+    eventId?: string;
+    impact: Resources;
+  }>();
+  async function requestUndo(taskId: number, eventId?: string) {
+    await act(
+      String(taskId),
+      async () => {
+        undoSelection = {
+          taskId,
+          eventId,
+          impact: await previewTaskUndo(taskId, eventId),
+        };
+        undoOpen = true;
+      },
+      'Revise o impacto antes de confirmar.',
+    );
+  }
+  async function confirmUndo() {
+    if (!undoSelection) return;
+    const selected = undoSelection;
+    await act(
+      String(selected.taskId),
+      async () => {
+        await undoTask(selected.taskId, selected.eventId, selected.impact);
+        undoOpen = false;
+      },
+      'Conclusão corrigida. Débitos serão compensados com ganhos futuros.',
+    );
+  }
   let error = $state(''),
     notice = $state('');
   let open = $state(false),
@@ -104,7 +145,26 @@
       area = 'all';
   });
   const available = (task: Task) =>
-    isAvailable(task, new Date(`${today}T12:00:00`));
+    task.productivityVersion && !task.reviewEnabled
+      ? !!data?.plannedToday.some(
+          (row) =>
+            row.taskId === task.id &&
+            !['completed', 'discarded', 'excused'].includes(row.status),
+        )
+      : isAvailable(task, new Date(`${today}T12:00:00`));
+  const scheduledToday = (task: Task) =>
+    task.productivityVersion && !task.reviewEnabled
+      ? !!data?.plannedToday.some(
+          (row) =>
+            row.taskId === task.id &&
+            (!!task.recurrence ||
+              !!task.plannedDate ||
+              row.originDate !== row.plannedDate) &&
+            !['discarded', 'excused'].includes(row.status),
+        )
+      : scheduledOn(task, today);
+  const historyCompletion = (event: JourneySnapshot['events'][number]) =>
+    event.executionComplete !== false;
   const areaName = (id?: number) =>
     data?.areas.find((item) => item.id === id)?.nome ?? 'Geral';
   const matches = (task: Task) =>
@@ -117,7 +177,7 @@
     (!pinnedOnly || task.pinned);
   const tasks = $derived(data?.tasks.filter(matches) ?? []);
   const counts = $derived({
-    today: tasks.filter((task) => scheduledOn(task, today)).length,
+    today: tasks.filter((task) => scheduledToday(task)).length,
     upcoming: tasks.filter(
       (task) =>
         nextPlannedDate(task, today) &&
@@ -129,6 +189,7 @@
         (event) =>
           ['task', 'review'].includes(event.kind) &&
           !event.reversedAt &&
+          historyCompletion(event) &&
           tasks.some((task) => task.id === event.taskId),
       ).length ?? 0,
   });
@@ -138,7 +199,7 @@
         (task) =>
           filter === 'all' ||
           (filter === 'today'
-            ? scheduledOn(task, today)
+            ? scheduledToday(task)
             : filter === 'upcoming'
               ? !!nextPlannedDate(task, today) &&
                 (!!task.recurrence || !!task.reviewEnabled || !task.completed)
@@ -170,6 +231,7 @@
     data?.events
       .filter((event) => {
         if (!['task', 'review'].includes(event.kind)) return false;
+        if (!historyCompletion(event)) return false;
         const task = data?.tasks.find((item) => item.id === event.taskId);
         return (
           (event.taskTitle ?? task?.title ?? '')
@@ -223,7 +285,7 @@
   const eligibleSelection = $derived(
     selected.filter((id) =>
       data?.tasks.some(
-        (task) => task.id === id && scheduledOn(task, today) && available(task),
+        (task) => task.id === id && scheduledToday(task) && available(task),
       ),
     ),
   );
@@ -234,6 +296,29 @@
   }
   async function beginSession() {
     try {
+      if (
+        data &&
+        eligibleSelection.every(
+          (id) => !data?.tasks.find((task) => task.id === id)?.reviewEnabled,
+        )
+      ) {
+        const ids = [];
+        for (const id of eligibleSelection) {
+          const planned = data.plannedToday.filter(
+            (row) =>
+              row.taskId === id &&
+              !['completed', 'excused', 'discarded'].includes(row.status),
+          );
+          for (const row of planned)
+            ids.push((await ensureOccurrence(id, row.originDate)).id);
+        }
+        await saveSession(newSavedSession('Sessão de Missões', ids));
+        selecting = false;
+        selected = [];
+        error = '';
+        await goto('/sessoes');
+        return;
+      }
       const session = newMissionSession(eligibleSelection, today);
       saveMissionSession(session);
       storedSession = session;
@@ -401,6 +486,14 @@
         {#if filter === 'completed'}
           {#if history.length || legacy.length}<ul>
               {#each history as event (event.id)}
+                {@const corrected =
+                  !!event.occurrenceId &&
+                  !data.occurrences.some(
+                    (row) =>
+                      row.id === event.occurrenceId &&
+                      row.status === 'completed' &&
+                      row.completionEventId === event.id,
+                  )}
                 {@const task = data.tasks.find(
                   (item) => item.id === event.taskId,
                 )}
@@ -419,8 +512,8 @@
                           'Missão registrada'}</strong
                       >{/if}<small
                       >{formatCalendar(event.occurrenceDate ?? event.date)} · {event.areaName ??
-                        areaName(task?.areaId)} · {event.reversedAt
-                        ? 'Estornada'
+                        areaName(task?.areaId)} · {corrected || event.reversedAt
+                        ? 'Corrigida'
                         : event.kind === 'review'
                           ? 'Revisão realizada'
                           : event.occurrenceDate
@@ -438,16 +531,12 @@
                         : ''}</small
                     >
                   </div>
-                  {#if !event.reversedAt && task && (event.occurrenceDate || task.completionEventId === event.id)}<Button
+                  {#if !corrected && !event.reversedAt && task && (event.occurrenceDate || task.completionEventId === event.id)}<Button
                       variant="quiet"
                       disabled={pending.includes(event.id)}
                       aria-label={`Desfazer ${event.taskTitle ?? task.title} de ${formatCalendar(event.date)}`}
-                      onclick={() =>
-                        act(
-                          event.id,
-                          () => undoTask(task.id!, event.id),
-                          'Conclusão desfeita e recompensa estornada.',
-                        )}>Desfazer</Button
+                      onclick={() => requestUndo(task.id!, event.id)}
+                      >Desfazer</Button
                     >{/if}
                 </li>{/each}
               {#each legacy as task (task.id)}<li class="mission-row">
@@ -470,6 +559,9 @@
                 >
                   <h3>{areaName(task.areaId)}</h3>
                 </li>{/if}
+              {@const todayRows = data.plannedToday.filter(
+                (row) => row.taskId === task.id && !row.planningSuspended,
+              )}
               {@const canComplete = available(task)}
               {@const done = task.recurrence
                 ? task.lastOccurrenceDate === today
@@ -489,11 +581,11 @@
                     <input
                       type="checkbox"
                       aria-label={`Incluir ${task.title} na sessão`}
-                      disabled={!canComplete || !scheduledOn(task, today)}
+                      disabled={!canComplete || !scheduledToday(task)}
                       checked={selected.includes(task.id!)}
                       onchange={() => toggleSelection(task.id!)}
                     />
-                  </label>{:else if canComplete && !taskSteps(task).length && filter !== 'upcoming'}<button
+                  </label>{:else if canComplete && !taskSteps(task).length && todayRows.length <= 1 && filter !== 'upcoming'}<button
                     class="mission-check"
                     disabled={pending.includes(String(task.id))}
                     aria-label={`Concluir ${task.title}`}
@@ -519,13 +611,48 @@
                       : done
                         ? 'Concluída'
                         : task.recurrence
-                          ? scheduledOn(task, today)
+                          ? scheduledToday(task)
                             ? `Ocorrência: ${formatCalendar(today)}`
                             : `Próxima: ${formatCalendar(nextPlannedDate(task, today))}`
                           : task.plannedDate
                             ? `Planejada: ${formatCalendar(task.plannedDate)}`
                             : 'Sem data'}</small
                   >
+                  {#if task.plannedTime || task.estimatedMinutes || task.importance === 'high'}<small
+                      >{task.plannedTime ??
+                        'Horário flexível'}{task.estimatedMinutes
+                        ? ' · ' + task.estimatedMinutes + ' min estimados'
+                        : ''}{task.importance === 'high'
+                        ? ' · Alta importância'
+                        : ''}</small
+                    >{/if}
+                  {#if todayRows.length > 1 || todayRows.some((row) => row.value > 0 && row.status !== 'completed')}
+                    <div class="mission-occurrences">
+                      {#each todayRows as occurrence (occurrence.id)}<p>
+                          Origem {occurrence.originDate} · {Math.round(
+                            fraction(occurrence) * 100,
+                          )}% ·
+                          <a
+                            class="journey-link"
+                            href={'/ocorrencia/' +
+                              encodeURIComponent(occurrence.id)}
+                            onclick={async (event) => {
+                              event.preventDefault();
+                              await act('open:' + occurrence.id, async () => {
+                                await ensureOccurrence(
+                                  occurrence.taskId,
+                                  occurrence.originDate,
+                                );
+                                await goto(
+                                  '/ocorrencia/' +
+                                    encodeURIComponent(occurrence.id),
+                                );
+                              });
+                            }}>Executar ocorrência →</a
+                          >
+                        </p>{/each}
+                    </div>
+                  {/if}
                 </div>
                 {#if reward}<div class="mission-reward">
                     <span>+{reward.xp} XP</span><small
@@ -549,10 +676,10 @@
                       onclick={() =>
                         act(
                           String(task.id),
-                          () => planTask(task.id!, !scheduledOn(task, today)),
+                          () => planTask(task.id!, !scheduledToday(task)),
                           'Plano atualizado.',
                         )}
-                      >{scheduledOn(task, today)
+                      >{scheduledToday(task)
                         ? 'Tirar de hoje'
                         : 'Planejar para hoje'}</Button
                     ><Button
@@ -571,12 +698,8 @@
                       >{/if}{#if done && task.completionEventId}<Button
                         variant="quiet"
                         disabled={pending.includes(String(task.id))}
-                        onclick={() =>
-                          act(
-                            String(task.id),
-                            () => undoTask(task.id!),
-                            'Conclusão desfeita e recompensa estornada.',
-                          )}>Desfazer conclusão</Button
+                        onclick={() => requestUndo(task.id!)}
+                        >Desfazer conclusão</Button
                       >{/if}
                   </div>
                 </details>
@@ -616,6 +739,19 @@
     /><AreasDialog bind:open={areasOpen} snapshot={data} />
   {/if}
 </section>
+<Dialog bind:open={undoOpen} title="Revisar correção">
+  {#if undoSelection}<p>
+      Débito a compensar: {undoSelection.impact.xp} XP · {undoSelection.impact
+        .gold} Ouro · {undoSelection.impact.food} Comida.
+    </p>
+    <p>
+      Ganhos futuros compensarão o débito. Níveis, compras, construções e
+      prêmios de estágio já alcançados serão preservados.
+    </p>
+    <Button disabled={pending.length > 0} onclick={confirmUndo}
+      >Confirmar correção</Button
+    >{/if}
+</Dialog>
 
 <style>
   .missions-organizer {

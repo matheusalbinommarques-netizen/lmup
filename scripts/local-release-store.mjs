@@ -87,7 +87,7 @@ export async function publishBuild(
   );
   if (
     !/^[a-f0-9]{16}$/.test(release.version) ||
-    release.schema !== 5 ||
+    ![5, 6].includes(release.schema) ||
     release.protocol !== 1
   )
     throw Error(

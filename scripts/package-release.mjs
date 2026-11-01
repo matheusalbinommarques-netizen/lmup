@@ -8,7 +8,7 @@ const project = fileURLToPath(new URL('../', import.meta.url)),
 const release = JSON.parse(await readFile(join(build, 'release.json'), 'utf8'));
 if (
   !/^[a-f0-9]{16}$/.test(release.version) ||
-  release.schema !== 5 ||
+  ![5, 6].includes(release.schema) ||
   release.protocol !== 1
 )
   throw Error('Build candidato não reconhecido.');

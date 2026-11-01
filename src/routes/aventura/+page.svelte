@@ -21,6 +21,7 @@
 
   let pilot = $state<PilotState>({ scene: 0 });
   let totalXp = $state(0);
+  let xpDebt = $state(0);
   let ready = $state(false);
   let busy = $state(false);
   let error = $state('');
@@ -40,7 +41,7 @@
       ? chapterTwoScenes[Math.min(chapterTwoIndex, chapterTwoScenes.length - 1)]
       : pilotScenes[Math.min(chapterOneIndex, pilotScenes.length - 1)],
   );
-  const progress = $derived(chapterTwoProgress(pilot, totalXp));
+  const progress = $derived(chapterTwoProgress(pilot, totalXp, xpDebt));
   const chapterOneFinished = $derived(chapterOneIndex === 6 && !playingTwo);
   const chapterTwoFinished = $derived(
     playingTwo && chapterTwoIndex >= chapterTwoScenes.length,
@@ -61,7 +62,8 @@
     let live = true;
     canFullscreen = Boolean(document.documentElement.requestFullscreen);
     const syncFullscreen = () => {
-      if (live) browserFullscreen = document.fullscreenElement === immersiveElement;
+      if (live)
+        browserFullscreen = document.fullscreenElement === immersiveElement;
     };
     document.addEventListener('fullscreenchange', syncFullscreen);
     voiceAvailable =
@@ -87,7 +89,10 @@
     void sync();
     const sub = journeyQuery().subscribe({
       next: (data) => {
-        if (live) totalXp = data.profile?.totalXpEarned ?? 0;
+        if (live) {
+          totalXp = data.profile?.totalXpEarned ?? 0;
+          xpDebt = data.profile?.rewardDebt?.xp ?? 0;
+        }
       },
       error: () => {
         if (live)
@@ -119,7 +124,13 @@
       ? chapterOneEnding.title + '. ' + chapterOneEnding.text
       : chapterTwoFinished
         ? 'Fim desta demonstração. Sua jornada real continua disponível.'
-        : [scene.title, scene.text, scene.speaker, scene.dialogue, scene.caption]
+        : [
+            scene.title,
+            scene.text,
+            scene.speaker,
+            scene.dialogue,
+            scene.caption,
+          ]
             .filter(Boolean)
             .join('. ');
     const voice = new SpeechSynthesisUtterance(text);
@@ -146,7 +157,8 @@
         ? await advanceChapterTwo(chapterTwoIndex)
         : await advancePilot(pilot.scene, selected);
     } catch (cause) {
-      error = cause instanceof Error ? cause.message : 'Não foi possível avançar.';
+      error =
+        cause instanceof Error ? cause.message : 'Não foi possível avançar.';
     } finally {
       busy = false;
     }
@@ -160,7 +172,9 @@
       pilot = await initializeChapterTwoProgress();
     } catch (cause) {
       error =
-        cause instanceof Error ? cause.message : 'Não foi possível salvar o marco.';
+        cause instanceof Error
+          ? cause.message
+          : 'Não foi possível salvar o marco.';
     } finally {
       busy = false;
     }
@@ -174,7 +188,9 @@
       pilot = await unlockChapterTwo();
     } catch (cause) {
       error =
-        cause instanceof Error ? cause.message : 'Não foi possível abrir o capítulo.';
+        cause instanceof Error
+          ? cause.message
+          : 'Não foi possível abrir o capítulo.';
     } finally {
       busy = false;
     }
@@ -198,10 +214,10 @@
         await immersiveElement.requestFullscreen();
       }
     } catch {
-      error = 'O navegador não permitiu tela cheia. O modo imersivo continua disponível nesta página.';
+      error =
+        'O navegador não permitiu tela cheia. O modo imersivo continua disponível nesta página.';
     }
   }
-
 </script>
 
 <svelte:head>
@@ -216,8 +232,11 @@
   <div class="rpg-backdrop" aria-hidden="true">
     {#if ready}
       <Artwork
-        src={chapterOneFinished ? '/art/pilot/scene-3.webp' : chapterTwoFinished
-          ? '/art/pilot/scene-1.webp' : scene.art}
+        src={chapterOneFinished
+          ? '/art/pilot/scene-3.webp'
+          : chapterTwoFinished
+            ? '/art/pilot/scene-1.webp'
+            : scene.art}
         alt=""
         eager
       />
@@ -227,7 +246,9 @@
 
   <header class="rpg-theater-top">
     <div class="rpg-heading">
-      <p class="rpg-kicker">Level Me Up <span aria-hidden="true">/</span> Aventura experimental</p>
+      <p class="rpg-kicker">
+        Level Me Up <span aria-hidden="true">/</span> Aventura experimental
+      </p>
       <h1>O outro lado da ponte</h1>
       <p class="rpg-chapter-state">
         Capítulo 1: {pilot.scene === 6 ? 'concluído' : 'em andamento'}
@@ -237,7 +258,11 @@
     </div>
     <nav class="rpg-top-actions" aria-label="Janela da aventura">
       {#if canFullscreen}
-        <button class="rpg-icon-button" type="button" onclick={toggleBrowserFullscreen}>
+        <button
+          class="rpg-icon-button"
+          type="button"
+          onclick={toggleBrowserFullscreen}
+        >
           {browserFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
         </button>
       {/if}
@@ -255,33 +280,50 @@
         <h2>{chapterOneEnding.title}</h2>
         <p>{chapterOneEnding.text}</p>
         <p class="rpg-caption">
-          Sua escolha foi registrada. A próxima aventura poderá ser iniciada quando você desejar.
+          Sua escolha foi registrada. A próxima aventura poderá ser iniciada
+          quando você desejar.
         </p>
         <div class="rpg-chapter-unlock" aria-labelledby="next-chapter-title">
           <p class="rpg-overline">Próxima aventura</p>
           <h3 id="next-chapter-title">Capítulo 2 — Ecos da passagem</h3>
           {#if replay}
-            <p>Você está revendo o primeiro capítulo. Sua decisão original não mudou.</p>
+            <p>
+              Você está revendo o primeiro capítulo. Sua decisão original não
+              mudou.
+            </p>
           {:else if pilot.chapterOneEndXp === undefined}
-            <p>Você concluiu o piloto antigo. Para não contar XP passado como conquista nova,
-              defina agora o ponto de partida para o próximo capítulo.</p>
+            <p>
+              Você concluiu o piloto antigo. Para não contar XP passado como
+              conquista nova, defina agora o ponto de partida para o próximo
+              capítulo.
+            </p>
             <Button disabled={busy} onclick={registerProgress}>
               Começar a contar XP para o próximo capítulo
             </Button>
           {:else}
-            <p>Continue suas atividades reais no seu ritmo. Ganhe {CHAPTER_TWO_XP} XP
-              novos para liberar esta aventura — sem gastar seu XP.</p>
+            <p>
+              Continue suas atividades reais no seu ritmo. Ganhe {CHAPTER_TWO_XP}
+              XP novos para liberar esta aventura — sem gastar seu XP.
+            </p>
             <label for="rpg-xp">XP conquistado depois do capítulo 1</label>
-            <progress id="rpg-xp" max={CHAPTER_TWO_XP}
-              value={Math.min(progress.earned, CHAPTER_TWO_XP)}></progress>
+            <progress
+              id="rpg-xp"
+              max={CHAPTER_TWO_XP}
+              value={Math.min(progress.earned, CHAPTER_TWO_XP)}
+            ></progress>
             <p class="rpg-xp-numbers">
               {Math.min(progress.earned, CHAPTER_TWO_XP)} / {CHAPTER_TWO_XP} XP
-              {#if !progress.available} · Faltam {progress.remaining} XP{/if}
+              {#if !progress.available}
+                · Faltam {progress.remaining} XP{/if}
             </p>
             {#if progress.available}
-              <Button disabled={busy} onclick={startSecond}>Iniciar capítulo 2</Button>
+              <Button disabled={busy} onclick={startSecond}
+                >Iniciar capítulo 2</Button
+              >
             {:else}
-              <a class="rpg-secondary-link" href="/missoes">Ver minhas missões reais</a>
+              <a class="rpg-secondary-link" href="/missoes"
+                >Ver minhas missões reais</a
+              >
             {/if}
           {/if}
         </div>
@@ -290,14 +332,17 @@
       <div class="rpg-story-card rpg-finale">
         <p class="rpg-overline">Capítulo 2 · Concluído</p>
         <h2>O mundo continua</h2>
-        <p>Esta pequena continuação serve para testar capítulos e progressão.
-          A história definitiva será criada depois de validarmos a experiência.</p>
+        <p>
+          Esta pequena continuação serve para testar capítulos e progressão. A
+          história definitiva será criada depois de validarmos a experiência.
+        </p>
       </div>
     {:else}
       <div class="rpg-story-card">
         <p class="rpg-overline">
-          {playingTwo ? 'Capítulo 2' : 'Capítulo 1'} ·
-          Cena {(playingTwo ? chapterTwoIndex : chapterOneIndex) + 1}
+          {playingTwo ? 'Capítulo 2' : 'Capítulo 1'} · Cena {(playingTwo
+            ? chapterTwoIndex
+            : chapterOneIndex) + 1}
           de {playingTwo ? chapterTwoScenes.length : pilotScenes.length}
         </p>
         <h2>{scene.title}</h2>
@@ -320,7 +365,10 @@
         <details class="rpg-options">
           <summary>Opções de voz</summary>
           <div>
-            <p>Leitura sintética do navegador; nenhuma voz é reproduzida automaticamente.</p>
+            <p>
+              Leitura sintética do navegador; nenhuma voz é reproduzida
+              automaticamente.
+            </p>
             <Button variant="quiet" onclick={speakScene}>
               {speaking ? 'Parar leitura' : 'Ouvir cena'}
             </Button>
@@ -332,13 +380,21 @@
       {#if ready}
         {#if !chapterOneFinished && !chapterTwoFinished}
           {#if !playingTwo && chapterOneIndex === 5 && !replay}
-            <Button disabled={busy} onclick={() => next('help')}>Ajudar o guarda</Button>
-            <Button variant="secondary" disabled={busy} onclick={() => next('follow')}>
+            <Button disabled={busy} onclick={() => next('help')}
+              >Ajudar o guarda</Button
+            >
+            <Button
+              variant="secondary"
+              disabled={busy}
+              onclick={() => next('follow')}
+            >
               Investigar os passos
             </Button>
           {:else}
             <Button disabled={busy} onclick={() => next()}>
-              {replay && chapterOneIndex === 5 ? 'Rever o desfecho' : 'Próxima cena'}
+              {replay && chapterOneIndex === 5
+                ? 'Rever o desfecho'
+                : 'Próxima cena'}
             </Button>
           {/if}
         {/if}
@@ -346,7 +402,9 @@
           <Button variant="quiet" onclick={review}>Rever capítulo 1</Button>
         {/if}
         {#if replay && chapterOneFinished}
-          <Button variant="secondary" onclick={closeReview}>Voltar aos capítulos</Button>
+          <Button variant="secondary" onclick={closeReview}
+            >Voltar aos capítulos</Button
+          >
         {/if}
       {/if}
     </nav>
@@ -368,8 +426,16 @@
     background: #080e16;
     overflow: hidden;
   }
-  .rpg-theater:fullscreen { width: 100vw; height: 100dvh; }
-  .rpg-backdrop { position: absolute; inset: 0; z-index: -3; overflow: hidden; }
+  .rpg-theater:fullscreen {
+    width: 100vw;
+    height: 100dvh;
+  }
+  .rpg-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: -3;
+    overflow: hidden;
+  }
   .rpg-backdrop :global(img),
   .rpg-backdrop :global(.lmu-art-fallback) {
     width: 100%;
@@ -377,40 +443,76 @@
     object-fit: cover;
     object-position: center center;
     display: block;
-    filter: saturate(.9) contrast(1.08);
+    filter: saturate(0.9) contrast(1.08);
   }
   .rpg-vignette {
     position: absolute;
     inset: 0;
     z-index: -2;
     background:
-      linear-gradient(180deg,rgba(5,9,17,.88),transparent 27%,transparent 39%,rgba(5,9,17,.92) 86%),
-      linear-gradient(90deg,rgba(5,9,17,.76),transparent 85%);
+      linear-gradient(
+        180deg,
+        rgba(5, 9, 17, 0.88),
+        transparent 27%,
+        transparent 39%,
+        rgba(5, 9, 17, 0.92) 86%
+      ),
+      linear-gradient(90deg, rgba(5, 9, 17, 0.76), transparent 85%);
     pointer-events: none;
   }
   .rpg-theater-top {
-    padding: max(1rem, env(safe-area-inset-top)) clamp(1rem,3vw,2.5rem) 1rem;
+    padding: max(1rem, env(safe-area-inset-top)) clamp(1rem, 3vw, 2.5rem) 1rem;
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
   }
-  .rpg-heading { min-width: 0; }
-  .rpg-kicker,.rpg-overline { color: var(--rpg-gold); font-size: .78rem; letter-spacing: .13em; text-transform: uppercase; }
-  .rpg-kicker span { color: #b5b9bf; padding: 0 .3rem; }
-  .rpg-heading h1 { font-size: clamp(1.15rem,2.1vw,1.6rem); line-height: 1.18; color: #fff; margin: .35rem 0; }
-  .rpg-chapter-state { margin: 0; color: #ccd3da; font-size: .85rem; }
-  .rpg-chapter-state span { padding: 0 .3rem; }
-  .rpg-top-actions { display: flex; gap: .65rem; flex-wrap: wrap; justify-content: flex-end; flex-shrink: 0; }
-  .rpg-leave,.rpg-icon-button,.rpg-secondary-link {
+  .rpg-heading {
+    min-width: 0;
+  }
+  .rpg-kicker,
+  .rpg-overline {
+    color: var(--rpg-gold);
+    font-size: 0.78rem;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+  }
+  .rpg-kicker span {
+    color: #b5b9bf;
+    padding: 0 0.3rem;
+  }
+  .rpg-heading h1 {
+    font-size: clamp(1.15rem, 2.1vw, 1.6rem);
+    line-height: 1.18;
+    color: #fff;
+    margin: 0.35rem 0;
+  }
+  .rpg-chapter-state {
+    margin: 0;
+    color: #ccd3da;
+    font-size: 0.85rem;
+  }
+  .rpg-chapter-state span {
+    padding: 0 0.3rem;
+  }
+  .rpg-top-actions {
+    display: flex;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    flex-shrink: 0;
+  }
+  .rpg-leave,
+  .rpg-icon-button,
+  .rpg-secondary-link {
     color: var(--rpg-paper);
     text-decoration: none;
-    background: rgba(5,12,19,.79);
-    border: 1px solid rgba(241,224,192,.5);
-    border-radius: .7rem;
-    padding: .65rem .85rem;
+    background: rgba(5, 12, 19, 0.79);
+    border: 1px solid rgba(241, 224, 192, 0.5);
+    border-radius: 0.7rem;
+    padding: 0.65rem 0.85rem;
     font: inherit;
-    font-size: .88rem;
+    font-size: 0.88rem;
     cursor: pointer;
     min-height: 44px;
     display: inline-flex;
@@ -420,7 +522,7 @@
   .rpg-story-area {
     overflow-y: auto;
     min-height: 0;
-    padding: 1rem clamp(1rem,4vw,3.75rem);
+    padding: 1rem clamp(1rem, 4vw, 3.75rem);
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -429,92 +531,205 @@
   }
   .rpg-story-card {
     width: min(100%, 68ch);
-    background: linear-gradient(90deg,rgba(7,12,19,.88),rgba(7,12,19,.56));
-    border-left: 3px solid rgba(232,200,145,.74);
-    border-radius: 0 .8rem .8rem 0;
-    padding: clamp(1rem,2.1vw,1.75rem);
-    box-shadow: 0 12px 40px rgba(0,0,0,.22);
+    background: linear-gradient(
+      90deg,
+      rgba(7, 12, 19, 0.88),
+      rgba(7, 12, 19, 0.56)
+    );
+    border-left: 3px solid rgba(232, 200, 145, 0.74);
+    border-radius: 0 0.8rem 0.8rem 0;
+    padding: clamp(1rem, 2.1vw, 1.75rem);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
   }
   .rpg-story-card h2 {
     color: #fff;
-    font-size: clamp(1.55rem,3vw,2.6rem);
+    font-size: clamp(1.55rem, 3vw, 2.6rem);
     line-height: 1.15;
-    margin: .45rem 0 1rem;
+    margin: 0.45rem 0 1rem;
   }
-  .rpg-story-card p { line-height: 1.55; margin: .55rem 0; max-width: 68ch; }
-  .rpg-narration { font-size: clamp(.99rem,1.35vw,1.12rem); }
-  .rpg-caption { color: #ead4ad; font-style: italic; }
+  .rpg-story-card p {
+    line-height: 1.55;
+    margin: 0.55rem 0;
+    max-width: 68ch;
+  }
+  .rpg-narration {
+    font-size: clamp(0.99rem, 1.35vw, 1.12rem);
+  }
+  .rpg-caption {
+    color: #ead4ad;
+    font-style: italic;
+  }
   .rpg-dialogue {
-    margin-top: .9rem;
-    padding: .55rem 1rem;
-    background: rgba(31,38,46,.75);
-    border-radius: .45rem;
+    margin-top: 0.9rem;
+    padding: 0.55rem 1rem;
+    background: rgba(31, 38, 46, 0.75);
+    border-radius: 0.45rem;
   }
-  .rpg-speaker { color: var(--rpg-gold); font-weight: 700; font-size: .85rem; }
-  .rpg-dialogue p { margin: .32rem 0; }
-  .rpg-finale { max-width: 74ch; }
+  .rpg-speaker {
+    color: var(--rpg-gold);
+    font-weight: 700;
+    font-size: 0.85rem;
+  }
+  .rpg-dialogue p {
+    margin: 0.32rem 0;
+  }
+  .rpg-finale {
+    max-width: 74ch;
+  }
   .rpg-chapter-unlock {
-    border-top: 1px solid rgba(232,200,145,.45);
+    border-top: 1px solid rgba(232, 200, 145, 0.45);
     margin-top: 1.2rem;
-    padding-top: .8rem;
+    padding-top: 0.8rem;
   }
-  .rpg-chapter-unlock h3 { font-size: 1.15rem; margin: .4rem 0; color: #fff; }
-  .rpg-chapter-unlock label { font-size: .85rem; display: block; margin: 1rem 0 .45rem; }
-  .rpg-chapter-unlock progress { width: 100%; height: .8rem; }
-  .rpg-xp-numbers { font-variant-numeric: tabular-nums; }
-  .rpg-message { background: #2e1616; border: 1px solid #b96565; color: white; padding: .7rem 1rem; border-radius: .6rem; }
+  .rpg-chapter-unlock h3 {
+    font-size: 1.15rem;
+    margin: 0.4rem 0;
+    color: #fff;
+  }
+  .rpg-chapter-unlock label {
+    font-size: 0.85rem;
+    display: block;
+    margin: 1rem 0 0.45rem;
+  }
+  .rpg-chapter-unlock progress {
+    width: 100%;
+    height: 0.8rem;
+  }
+  .rpg-xp-numbers {
+    font-variant-numeric: tabular-nums;
+  }
+  .rpg-message {
+    background: #2e1616;
+    border: 1px solid #b96565;
+    color: white;
+    padding: 0.7rem 1rem;
+    border-radius: 0.6rem;
+  }
   .rpg-theater-bottom {
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 1rem;
-    padding: 1rem clamp(1rem,3vw,2.5rem) max(1rem, env(safe-area-inset-bottom));
-    background: rgba(5,9,17,.85);
-    border-top: 1px solid rgba(241,224,192,.23);
+    padding: 1rem clamp(1rem, 3vw, 2.5rem)
+      max(1rem, env(safe-area-inset-bottom));
+    background: rgba(5, 9, 17, 0.85);
+    border-top: 1px solid rgba(241, 224, 192, 0.23);
   }
-  .rpg-bottom-meta { color: #d5d5db; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; font-size: .85rem; }
-  .rpg-controls { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: .65rem; }
-  .rpg-options { position: relative; }
-  .rpg-options summary { cursor: pointer; color: var(--rpg-gold); font-size: .85rem; }
+  .rpg-bottom-meta {
+    color: #d5d5db;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    font-size: 0.85rem;
+  }
+  .rpg-controls {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+  .rpg-options {
+    position: relative;
+  }
+  .rpg-options summary {
+    cursor: pointer;
+    color: var(--rpg-gold);
+    font-size: 0.85rem;
+  }
   .rpg-options[open] > div {
     position: absolute;
     z-index: 4;
     bottom: 2.5rem;
     left: 0;
-    min-width: min(19rem,75vw);
+    min-width: min(19rem, 75vw);
     max-width: 19rem;
     padding: 1rem;
     color: var(--rpg-paper);
     background: #17212e;
-    border: 1px solid rgba(232,200,145,.5);
-    border-radius: .7rem;
+    border: 1px solid rgba(232, 200, 145, 0.5);
+    border-radius: 0.7rem;
   }
-  .rpg-options[open] > div p { font-size: .85rem; line-height: 1.5; }
-  .rpg-theater :global(.lmu-button) { min-height: 44px; }
-  .rpg-theater :is(button,a,summary):focus-visible { outline: 3px solid var(--rpg-gold); outline-offset: 3px; }
+  .rpg-options[open] > div p {
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+  .rpg-theater :global(.lmu-button) {
+    min-height: 44px;
+  }
+  .rpg-theater :is(button, a, summary):focus-visible {
+    outline: 3px solid var(--rpg-gold);
+    outline-offset: 3px;
+  }
   @media (max-width: 700px) {
-    .rpg-theater-top { padding: .75rem 1rem; align-items: flex-start; }
-    .rpg-kicker { font-size: .65rem; }
-    .rpg-heading h1 { font-size: 1.1rem; }
-    .rpg-chapter-state { font-size: .74rem; }
-    .rpg-top-actions { flex-wrap: nowrap; }
-    .rpg-top-actions :is(a,button) { font-size: .75rem; padding: .45rem .55rem; }
-    .rpg-story-area { padding: .75rem .8rem; }
-    .rpg-story-card { padding: .85rem; width: 100%; }
-    .rpg-story-card h2 { margin: .2rem 0 .5rem; }
-    .rpg-story-card p { line-height: 1.4; }
-    .rpg-dialogue { margin-top: .5rem; }
-    .rpg-theater-bottom { padding: .6rem .8rem max(.7rem,env(safe-area-inset-bottom)); align-items: flex-end; }
-    .rpg-bottom-meta > span { display: none; }
-    .rpg-controls :global(.lmu-button) { font-size: .85rem; }
+    .rpg-theater-top {
+      padding: 0.75rem 1rem;
+      align-items: flex-start;
+    }
+    .rpg-kicker {
+      font-size: 0.65rem;
+    }
+    .rpg-heading h1 {
+      font-size: 1.1rem;
+    }
+    .rpg-chapter-state {
+      font-size: 0.74rem;
+    }
+    .rpg-top-actions {
+      flex-wrap: nowrap;
+    }
+    .rpg-top-actions :is(a, button) {
+      font-size: 0.75rem;
+      padding: 0.45rem 0.55rem;
+    }
+    .rpg-story-area {
+      padding: 0.75rem 0.8rem;
+    }
+    .rpg-story-card {
+      padding: 0.85rem;
+      width: 100%;
+    }
+    .rpg-story-card h2 {
+      margin: 0.2rem 0 0.5rem;
+    }
+    .rpg-story-card p {
+      line-height: 1.4;
+    }
+    .rpg-dialogue {
+      margin-top: 0.5rem;
+    }
+    .rpg-theater-bottom {
+      padding: 0.6rem 0.8rem max(0.7rem, env(safe-area-inset-bottom));
+      align-items: flex-end;
+    }
+    .rpg-bottom-meta > span {
+      display: none;
+    }
+    .rpg-controls :global(.lmu-button) {
+      font-size: 0.85rem;
+    }
   }
   @media (max-width: 380px) {
-    .rpg-top-actions { flex-direction: column; }
-    .rpg-theater-bottom { flex-direction: column-reverse; align-items: stretch; }
-    .rpg-controls { justify-content: stretch; }
-    .rpg-controls :global(.lmu-button) { flex: 1; }
+    .rpg-top-actions {
+      flex-direction: column;
+    }
+    .rpg-theater-bottom {
+      flex-direction: column-reverse;
+      align-items: stretch;
+    }
+    .rpg-controls {
+      justify-content: stretch;
+    }
+    .rpg-controls :global(.lmu-button) {
+      flex: 1;
+    }
   }
   @media (prefers-reduced-motion: reduce) {
-    .rpg-theater * { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
+    .rpg-theater * {
+      scroll-behavior: auto !important;
+      animation: none !important;
+      transition: none !important;
+    }
   }
 </style>

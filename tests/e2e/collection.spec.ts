@@ -101,9 +101,13 @@ test('compra confirma custo, troca de espaço e prévia coincidem com missão re
     .getByRole('combobox', { name: 'Esforço desta missão', exact: true })
     .selectOption('medium');
   await page.getByRole('button', { name: 'Criar missão', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'Uma nova missão' })).not.toBeVisible();
+  await expect(
+    page.getByRole('dialog', { name: 'Uma nova missão' }),
+  ).not.toBeVisible();
   await page.goto('/missoes');
-  await page.getByRole('link', { name: 'Experimentar os novos bônus', exact: true }).click();
+  await page
+    .getByRole('link', { name: 'Experimentar os novos bônus', exact: true })
+    .click();
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
@@ -221,7 +225,7 @@ test('prévia de cuidado aberta em duas abas não gasta duas vezes', async ({
   expect(saved.data.profile.food).toBe(400);
   expect(saved.data.companions[0].careHistory).toHaveLength(1);
 });
-test('transformação usa recibo e estorno devolve o ambiente anterior', async ({
+test('transformação preserva o estágio e o prêmio após correção da missão', async ({
   page,
 }) => {
   await seed(page, { gold: 0, food: 0, totalXpEarned: 2490 });
@@ -231,9 +235,13 @@ test('transformação usa recibo e estorno devolve o ambiente anterior', async (
     .getByLabel('O que você quer fazer?')
     .fill('Cultivar um marco real');
   await page.getByRole('button', { name: 'Criar missão', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'Uma nova missão' })).not.toBeVisible();
+  await expect(
+    page.getByRole('dialog', { name: 'Uma nova missão' }),
+  ).not.toBeVisible();
   await page.goto('/missoes');
-  await page.getByRole('link', { name: 'Cultivar um marco real', exact: true }).click();
+  await page
+    .getByRole('link', { name: 'Cultivar um marco real', exact: true })
+    .click();
   // Navigation is client-side; click returning does not guarantee the URL has changed.
   await expect(page).toHaveURL(new RegExp('/missao/[0-9]+$'));
   const url = page.url();
@@ -254,6 +262,9 @@ test('transformação usa recibo e estorno devolve o ambiente anterior', async (
   await page
     .getByRole('button', { name: 'Desfazer conclusão', exact: true })
     .click();
+  await page
+    .getByRole('button', { name: 'Confirmar correção', exact: true })
+    .click();
   await expect(
     page.getByRole('button', { name: 'Concluir missão', exact: true }),
   ).toBeVisible();
@@ -261,10 +272,10 @@ test('transformação usa recibo e estorno devolve o ambiente anterior', async (
   await expect(
     page
       .locator('.collection-scene')
-      .getByRole('heading', { name: 'Semente', exact: true }),
+      .getByRole('heading', { name: 'Brotinho', exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText('Registro estornado', { exact: true }),
+    page.getByText('Recompensa registrada', { exact: true }),
   ).toBeVisible();
 });
 test('conquistas de coleção acompanham posse e saldo; metas futuras ficam separadas', async ({
@@ -285,7 +296,7 @@ test('conquistas de coleção acompanham posse e saldo; metas futuras ficam sepa
   ).toBeVisible();
   await expect(
     page.getByRole('heading', { name: 'Pão-Duro', exact: true }),
-  ).not.toBeVisible();
+  ).toBeVisible();
   await page.getByRole('button', { name: 'Futuras', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'Semideus', exact: true }),

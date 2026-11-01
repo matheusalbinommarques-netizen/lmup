@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { SvelteMap } from 'svelte/reactivity';
   import { liveQuery } from 'dexie';
   import { db } from '$services/db';
   import { saveSession } from '$services/savedSessionService';
@@ -10,18 +11,32 @@
   import { fraction } from '$services/productivityRules';
   import OccurrenceExecution from './OccurrenceExecution.svelte';
   import Button from '$lib/ui/Button.svelte';
+  import Execution from './Execution.svelte';
+  import { dateKey } from '$services/rewardService';
+  import { goto } from '$app/navigation';
+  import type { Task } from '$services/db';
   let session = $state<SavedMissionSession>(),
     rows = $state<Occurrence[]>([]),
+    tasks = $state<Task[]>([]),
     error = $state(''),
     busy = $state(false);
+  let executionBusy = $state(false);
+  const observedRevisions = new SvelteMap<string, number>();
   onMount(() => {
     const sub = liveQuery(async () => ({
       sessions: await db.savedMissionSessions.toArray(),
       rows: await db.occurrences.toArray(),
+      tasks: await db.tasks.toArray(),
     })).subscribe({
       next: (data) => {
-        session = data.sessions.find((row) => row.status === 'active');
+        const active = data.sessions.find((row) => row.status === 'active');
+        if (!active) session = undefined;
+        else if (active.revision >= (observedRevisions.get(active.id) ?? 0)) {
+          session = active;
+          observedRevisions.set(active.id, active.revision);
+        }
         rows = data.rows;
+        tasks = data.tasks;
       },
       error: () => (error = 'Não foi possível abrir sua sessão.'),
     });
@@ -32,17 +47,35 @@
       ? rows.find((row) => row.id === session!.occurrenceIds[session!.cursor])
       : undefined,
   );
+  const currentTask = $derived(
+    tasks.find((task) => task.id === current?.taskId),
+  );
+  const canUseTaskExecution = $derived(
+    current &&
+      currentTask &&
+      (!currentTask.recurrence || current.originDate === dateKey()) &&
+      ['direct', 'steps'].includes(current.tracking?.method ?? 'direct') &&
+      JSON.stringify(current.tracking) ===
+        JSON.stringify(currentTask.tracking) &&
+      JSON.stringify(current.steps) ===
+        JSON.stringify(currentTask.subtasks ?? []) &&
+      current.baseXp === currentTask.xp,
+  );
   async function update(patch: Partial<SavedMissionSession>) {
-    if (!session || busy) return;
+    if (!session || busy || executionBusy) return;
     busy = true;
     error = '';
     try {
-      await saveSession({ ...session, ...patch }, session.revision);
+      const saved = await saveSession(
+        { ...session, ...patch },
+        session.revision,
+      );
+      observedRevisions.set(saved.id, saved.revision);
+      session = saved.status === 'active' ? saved : undefined;
     } catch (cause) {
       error =
-        cause instanceof Error
-          ? cause.message
-          : 'Não foi possível salvar a sessão.';
+        'Não foi possível salvar a sessão. ' +
+        (cause instanceof Error ? cause.message : 'Tente novamente.');
     } finally {
       busy = false;
     }
@@ -63,12 +96,19 @@
     if (!session) return;
     const ids = session.occurrenceIds.filter((item) => item !== id);
     if (!ids.length) {
-      void update({ status: 'ended' });
+      void update({ status: 'ended', occurrenceIds: [], cursor: 0 });
       return;
     }
     void update({
       occurrenceIds: ids,
-      cursor: Math.min(session.cursor, ids.length - 1),
+      cursor: Math.max(
+        0,
+        Math.min(
+          ids.length,
+          session.cursor -
+            (session.occurrenceIds.indexOf(id) < session.cursor ? 1 : 0),
+        ),
+      ),
     });
   }
 </script>
@@ -85,31 +125,41 @@
       <div class="journey-actions">
         <Button
           variant="secondary"
+          disabled={busy || executionBusy}
           onclick={() =>
             update({ mode: session!.mode === 'focus' ? 'overview' : 'focus' })}
           >{session.mode === 'focus' ? 'Visão geral' : 'Modo foco'}</Button
-        ><Button variant="quiet" onclick={() => update({ status: 'paused' })}
-          >Pausar sessão</Button
-        ><Button variant="quiet" onclick={() => update({ status: 'ended' })}
-          >Encerrar sessão</Button
+        ><a
+          class="journey-link"
+          href="/missoes"
+          onclick={async (event) => {
+            event.preventDefault();
+            if (busy || executionBusy) return;
+            await update({ status: 'paused' });
+            await goto('/missoes');
+          }}>Pausar sessão</a
+        ><Button
+          variant="quiet"
+          disabled={busy || executionBusy}
+          onclick={() => update({ status: 'ended' })}>Encerrar sessão</Button
         >
       </div>
     </header>
     <p>
       {session.occurrenceIds.filter(
         (id) => rows.find((row) => row.id === id)?.status === 'completed',
-      ).length} de {session.occurrenceIds.length} concluídas. Você pode sair e retomar
-      sem perder progresso.
+      ).length} de {session.occurrenceIds.length} missões concluídas
     </p>
     <div class="session-layout" class:overview={session.mode === 'overview'}>
-      <aside class="rpg-frame">
+      <aside class="rpg-frame" aria-label="Fila de missões">
         <ol>
-          {#each session.occurrenceIds as id, index (index)}{@const row =
+          {#each session.occurrenceIds as id, index (id)}{@const row =
               rows.find((row) => row.id === id)}
             <li>
               <button
+                aria-label={`${row?.title} ${row?.status === 'completed' ? 'Concluída' : row?.value ? 'Parcial' : 'Pendente'}`}
                 class:chosen={index === session.cursor}
-                disabled={busy}
+                disabled={busy || executionBusy}
                 onclick={() => update({ cursor: index })}
                 ><span
                   >{index + 1}. {row?.title ?? 'Ocorrência indisponível'}</span
@@ -120,47 +170,100 @@
               <div class="queue-actions">
                 <Button
                   variant="quiet"
-                  disabled={index === 0}
+                  disabled={busy || executionBusy || index === 0}
+                  aria-label={`Mover ${row?.title} para cima`}
                   onclick={() => move(index, -1)}>↑</Button
                 ><Button
                   variant="quiet"
-                  disabled={index === session.occurrenceIds.length - 1}
+                  disabled={busy ||
+                    executionBusy ||
+                    index === session.occurrenceIds.length - 1}
+                  aria-label={`Mover ${row?.title} para baixo`}
                   onclick={() => move(index, 1)}>↓</Button
-                ><Button variant="quiet" onclick={() => remove(id)}
-                  >Remover da sessão</Button
-                >
+                >{#if row?.status !== 'completed'}<Button
+                    variant="quiet"
+                    aria-label={`Remover da sessão: ${row?.title}`}
+                    disabled={busy || executionBusy}
+                    onclick={() => remove(id)}>Remover da sessão</Button
+                  >{/if}
               </div>
             </li>{/each}
         </ol>
       </aside>
-      {#if current}<main>
+      {#if current}<div class="session-current">
           <p>
             Atividade {session.cursor + 1} de {session.occurrenceIds.length}
           </p>
-          {#key current.id}<OccurrenceExecution id={current.id} />{/key}
+          {#key current.id}
+            {#if currentTask && canUseTaskExecution}
+              <Execution
+                id={currentTask.id!}
+                sessionMode
+                onSessionContinue={() =>
+                  update({
+                    cursor: Math.min(
+                      session!.cursor + 1,
+                      session!.occurrenceIds.length,
+                    ),
+                  })}
+                onSessionBusyChange={(value) => (executionBusy = value)}
+                onSessionSkip={() =>
+                  update({
+                    cursor: Math.min(
+                      session!.cursor + 1,
+                      session!.occurrenceIds.length,
+                    ),
+                  })}
+              />
+            {:else}<OccurrenceExecution
+                id={current.id}
+                onBusyChange={(value) => (executionBusy = value)}
+              />{/if}
+          {/key}
           <div class="journey-actions">
             <Button
               variant="secondary"
-              disabled={session.cursor === 0}
+              disabled={busy || executionBusy || session.cursor === 0}
               onclick={() => update({ cursor: session!.cursor - 1 })}
               >Anterior</Button
             ><Button
-              disabled={session.cursor >= session.occurrenceIds.length - 1}
+              disabled={busy ||
+                executionBusy ||
+                session.cursor >= session.occurrenceIds.length - 1}
               onclick={() => update({ cursor: session!.cursor + 1 })}
               >Próxima atividade</Button
             >
           </div>
-        </main>{:else}<p>Selecione uma atividade da sequência.</p>{/if}
+        </div>{:else}<section class="rpg-frame empty">
+          <h2>Fim da sequência</h2>
+          <p>As atividades pendentes e seu progresso foram preservados.</p>
+          <Button
+            onclick={() =>
+              update({
+                cursor: Math.max(
+                  0,
+                  session!.occurrenceIds.findIndex(
+                    (id) =>
+                      rows.find((row) => row.id === id)?.status !== 'completed',
+                  ),
+                ),
+              })}>Revisar pendentes</Button
+          >
+          <Button
+            onclick={async () => {
+              await update({ status: 'ended' });
+              await goto('/missoes');
+            }}>Finalizar sessão</Button
+          >
+        </section>{/if}
     </div>
   {:else}<div class="rpg-frame empty">
-      <h1>Sessão preservada</h1>
+      <h1>Nenhuma sessão em foco.</h1>
       <p>
         Nenhuma sessão está em foco. Retome uma sessão salva ou monte outra na
         agenda.
       </p>
-      <a class="journey-link" href="/missoes"
-        >Abrir missões e sessões salvas →</a
-      >
+      <a class="journey-link" href="/missoes">Escolher missões</a>
     </div>{/if}
 </section>
 
@@ -218,7 +321,7 @@
     display: flex;
     flex-wrap: wrap;
   }
-  main {
+  .session-current {
     min-width: 0;
   }
   .empty {

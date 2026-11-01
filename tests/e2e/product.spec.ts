@@ -310,6 +310,9 @@ test('revisões registram sessões separadas, preservam notas e impedem repetiç
   await page
     .getByRole('button', { name: 'Desfazer última sessão', exact: true })
     .click();
+  await page
+    .getByRole('button', { name: 'Confirmar correção', exact: true })
+    .click();
   await expect(
     page.getByText('1 sessão válida registrada · 1 desfeita.', {
       exact: true,
@@ -322,7 +325,8 @@ test('revisões registram sessões separadas, preservam notas e impedem repetiç
       (event: any) => event.kind === 'review' && !event.reversedAt,
     ),
   ).toHaveLength(1);
-  expect(result.data.profile.totalXpEarned).toBe(53);
+  expect(result.data.profile.totalXpEarned).toBe(106);
+  expect(result.data.profile.rewardDebt).toEqual({ xp: 53, gold: 25, food: 2 });
   await page.goto(url);
   await expect(
     page.getByRole('button', { name: 'Concluir missão', exact: true }),

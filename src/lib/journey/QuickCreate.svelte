@@ -209,14 +209,24 @@
             concluída para outro projeto.
           </p>{/if}
         {#key requestId}
-          <ScheduleFields
-            bind:plannedDate
-            bind:kind={recurrenceKind}
-            bind:days={recurrenceDays}
-            review={!!editTask?.reviewEnabled}
-          />
+          <fieldset
+            disabled={!!editTask?.routineId}
+            style="border:0;padding:0;min-width:0"
+          >
+            <legend class="sr-only">Calendário da missão</legend>
+            <ScheduleFields
+              bind:plannedDate
+              bind:kind={recurrenceKind}
+              bind:days={recurrenceDays}
+              review={!!editTask?.reviewEnabled}
+            />
+          </fieldset>
         {/key}
+        {#if editTask?.routineId}<p class="lmu-hint">
+            Os dias e horários desta missão são controlados pela rotina.
+          </p>{/if}
         <PlanningDetails
+          calendarLocked={!!editTask?.routineId}
           bind:value={planning}
           legacy={!!editTask && !editTask.productivityVersion}
         />

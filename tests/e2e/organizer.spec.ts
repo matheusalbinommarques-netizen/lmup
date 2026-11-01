@@ -230,7 +230,10 @@ test('rotina persiste por data, impede duplicação entre abas, preserva histór
       exact: true,
     })
     .click();
-  await expect(history).toContainText('Estornada');
+  await page
+    .getByRole('button', { name: 'Confirmar correção', exact: true })
+    .click();
+  await expect(history).toContainText('Corrigida');
   await page.goto(url);
   await expect(
     page.getByRole('region', { name: 'Resumo da recompensa' }),

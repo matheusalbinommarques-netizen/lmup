@@ -101,7 +101,7 @@
     {#if event}
       <div
         class="resource-row"
-        aria-label={event.reversedAt
+        aria-label={event.reversedAt && event.reversalPolicy !== 'debt'
           ? 'Recompensa estornada'
           : 'Recompensa recebida'}
       >
@@ -110,14 +110,32 @@
             <Icon
               name={resource.icon as 'spark' | 'coin' | 'food'}
               size={34}
-            /><strong>{event.reversedAt ? '−' : '+'}{resource.value}</strong
+            /><strong
+              >{event.reversedAt && event.reversalPolicy !== 'debt'
+                ? '−'
+                : '+'}{resource.value}</strong
             ><span>{resource.label}</span>
           </div>
         {/each}
       </div>
       {#if event.reversedAt}<p>
-          Esta recompensa foi devolvida. Os saldos já foram atualizados.
+          {event.reversalPolicy === 'debt'
+            ? 'Conclusão corrigida. Seus saldos foram preservados; os ganhos futuros compensam o débito da recompensa ordinária.'
+            : 'Esta recompensa foi devolvida. Os saldos já foram atualizados.'}
         </p>{/if}
+      {#if event.grossReward && event.compensation && Object.values(event.compensation).some((amount) => amount > 0)}<div
+          class="receipt-note"
+        >
+          <p>
+            Recompensa bruta: {event.grossReward.xp} XP · {event.grossReward
+              .gold} Ouro · {event.grossReward.food} Comida.
+          </p>
+          <p>
+            Compensação de débitos: {event.compensation.xp} XP · {event
+              .compensation.gold} Ouro · {event.compensation.food} Comida. Os valores
+            acima são os ganhos líquidos.
+          </p>
+        </div>{/if}
       {#if bonus}<div class="project-bonus">
           <h2>Projeto concluído</h2>
           <strong>{projectName ?? 'Seu projeto'}</strong>
@@ -173,8 +191,9 @@
           >{continueLabel}<Icon name="arrow" size={18} /></button
         >{:else}<a class="lmu-button lmu-button--primary" href="/"
           >{continueLabel}<Icon name="arrow" size={18} /></a
-        >{/if}{#if evolved}<a class="lmu-button lmu-button--secondary" href="/refugio"
-          >Ver Refúgio</a
+        >{/if}{#if evolved}<a
+          class="lmu-button lmu-button--secondary"
+          href="/refugio">Ver Refúgio</a
         >{/if}
     </div>
     {#if fresh && !skipped}<button

@@ -201,29 +201,17 @@ export async function revokeRewards(ids: string[]): Promise<Profile> {
           'Não há registro suficiente para corrigir esta conclusão antiga com segurança.',
         );
       if (event.reversedAt) continue;
-      const gross = event.grossReward ?? event.reward;
-      // Legacy receipts include the stage prize in gold; preserve it too.
-      const stageGold =
-        event.milestoneGold ??
-        event.awardedStages.reduce(
-          (sum, stageId) =>
-            sum +
-            (ECO_STAGES.find((stage) => stage.id === stageId)
-              ?.goldRewardOnEnter ?? 0),
-          0,
-        );
-      const added = {
-        xp: gross.xp,
-        gold: Math.max(0, gross.gold - stageGold),
-        food: gross.food,
-      };
+      const added = ordinaryReward(event);
       for (const key of ['xp', 'gold', 'food'] as const) {
         debt[key] += added[key];
         if (!Number.isSafeInteger(debt[key]))
           throw new Error('Débito fora do limite seguro.');
       }
       const now = new Date();
-      await db.activityEvents.update(id, { reversedAt: now.toISOString() });
+      await db.activityEvents.update(id, {
+        reversedAt: now.toISOString(),
+        reversalPolicy: 'debt',
+      });
       const reversal: ActivityEvent = {
         ...event,
         id: 'reversal:' + id,
@@ -260,6 +248,23 @@ export async function revokeRewards(ids: string[]): Promise<Profile> {
     await refreshCompletionStreak();
     return updated;
   });
+}
+
+export function ordinaryReward(event: ActivityEvent): Resources {
+  const gross = event.grossReward ?? event.reward;
+  const stageGold =
+    event.milestoneGold ??
+    event.awardedStages.reduce(
+      (sum, id) =>
+        sum +
+        (ECO_STAGES.find((stage) => stage.id === id)?.goldRewardOnEnter ?? 0),
+      0,
+    );
+  return {
+    xp: gross.xp,
+    gold: Math.max(0, gross.gold - stageGold),
+    food: gross.food,
+  };
 }
 
 export async function refreshCompletionStreak() {

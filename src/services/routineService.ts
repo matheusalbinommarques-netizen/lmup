@@ -1,6 +1,6 @@
 import { db, type Task } from './db';
 import { calendarDate } from './calendar';
-import { progressTransaction } from './rewardService';
+import { dateKey, progressTransaction } from './rewardService';
 import { savePlanVersion } from './occurrenceService';
 import { validateTime } from './productivityRules';
 import type { Routine } from './productivityTypes';
@@ -44,9 +44,8 @@ export async function saveRoutine(input: RoutineInput) {
   if (!calendarDate(input.startDate))
     throw new Error('Escolha uma data inicial.');
   if (
-    !input.entries.length ||
     new Set(input.entries.map((entry) => entry.taskId)).size !==
-      input.entries.length
+    input.entries.length
   )
     throw new Error('Escolha missões diferentes para a rotina.');
   const pauseQuota = input.pauseQuota ?? 2,
@@ -80,6 +79,7 @@ export async function saveRoutine(input: RoutineInput) {
         await savePlanVersion(task);
       entries.push({ ...entry, previousPlan });
       await db.tasks.update(entry.taskId, {
+        plannedDate: input.startDate,
         routineId: input.id,
         plannedTime: entry.time,
         recurrence: {
@@ -173,8 +173,14 @@ export async function justifyPause(
     const quota = routine?.pauseQuota ?? 2,
       period = routine?.pausePeriodDays ?? 30;
     const origin = rows[0]!.originDate;
+    const task = await db.tasks.get(rows[0]!.taskId);
+    const anchor =
+      routine?.startDate ??
+      task?.recurrence?.startDate ??
+      dateKey(new Date(task?.createdAt ?? new Date()));
     const bucket = Math.floor(
-      Date.parse(`${origin}T12:00:00Z`) / (period * 86400000),
+      (Date.parse(`${origin}T12:00:00Z`) - Date.parse(`${anchor}T12:00:00Z`)) /
+        (period * 86400000),
     );
     const audit = await db.productivityAudit.toArray();
     const used = audit.filter(
@@ -184,7 +190,14 @@ export async function justifyPause(
           (routineId ?? `task:${rows[0]!.taskId}`) &&
         (entry.after as { bucket?: number }).bucket === bucket,
     );
-    if (used.length >= quota)
+    const pausedDays = new Set(
+      used.map(
+        (entry) =>
+          (entry.after as { originDate?: string }).originDate ??
+          (entry.before as { originDate: string }[])[0]?.originDate,
+      ),
+    );
+    if (!pausedDays.has(origin) && pausedDays.size >= quota)
       throw new Error('A cota de pausas deste período foi utilizada.');
     for (const row of rows)
       await db.occurrences.update(row!.id, {
@@ -200,6 +213,7 @@ export async function justifyPause(
       after: {
         scope: routineId ?? `task:${rows[0]!.taskId}`,
         bucket,
+        originDate: origin,
         reason: reason.trim(),
         occurrenceIds,
       },

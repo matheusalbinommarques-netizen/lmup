@@ -37,6 +37,7 @@
   let day = $state(dateKey()),
     week = $state(true),
     rows = $state<Occurrence[]>([]),
+    contextRows = $state<Occurrence[]>([]),
     routines = $state<Routine[]>([]);
   let selected = $state<string[]>([]),
     error = $state(''),
@@ -65,13 +66,14 @@
     const from = view === 'recovery' ? day : day;
     const to = view === 'agenda' && week ? addCalendarDays(day, 6) : day;
     const sub = liveQuery(async () => ({
-      rows: await plannedOccurrences(from, to),
+      rows: await plannedOccurrences(addCalendarDays(from, -7), to),
       routines: await db.routines.toArray(),
       tasks: await db.tasks.toArray(),
       sessions: await db.savedMissionSessions.toArray(),
     })).subscribe({
       next: (data) => {
-        rows = data.rows;
+        contextRows = data.rows;
+        rows = data.rows.filter((row) => row.plannedDate >= from);
         routines = data.routines;
         tasks = data.tasks;
         sessions = data.sessions;
@@ -175,6 +177,14 @@
       });
       editing = false;
     }, 'Rotina salva. Ocorrências iniciadas e histórico foram preservados.');
+  }
+  function earliestSlot(date: string) {
+    if (date !== dateKey() || now.getHours() < 8) return '08:00';
+    return (
+      String(now.getHours()).padStart(2, '0') +
+      ':' +
+      String(now.getMinutes()).padStart(2, '0')
+    );
   }
   function move(index: number, direction: number) {
     const next = [...entries];
@@ -301,12 +311,13 @@
           somente nesta sugestão.
         </p>
         {#each rows
-          .filter((row) => !row.plannedTime && row.status !== 'completed')
+          .filter((row) => row.plannedDate >= dateKey() && !row.plannedTime && !['completed', 'discarded', 'excused'].includes(row.status))
           .slice(0, 3) as row (row.id)}<p>
             {row.title}: {freeSlot(
-              rows,
+              contextRows,
               row.plannedDate,
               row.estimatedMinutes ?? 30,
+              earliestSlot(row.plannedDate),
             ) ?? 'sem intervalo encontrado'} · sugestão para sua revisão.
           </p>{/each}
       </details>{/if}
@@ -514,6 +525,7 @@
               : 'Encerrada'}
         </p>
         <Button
+          disabled={!session.occurrenceIds.length}
           onclick={() =>
             run(async () => {
               await saveSession(

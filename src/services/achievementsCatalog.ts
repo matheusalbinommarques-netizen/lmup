@@ -15,6 +15,8 @@ export type Category =
 export type AchievementStats = {
   activityMinutes: number;
   completedProjects: number;
+  completedProjectStages: number;
+  recurringStreak: number;
   returnedAfterBreak: boolean;
   totalXp: number;
   streak: number;
@@ -65,6 +67,8 @@ export function createAchievementStats(
   return {
     activityMinutes: 0,
     completedProjects: 0,
+    completedProjectStages: 0,
+    recurringStreak: 0,
     returnedAfterBreak: false,
     totalXp: 0,
     streak: 0,
@@ -93,6 +97,25 @@ export function createAchievementStats(
 // =============================================================
 
 export const ALL_ACHIEVEMENTS: AchievementDef[] = [
+  {
+    id: 'primeiro-marco-projeto',
+    title: 'Um marco no caminho',
+    description: 'Conclua todas as missões de uma etapa não vazia de projeto.',
+    icon: '/art/badge-icons/primeiro-passo.png',
+    rarity: 'comum',
+    category: 'progresso',
+    condition: ({ completedProjectStages }) => completedProjectStages >= 1,
+  },
+  {
+    id: 'pratica-consistente',
+    title: 'Prática consistente',
+    description:
+      'Cumpra sete ocorrências previstas em sequência de uma mesma missão recorrente.',
+    icon: '/art/badge-icons/em-chamas.png',
+    rarity: 'raro',
+    category: 'consistencia',
+    condition: ({ recurringStreak }) => recurringStreak >= 7,
+  },
   {
     id: 'horas-de-pratica',
     title: 'Horas de prática',

@@ -67,6 +67,27 @@ export async function saveTaskDefinition(
         ? (current?.plannedDate ?? (input.planToday ? dateKey() : null))
         : calendarDate(input.plannedDate);
     const projectId = input.projectId ?? null;
+    if (
+      current &&
+      (current.projectId ?? null) !== projectId &&
+      (await db.occurrences.where('taskId').equals(current.id!).toArray()).some(
+        (row) => row.value > 0,
+      )
+    )
+      throw new Error(
+        'Desfaça ou corrija o progresso desta missão antes de mudar seu projeto, preservando a origem das recompensas.',
+      );
+    if (
+      current?.routineId &&
+      (plannedDate !== current.plannedDate ||
+        JSON.stringify(recurrence) !==
+          JSON.stringify(validateRecurrence(current.recurrence)) ||
+        (input.plannedTime !== undefined &&
+          input.plannedTime !== current.plannedTime))
+    )
+      throw new Error(
+        'O calendário desta missão é controlado pela rotina. Edite a rotina para alterar dias e horários.',
+      );
     const project = projectId ? await db.projects.get(projectId) : undefined;
     if (projectId && !project)
       throw new Error('O projeto não está mais disponível.');

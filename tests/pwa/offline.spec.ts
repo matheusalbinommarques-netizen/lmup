@@ -59,6 +59,76 @@ async function ready(page: Page) {
     .toBe(true);
 }
 
+test('agenda e progresso proporcional persistem offline e entram no backup', async ({
+  page,
+  context,
+  request,
+}) => {
+  await page.clock.setFixedTime(new Date('2026-11-02T15:00:00-03:00'));
+  await ready(page);
+  await request.post('/__network', { data: 'offline' });
+  await context.setOffline(true);
+  await page.goto('/missoes');
+  await page.getByRole('button', { name: 'Nova missão', exact: true }).click();
+  const form = page.getByRole('dialog', {
+    name: 'Uma nova missão',
+    exact: true,
+  });
+  await form.getByLabel('O que você quer fazer?').fill('Prática offline');
+  await form
+    .getByText('Horário, prioridade e acompanhamento', { exact: true })
+    .click();
+  await form.getByLabel('Acompanhar progresso por').selectOption('time');
+  await form.getByLabel('Meta de tempo recompensável (minutos)').fill('40');
+  await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
+  await expect(form).not.toBeVisible();
+  await page.getByRole('button', { name: 'Agenda', exact: true }).click();
+  await page.getByRole('button', { name: 'Dia', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Executar agora', exact: true })
+    .click();
+  await page.getByLabel('Minutos acumulados realizados').fill('15');
+  await page
+    .getByRole('button', { name: 'Registrar progresso', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Confirmar registro', exact: true })
+    .click();
+  await expect(
+    page.getByText('38% · Parcialmente realizada', { exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByText('38% · Parcialmente realizada', { exact: true }),
+  ).toBeVisible();
+  const copy = await backup(page);
+  expect(copy.meta.formatVersion).toBe(4);
+  expect(copy.data.occurrences[0]).toMatchObject({
+    value: 15,
+    status: 'partial',
+  });
+  expect(copy.data.executionRecords).toHaveLength(1);
+  await page.goto('/missoes');
+  await page
+    .getByRole('button', { name: 'Montar sessão', exact: true })
+    .click();
+  await page
+    .getByRole('checkbox', {
+      name: 'Incluir Prática offline na sessão',
+      exact: true,
+    })
+    .check();
+  await page
+    .getByRole('button', { name: 'Iniciar sessão', exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/sessoes$/);
+  await page.reload();
+  await expect(
+    page.getByText('38% · Parcialmente realizada', { exact: true }),
+  ).toBeVisible();
+  expect((await backup(page)).data.savedMissionSessions).toHaveLength(1);
+});
+
 test('ao voltar ao app, encontra uma publicação nova sem aplicar durante o uso', async ({
   page,
   request,
@@ -130,7 +200,9 @@ async function applyAndWaitForReload(page: Page, tabs = [page]) {
   // waits for that worker to become idle before it activates the replacement.
   // Arm every listener before clicking so a fast controllerchange is not lost.
   await Promise.all([
-    ...tabs.map((tab) => tab.waitForEvent('domcontentloaded', { timeout: 30000 })),
+    ...tabs.map((tab) =>
+      tab.waitForEvent('domcontentloaded', { timeout: 30000 }),
+    ),
     page.getByRole('button', { name: 'Atualizar agora', exact: true }).click(),
   ]);
 }
@@ -141,7 +213,9 @@ async function mission(page: Page, title = 'Uma missão offline') {
   await page.getByRole('button', { name: 'Criar missão', exact: true }).click();
   // Creating a mission does not open execution. Wait for persistence,
   // then explicitly open it, including when the PWA is offline.
-  await expect(page.getByRole('dialog', { name: 'Uma nova missão' })).not.toBeVisible();
+  await expect(
+    page.getByRole('dialog', { name: 'Uma nova missão' }),
+  ).not.toBeVisible();
   await page.goto('/missoes');
   await page.getByRole('button', { name: 'Todas', exact: true }).click();
   await page.getByRole('link', { name: title, exact: true }).click();
@@ -184,7 +258,9 @@ test('organizador cria área e rotina offline, vira o dia e preserva ocorrência
     .selectOption('daily');
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
   await expect(form).not.toBeVisible();
-  await page.getByRole('link', { name: 'Cuidar da casa sem conexão', exact: true }).click();
+  await page
+    .getByRole('link', { name: 'Cuidar da casa sem conexão', exact: true })
+    .click();
   await expect(page).toHaveURL(/\/missao\/\d+$/);
   const url = page.url();
   await page
@@ -276,14 +352,22 @@ test('Recompensa Viva conclui, compara estágios e estorna inteiramente offline'
   await page
     .getByRole('button', { name: 'Desfazer conclusão', exact: true })
     .click();
+  await page
+    .getByRole('button', { name: 'Confirmar correção', exact: true })
+    .click();
   await expect(
-    page.getByRole('status').filter({ hasText: 'Recompensa estornada' }),
+    page.getByRole('status').filter({ hasText: 'Débito a compensar' }),
   ).toBeVisible();
   const exported = await backup(page);
-  expect(exported.data.profile.totalXpEarned).toBe(2499);
+  expect(exported.data.profile.totalXpEarned).toBe(2552);
+  expect(exported.data.profile.rewardDebt).toEqual({
+    xp: 53,
+    gold: 25,
+    food: 2,
+  });
   expect(
     exported.data.activityEvents.filter(
-      (event: { kind: string }) => event.kind === 'reversal',
+      (event: { debtAdded?: unknown }) => !!event.debtAdded,
     ),
   ).toHaveLength(1);
 });
@@ -424,6 +508,9 @@ test('abre URLs não visitadas, cria e salva notas com a rede desligada', async 
   await page
     .getByRole('button', { name: 'Desfazer conclusão', exact: true })
     .click();
+  await page
+    .getByRole('button', { name: 'Confirmar correção', exact: true })
+    .click();
   await expect(
     page.getByRole('button', { name: 'Concluir missão', exact: true }),
   ).toBeVisible();
@@ -467,20 +554,20 @@ test('revisão pronta espera formulário aberto e preserva URL e dados ao atuali
     const diagnostics = await page.evaluate(async () => {
       const registration = await navigator.serviceWorker.getRegistration();
       const workerInfo = (worker: ServiceWorker | null | undefined) =>
-        worker
-          ? { state: worker.state, scriptURL: worker.scriptURL }
-          : null;
+        worker ? { state: worker.state, scriptURL: worker.scriptURL } : null;
       return {
         url: location.href,
         controller: workerInfo(navigator.serviceWorker.controller),
         active: workerInfo(registration?.active),
         waiting: workerInfo(registration?.waiting),
         installing: workerInfo(registration?.installing),
-        visibleUpdate: document.querySelector('[aria-label="Atualização disponível"]')?.textContent,
+        visibleUpdate: document.querySelector(
+          '[aria-label="Atualização disponível"]',
+        )?.textContent,
         lockMessage: document.querySelector('.pwa-lock')?.textContent,
-        dialogs: Array.from(document.querySelectorAll('dialog[open], [aria-modal="true"]')).map(
-          (element) => element.textContent?.slice(0, 300),
-        ),
+        dialogs: Array.from(
+          document.querySelectorAll('dialog[open], [aria-modal="true"]'),
+        ).map((element) => element.textContent?.slice(0, 300)),
       };
     });
     console.error('LMUP_PWA_UPDATE_DIAGNOSTIC', JSON.stringify(diagnostics));
@@ -713,7 +800,9 @@ test('aba antiga sem protocolo impede a ativação até ser fechada', async ({
         active: serialize(registration?.active),
         waiting: serialize(registration?.waiting),
         installing: serialize(registration?.installing),
-        warning: document.querySelector('[aria-label="Atualização disponível"]')?.textContent?.slice(0, 500),
+        warning: document
+          .querySelector('[aria-label="Atualização disponível"]')
+          ?.textContent?.slice(0, 500),
       };
     });
     console.error('LMUP_LEGACY_UPDATE_DIAGNOSTIC', JSON.stringify(diagnostic));

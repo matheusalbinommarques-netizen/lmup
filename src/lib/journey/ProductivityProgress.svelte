@@ -122,8 +122,11 @@
         </p>{/if}
     </details>
     <details>
-      <summary>Tendência semanal e horários</summary
-      >{#each report.weekly as point (point.from)}<div class="trend">
+      <summary>Tendências semanais, mensais e horários</summary
+      >{#each report.monthly as month (month.month)}<p>
+          {month.month}: {month.completed} ocorrências concluídas.
+        </p>{/each}
+      {#each report.weekly as point (point.from)}<div class="trend">
           <span>{point.from}</span><progress
             max={Math.max(1, ...report.weekly.map((item) => item.completed))}
             value={point.completed}

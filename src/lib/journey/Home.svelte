@@ -208,7 +208,11 @@
   );
   const pilot = $derived(sanitizePilot(data?.profile?.rpgPilot));
   const chapter = $derived(
-    chapterTwoProgress(pilot, data?.profile?.totalXpEarned ?? 0),
+    chapterTwoProgress(
+      pilot,
+      data?.profile?.totalXpEarned ?? 0,
+      data?.profile?.rewardDebt?.xp ?? 0,
+    ),
   );
   const adventureStatus = $derived(
     pilot.scene < 6

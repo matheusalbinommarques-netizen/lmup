@@ -3,7 +3,12 @@
   let {
     value = $bindable<Planning>({}),
     legacy = false,
-  }: { value?: Planning; legacy?: boolean } = $props();
+    calendarLocked = false,
+  }: {
+    value?: Planning;
+    legacy?: boolean;
+    calendarLocked?: boolean;
+  } = $props();
   let method = $derived<ProgressMethod | ''>(value.tracking?.method ?? '');
 </script>
 
@@ -13,6 +18,7 @@
     <label
       >Início desejado<input
         type="time"
+        disabled={calendarLocked}
         value={value.plannedTime ?? ''}
         onchange={(e) =>
           (value = { ...value, plannedTime: e.currentTarget.value || null })}

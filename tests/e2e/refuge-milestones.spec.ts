@@ -68,7 +68,9 @@ async function cross(page: Page) {
   await expect(dialog).not.toBeVisible();
   await page.goto('/missoes');
   await page.getByRole('button', { name: 'Todas', exact: true }).click();
-  await page.getByRole('link', { name: 'Alcançar uma nova paisagem', exact: true }).click();
+  await page
+    .getByRole('link', { name: 'Alcançar uma nova paisagem', exact: true })
+    .click();
   await expect(page).toHaveURL(/\/missao\/\d+$/);
   const url = page.url();
   await page
@@ -128,7 +130,7 @@ test('explorar paisagem futura não muda ambiente, saldo ou registros e devolve 
   expect(after.data).toEqual(before.data);
 });
 
-test('marco recebido tem recibo e estorno restaura paisagem e recursos sem esconder sua origem', async ({
+test('marco recebido preserva paisagem, recursos e recibo após correção da missão', async ({
   page,
 }, info) => {
   const url = await cross(page);
@@ -146,22 +148,26 @@ test('marco recebido tem recibo e estorno restaura paisagem e recursos sem escon
   await page
     .getByRole('button', { name: 'Desfazer conclusão', exact: true })
     .click();
+  await page
+    .getByRole('button', { name: 'Confirmar correção', exact: true })
+    .click();
   await expect(
     page.getByRole('button', { name: 'Concluir missão', exact: true }),
   ).toBeVisible();
   await page.goto('/refugio');
   await expect(
-    sprout.getByText('Registro estornado', { exact: true }),
+    sprout.getByText('Recompensa registrada', { exact: true }),
   ).toBeVisible();
   await expect(
     page
       .locator('.collection-scene')
-      .getByRole('heading', { name: 'Semente', exact: true }),
+      .getByRole('heading', { name: 'Brotinho', exact: true }),
   ).toBeVisible();
   await capture(page, 'marco-estornado', info.project.name);
   const saved = await backup(page);
-  expect(saved.data.profile.gold).toBe(0);
-  expect(saved.data.profile.totalXpEarned).toBe(2490);
+  expect(saved.data.profile.gold).toBe(225);
+  expect(saved.data.profile.totalXpEarned).toBe(2543);
+  expect(saved.data.profile.rewardDebt).toEqual({ xp: 53, gold: 25, food: 2 });
 });
 
 test('prêmio legado permanece marcado com XP abaixo do marco e XP sem recibo fica pendente', async ({

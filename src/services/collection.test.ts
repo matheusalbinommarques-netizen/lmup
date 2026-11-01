@@ -247,7 +247,7 @@ describe('marcos e conquistas', () => {
       await db.activityEvents.toArray(),
     );
     expect(rows[1].source?.reversedAt).toBeTruthy();
-    expect(rows[1].reached).toBe(false);
+    expect(rows[1].reached).toBe(true);
   });
   it('identifica marco legado sem fabricar evento ou prêmio', async () => {
     await db.profile.update(1, {

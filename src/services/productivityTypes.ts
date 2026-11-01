@@ -28,6 +28,7 @@ export type Occurrence = Planning & {
   steps: string[];
   checkedSteps: number[];
   value: number;
+  actualMinutes?: number;
   due: Resources;
   modifiers?: {
     xpMultiplier: number;
@@ -48,6 +49,7 @@ export type Occurrence = Planning & {
   completionEventId?: string;
   reconstructed?: boolean;
   planningSuspended?: boolean;
+  discardReason?: 'user' | 'definition';
   recovered?: boolean;
   createdAt: string;
 };
@@ -89,6 +91,7 @@ export type ExecutionRecord = {
   offsetMinutes: number;
   recordedAt: string;
   correction: boolean;
+  method?: ProgressMethod;
   revision: number;
 };
 export type ProductivityAudit = {

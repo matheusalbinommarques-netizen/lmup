@@ -5,6 +5,7 @@ import {
   validateTime,
 } from './productivityRules';
 import type { Occurrence } from './productivityTypes';
+import { ECO_STAGES } from './ecoConfig';
 export const PRODUCTIVITY_TABLES = [
   'occurrences',
   'routines',
@@ -99,6 +100,23 @@ export function validateProductivityBackup(
         history.at(-1)!.after === row.value,
         'progresso difere do histórico',
       );
+    if (row.actualMinutes !== undefined) {
+      const actual = history.reduce(
+        (sum, record) =>
+          sum +
+          (record.minutes ??
+            ((record.method ?? row.tracking?.method) === 'time'
+              ? record.after - record.before
+              : 0)),
+        0,
+      );
+      requireValue(
+        Number.isFinite(row.actualMinutes) &&
+          row.actualMinutes >= 0 &&
+          Math.abs(actual - row.actualMinutes) < 0.000001,
+        'tempo realizado difere do histórico',
+      );
+    }
   }
   const bound = new Set<number>();
   for (const row of lists.routines) {
@@ -185,7 +203,7 @@ export function validateProductivityBackup(
     );
     requireValue(
       row.minutes === null ||
-        (Number.isFinite(row.minutes) && row.minutes >= 0),
+        (Number.isFinite(row.minutes) && (row.minutes >= 0 || row.correction)),
       'tempo realizado inválido',
     );
   }
@@ -193,7 +211,7 @@ export function validateProductivityBackup(
   for (const row of lists.savedMissionSessions) {
     requireValue(
       Array.isArray(row.occurrenceIds) &&
-        row.occurrenceIds.length &&
+        (row.occurrenceIds.length || row.status === 'ended') &&
         new Set(row.occurrenceIds).size === row.occurrenceIds.length &&
         row.occurrenceIds.every((id: string) => occurrences.has(id)),
       'sessão sem ocorrências válidas',
@@ -210,7 +228,51 @@ export function validateProductivityBackup(
   }
   requireValue(active <= 1, 'mais de uma sessão em foco');
   const debt = { xp: 0, gold: 0, food: 0 };
-  for (const event of lists.activityEvents) {
+  const claimedStages = new Set(
+    lists.activityEvents
+      .filter(
+        (event) =>
+          !event.grossReward &&
+          (!event.reversedAt || event.reversalPolicy === 'debt'),
+      )
+      .flatMap((event) => event.awardedStages),
+  );
+  for (const event of [...lists.activityEvents].sort(
+    (a, b) => a.sequence - b.sequence,
+  )) {
+    requireValue(
+      new Set(event.awardedStages).size === event.awardedStages.length,
+      'marcos duplicados no recibo',
+    );
+    if (event.milestoneGold !== undefined)
+      requireValue(
+        Number.isSafeInteger(event.milestoneGold) &&
+          event.milestoneGold >= 0 &&
+          event.milestoneGold ===
+            event.awardedStages.reduce(
+              (sum: number, id: number) =>
+                sum +
+                (ECO_STAGES.find((stage) => stage.id === id)
+                  ?.goldRewardOnEnter ?? 0),
+              0,
+            ),
+        'prêmio de marco inválido',
+      );
+    if (event.executionComplete !== undefined)
+      requireValue(
+        typeof event.executionComplete === 'boolean',
+        'estado da execução inválido',
+      );
+    if (event.reversalPolicy !== undefined)
+      requireValue(
+        event.reversalPolicy === 'debt',
+        'política de correção inválida',
+      );
+    if (event.grossReward)
+      for (const id of event.awardedStages) {
+        requireValue(!claimedStages.has(id), 'marco concedido novamente');
+        claimedStages.add(id);
+      }
     if (event.occurrenceId)
       requireValue(
         occurrences.has(event.occurrenceId),
@@ -267,10 +329,36 @@ export function validateProductivityBackup(
       debt[key] +=
         (event.debtAdded?.[key] ?? 0) - (event.compensation?.[key] ?? 0);
       requireValue(
-        Number.isSafeInteger(debt[key]),
+        Number.isSafeInteger(debt[key]) && debt[key] >= 0,
         'débito fora do limite seguro',
       );
     }
+  }
+  const protectedStage = lists.activityEvents
+    .filter((event) => event.grossReward || event.reversalPolicy === 'debt')
+    .reduce((highest, event) => Math.max(highest, ...event.awardedStages), 1);
+  requireValue(
+    (profile?.ecoGoldClaimedUpToStage ?? 1) >= protectedStage,
+    'marco protegido foi removido',
+  );
+  for (const row of lists.occurrences) {
+    const due = { xp: 0, gold: 0, food: 0 };
+    for (const event of lists.activityEvents.filter(
+      (entry) => entry.occurrenceId === row.id,
+    ))
+      for (const key of ['xp', 'gold', 'food'] as const) {
+        due[key] +=
+          (event.kind === 'task'
+            ? (event.grossReward?.[key] ?? event.reward[key]) -
+              (key === 'gold' ? (event.milestoneGold ?? 0) : 0)
+            : 0) - (event.debtAdded?.[key] ?? 0);
+      }
+    requireValue(
+      ['xp', 'gold', 'food'].every(
+        (key) => due[key as keyof typeof due] === row.due[key],
+      ),
+      'parcelas duplicadas ou incompatíveis com o orçamento da ocorrência',
+    );
   }
   const awardedProgress = new Set<string>();
   for (const event of lists.activityEvents.filter(
