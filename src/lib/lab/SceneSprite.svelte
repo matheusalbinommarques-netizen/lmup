@@ -7,6 +7,8 @@
     y,
     sprite,
     selected = false,
+    phase = 'ready',
+    muted = false,
     onselect,
   }: {
     id: string;
@@ -15,6 +17,8 @@
     y: number;
     sprite: SceneSpriteDefinition;
     selected?: boolean;
+    phase?: 'ready' | 'building';
+    muted?: boolean;
     onselect: () => void;
   } = $props();
   const scale = $derived(sprite.worldWidth / sprite.source.width);
@@ -24,6 +28,8 @@
 <div
   class="scene-sprite"
   class:selected
+  class:constructing={phase === 'building'}
+  class:muted
   data-instance-id={id}
   style:left={`${x}px`}
   style:top={`${y}px`}
@@ -64,7 +70,19 @@
     style:left={`${-sprite.footprint.width / 2}px`}
     style:top={`${-sprite.footprint.height}px`}
   ></button>
-  <span class="sprite-label" aria-hidden="true">{name}</span>
+  <span class="sprite-label" aria-hidden="true"
+    >{name}{#if phase === 'building'}<small>Em construção</small>{/if}</span
+  >
+  {#if phase === 'building'}<svg
+      class="work-marker"
+      aria-hidden="true"
+      width="100"
+      height="70"
+      viewBox="0 0 100 70"
+      ><path
+        d="M10 62V12M50 62V2M90 62V12M5 20L95 20M5 40L95 40M10 60L90 10M10 10L90 60"
+      /></svg
+    >{/if}
   {#if failed}<span class="asset-error" role="status">Sprite indisponível</span
     >{/if}
 </div>
@@ -133,5 +151,34 @@
     padding: 6px;
     background: #522;
     color: #fff;
+  }
+  .constructing img {
+    opacity: 0.5;
+    filter: sepia(0.4) saturate(0.6);
+  }
+  .muted {
+    opacity: 0.25;
+  }
+  .constructing .selection-ring polygon {
+    stroke: #f4c779;
+    stroke-dasharray: 8 4;
+  }
+  .sprite-label small {
+    display: block;
+    font-size: 10px;
+    color: #ffdc95;
+  }
+  .work-marker {
+    position: absolute;
+    left: -50px;
+    top: -85px;
+    pointer-events: none;
+  }
+  .work-marker path {
+    fill: none;
+    stroke: #ae8753;
+    stroke-width: 4;
+    paint-order: stroke;
+    filter: drop-shadow(1px 2px 1px #221b14);
   }
 </style>

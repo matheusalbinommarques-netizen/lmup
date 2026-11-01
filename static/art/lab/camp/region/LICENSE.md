@@ -26,3 +26,12 @@ Obtidos em 01/11/2026. Autor: **rubberduck**. Nenhuma imagem foi recortada, repi
 O terreno e a vegetação vêm do mesmo autor e da mesma família isométrica para Flare, usando base 128×64 e aparência texturizada. A compatibilidade com a forja 2,5D de feudalwars foi revisada na composição, sem usar pacotes cartoon/pixel art diferentes só para ocupar espaço. Isso é uma avaliação visual, não aprovação estética definitiva nem alegação de que todos os autores usaram a mesma câmera ou luz original.
 
 Os arquivos de ambiente somam **1.168.750 bytes**. Há quatro arquivos gráficos, reutilizados nas células, nas três árvores e em suas sombras. Os arquivos ZIP completos ficaram fora do repositório. A origem/licença da forja permanece em [../LICENSE.md](../LICENSE.md).
+
+## Extensão do terreno para o mapa integral
+
+`forest_ground_128x64.png` e `sand_128x64.png` foram extraídos sem edição do mesmo `ground_tiles_sheets.zip` já citado acima, de rubberduck, CC0. São atlas RGBA 1024×448, com células nativas 128×64. Conferidos com a grama, terra, árvores e edifícios da cena; sem novo pacote de estilo divergente.
+
+- `forest_ground_128x64.png`: 554538 bytes; SHA-256 `19fb3cb0b7eb69355deb07ccb9eda32bee033b1bbd1b988210a35157e2cf1f55`.
+- `sand_128x64.png`: 401968 bytes; SHA-256 `bd3c03545e9b1d8021edd72ce6bf410565af51cac538379982a9d89e4dab0a98`.
+
+O solo é composto pelo código a partir de células reutilizáveis, máscaras suaves e percursos. A água é um preenchimento procedural com ruído/riscos determinísticos e margem de areia do atlas; não foi obtida de recurso externo. Não há uma imagem baixada do mapa inteiro. As árvores continuam separadas e ordenadas por Y.

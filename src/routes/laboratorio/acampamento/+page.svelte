@@ -3,136 +3,130 @@
   import SceneSprite from '$lib/lab/SceneSprite.svelte';
   import { campSprites } from '$lib/lab/campSprites';
   import TerrainRegion from '$lib/lab/TerrainRegion.svelte';
-  import { forgeRegion } from '$lib/lab/campRegion';
+  import { campRegion, campLandmarks, CAMP_WORLD } from '$lib/lab/campRegion';
+  import {
+    initialBuildings,
+    constructionCatalog,
+    moveBuilding,
+    completeBuilding,
+    removeBuilding,
+    type CampBuilding as Building,
+  } from '$lib/lab/campConstruction';
   import {
     footprintCorners,
+    footprintsOverlap,
     placementError,
     type Point,
   } from '$lib/lab/campPlacement';
 
-  type Building = {
-    id: string;
-    name: string;
-    purpose: string;
-    x: number;
-    y: number;
-    icon: string;
-    roof: string;
-    sprite?: keyof typeof campSprites;
-    status: 'ready' | 'site';
-  };
-  const initialBuildings: Building[] = [
-    {
-      id: 'hall',
-      name: 'Salão do acampamento',
-      purpose: 'O coração do assentamento.',
-      x: 830,
-      y: 570,
-      icon: '♜',
-      roof: 'hall',
-      status: 'ready',
-    },
-    {
-      id: 'forge',
-      name: 'Forja',
-      purpose: 'Um futuro lugar para equipamentos e melhorias.',
-      x: 1170,
-      y: 700,
-      icon: '⚒',
-      roof: 'forge',
-      sprite: 'forge',
-      status: 'ready',
-    },
-    {
-      id: 'forge-copy',
-      name: 'Forja 2',
-      purpose: 'Segunda instância da mesma forja, com seleção independente.',
-      x: 1290,
-      y: 760,
-      icon: '',
-      roof: 'forge',
-      sprite: 'forge',
-      status: 'ready',
-    },
-    {
-      id: 'store',
-      name: 'Armazém',
-      purpose: 'Um espaço para os recursos da comunidade.',
-      x: 620,
-      y: 885,
-      icon: '▣',
-      roof: 'store',
-      status: 'ready',
-    },
-    {
-      id: 'plot',
-      name: 'Terreno disponível',
-      purpose: 'Área reservada para uma futura construção.',
-      x: 1330,
-      y: 965,
-      icon: '+',
-      roof: 'site',
-      status: 'site',
-    },
-  ];
-  const WORLD_W = 1850;
-  const WORLD_H = 1400;
+  const WORLD_W = CAMP_WORLD.width;
+  const WORLD_H = CAMP_WORLD.height;
   let buildings = $state<Building[]>(initialBuildings);
   let placing = $state(false);
+  let catalogOpen = $state(false);
+  let landmarksOpen = $state(false);
+  let movingId = $state<string | null>(null);
+  let removePending = $state(false);
+  let chosenType = $state<keyof typeof constructionCatalog>('forge');
+  const placementSprite = $derived(
+    campSprites[
+      movingId
+        ? buildings.find((b) => b.id === movingId)!.sprite
+        : constructionCatalog[chosenType].sprite
+    ],
+  );
   let proposed = $state<Point | null>(null);
   let movedDuringDrag = false;
   let nextForge = 3;
-  const forgeFootprint = (point: Point) => ({
+  const proposedFootprint = (point: Point) => ({
     ...point,
-    ...campSprites.forge.footprint,
+    ...placementSprite.footprint,
   });
-  function buildingFootprint(building: Building) {
-    if (building.sprite)
-      return {
-        x: building.x,
-        y: building.y,
-        ...campSprites[building.sprite].footprint,
-      };
-    // Ground base of the provisional CSS walls (not their roof/button rectangle).
-    return { x: building.x, y: building.y + 47, width: 104, height: 52 };
-  }
+  const buildingFootprint = (b: Building) => ({
+    x: b.x,
+    y: b.y,
+    ...campSprites[b.sprite].footprint,
+  });
+  const openSiteIds = $derived(
+    buildings
+      .filter(
+        (b) =>
+          b.status === 'site' &&
+          !buildings.some(
+            (other) =>
+              other.status !== 'site' &&
+              footprintsOverlap(buildingFootprint(b), buildingFootprint(other)),
+          ),
+      )
+      .map((b) => b.id),
+  );
   const proposedError = $derived(
     proposed
       ? placementError(
-          forgeFootprint(proposed),
-          buildings.filter((b) => b.status === 'ready').map(buildingFootprint),
+          proposedFootprint(proposed),
+          buildings
+            .filter((b) => b.status !== 'site' && b.id !== movingId)
+            .map(buildingFootprint),
           { width: WORLD_W, height: WORLD_H },
         )
       : 'Escolha uma posição no terreno.',
   );
   const previewPoints = $derived(
-    footprintCorners(forgeFootprint({ x: 0, y: 0 }))
+    footprintCorners(proposedFootprint({ x: 0, y: 0 }))
       .map((p) => `${p.x},${p.y}`)
       .join(' '),
   );
-  function beginBuilding() {
+  function beginBuilding(point: Point = { x: 1000, y: 980 }) {
+    catalogOpen = false;
+    movingId = null;
     placing = true;
-    proposed = { x: 1000, y: 980 };
+    proposed = { ...point };
     selection = null;
-    limitCamera(1000, 980);
+    limitCamera(point.x, point.y);
     viewport.focus({ preventScroll: true });
   }
   function cancelBuilding() {
     placing = false;
     proposed = null;
+    movingId = null;
+  }
+  function beginMove() {
+    if (!selection || selection.status === 'site') return;
+    catalogOpen = false;
+    movingId = selection.id;
+    proposed = { x: selection.x, y: selection.y };
+    placing = true;
+    removePending = false;
+    limitCamera(proposed.x, proposed.y);
+    viewport.focus({ preventScroll: true });
+  }
+  function finishSelected() {
+    if (!selection) return;
+    buildings = completeBuilding(buildings, selection.id);
+    selection = buildings.find((b) => b.id === selection!.id)!;
+  }
+  function removeSelected() {
+    if (!selection) return;
+    buildings = removeBuilding(buildings, selection.id);
+    selection = null;
+    removePending = false;
   }
   function confirmBuilding() {
     if (!proposed || proposedError) return;
+    if (movingId) {
+      buildings = moveBuilding(buildings, movingId, proposed);
+      selection = buildings.find((b) => b.id === movingId)!;
+      cancelBuilding();
+      return;
+    }
     const created: Building = {
-      id: `forge-user-${nextForge}`,
-      name: `Forja ${nextForge}`,
-      purpose: 'Construção demonstrativa posicionada por você.',
+      id: `${chosenType}-user-${nextForge}`,
+      name: `${constructionCatalog[chosenType].name} ${nextForge}`,
+      purpose: constructionCatalog[chosenType].purpose,
       x: proposed.x,
       y: proposed.y,
-      icon: '⚒',
-      roof: 'forge',
-      sprite: 'forge',
-      status: 'ready',
+      sprite: constructionCatalog[chosenType].sprite,
+      status: 'building',
     };
     nextForge += 1;
     buildings = [...buildings, created];
@@ -165,28 +159,6 @@
       limitCamera(proposed.x, proposed.y);
     }
   }
-  const trees = [
-    [360, 270],
-    [460, 420],
-    [540, 220],
-    [680, 280],
-    [915, 260],
-    [1140, 300],
-    [1400, 370],
-    [1600, 450],
-    [320, 680],
-    [400, 1040],
-    [520, 1150],
-    [755, 1135],
-    [980, 1180],
-    [1220, 1175],
-    [1540, 1100],
-    [1620, 850],
-    [260, 930],
-    [1440, 210],
-    [1070, 1040],
-    [770, 380],
-  ];
   let viewport: HTMLDivElement;
   let viewWidth = $state(900);
   let viewHeight = $state(590);
@@ -261,11 +233,18 @@
       viewport.releasePointerCapture(event.pointerId);
   }
   function choose(building: Building) {
-    if (!placing) selection = building;
+    if (!placing) {
+      selection = building;
+      catalogOpen = false;
+      removePending = false;
+    }
   }
-  function focus(building: Building) {
-    if (!placing) selection = building;
-    limitCamera(building.x, building.y);
+  function visit(point: Point) {
+    landmarksOpen = false;
+    if (placing) return;
+    selection = null;
+    catalogOpen = false;
+    limitCamera(point.x, point.y);
   }
   onMount(() => {
     const observer = new ResizeObserver(() => {
@@ -313,8 +292,15 @@
       >
     </div>
     <div class="build-tools">
-      <button type="button" onclick={beginBuilding} disabled={placing}
-        >+ Construir forja</button
+      <button
+        type="button"
+        onclick={() => {
+          catalogOpen = !catalogOpen;
+          selection = null;
+          removePending = false;
+        }}
+        disabled={placing}
+        aria-expanded={catalogOpen}>Construir</button
       >
     </div>
     <div class="zoom-tools" aria-label="Controle da câmera">
@@ -342,23 +328,7 @@
         class="world"
         style:transform={`translate(${viewWidth / 2 - cameraX * zoom}px, ${viewHeight / 2 - cameraY * zoom}px) scale(${zoom})`}
       >
-        <div class="ground"></div>
-        <div class="clearing"></div>
-        <div class="road road-a"></div>
-        <div class="road road-b"></div>
-        <div class="lake"></div>
-        <TerrainRegion region={forgeRegion} />
-        {#each trees as tree, i (i)}
-          <div
-            class="tree"
-            style:left={tree[0] + 'px'}
-            style:top={tree[1] + 'px'}
-            style:z-index={tree[1] + 86}
-            aria-hidden="true"
-          >
-            <i></i><b></b>
-          </div>
-        {/each}
+        <TerrainRegion region={campRegion} />
         {#if placing && proposed}
           <div
             class="placement-preview"
@@ -371,17 +341,17 @@
               ><polygon points={previewPoints} /></svg
             >
             <img
-              src={campSprites.forge.src}
+              src={placementSprite.src}
               alt=""
               draggable="false"
-              style:width={campSprites.forge.worldWidth + 'px'}
-              style:left={(-campSprites.forge.pivot.x *
-                campSprites.forge.worldWidth) /
-                campSprites.forge.source.width +
+              style:width={placementSprite.worldWidth + 'px'}
+              style:left={(-placementSprite.pivot.x *
+                placementSprite.worldWidth) /
+                placementSprite.source.width +
                 'px'}
-              style:top={(-campSprites.forge.pivot.y *
-                campSprites.forge.worldWidth) /
-                campSprites.forge.source.width +
+              style:top={(-placementSprite.pivot.y *
+                placementSprite.worldWidth) /
+                placementSprite.source.width +
                 'px'}
             />
             <span
@@ -392,99 +362,141 @@
           </div>
         {/if}
         {#each buildings as building (building.id)}
-          {#if building.sprite}
+          {#if building.status !== 'site'}
             <SceneSprite
               id={building.id}
               name={building.name}
               x={building.x}
               y={building.y}
               sprite={campSprites[building.sprite]}
+              phase={building.status}
               selected={selection?.id === building.id}
+              muted={movingId === building.id}
               onselect={() => choose(building)}
             />
-          {:else}
+          {:else if openSiteIds.includes(building.id)}
             <button
-              class="building"
+              class="site-plot"
               class:active={selection?.id === building.id}
-              class:site={building.status === 'site'}
-              style:left={building.x + 'px'}
-              style:top={building.y + 'px'}
-              style:z-index={Math.round(building.y + 82.5)}
+              style:left={`${building.x}px`}
+              style:top={`${building.y}px`}
+              style:z-index={building.y}
               onclick={() => choose(building)}
-              aria-label={'Selecionar ' + building.name}
+              aria-label={`Selecionar ${building.name}`}
               aria-pressed={selection?.id === building.id}
             >
-              <span
-                class="building-art"
-                class:forge={building.roof === 'forge'}
-                class:hall={building.roof === 'hall'}
-                class:store={building.roof === 'store'}
-                class:site-art={building.roof === 'site'}
+              <svg
+                width="150"
+                height="75"
+                viewBox="0 0 150 75"
+                aria-hidden="true"
+                ><polygon points="75,2 148,37.5 75,73 2,37.5" /></svg
               >
-                <span class="roof"></span><span class="walls"></span><span
-                  class="glyph">{building.icon}</span
-                >
-              </span>
-              <span class="building-name">{building.name}</span>
+              <span>Terreno vazio</span>
             </button>
           {/if}
         {/each}
       </div>
     </div>
+    <nav class="landmarks" aria-label="Locais do acampamento">
+      <details bind:open={landmarksOpen}>
+        <summary>Locais</summary>
+        {#each campLandmarks as landmark (landmark.id)}<button
+            onclick={() => visit(landmark)}
+            disabled={placing}>{landmark.name}</button
+          >{/each}
+      </details>
+    </nav>
     <div class="bottom">
       <div class="build-info">
         {#if placing}
-          <span class="eyebrow">Modo construção · demonstração</span>
-          <h2>Posicionar forja</h2>
+          <span class="eyebrow"
+            >{movingId ? 'Reposicionar' : 'Modo construção'} · demonstração</span
+          >
+          <h2>{movingId ? 'Mover construção' : 'Posicionar forja'}</h2>
           <p>
-            Toque ou clique no terreno para posicionar; arraste para explorar.
-            No teclado, use as setas, Enter e Esc.
+            Toque no terreno para posicionar; arraste para explorar. Setas
+            movem, Enter confirma e Esc cancela.
           </p>
           <p role="status" class:placement-error={!!proposedError}>
-            {proposedError || 'Posição livre. Confirme para criar a forja.'}
+            {proposedError || 'Posição livre. Confirme para continuar.'}
           </p>
           <div class="placement-actions">
             <button
               type="button"
               onclick={confirmBuilding}
-              disabled={!proposed || !!proposedError}>Confirmar posição</button
+              disabled={!proposed || !!proposedError}
+              >{movingId ? 'Confirmar mudança' : 'Confirmar posição'}</button
             ><button type="button" onclick={cancelBuilding}>Cancelar</button>
           </div>
+        {:else if catalogOpen}
+          <span class="eyebrow">Catálogo · sem custos reais</span>
+          <h2>Construções</h2>
+          {#each Object.entries(constructionCatalog) as [key, item] (key)}
+            <button
+              class="catalog-item"
+              onclick={() => {
+                chosenType = key as keyof typeof constructionCatalog;
+                beginBuilding();
+              }}
+              aria-label={`Escolher ${item.name}`}
+            >
+              <img src={campSprites[item.sprite].src} alt="" /><span
+                ><strong>{item.name}</strong><small>{item.purpose}</small></span
+              >
+            </button>
+          {/each}
+          <button class="quiet-action" onclick={() => (catalogOpen = false)}
+            >Fechar catálogo</button
+          >
         {:else if selection}
-          <span class="eyebrow">Espaço selecionado</span>
+          <span class="eyebrow"
+            >{selection.status === 'site'
+              ? 'Terreno vazio'
+              : selection.status === 'building'
+                ? 'Em construção'
+                : 'Concluído'}</span
+          >
           <h2>{selection.name}</h2>
           <p>{selection.purpose}</p>
-          <span class="chip"
-            >{selection.status === 'site'
-              ? 'Terreno livre (demonstração)'
-              : 'Construção demonstrativa'}</span
-          >
+          {#if selection.status === 'site'}
+            <button
+              class="quiet-action"
+              onclick={() => beginBuilding(selection!)}>Construir aqui</button
+            >
+          {:else if removePending}
+            <p>Remover {selection.name} deste experimento?</p>
+            <div class="placement-actions">
+              <button onclick={removeSelected}>Confirmar remoção</button><button
+                onclick={() => (removePending = false)}
+                >Manter construção</button
+              >
+            </div>
+          {:else}
+            <div class="context-actions">
+              {#if selection.status === 'building'}<button
+                  onclick={finishSelected}>Concluir construção</button
+                >{/if}
+              <button onclick={beginMove}>Mover</button><button
+                onclick={() => (removePending = true)}>Remover</button
+              >
+            </div>
+          {/if}
         {:else}
           <span class="eyebrow">Exploração</span>
-          <h2>Escolha uma construção</h2>
+          <h2>Seu acampamento</h2>
           <p>
-            Arraste o mapa, aproxime com a roda do mouse ou selecione um
-            edifício. Nas forjas, selecione a base destacada ou use os atalhos.
+            Selecione uma base no mapa para gerenciar. Abra Construir para
+            colocar uma forja.
           </p>
         {/if}
       </div>
-      {#if !placing}
-        <div class="shortcuts">
-          {#each buildings as building (building.id)}
-            <button
-              onclick={() => focus(building)}
-              class:active={selection?.id === building.id}
-              >{building.name}</button
-            >
-          {/each}
-        </div>
-      {/if}
     </div>
   </section>
   <p class="disclaimer">
-    Região da forja: arte de avaliação CC0 de rubberduck e feudalwars. Restante
-    do mapa em CSS provisório. Construções apenas em memória, sem persistência,
-    economia ou acesso ao IndexedDB. Não é a identidade visual final do jogo.
+    Arte de avaliação CC0 de rubberduck e feudalwars. Terreno composto por atlas
+    reutilizáveis. Construções apenas em memória, sem persistência, economia ou
+    acesso ao IndexedDB. Não é a identidade visual final do jogo.
   </p>
 </div>
 
@@ -547,201 +559,6 @@
     overflow: hidden;
     background: #476243;
   }
-  .ground {
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(
-        ellipse at 45% 48%,
-        #799063 0 15%,
-        #617b51 40%,
-        #304b36 90%
-      ),
-      repeating-linear-gradient(35deg, transparent 0 34px, #d8c69815 34px 36px);
-  }
-  .clearing {
-    position: absolute;
-    left: 300px;
-    top: 265px;
-    width: 1250px;
-    height: 900px;
-    border-radius: 48%;
-    background: radial-gradient(
-      ellipse,
-      #9c9b6b 0%,
-      #889363 43%,
-      #76905a 69%,
-      transparent 72%
-    );
-  }
-  .road {
-    position: absolute;
-    background: #a79870;
-    box-shadow: 0 0 0 7px #756d5050;
-    border-radius: 48%;
-    opacity: 0.75;
-  }
-  .road-a {
-    left: 300px;
-    top: 700px;
-    width: 1160px;
-    height: 95px;
-    transform: rotate(12deg);
-  }
-  .road-b {
-    left: 830px;
-    top: 385px;
-    width: 105px;
-    height: 650px;
-    transform: rotate(22deg);
-  }
-  .lake {
-    position: absolute;
-    left: 1450px;
-    top: 65px;
-    width: 365px;
-    height: 310px;
-    border-radius: 42% 58% 60% 40%;
-    background: radial-gradient(
-      ellipse at 35% 35%,
-      #8ba7a5,
-      #3c757e 70%,
-      #294d61
-    );
-    box-shadow: 0 0 0 15px #a4a58255;
-  }
-  .tree {
-    position: absolute;
-    width: 80px;
-    height: 88px;
-    filter: drop-shadow(12px 12px 5px #162e2299);
-  }
-  .tree i {
-    position: absolute;
-    left: 37px;
-    top: 45px;
-    background: #654f35;
-    width: 10px;
-    height: 41px;
-  }
-  .tree b {
-    position: absolute;
-    left: 2px;
-    top: 1px;
-    width: 76px;
-    height: 72px;
-    border-radius: 50%;
-    background: radial-gradient(
-      circle at 36% 28%,
-      #64865a,
-      #224c3c 68%,
-      #163c32
-    );
-    border: 3px solid #25402c;
-  }
-  .building {
-    position: absolute;
-    transform: translate(-50%, -50%);
-    width: 190px;
-    height: 165px;
-    border: 0;
-    background: transparent;
-    color: #fff3d6;
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: end;
-    padding: 0;
-  }
-  .building-art {
-    height: 110px;
-    width: 130px;
-    position: relative;
-    display: block;
-    filter: drop-shadow(12px 14px 4px #1b2719a0);
-  }
-  .walls {
-    position: absolute;
-    inset: 37px 13px 7px;
-    background: #847c63;
-    border: 4px solid #544e44;
-    clip-path: polygon(0 15%, 50% 33%, 100% 15%, 100% 80%, 50% 100%, 0 80%);
-  }
-  .roof {
-    position: absolute;
-    left: 4px;
-    top: 6px;
-    width: 122px;
-    height: 76px;
-    background: #694538;
-    clip-path: polygon(50% 0, 100% 43%, 50% 100%, 0 43%);
-    border-radius: 8px;
-  }
-  .hall .roof {
-    background: #73503d;
-  }
-  .hall .walls {
-    background: #b0a68a;
-  }
-  .forge .roof {
-    background: #493f41;
-  }
-  .forge .walls {
-    background: #827369;
-  }
-  .store .roof {
-    background: #816742;
-  }
-  .store .walls {
-    background: #93836a;
-  }
-  .glyph {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -25%);
-    font-size: 37px;
-    text-shadow: 0 2px 6px #1d1a18;
-  }
-  .site-art {
-    border: 4px dashed #e9d4a0;
-    border-radius: 50%;
-    width: 115px;
-    height: 70px;
-    margin-top: 25px;
-    background: #dfd1a029;
-    filter: none;
-  }
-  .site-art .roof,
-  .site-art .walls {
-    display: none;
-  }
-  .site-art .glyph {
-    top: 24%;
-    font-size: 48px;
-  }
-  .building-name {
-    background: #152521e5;
-    padding: 6px 10px;
-    border: 1px solid #ab9560;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 700;
-    white-space: nowrap;
-    max-width: 190px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .building.active .building-name,
-  .building:focus-visible .building-name {
-    background: #5b4526;
-    border-color: #ffe7b0;
-  }
-  .building:focus-visible {
-    outline: 4px solid #fceac3;
-    border-radius: 10px;
-  }
   .hud,
   .zoom-tools,
   .bottom {
@@ -790,52 +607,24 @@
     gap: 10px;
     pointer-events: none;
   }
-  .build-info,
-  .shortcuts {
-    background: #14241fe8;
+  .build-info {
+    width: min(365px, 100%);
+    max-height: min(280px, 42dvh);
+    overflow: auto;
+    pointer-events: auto;
+    background: #14241ff2;
     border: 1px solid #89764f;
     border-radius: 10px;
     padding: 12px;
-    pointer-events: auto;
-  }
-  .build-info {
-    width: min(365px, 48%);
   }
   .build-info h2 {
-    margin: 4px 0;
     font-size: 1.1rem;
+    margin: 4px 0;
   }
   .build-info p {
-    margin: 5px 0;
     font-size: 0.79rem;
+    margin: 5px 0;
     color: #e2d7bc;
-  }
-  .chip {
-    display: inline-block;
-    margin-top: 5px;
-    font-size: 0.66rem;
-    color: #e3ca93;
-  }
-  .shortcuts {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    flex: 1;
-    justify-content: end;
-  }
-  .shortcuts button {
-    font-size: 0.75rem;
-    border-radius: 6px;
-    padding: 10px;
-    background: #3f4838;
-    border: 1px solid #7a846d;
-    color: #eee1c5;
-    cursor: pointer;
-    min-height: 40px;
-  }
-  .shortcuts button.active {
-    border-color: #ffe4a3;
-    background: #6f5c3d;
   }
   .disclaimer {
     font-size: 0.78rem;
@@ -871,15 +660,6 @@
     }
     .build-info {
       width: auto;
-    }
-    .shortcuts {
-      margin-top: 6px;
-      justify-content: start;
-      padding: 7px;
-    }
-    .shortcuts button {
-      padding: 6px;
-      font-size: 0.68rem;
     }
     .disclaimer {
       font-size: 0.7rem;
@@ -933,10 +713,6 @@
   .placement-error {
     color: #ffb5a9 !important;
   }
-  .shortcuts {
-    max-height: 130px;
-    overflow: auto;
-  }
   .viewport:focus-visible {
     outline: 2px solid #ffe4a3;
     outline-offset: -3px;
@@ -987,6 +763,112 @@
     .build-tools button {
       font-size: 12px;
       padding: 8px;
+    }
+  }
+  .landmarks {
+    position: absolute;
+    z-index: 3;
+    left: 16px;
+    top: 155px;
+    max-width: 170px;
+  }
+  .landmarks details {
+    background: #14241fee;
+    border: 1px solid #89764f;
+    border-radius: 8px;
+    padding: 8px;
+  }
+  .landmarks summary {
+    cursor: pointer;
+    min-height: 28px;
+  }
+  .landmarks button {
+    display: block;
+    width: 100%;
+    background: none;
+    border: 0;
+    color: #f1dfb5;
+    text-align: left;
+    min-height: 40px;
+    padding: 8px;
+  }
+  .site-plot {
+    position: absolute;
+    width: 150px;
+    height: 75px;
+    transform: translate(-50%, -100%);
+    border: 0;
+    background: none;
+    color: #ead5aa;
+    cursor: pointer;
+  }
+  .site-plot polygon {
+    fill: #ccb87820;
+    stroke: #c7ac72;
+    stroke-width: 2;
+    stroke-dasharray: 7 5;
+  }
+  .site-plot span {
+    display: block;
+    background: #182b22dd;
+    padding: 5px;
+    border-radius: 5px;
+  }
+  .site-plot.active polygon {
+    stroke: #fff1b5;
+    fill: #ccb87850;
+  }
+  .catalog-item {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    width: 100%;
+    padding: 8px;
+    background: #334736;
+    border: 1px solid #b4a16b;
+    color: #f3e4c5;
+    border-radius: 7px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .catalog-item img {
+    width: 70px;
+    height: 60px;
+    object-fit: contain;
+  }
+  .catalog-item small {
+    display: block;
+    font-size: 12px;
+  }
+  .quiet-action,
+  .context-actions button {
+    background: #304a38;
+    border: 1px solid #b4a16b;
+    color: #f3e4c5;
+    border-radius: 6px;
+    padding: 8px;
+    min-height: 44px;
+    cursor: pointer;
+  }
+  .context-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .quiet-action {
+    margin-top: 8px;
+  }
+  @media (max-width: 700px) {
+    .landmarks {
+      left: 8px;
+      top: 155px;
+    }
+    .build-info {
+      max-height: 245px;
+    }
+    .hud span {
+      max-width: 180px;
     }
   }
 </style>

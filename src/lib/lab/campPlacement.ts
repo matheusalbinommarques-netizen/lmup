@@ -51,10 +51,10 @@ export function placementError(
       (p) => p.x < 0 || p.y < 0 || p.x > world.width || p.y > world.height,
     )
   ) {
-    return 'A base da forja precisa ficar inteira dentro do mapa.';
+    return 'A base da construção precisa ficar inteira dentro do mapa.';
   }
   if (occupied.some((footprint) => footprintsOverlap(proposed, footprint))) {
-    return 'A base da forja sobrepõe outra construção. Escolha uma área livre.';
+    return 'A base da construção sobrepõe outra construção. Escolha uma área livre.';
   }
   return '';
 }
