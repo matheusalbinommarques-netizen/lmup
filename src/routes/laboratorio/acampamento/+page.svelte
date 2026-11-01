@@ -16,7 +16,7 @@
     sprite?: keyof typeof campSprites;
     status: 'ready' | 'site';
   };
-  const buildings: Building[] = [
+  const initialBuildings: Building[] = [
     {
       id: 'hall',
       name: 'Salão do acampamento',
@@ -70,6 +70,21 @@
       status: 'site',
     },
   ];
+  let buildings = $state<Building[]>(initialBuildings);
+  let placing = $state(false);
+  let proposed = $state<{x: number; y: number} | null>(null);
+  let placeError = $state('');
+  let movedDuringDrag = false;
+  let nextForge = 3;
+  const occupied = (x: number, y: number) => buildings.some((b) => b.status === 'ready' && Math.abs(b.x - x) < 190 && Math.abs(b.y - y) < 115);
+  const canPlace = (x: number, y: number) => x >= 140 && x <= WORLD_W - 140 && y >= 160 && y <= WORLD_H - 110 && !occupied(x, y);
+  function beginBuilding() { placing = true; proposed = { x: 1000, y: 980 }; placeError = ''; selection = null; limitCamera(1000, 980); }
+  function cancelBuilding() { placing = false; proposed = null; placeError = ''; }
+  function confirmBuilding() {
+    if (!proposed || !canPlace(proposed.x, proposed.y)) { placeError = 'Posição indisponível: escolha uma área livre do terreno.'; return; }
+    const created: Building = { id: `forge-user-${nextForge}`, name: `Forja ${nextForge}`, purpose: 'Construção demonstrativa posicionada por você.', x: proposed.x, y: proposed.y, icon: '⚒', roof: 'forge', sprite: 'forge', status: 'ready' };
+    nextForge += 1; buildings = [...buildings, created]; selection = created; placing = false; proposed = null; placeError = '';
+  }
   const trees = [
     [360, 270],
     [460, 420],
@@ -130,6 +145,7 @@
       return;
     dragging = true;
     pointer = event.pointerId;
+    movedDuringDrag = false;
     startX = event.clientX;
     startY = event.clientY;
     startCameraX = cameraX;
@@ -140,12 +156,20 @@
     if (!dragging || pointer !== event.pointerId) return;
     const dx = event.clientX - startX,
       dy = event.clientY - startY;
+    if (Math.abs(dx) + Math.abs(dy) > 7) movedDuringDrag = true;
     limitCamera(startCameraX - dx / zoom, startCameraY - dy / zoom);
   }
   function pointerUp(event: PointerEvent) {
     if (pointer !== event.pointerId) return;
+    const wasDrag = movedDuringDrag;
     dragging = false;
     pointer = null;
+    if (placing && !wasDrag) {
+      const bounds = viewport.getBoundingClientRect();
+      const x = Math.round((cameraX + (event.clientX - bounds.left - viewWidth / 2) / zoom) / 16) * 16;
+      const y = Math.round((cameraY + (event.clientY - bounds.top - viewHeight / 2) / zoom) / 16) * 16;
+      proposed = { x, y }; placeError = canPlace(x, y) ? '' : 'Local ocupado ou fora da área permitida.';
+    }
     if (viewport.hasPointerCapture(event.pointerId))
       viewport.releasePointerCapture(event.pointerId);
   }
@@ -199,6 +223,7 @@
         >Arraste para explorar · Roda para zoom</span
       >
     </div>
+    <div class="build-tools"><button type="button" onclick={beginBuilding} disabled={placing}>+ Construir forja</button></div>
     <div class="zoom-tools" aria-label="Controle da câmera">
       <button onclick={() => setZoom(zoom + 0.15)} aria-label="Aproximar"
         >+</button
@@ -240,6 +265,12 @@
             <i></i><b></b>
           </div>
         {/each}
+        {#if placing && proposed}
+          <div class="placement-preview" class:invalid={!canPlace(proposed.x, proposed.y)} style:left={proposed.x + 'px'} style:top={proposed.y + 'px'} style:z-index={Math.round(proposed.y)}>
+            <img src={campSprites.forge.src} alt="" draggable="false" style:width={campSprites.forge.worldWidth + 'px'} style:left={(-campSprites.forge.pivot.x * campSprites.forge.worldWidth / campSprites.forge.source.width) + 'px'} style:top={(-campSprites.forge.pivot.y * campSprites.forge.worldWidth / campSprites.forge.source.width) + 'px'} />
+            <span>{canPlace(proposed.x, proposed.y) ? 'Prévia de construção' : 'Local indisponível'}</span>
+          </div>
+        {/if}
         {#each buildings as building (building.id)}
           {#if building.sprite}
             <SceneSprite
@@ -282,6 +313,12 @@
     </div>
     <div class="bottom">
       <div class="build-info">
+        {#if placing}
+          <span class="eyebrow">Modo construção · demonstração</span><h2>Posicionar forja</h2>
+          <p>Clique no terreno para posicionar a prévia; arraste para mover a câmera. Depois confirme ou cancele.</p>
+          {#if placeError}<p role="alert">{placeError}</p>{/if}
+          <div class="placement-actions"><button type="button" onclick={confirmBuilding} disabled={!proposed || !canPlace(proposed.x, proposed.y)}>Confirmar posição</button><button type="button" onclick={cancelBuilding}>Cancelar</button></div>
+        {:else}
         {#if selection}
           <span class="eyebrow">Espaço selecionado</span>
           <h2>{selection.name}</h2>
@@ -298,6 +335,7 @@
             Arraste o mapa, aproxime com a roda do mouse ou selecione um
             edifício. Nas forjas, selecione a base destacada ou use os atalhos.
           </p>
+        {/if}
         {/if}
       </div>
       <div class="shortcuts">
@@ -714,4 +752,14 @@
       font-size: 0.7rem;
     }
   }
+  .build-tools {position:absolute;z-index:3;top:15px;left:235px}
+  .build-tools button,.placement-actions button {background:#e3c182;color:#1b211b;border:1px solid #eacb96;border-radius:7px;padding:10px 13px;min-height:44px;font-weight:700;cursor:pointer}
+  .build-tools button:disabled,.placement-actions button:disabled {opacity:.55;cursor:default}
+  .placement-preview {position:absolute;width:0;height:0;pointer-events:none;opacity:.8;filter:drop-shadow(0 0 4px #a6ffd0)}
+  .placement-preview.invalid {filter:drop-shadow(0 0 8px #ef6f6f);opacity:.6}
+  .placement-preview img {position:absolute;max-width:none;pointer-events:none}
+  .placement-preview span {position:absolute;top:12px;left:-60px;white-space:nowrap;background:#17281eef;color:#f8e7bd;padding:5px;border-radius:5px;font-size:12px}
+  .placement-actions {display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .placement-actions button:nth-child(2) {background:#27342f;color:#f0e9db}
+  @media(max-width:700px){.build-tools{top:85px;left:8px}.build-tools button{font-size:12px;padding:8px}}
 </style>
