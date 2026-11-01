@@ -8,22 +8,35 @@ async function capture(page: Page, name: string, project: string) {
     });
 }
 async function awaitStoredMission(page: Page, title: string) {
-  await expect.poll(() => page.evaluate(async (name) => {
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('LevelMeUpDB');
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    try {
-      return await new Promise<boolean>((resolve, reject) => {
-        const request = db.transaction('tasks', 'readonly').objectStore('tasks').getAll();
-        request.onsuccess = () => resolve(request.result.some((task) => task.title === name));
-        request.onerror = () => reject(request.error);
-      });
-    } finally {
-      db.close();
-    }
-  }, title), { timeout: 15000, message: 'Missão deve estar persistida antes de navegar' }).toBe(true);
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async (name) => {
+          const db = await new Promise<IDBDatabase>((resolve, reject) => {
+            const request = indexedDB.open('LevelMeUpDB');
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+          });
+          try {
+            return await new Promise<boolean>((resolve, reject) => {
+              const request = db
+                .transaction('tasks', 'readonly')
+                .objectStore('tasks')
+                .getAll();
+              request.onsuccess = () =>
+                resolve(request.result.some((task) => task.title === name));
+              request.onerror = () => reject(request.error);
+            });
+          } finally {
+            db.close();
+          }
+        }, title),
+      {
+        timeout: 15000,
+        message: 'Missão deve estar persistida antes de navegar',
+      },
+    )
+    .toBe(true);
 }
 
 async function task(page: Page, title: string) {
@@ -117,7 +130,9 @@ test('exemplo é rascunho editável: cancelar não cria missão e salvar permite
   await awaitStoredMission(page, 'Meu rascunho de verdade');
   await page.goto('/missoes');
   await page.getByRole('button', { name: 'Todas', exact: true }).click();
-  await page.getByRole('link', { name: 'Meu rascunho de verdade', exact: true }).click();
+  await page
+    .getByRole('link', { name: 'Meu rascunho de verdade', exact: true })
+    .click();
   await expect(
     page.getByRole('heading', {
       name: 'Meu rascunho de verdade',
@@ -231,8 +246,13 @@ test('missões arquivadas e revisão futura não prometem uma próxima missão d
     page.getByRole('link', { name: 'Começar missão', exact: true }),
   ).not.toBeVisible();
   await expect(
-    page.getByText('Próxima revisão: 31/12/2099', { exact: true }),
-  ).toBeVisible();
+    page
+      .getByRole('region', { name: 'Suas missões', exact: true })
+      .getByRole('link', { name: /Uma missão guardada/ }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('link', { name: 'Ver todas', exact: true }),
+  ).toHaveAttribute('href', '/missoes');
   await expect(
     page.getByText('Revisão realizada hoje', { exact: true }),
   ).not.toBeVisible();
