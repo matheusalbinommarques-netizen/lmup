@@ -70,6 +70,9 @@ test('Mundo entrega investigação completa, retomada, consequência e campanha 
       fullPage: true,
     });
   await page
+    .getByRole('button', { name: 'Voltar ao mapa', exact: true })
+    .click();
+  await page
     .getByRole('link', { name: 'Campanha e objetivos →', exact: true })
     .click();
   await expect(

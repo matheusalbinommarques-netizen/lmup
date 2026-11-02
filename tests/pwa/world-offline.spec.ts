@@ -31,6 +31,13 @@ test('primeira exploração de Mundo funciona offline, inclusive arte, diálogo 
     .toBeGreaterThan(0);
   await investigate(page);
   await resolveInvestigation(page);
+  await expect
+    .poll(() =>
+      page
+        .locator('.character-portrait img')
+        .evaluate((el) => (el as HTMLImageElement).naturalWidth),
+    )
+    .toBeGreaterThan(0);
   await page.reload();
   await page
     .getByRole('button', { name: 'Continuar exploração', exact: true })
@@ -39,6 +46,9 @@ test('primeira exploração de Mundo funciona offline, inclusive arte, diálogo 
     page.getByText('Investigação concluída', { exact: true }),
   ).toBeVisible();
   expect((await worldData(page)).profile.world.resolution).toBe('route');
+  await page
+    .getByRole('button', { name: 'Voltar ao mapa', exact: true })
+    .click();
   await page.getByRole('button', { name: 'Atlas', exact: true }).click();
   for (const img of await page.locator('.founder-grid img').all()) {
     await img.scrollIntoViewIfNeeded();

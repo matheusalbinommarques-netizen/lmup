@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { liveQuery } from 'dexie';
   import { page } from '$app/state';
   import { db, type Profile } from '$services/db';
@@ -22,6 +22,7 @@
   } from './content';
   import { type WorldState } from './worldState';
   import RegionalMap from './RegionalMap.svelte';
+  import OasisCinematic from './OasisCinematic.svelte';
   import Button from '$lib/ui/Button.svelte';
   import Dialog from '$lib/ui/Dialog.svelte';
   import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
@@ -220,6 +221,13 @@
     else if (id === 'return') await enter('settlement');
     else await perform({ type: 'inspect', id });
   }
+  async function returnToMap() {
+    view = 'map';
+    await tick();
+    document
+      .querySelector<HTMLButtonElement>('[data-resume-exploration]')
+      ?.focus();
+  }
   async function choose(choice: string) {
     if (!world) return;
     if (choice === 'rescue' || choice === 'route') {
@@ -237,274 +245,301 @@
   ><title>{campaign ? 'Campanha dos Ermos' : 'Mundo'} · Level Me Up</title
   ></svelte:head
 >
-<div class="world-experience" class:campaign>
-  <header class="world-header">
-    <div>
-      <p class="lmu-eyebrow">Uma história construída pelas suas escolhas</p>
-      <h1>{campaign ? 'Aventura nos Ermos' : 'Mundo'}</h1>
-      <p>
-        {campaign
-          ? 'Objetivos, pistas e acontecimentos da sua campanha.'
-          : 'Explore a região, encontre pessoas e descubra o que aconteceu.'}
-      </p>
-    </div>
-    {#if profile}<div class="resources" aria-label="Recursos do herói">
-        <span>Nível {profile.level}</span><span>{profile.totalXpEarned} XP</span
-        ><span>Ouro: {profile.gold}</span><span
-          >Comida: {profile.food ?? 0}</span
-        >
-      </div>{/if}
-  </header>
-  {#if error}<p class="journey-error" role="alert">
-      {error}
-    </p>{/if}{#if notice}<p class="journey-banner" role="status">
-      {notice}
+{#snippet narrationControls()}
+  {#if voiceAvailable}<label class="journey-check"
+      ><input type="checkbox" bind:checked={narration} />Narração com voz local</label
+    >
+    {#if narration}<label class="volume"
+        >Volume<input
+          type="range"
+          min="0"
+          max="1"
+          step=".1"
+          bind:value={volume}
+        /></label
+      >
+      <Button variant="quiet" onclick={() => window.speechSynthesis.cancel()}
+        >Pular narração</Button
+      >{/if}
+  {:else}<p>
+      A narração está indisponível: este navegador não oferece uma voz
+      portuguesa local.
     </p>{/if}
-  {#if !world}<p role="status">Abrindo sua exploração…</p>{:else}
-    {#if campaign}<nav class="world-actions">
-        <a class="lmu-button lmu-button--primary" href="/mundo">Abrir Mundo</a
-        >{#if world.lastScene}<a
-            class="lmu-button lmu-button--secondary"
-            href="/mundo?retomar=1">Continuar exploração</a
-          >{/if}<a class="journey-link" href="/aventura"
-          >Piloto experimental de Védria →</a
-        ><a class="journey-link" href="/progresso">Meu progresso →</a>
-      </nav>
-    {:else}<nav class="world-tabs" aria-label="Seções de Mundo">
-        {#each [{ id: 'explore', label: 'Exploração' }, { id: 'atlas', label: 'Atlas' }, { id: 'history', label: 'História do Mundo' }] as item (item.id)}<Button
-            variant={section === item.id ? 'primary' : 'secondary'}
-            aria-pressed={section === item.id}
-            onclick={() => (section = item.id as typeof section)}
-            >{item.label}</Button
-          >{/each}<a class="journey-link" href="/aventura?campanha=ermos"
-          >Campanha e objetivos →</a
-        ><a class="journey-link" href="/progresso">Meu progresso →</a>
-      </nav>{/if}
-    {#if !campaign && section === 'explore'}
-      {#if view === 'map'}<div class="exploration-layout">
-          <RegionalMap {world} bind:selected />
-          <aside class="world-panel">
-            <p class="lmu-eyebrow">
-              {selected === 'oasis'
-                ? 'Local atual'
-                : world.discovered.includes(selected)
-                  ? 'Local conhecido · viagem futura'
-                  : 'Local não descoberto'}
-            </p>
-            <h2>{selectedPlace.name}</h2>
-            {#if selected === 'oasis'}<img
-                class="local-preview"
-                src={worldArt + 'cena-oasis-construcao.webp'}
-                alt="Tendas e oficinas no assentamento em construção"
-              />{/if}
-            <p>{selectedPlace.description}</p>
-            {#if selected === 'oasis'}<div class="world-actions vertical">
-                <Button disabled={busy} onclick={() => enter('settlement')}
-                  >Entrar no assentamento</Button
-                ><Button
-                  variant="secondary"
-                  disabled={busy || world.quest === 'new'}
-                  onclick={() => enter('outskirts')}>Explorar arredores</Button
-                >{#if world.lastScene}<Button
+  <p class="lmu-hint">A aventura também pode ser jogada sem som.</p>
+{/snippet}
+{#if world && !campaign && section === 'explore' && view === 'scene' && scene === 'settlement'}
+  <OasisCinematic
+    {world}
+    {dialogueText}
+    {choices}
+    {busy}
+    {error}
+    {notice}
+    audio={narrationControls}
+    onInteract={interact}
+    onChoose={choose}
+    onCollect={() => perform({ type: 'collect' })}
+    onMap={returnToMap}
+  />
+{:else}
+  <div class="world-experience" class:campaign>
+    <header class="world-header">
+      <div>
+        <p class="lmu-eyebrow">Uma história construída pelas suas escolhas</p>
+        <h1>{campaign ? 'Aventura nos Ermos' : 'Mundo'}</h1>
+        <p>
+          {campaign
+            ? 'Objetivos, pistas e acontecimentos da sua campanha.'
+            : 'Explore a região, encontre pessoas e descubra o que aconteceu.'}
+        </p>
+      </div>
+      {#if profile}<div class="resources" aria-label="Recursos do herói">
+          <span>Nível {profile.level}</span><span
+            >{profile.totalXpEarned} XP</span
+          ><span>Ouro: {profile.gold}</span><span
+            >Comida: {profile.food ?? 0}</span
+          >
+        </div>{/if}
+    </header>
+    {#if error}<p class="journey-error" role="alert">
+        {error}
+      </p>{/if}{#if notice}<p class="journey-banner" role="status">
+        {notice}
+      </p>{/if}
+    {#if !world}<p role="status">Abrindo sua exploração…</p>{:else}
+      {#if campaign}<nav class="world-actions">
+          <a class="lmu-button lmu-button--primary" href="/mundo">Abrir Mundo</a
+          >{#if world.lastScene}<a
+              class="lmu-button lmu-button--secondary"
+              href="/mundo?retomar=1">Continuar exploração</a
+            >{/if}<a class="journey-link" href="/aventura"
+            >Piloto experimental de Védria →</a
+          ><a class="journey-link" href="/progresso">Meu progresso →</a>
+        </nav>
+      {:else}<nav class="world-tabs" aria-label="Seções de Mundo">
+          {#each [{ id: 'explore', label: 'Exploração' }, { id: 'atlas', label: 'Atlas' }, { id: 'history', label: 'História do Mundo' }] as item (item.id)}<Button
+              variant={section === item.id ? 'primary' : 'secondary'}
+              aria-pressed={section === item.id}
+              onclick={() => (section = item.id as typeof section)}
+              >{item.label}</Button
+            >{/each}<a class="journey-link" href="/aventura?campanha=ermos"
+            >Campanha e objetivos →</a
+          ><a class="journey-link" href="/progresso">Meu progresso →</a>
+        </nav>{/if}
+      {#if !campaign && section === 'explore'}
+        {#if view === 'map'}<div class="exploration-layout">
+            <RegionalMap {world} bind:selected />
+            <aside class="world-panel">
+              <p class="lmu-eyebrow">
+                {selected === 'oasis'
+                  ? 'Local atual'
+                  : world.discovered.includes(selected)
+                    ? 'Local conhecido · viagem futura'
+                    : 'Local não descoberto'}
+              </p>
+              <h2>{selectedPlace.name}</h2>
+              {#if selected === 'oasis'}<img
+                  class="local-preview"
+                  src={worldArt + 'cena-oasis-construcao.webp'}
+                  alt="Tendas e oficinas no assentamento em construção"
+                />{/if}
+              <p>{selectedPlace.description}</p>
+              {#if selected === 'oasis'}<div class="world-actions vertical">
+                  <Button disabled={busy} onclick={() => enter('settlement')}
+                    >Entrar no assentamento</Button
+                  ><Button
                     variant="secondary"
-                    onclick={() => {
-                      view = 'scene';
-                    }}>Continuar exploração</Button
-                  >{/if}
-              </div>
-              {#if world.quest === 'new'}<p class="lmu-hint">
-                  Encontre Lucan no assentamento para planejar a investigação.
-                </p>{/if}{:else}<p class="lmu-hint">
-                Novas expedições permitirão explorar esta localidade. Por
-                enquanto, sua jornada começa no Oásis e em seus arredores.
-              </p>{/if}<a class="journey-link" href="/aposentos"
-              >Aposentos e progresso preservado →</a
-            >
-          </aside>
-        </div>
-      {:else}<div class="scene-toolbar">
-          <Button variant="secondary" onclick={() => (view = 'map')}
-            >Voltar ao mapa</Button
-          >
-          <h2>{sceneContent[scene].name}</h2>
-          <span class="lmu-hint"
-            >Seu ponto de retomada é salvo a cada ação.</span
-          >
-        </div>
-        <div class="exploration-layout scene-layout">
-          <section class="scene-panel" aria-label="Cena explorável">
-            <div class="illustrated-scene">
-              <img
-                src={worldArt + sceneContent[scene].art}
-                alt={sceneContent[scene].description}
-              />{#each hotspots.filter((p) => p.scene === scene) as hotspot, index (hotspot.id)}<button
-                  class="hotspot"
-                  style:left={hotspot.x + '%'}
-                  style:top={hotspot.y + '%'}
-                  aria-label={hotspot.name}
-                  disabled={busy}
-                  onclick={() => interact(hotspot.id)}
-                  ><span aria-hidden="true">{index + 1}</span><small
-                    >{hotspot.name}</small
-                  ></button
-                >{/each}
-            </div>
-            <p class="scene-caption">{sceneContent[scene].description}</p>
-            <nav class="interaction-list" aria-label="Interações da cena">
-              {#each hotspots.filter((p) => p.scene === scene) as hotspot, index (hotspot.id)}<Button
-                  variant="secondary"
-                  disabled={busy}
-                  onclick={() => interact(hotspot.id)}
-                  >{index + 1}. {hotspot.name}</Button
-                >{/each}
-            </nav>
-          </section>
-          <aside class="world-panel interaction-panel" aria-live="polite">
-            {#if world.dialogue}<div class="speaker">
-                <img
-                  src={worldArt + 'lucan-dorian.webp'}
-                  alt="Retrato de Lucan Dorian"
-                />
-                <div>
-                  <p class="lmu-eyebrow">Fundador · Ladino</p>
-                  <h2>Lucan Dorian</h2>
+                    disabled={busy || world.quest === 'new'}
+                    onclick={() => enter('outskirts')}
+                    >Explorar arredores</Button
+                  >{#if world.lastScene}<Button
+                      data-resume-exploration
+                      variant="secondary"
+                      onclick={() => {
+                        view = 'scene';
+                      }}>Continuar exploração</Button
+                    >{/if}
                 </div>
-              </div>
-              <p class="dialogue-text">{dialogueText}</p>
-              <div class="dialogue-choices">
-                {#each choices as choice (choice.id)}<Button
-                    variant="secondary"
+                {#if world.quest === 'new'}<p class="lmu-hint">
+                    Encontre Lucan no assentamento para planejar a investigação.
+                  </p>{/if}{:else}<p class="lmu-hint">
+                  Novas expedições permitirão explorar esta localidade. Por
+                  enquanto, sua jornada começa no Oásis e em seus arredores.
+                </p>{/if}<a class="journey-link" href="/aposentos"
+                >Aposentos e progresso preservado →</a
+              >
+            </aside>
+          </div>
+        {:else}<div class="scene-toolbar">
+            <Button variant="secondary" onclick={() => (view = 'map')}
+              >Voltar ao mapa</Button
+            >
+            <h2>{sceneContent[scene].name}</h2>
+            <span class="lmu-hint"
+              >Seu ponto de retomada é salvo a cada ação.</span
+            >
+          </div>
+          <div class="exploration-layout scene-layout">
+            <section class="scene-panel" aria-label="Cena explorável">
+              <div class="illustrated-scene">
+                <img
+                  src={worldArt + sceneContent[scene].art}
+                  alt={sceneContent[scene].description}
+                />{#each hotspots.filter((p) => p.scene === scene) as hotspot, index (hotspot.id)}<button
+                    class="hotspot"
+                    style:left={hotspot.x + '%'}
+                    style:top={hotspot.y + '%'}
+                    aria-label={hotspot.name}
                     disabled={busy}
-                    onclick={() => choose(choice.id)}>{choice.label}</Button
+                    onclick={() => interact(hotspot.id)}
+                    ><span aria-hidden="true">{index + 1}</span><small
+                      >{hotspot.name}</small
+                    ></button
                   >{/each}
               </div>
-              {#if voiceAvailable}<label class="journey-check"
-                  ><input type="checkbox" bind:checked={narration} />Narração
-                  com voz local</label
-                >{#if narration}<label class="volume"
-                    >Volume<input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step=".1"
-                      bind:value={volume}
-                    /></label
-                  ><Button
-                    variant="quiet"
-                    onclick={() => window.speechSynthesis.cancel()}
-                    >Pular narração</Button
-                  >{/if}{/if}
-            {:else if point}<p class="lmu-eyebrow">Investigação</p>
-              <h2>{point.name}</h2>
-              <p>
-                {point.id === 'supplies' && world.quest === 'solved'
-                  ? world.resolution === 'rescue'
-                    ? 'Cordas e recipientes foram separados para a equipe que recuperará a carga. Sua decisão mudou os preparativos do assentamento.'
-                    : 'O registro da rota segura está sobre a mesa, junto do aviso enviado ao entreposto.'
-                  : point.text}
-              </p>
-              {#if 'clue' in point}{#if world.clues.includes(point.clue)}<p
-                    class="clue-recorded"
-                  >
-                    ✓ Pista registrada no diário
-                  </p>{:else if world.quest === 'active'}<Button
+              <p class="scene-caption">{sceneContent[scene].description}</p>
+              <nav class="interaction-list" aria-label="Interações da cena">
+                {#each hotspots.filter((p) => p.scene === scene) as hotspot, index (hotspot.id)}<Button
+                    variant="secondary"
                     disabled={busy}
-                    onclick={() => perform({ type: 'collect' })}
-                    >Registrar pista</Button
-                  >{:else}<p class="lmu-hint">
-                    Converse com Lucan para iniciar a investigação.
-                  </p>{/if}{/if}
-            {:else}<p class="lmu-eyebrow">Observe antes de concluir</p>
-              <h2>
-                {scene === 'settlement'
-                  ? 'Um começo entre andaimes'
-                  : 'Sinais na estrada'}
-              </h2>
-              <p>
-                Escolha um ponto na cena ou na lista de interações. As falas e
-                investigações avançam no seu ritmo.
-              </p>{/if}
-          </aside>
-        </div>{/if}
-    {/if}
-    {#if !campaign && section === 'atlas'}<section class="atlas">
-        <h2>Os quatro fundadores</h2>
-        <p>
-          Quatro caminhos diferentes se encontram na construção do Oásis.
-          Conheça as pessoas que deram início ao assentamento.
-        </p>
-        <div class="founder-grid">
-          {#each founders as founder (founder.id)}<article>
-              <img
-                src={worldArt + founder.id + '.webp'}
-                alt={'Retrato de ' + founder.name}
-                loading="lazy"
-              />
-              <h3>{founder.name}</h3>
-              <p>{founder.role}</p>
-              <small>{founder.age} anos</small>
-            </article>{/each}
-        </div>
-        <h2>Geografia conhecida</h2>
-        <ul>
-          {#each locations.filter( (p) => world?.discovered.includes(p.id) ) as place (place.id)}<li
-            >
-              <strong>{place.name}</strong> · {place.description}
-            </li>{/each}
-        </ul>
-      </section>{/if}
-    <section class="quest-card" aria-label="Investigação atual">
-      <ApprovedIcon name="missions" size={36} />
-      <div>
-        <p class="lmu-eyebrow">{questLabel}</p>
-        <h2>A Caravana Perdida</h2>
-        <p>
-          {world.quest === 'solved'
-            ? 'A caravana foi localizada. Os carregadores estão seguros, e sua decisão ficou registrada.'
-            : world.quest === 'active'
-              ? 'Examine a carroça, a carga e os rastros. Registre as três pistas e retorne a Lucan.'
-              : 'Lucan precisa entender o atraso de uma entrega antes de enviar ajuda.'}
-        </p>
-        {#if world.quest !== 'new'}<label class="evidence-progress"
-            >Pistas verificadas: {gathered} / 3<progress
-              max="3"
-              value={gathered}
-            ></progress></label
-          >{/if}{#if world.quest === 'solved'}<p class="relationship">
-            Relação com Lucan: {world.resolution === 'rescue'
-              ? 'confiança na sua iniciativa'
-              : 'respeito pela sua atenção aos detalhes'}.
-          </p>{/if}
-      </div>
-    </section>
-    {#if campaign || section === 'history'}<section class="journal">
-        <h2>Diário da campanha</h2>
-        <p>
-          Revisar estes registros não altera escolhas nem reaplica
-          consequências.
-        </p>
-        {#if !world.journal.length}<p class="lmu-muted">
-            Sua história nos Ermos ainda vai começar.
-          </p>{:else}<ol>
-            {#each [...world.journal].reverse() as entry (entry.id)}<li>
-                <small>{new Date(entry.at).toLocaleDateString('pt-BR')}</small>
-                <p>{entry.text}</p>
+                    onclick={() => interact(hotspot.id)}
+                    >{index + 1}. {hotspot.name}</Button
+                  >{/each}
+              </nav>
+            </section>
+            <aside class="world-panel interaction-panel" aria-live="polite">
+              {#if world.dialogue}<div class="speaker">
+                  <img
+                    src={worldArt + 'lucan-dorian.webp'}
+                    alt="Retrato de Lucan Dorian"
+                  />
+                  <div>
+                    <p class="lmu-eyebrow">Fundador · Ladino</p>
+                    <h2>Lucan Dorian</h2>
+                  </div>
+                </div>
+                <p class="dialogue-text">{dialogueText}</p>
+                <div class="dialogue-choices">
+                  {#each choices as choice (choice.id)}<Button
+                      variant="secondary"
+                      disabled={busy}
+                      onclick={() => choose(choice.id)}>{choice.label}</Button
+                    >{/each}
+                </div>
+                {@render narrationControls()}
+              {:else if point}<p class="lmu-eyebrow">Investigação</p>
+                <h2>{point.name}</h2>
+                <p>
+                  {point.id === 'supplies' && world.quest === 'solved'
+                    ? world.resolution === 'rescue'
+                      ? 'Cordas e recipientes foram separados para a equipe que recuperará a carga. Sua decisão mudou os preparativos do assentamento.'
+                      : 'O registro da rota segura está sobre a mesa, junto do aviso enviado ao entreposto.'
+                    : point.text}
+                </p>
+                {#if 'clue' in point}{#if world.clues.includes(point.clue)}<p
+                      class="clue-recorded"
+                    >
+                      ✓ Pista registrada no diário
+                    </p>{:else if world.quest === 'active'}<Button
+                      disabled={busy}
+                      onclick={() => perform({ type: 'collect' })}
+                      >Registrar pista</Button
+                    >{:else}<p class="lmu-hint">
+                      Converse com Lucan para iniciar a investigação.
+                    </p>{/if}{/if}
+              {:else}<p class="lmu-eyebrow">Observe antes de concluir</p>
+                <h2>
+                  {scene === 'settlement'
+                    ? 'Um começo entre andaimes'
+                    : 'Sinais na estrada'}
+                </h2>
+                <p>
+                  Escolha um ponto na cena ou na lista de interações. As falas e
+                  investigações avançam no seu ritmo.
+                </p>{/if}
+            </aside>
+          </div>{/if}
+      {/if}
+      {#if !campaign && section === 'atlas'}<section class="atlas">
+          <h2>Os quatro fundadores</h2>
+          <p>
+            Quatro caminhos diferentes se encontram na construção do Oásis.
+            Conheça as pessoas que deram início ao assentamento.
+          </p>
+          <div class="founder-grid">
+            {#each founders as founder (founder.id)}<article>
+                <img
+                  src={worldArt + founder.id + '.webp'}
+                  alt={'Retrato de ' + founder.name}
+                  loading="lazy"
+                />
+                <h3>{founder.name}</h3>
+                <p>{founder.role}</p>
+                <small>{founder.age} anos</small>
+              </article>{/each}
+          </div>
+          <h2>Geografia conhecida</h2>
+          <ul>
+            {#each locations.filter( (p) => world?.discovered.includes(p.id) ) as place (place.id)}<li
+              >
+                <strong>{place.name}</strong> · {place.description}
               </li>{/each}
-          </ol>{/if}
-        <h3>Pistas registradas</h3>
-        <ul>
-          {#each world.clues as id (id)}<li>
-              <strong>{clues[id].name}</strong> — {clues[id].text}
-            </li>{/each}
-        </ul>
-      </section>{/if}
-    {#if !campaign && section === 'explore'}<p class="world-footnote">
-        Localidades identificadas: {world.discovered.length} / {locations.length}
-        · Cenas visitadas no Oásis: {world.visitedScenes.length} / 2. O mapa é fixo;
-        os acontecimentos acompanham suas ações.
-      </p>{/if}
-  {/if}
-</div>
+          </ul>
+        </section>{/if}
+      <section class="quest-card" aria-label="Investigação atual">
+        <ApprovedIcon name="missions" size={36} />
+        <div>
+          <p class="lmu-eyebrow">{questLabel}</p>
+          <h2>A Caravana Perdida</h2>
+          <p>
+            {world.quest === 'solved'
+              ? 'A caravana foi localizada. Os carregadores estão seguros, e sua decisão ficou registrada.'
+              : world.quest === 'active'
+                ? 'Examine a carroça, a carga e os rastros. Registre as três pistas e retorne a Lucan.'
+                : 'Lucan precisa entender o atraso de uma entrega antes de enviar ajuda.'}
+          </p>
+          {#if world.quest !== 'new'}<label class="evidence-progress"
+              >Pistas verificadas: {gathered} / 3<progress
+                max="3"
+                value={gathered}
+              ></progress></label
+            >{/if}{#if world.quest === 'solved'}<p class="relationship">
+              Relação com Lucan: {world.resolution === 'rescue'
+                ? 'confiança na sua iniciativa'
+                : 'respeito pela sua atenção aos detalhes'}.
+            </p>{/if}
+        </div>
+      </section>
+      {#if campaign || section === 'history'}<section class="journal">
+          <h2>Diário da campanha</h2>
+          <p>
+            Revisar estes registros não altera escolhas nem reaplica
+            consequências.
+          </p>
+          {#if !world.journal.length}<p class="lmu-muted">
+              Sua história nos Ermos ainda vai começar.
+            </p>{:else}<ol>
+              {#each [...world.journal].reverse() as entry (entry.id)}<li>
+                  <small>{new Date(entry.at).toLocaleDateString('pt-BR')}</small
+                  >
+                  <p>{entry.text}</p>
+                </li>{/each}
+            </ol>{/if}
+          <h3>Pistas registradas</h3>
+          <ul>
+            {#each world.clues as id (id)}<li>
+                <strong>{clues[id].name}</strong> — {clues[id].text}
+              </li>{/each}
+          </ul>
+        </section>{/if}
+      {#if !campaign && section === 'explore'}<p class="world-footnote">
+          Localidades identificadas: {world.discovered.length} / {locations.length}
+          · Cenas visitadas no Oásis: {world.visitedScenes.length} / 2. O mapa é fixo;
+          os acontecimentos acompanham suas ações.
+        </p>{/if}
+    {/if}
+  </div>
+{/if}
 <Dialog
   bind:open={confirmOpen}
   title="Registrar sua decisão"

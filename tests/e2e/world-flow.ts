@@ -19,10 +19,35 @@ export async function worldData(page: Page) {
   );
 }
 export async function interact(page: Page, name: string) {
+  const stage = page.getByRole('dialog', {
+    name: 'Exploração do Oásis',
+    exact: true,
+  });
+  if (await stage.isVisible()) {
+    const back = stage.getByRole('button', {
+      name: 'Voltar à exploração',
+      exact: false,
+    });
+    if (await back.isVisible()) await back.click();
+    if (
+      !(await stage
+        .getByRole('navigation', { name: 'Interações da cena', exact: true })
+        .isVisible())
+    )
+      await stage
+        .getByRole('button', { name: 'Pontos interativos', exact: false })
+        .click();
+  }
+
   await page
     .getByRole('navigation', { name: 'Interações da cena', exact: true })
     .getByRole('button', { name: new RegExp(name) })
     .click();
+  if (name === 'Voltar ao assentamento') await expect(stage).toBeVisible();
+  if (name === 'Caminho dos arredores')
+    await expect(
+      page.getByRole('heading', { name: 'Arredores do Oásis', exact: true }),
+    ).toBeVisible();
 }
 export async function investigate(page: Page) {
   await page
