@@ -161,10 +161,13 @@
     text-align: left;
     font-size: 0.84rem;
     text-decoration: none;
-    border: 0;
-    background: transparent;
+    border: 1px solid #8d744a66;
+    background: #0b1b1c;
     box-shadow: none;
-    border-radius: 4px;
+    border-radius: 5px;
+    color: #e9e2ce;
+    margin-bottom: 4px;
+    cursor: pointer;
   }
   .ux-menu :global(a) {
     color: #ead6a5;
@@ -176,7 +179,8 @@
   }
   .ux-menu :global(.lmu-button--danger) {
     color: #f2b4a1;
-    border-top: 1px solid #97744b44;
+    border-color: #be806b99;
+    background: #5d291c22;
     margin-top: 4px;
   }
 </style>

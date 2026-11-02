@@ -38,7 +38,7 @@
     starter?: MissionStarter;
     open?: boolean;
     snapshot: JourneySnapshot;
-    oncreated?: (id: number) => void;
+    oncreated?: (id: number, plannedTime?: string | null) => void;
     editTask?: Task;
     defaultProjectId?: number;
     defaultStageId?: string | null;
@@ -228,7 +228,7 @@
         editId: editTask?.id,
         expectedRevision: definitionRevision,
       });
-      oncreated?.(id);
+      oncreated?.(id, planning.plannedTime ?? null);
       if (!editTask && saveAnother) {
         // Preserve area, effort and schedule for fast planning of several missions.
         savedNotice = `Missão “${title.trim()}” criada. Pronta para a próxima.`;
@@ -327,7 +327,7 @@
                       value={String(item.id)}>{item.nome}</option
                     >{/each}</select
                 ></label
-              ><Button variant="quiet" onclick={() => (areasOpen = true)}
+              ><Button variant="secondary" onclick={() => (areasOpen = true)}
                 >Gerenciar áreas</Button
               >
             </div>
@@ -418,7 +418,7 @@
             {/if}
             <PlanningDetails
               section="planning"
-              calendarLocked={!!inheritedRoutine || !!editTask?.routineId}
+              calendarLocked={!!editTask?.routineId}
               bind:value={planning}
               legacy={!!editTask && !editTask.productivityVersion}
             />
@@ -485,17 +485,17 @@
                     />
                     <div class="step-controls">
                       <Button
-                        variant="quiet"
+                        variant="secondary"
                         aria-label={`Mover passo ${index + 1} para cima`}
                         disabled={index === 0}
                         onclick={() => moveStep(index, -1)}>↑</Button
                       ><Button
-                        variant="quiet"
+                        variant="secondary"
                         aria-label={`Mover passo ${index + 1} para baixo`}
                         disabled={index === steps.length - 1}
                         onclick={() => moveStep(index, 1)}>↓</Button
                       ><Button
-                        variant="quiet"
+                        variant="secondary"
                         aria-label={`Remover passo ${index + 1}`}
                         onclick={() => {
                           steps = steps.filter((item) => item.id !== step.id);
@@ -505,9 +505,11 @@
                   </li>
                 {/each}
               </ol>
-              <Button variant="secondary" onclick={addStep}
-                >+ Adicionar passo</Button
-              >
+              <div class="step-add-row">
+                <Button variant="secondary" onclick={addStep}
+                  >+ Adicionar passo</Button
+                >
+              </div>
               <p class="lmu-hint">
                 A quantidade de passos não aumenta a recompensa total.
               </p>
@@ -612,6 +614,18 @@
     padding: 0;
     display: grid;
     gap: 10px;
+    margin: 0;
+  }
+  .step-builder {
+    display: grid;
+    gap: 12px;
+  }
+  .step-builder > p {
+    margin: 0;
+  }
+  .step-add-row {
+    padding-left: 28px;
+    padding-top: 4px;
   }
   .step-builder li {
     display: grid;
@@ -640,6 +654,7 @@
   }
   .step-controls {
     display: flex;
+    gap: 4px;
   }
   .step-controls :global(button) {
     padding: 6px;
@@ -742,6 +757,7 @@
   .area-field :global(.lmu-button) {
     font-size: 0.77rem;
     padding: 8px;
+    min-height: 48px;
   }
   .area-icon-preview {
     display: flex;

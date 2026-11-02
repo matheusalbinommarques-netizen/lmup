@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { timePicker } from '$lib/ui/timePicker';
   import { areaIconKey } from '$services/areaIcons';
   import { onMount } from 'svelte';
   import { page } from '$app/state';
@@ -149,9 +150,9 @@
     url.searchParams.set('mode', mode);
     void goto(url.pathname + url.search, { noScroll: true, keepFocus: true });
   }
-  function addedMission(id: number) {
+  function addedMission(id: number, time: string | null = null) {
     if (creatingForRoutine && !entries.some((entry) => entry.taskId === id))
-      entries = [...entries, { taskId: id, time: null }];
+      entries = [...entries, { taskId: id, time }];
     creatingForRoutine = false;
     notice =
       'Missão criada e adicionada à sequência. Salve a rotina para aplicar o vínculo.';
@@ -425,26 +426,33 @@
                 )}>Executar seleção como sessão ({selected.length})</Button
             >{/if}
           {#each ['timed', 'flexible'] as group (group)}
-            <h2 class="timeline-label">
-              {group === 'timed' ? 'Com horário' : 'Horário flexível'}
-            </h2>
-            {#each dayRows.filter( (row) => (group === 'timed' ? !!row.plannedTime : !row.plannedTime) ) as row (row.id)}
-              <div class="timeline-entry">
-                <OccurrenceRow
-                  {row}
-                  iconKey={iconKey(row)}
-                  area={areaName(row)}
-                  {busy}
-                  checked={selected.includes(row.id)}
-                  onselect={(checked) =>
-                    (selected = checked
-                      ? [...selected, row.id]
-                      : selected.filter((id) => id !== row.id))}
-                  onopen={() => open(row)}
-                  onedit={() => editFuture(row)}
-                />
-              </div>
-            {/each}
+            {@const groupRows = dayRows.filter((row) =>
+              group === 'timed' ? !!row.plannedTime : !row.plannedTime,
+            )}
+            {#if groupRows.length}
+              <h2 class="timeline-label">
+                <ApprovedIcon name="agenda" size={18} />{group === 'timed'
+                  ? 'Com horário'
+                  : 'Horário flexível'}<span>{groupRows.length}</span>
+              </h2>
+              {#each groupRows as row (row.id)}
+                <div class="timeline-entry">
+                  <OccurrenceRow
+                    {row}
+                    iconKey={iconKey(row)}
+                    area={areaName(row)}
+                    {busy}
+                    checked={selected.includes(row.id)}
+                    onselect={(checked) =>
+                      (selected = checked
+                        ? [...selected, row.id]
+                        : selected.filter((id) => id !== row.id))}
+                    onopen={() => open(row)}
+                    onedit={() => editFuture(row)}
+                  />
+                </div>
+              {/each}
+            {/if}
           {/each}
           {#if !dayRows.length}<p class="workspace-empty">
               Sem compromissos neste dia. Sua agenda está livre para planejar.
@@ -800,6 +808,7 @@
                   ></span
                 ><input
                   type="time"
+                  use:timePicker
                   aria-label={`Horário de ${task?.title ?? 'missão'}`}
                   value={entry.time ?? ''}
                   onchange={(event) =>
@@ -989,8 +998,8 @@
       ? { name: routineName, startDate: start, days: [...days] }
       : undefined}
     allowSaveAnother={!creatingForRoutine}
-    oncreated={(id) => {
-      if (creatingForRoutine) addedMission(id);
+    oncreated={(id, time) => {
+      if (creatingForRoutine) addedMission(id, time);
       else if (editing)
         notice = 'Missão atualizada. O rascunho da rotina foi preservado.';
     }}
@@ -1084,10 +1093,25 @@
     box-shadow: 0 0 0 4px #091619;
   }
   .timeline-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: fit-content;
+    padding: 7px 10px;
+    border: 1px solid #8d744a77;
+    border-radius: 6px;
+    background: #122326;
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #ead6a5;
+    margin: 8px 0 2px;
+  }
+  .timeline-label span {
+    padding-left: 6px;
+    border-left: 1px solid #8d744a66;
+    color: #bccbbd;
     font-size: 0.75rem;
-    font-weight: 500;
-    color: #d2bd88;
-    margin: 8px 0;
   }
   .week-grid {
     display: grid;
@@ -1355,9 +1379,9 @@
     min-width: 0;
   }
   .routine-sequence input {
-    width: 100px;
-    padding: 0.3rem;
-    font-size: 0.7rem;
+    width: 124px;
+    padding: 0.5rem;
+    font-size: 0.82rem;
   }
   .sequence-actions {
     display: flex;

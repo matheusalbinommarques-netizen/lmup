@@ -380,23 +380,6 @@
             ? 'Missão excluída definitivamente. Os saldos foram preservados.'
             : 'Missão arquivada. Seus registros foram preservados.')}
     />
-    <div class="journey-actions">
-      {#if !task.archived}<Button
-          variant="quiet"
-          disabled={busy || dirty || saves > 0 || starting > 0}
-          onclick={() => {
-            removalMode = 'archive';
-            removalOpen = true;
-          }}>Arquivar missão</Button
-        >{/if}{#if isPersonalTask(task)}<Button
-          variant="danger"
-          disabled={busy || dirty || saves > 0 || starting > 0}
-          onclick={() => {
-            removalMode = 'delete';
-            removalOpen = true;
-          }}>Excluir definitivamente</Button
-        >{/if}
-    </div>
   {/if}
   {#if !finished && lastTaskEvent?.kind === 'reversal'}
     <p role="status" class="journey-banner">
@@ -706,6 +689,32 @@
       snapshot={data}
       editTask={task}
     /><ReviewForm bind:open={reviewOpen} {task} />{/if}
+  {#if task && !compact}<section
+      class="mission-management"
+      aria-label="Gestão da missão"
+    >
+      <h2>Gestão da missão</h2>
+      <p class="lmu-hint">
+        Arquive para guardar o cadastro ou revise a exclusão definitiva.
+      </p>
+      <div class="journey-actions">
+        {#if !task.archived}<Button
+            variant="secondary"
+            disabled={busy || dirty || saves > 0 || starting > 0}
+            onclick={() => {
+              removalMode = 'archive';
+              removalOpen = true;
+            }}>Arquivar missão</Button
+          >{/if}{#if isPersonalTask(task)}<Button
+            variant="danger"
+            disabled={busy || dirty || saves > 0 || starting > 0}
+            onclick={() => {
+              removalMode = 'delete';
+              removalOpen = true;
+            }}>Excluir definitivamente</Button
+          >{/if}
+      </div>
+    </section>{/if}
 </div>
 <Dialog
   bind:open={undoOpen}
@@ -727,6 +736,21 @@
 </Dialog>
 
 <style>
+  .mission-management {
+    border-top: 1px solid #8d744a55;
+    margin-top: 24px;
+    padding-top: 16px;
+  }
+  .mission-management h2 {
+    font: inherit;
+    font-size: 0.95rem;
+    color: #d6c59c;
+    margin: 0 0 8px;
+  }
+  .mission-management p {
+    margin: 0 0 12px;
+  }
+
   .session-mission-actions {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
