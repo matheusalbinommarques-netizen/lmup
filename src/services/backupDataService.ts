@@ -196,6 +196,8 @@ export function validateBackup(input: unknown): JourneyBackup {
   }
   for (const area of lists.areas) {
     text(area.nome, 'areas.nome');
+    if (area.descricao != null && typeof area.descricao !== 'string')
+      fail('descrição de área inválida.');
     if (area.iconKey != null && !isTaskIconKey(area.iconKey))
       fail('ícone de área inválido.');
     if (area.iconConflict != null && typeof area.iconConflict !== 'boolean')

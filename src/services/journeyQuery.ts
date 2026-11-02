@@ -14,6 +14,7 @@ export async function readJourneySnapshot() {
     const profile = await db.profile.get(1);
     const tasks = await db.tasks.toArray();
     const areas = await db.areas.toArray();
+    const routines = await db.routines.toArray();
     const companions = await db.companions.toArray();
     const owned = await db.ownedShopItems.toArray();
     const inventory = await db.inventory.toArray();
@@ -54,6 +55,7 @@ export async function readJourneySnapshot() {
       inventory,
       tasks,
       areas,
+      routines,
       projects,
       events,
       logs,
