@@ -48,3 +48,9 @@ Galeria final: 12 capturas, desktop 1536×1024 e mobile 390×844/DPR 2, com duas
 ## Revisão do precache
 
 Veja [análise do orçamento offline](VISUAL-PRECACHE-REVIEW.md). Não houve alteração do worker, protocolo de atualização, limites do cache ou regras de sincronização.
+
+## Correções identificadas na primeira CI
+
+A primeira matriz aprovou Node 22 e identificou oito falhas em Node 24, com 224 E2E aprovados: quatro expectativas obsoletas de títulos nas rotas de produção, duas expectativas de navegação em SVG (substituído pelos PNGs aprovados) e uma regressão real de espaçamento da aventura nos dois perfis. As expectativas mantêm recarga, ausência de erros e preferências entre abas; o teste dos ícones verifica agora também visibilidade e imagem carregada. O layout imersivo existente da aventura foi preservado contra os estilos compartilhados, sem mudar seu conteúdo. A verificação original de largura/altura foi mantida, acrescentando ausência das barras móveis.
+
+Após essas correções, lint direcionado, build e os oito cenários afetados passaram localmente. Não se repetiu a suíte local completa. O precache passou a 15.690.963 bytes, mantendo as mesmas 246 entradas.

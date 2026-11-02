@@ -93,6 +93,8 @@ test('aventura ocupa a janela e mantém controles acessíveis sem barra do organ
   expect(rect!.width).toBeGreaterThanOrEqual(viewport.width - 2);
   expect(rect!.height).toBeGreaterThanOrEqual(viewport.height - 2);
   await expect(page.locator('.journey-sidebar')).toBeHidden();
+  await expect(page.locator('.journey-mobile-header')).toBeHidden();
+  await expect(page.locator('.journey-bottom-nav')).toBeHidden();
   await expect(
     page.getByRole('link', { name: 'Voltar para Hoje' }),
   ).toBeVisible();

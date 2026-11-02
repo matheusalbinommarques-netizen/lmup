@@ -207,10 +207,19 @@ test('preferências valem no acesso direto, recarga e outra aba sem ocultar íco
   ).toBe('18.5px');
   expect(
     await other
-      .locator('nav:visible svg')
+      .locator('nav:visible .approved-icon')
       .first()
       .evaluate((el) => getComputedStyle(el).opacity),
   ).toBe('1');
+  const navigationIcon = other
+    .locator('nav:visible .approved-icon img')
+    .first();
+  await expect(navigationIcon).toBeVisible();
+  await expect
+    .poll(() =>
+      navigationIcon.evaluate((el) => (el as HTMLImageElement).naturalWidth),
+    )
+    .toBeGreaterThan(0);
   await other.reload();
   await expect(other.locator('html')).toHaveAttribute(
     'data-reduced-motion',
