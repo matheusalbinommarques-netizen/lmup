@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { isPersonalTask } from '$services/personalTaskDeletion';
+  import type { RemovalMode } from '$services/taskRemoval';
+  let removalMode = $state<RemovalMode>('delete');
   import TaskRemovalDialog from './TaskRemovalDialog.svelte';
   let removalOpen = $state(false);
   import { guardUpdates } from './guardUpdates';
@@ -38,16 +41,23 @@
   import { ensureOccurrence } from '$services/occurrenceService';
   import Button from '$lib/ui/Button.svelte';
   import Card from '$lib/ui/Card.svelte';
+  import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
   import Icon from '$lib/ui/Icon.svelte';
   let {
     id,
     sessionMode = false,
+    sessionId,
+    compact = false,
+    onOpenProgress,
     onSessionContinue,
     onSessionSkip,
     onSessionBusyChange,
   }: {
     id: number;
     sessionMode?: boolean;
+    sessionId?: string;
+    compact?: boolean;
+    onOpenProgress?: () => void;
     onSessionContinue?: () => void;
     onSessionSkip?: () => void;
     onSessionBusyChange?: (blocked: boolean) => void;
@@ -57,6 +67,10 @@
   let editOpen = $state(false),
     reviewOpen = $state(false),
     revealNotes = $state(false);
+  let notesExpanded = $state(false);
+  $effect(() => {
+    if (!compact || dirty || noteError) notesExpanded = true;
+  });
   let reviewOutcome = $state<'' | 'recalled' | 'partial' | 'again'>('');
   let busy = $state(false);
   let freshEventId = $state('');
@@ -255,6 +269,7 @@
     error = '';
     try {
       const receipt = await completeTask(id, {
+        sessionId,
         reviewOutcome: reviewOutcome || undefined,
         occurrenceDate: task?.recurrence ? today : undefined,
       });
@@ -315,6 +330,10 @@
   }
   async function openProgress() {
     if (!task) return;
+    if (onOpenProgress) {
+      onOpenProgress();
+      return;
+    }
     busy = true;
     error = '';
     try {
@@ -343,7 +362,7 @@
 
 <svelte:head><title>{task?.title ?? 'Missão'} · Level Me Up</title></svelte:head
 >
-<div class="journey-execution">
+<div class="journey-execution" class:compact>
   {#if !sessionMode}<a class="journey-link" href="/missoes"
       ><Icon name="back" size={18} />Voltar às missões</a
     >{/if}
@@ -351,6 +370,17 @@
   {#if correctionNotice}<p role="status" class="journey-banner">
       {correctionNotice}
     </p>{/if}
+  {#if task && !compact}<TaskRemovalDialog
+      bind:open={removalOpen}
+      {task}
+      mode={removalMode}
+      onremoved={(mode) =>
+        (correctionNotice =
+          mode === 'delete'
+            ? 'Missão excluída definitivamente. Os saldos foram preservados.'
+            : 'Missão arquivada. Seus registros foram preservados.')}
+    />
+  {/if}
   {#if !finished && lastTaskEvent?.kind === 'reversal'}
     <p role="status" class="journey-banner">
       Conclusão desfeita. {#if lastTaskEvent.debtAdded}Débito a compensar: {lastTaskEvent
@@ -430,38 +460,32 @@
           <p style="white-space: pre-wrap; text-align: left">{notes}</p></Card
         >{/if}
     </div>
-  {:else}<TaskRemovalDialog
-      bind:open={removalOpen}
-      {task}
-      onremoved={() => {
-        void goto('/missoes');
-      }}
-    /><Button
-      variant="quiet"
-      disabled={busy || dirty || saves > 0 || starting > 0}
-      onclick={() => (removalOpen = true)}>Excluir missão</Button
-    >
-    <header class="journey-heading">
-      <div>
-        <p class="lmu-eyebrow">
-          {data.projects.find((item) => item.id === task.projectId)?.name ??
-            'Um passo na sua jornada'}
-        </p>
-        <h1>{task.title}</h1>
-        <p class="lmu-hint">
-          {data.areas.find((area) => area.id === task.areaId)?.nome ?? 'Geral'} ·
-          {recurrenceLabel(task)}{task.plannedDate
-            ? ` · ${formatCalendar(task.plannedDate)}`
-            : ''}
-        </p>
-        {#if task.recurrence}<p class="lmu-hint">
-            Próxima ocorrência: {formatCalendar(nextPlannedDate(task, today))}
-          </p>{/if}
-        {#if task.description}<p style="white-space: pre-wrap">
-            {task.description}
-          </p>{/if}
-      </div>
-    </header>
+  {:else}
+    <details class="execution-context" open={!compact}>
+      <summary hidden={!compact}>Descrição e contexto</summary>
+      <header class="journey-heading">
+        <div>
+          <p class="lmu-eyebrow">
+            {data.projects.find((item) => item.id === task.projectId)?.name ??
+              'Um passo na sua jornada'}
+          </p>
+          <h1>{task.title}</h1>
+          <p class="lmu-hint">
+            {data.areas.find((area) => area.id === task.areaId)?.nome ??
+              'Geral'} ·
+            {recurrenceLabel(task)}{task.plannedDate
+              ? ` · ${formatCalendar(task.plannedDate)}`
+              : ''}
+          </p>
+          {#if task.recurrence}<p class="lmu-hint">
+              Próxima ocorrência: {formatCalendar(nextPlannedDate(task, today))}
+            </p>{/if}
+          {#if task.description}<p style="white-space: pre-wrap">
+              {task.description}
+            </p>{/if}
+        </div>
+      </header>
+    </details>
     {#if canExecute && !['active', 'paused'].includes(task.executionState ?? '')}<div
         class="journey-actions"
       >
@@ -508,10 +532,14 @@
                   /><span>{step.label}</span></label
                 >
               </li>{/each}
-          </ul>{:else}<h2>Um passo simples já conta.</h2>
-          <p class="lmu-muted">
-            Conclua quando terminar esta atividade.
-          </p>{/if}</Card
+          </ul>{:else}<div class="execution-guidance">
+            <strong
+              >{task.executionState === 'active'
+                ? 'Em andamento'
+                : 'No seu ritmo'}</strong
+            >
+            <p>Conclua quando terminar esta atividade.</p>
+          </div>{/if}</Card
       >
       {#if task.reviewEnabled}<p class="journey-banner">
           Tente explicar o que lembra antes de consultar as notas. Sua avaliação
@@ -526,8 +554,39 @@
             ></select
           ></label
         >{/if}
+      {#if reward}<div class="execution-reward">
+          <span>Recompensa prevista</span><strong
+            ><ApprovedIcon name="xp" size={23} />+{reward.xp} XP</strong
+          ><strong
+            ><ApprovedIcon name="ouro" size={23} />+{reward.gold} Ouro</strong
+          >{#if reward.food}<small>+{reward.food} Comida</small>{/if}
+        </div>{/if}
+      <div class="journey-actions completion-actions">
+        <Button
+          variant="secondary"
+          disabled={busy || saves > 0 || starting > 0}
+          onclick={pause}
+          ><Icon name="pause" size={18} />{!task ||
+          !['active', 'paused'].includes(task.executionState ?? '')
+            ? 'Voltar às missões'
+            : sessionMode
+              ? 'Pausar e voltar às missões'
+              : 'Pausar e voltar'}</Button
+        ><Button
+          disabled={!ready ||
+            busy ||
+            saves > 0 ||
+            dirty ||
+            starting > 0 ||
+            !canExecute}
+          onclick={conclude}
+          >Concluir missão<Icon name="check" size={18} /></Button
+        >
+      </div>
+      {#if !ready}<p class="lmu-hint">Marque os passos para concluir.</p>{/if}
       {#if !task.reviewEnabled || revealNotes || dirty || noteError}
-        <section class="journey-notes">
+        <details class="journey-notes" bind:open={notesExpanded}>
+          <summary>Notas da missão</summary>
           <label class="journey-label" for="execution-notes" id="notes-label"
             >Notas da missão<textarea
               id="execution-notes"
@@ -553,41 +612,14 @@
             ><Button variant="quiet" onclick={leaveUnsaved}
               >Voltar sem salvar notas</Button
             >{/if}
-        </section>
+        </details>
       {:else}<Button
           variant="secondary"
           onclick={() => {
             revealNotes = true;
           }}>Consultar e editar notas</Button
         >{/if}
-      <div class="journey-actions">
-        <Button
-          variant="secondary"
-          disabled={busy || saves > 0 || starting > 0}
-          onclick={pause}
-          ><Icon name="pause" size={18} />{!task ||
-          !['active', 'paused'].includes(task.executionState ?? '')
-            ? 'Voltar às missões'
-            : sessionMode
-              ? 'Pausar e voltar às missões'
-              : 'Pausar e voltar'}</Button
-        ><Button
-          disabled={!ready ||
-            busy ||
-            saves > 0 ||
-            dirty ||
-            starting > 0 ||
-            !canExecute}
-          onclick={conclude}
-          >Concluir missão<Icon name="check" size={18} /></Button
-        >
-      </div>
-      {#if !ready}<p class="lmu-hint">
-          Marque os passos para concluir.
-        </p>{/if}{#if reward}<p class="lmu-hint">
-          Prévia atual: +{reward.xp} XP · +{reward.gold} Gold · +{reward.food} Comida.
-          Bônus de projeto são registrados separadamente.
-        </p>{/if}{/if}
+    {/if}
   {/if}
   {#if finished && (dirty || saves || noteError)}<section class="journey-notes">
       <p role="status">
@@ -618,44 +650,71 @@
         >Voltar sem salvar notas</Button
       >
     </section>{/if}
-  {#if task && data}<div
-      class="journey-actions"
-      class:session-mission-actions={sessionMode}
-    >
-      {#if task.productivityVersion && !task.reviewEnabled}<Button
-          disabled={busy || saves > 0 || dirty}
-          onclick={openProgress}
-          >{finished
-            ? 'Corrigir progresso'
-            : 'Registrar progresso parcial'}</Button
-        >{/if}
-      <Button
-        variant="secondary"
-        disabled={busy || saves > 0 || dirty}
-        onclick={() => {
-          editOpen = true;
-        }}>Editar missão</Button
-      ><Button
-        variant="secondary"
-        disabled={busy || saves > 0 || dirty}
-        onclick={() => {
-          reviewOpen = true;
-        }}>Configurar revisão</Button
-      >
-      {#if sessionMode && onSessionSkip}
+  {#if task && data}<details class="execution-more" open={!compact}>
+      <summary hidden={!compact}>Ações e revisão</summary>
+      <div class="journey-actions" class:session-mission-actions={sessionMode}>
+        {#if task.productivityVersion && !task.reviewEnabled}<Button
+            disabled={busy || saves > 0 || dirty}
+            onclick={openProgress}
+            >{finished
+              ? 'Corrigir progresso'
+              : 'Registrar progresso parcial'}</Button
+          >{/if}
         <Button
-          variant="quiet"
-          disabled={busy || saves > 0 || dirty || starting > 0 || !!noteError}
-          onclick={onSessionSkip}
-          >Pular por agora <Icon name="arrow" size={16} /></Button
+          variant="secondary"
+          disabled={busy || saves > 0 || dirty}
+          onclick={() => {
+            editOpen = true;
+          }}>Editar missão</Button
+        ><Button
+          variant="secondary"
+          disabled={busy || saves > 0 || dirty}
+          onclick={() => {
+            reviewOpen = true;
+          }}>Configurar revisão</Button
         >
-      {/if}
-    </div>
-    <ReviewHistory {task} events={data.events} /><QuickCreate
+        {#if sessionMode && onSessionSkip}
+          <Button
+            variant="quiet"
+            disabled={busy || saves > 0 || dirty || starting > 0 || !!noteError}
+            onclick={onSessionSkip}
+            >Pular por agora <Icon name="arrow" size={16} /></Button
+          >
+        {/if}
+      </div>
+      <ReviewHistory {task} events={data.events} />
+    </details>
+    <QuickCreate
       bind:open={editOpen}
       snapshot={data}
       editTask={task}
     /><ReviewForm bind:open={reviewOpen} {task} />{/if}
+  {#if task && !compact}<section
+      class="mission-management"
+      aria-label="Gestão da missão"
+    >
+      <h2>Gestão da missão</h2>
+      <p class="lmu-hint">
+        Arquive para guardar o cadastro ou revise a exclusão definitiva.
+      </p>
+      <div class="journey-actions">
+        {#if !task.archived}<Button
+            variant="secondary"
+            disabled={busy || dirty || saves > 0 || starting > 0}
+            onclick={() => {
+              removalMode = 'archive';
+              removalOpen = true;
+            }}>Arquivar missão</Button
+          >{/if}{#if isPersonalTask(task)}<Button
+            variant="danger"
+            disabled={busy || dirty || saves > 0 || starting > 0}
+            onclick={() => {
+              removalMode = 'delete';
+              removalOpen = true;
+            }}>Excluir definitivamente</Button
+          >{/if}
+      </div>
+    </section>{/if}
 </div>
 <Dialog
   bind:open={undoOpen}
@@ -677,8 +736,111 @@
 </Dialog>
 
 <style>
+  .mission-management {
+    border-top: 1px solid #8d744a55;
+    margin-top: 24px;
+    padding-top: 16px;
+  }
+  .mission-management h2 {
+    font: inherit;
+    font-size: 0.95rem;
+    color: #d6c59c;
+    margin: 0 0 8px;
+  }
+  .mission-management p {
+    margin: 0 0 12px;
+  }
+
   .session-mission-actions {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  }
+
+  .execution-reward {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 18px;
+    padding: 12px 0;
+    border-top: 1px solid #8b704534;
+  }
+  .execution-reward > span {
+    width: 100%;
+    color: #b7c5b1;
+    font-size: 0.77rem;
+  }
+  .execution-reward strong {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #edce85;
+    font-size: 0.88rem;
+  }
+  .execution-reward small {
+    color: #afbfaa;
+  }
+  .completion-actions {
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .completion-actions :global(button:last-child) {
+    width: 100%;
+    min-height: 48px;
+    font-size: 1rem;
+  }
+  .completion-actions :global(button:first-child) {
+    align-self: start;
+  }
+  .execution-guidance strong {
+    color: #e5c686;
+    font-size: 0.85rem;
+  }
+  .execution-guidance p {
+    color: #b9c6b1;
+    font-size: 0.85rem;
+    margin: 6px 0 0;
+  }
+  .compact :global(.lmu-card) {
+    padding: 12px 14px;
+    border-radius: 8px;
+  }
+  .compact .journey-notes {
+    margin-top: 0;
+  }
+  .compact .execution-more {
+    margin-top: 0;
+  }
+  .compact .journey-actions {
+    margin: 0;
+  }
+  .compact details {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+  .compact {
+    width: 100%;
+    max-width: none;
+    display: grid;
+    gap: 10px;
+  }
+  .compact .execution-context,
+  .compact .execution-more,
+  .compact .journey-notes {
+    border-top: 1px solid #8b704534;
+    padding-top: 10px;
+    font-size: 0.82rem;
+  }
+  .compact summary {
+    cursor: pointer;
+    color: #ccb784;
+    margin-bottom: 8px;
+  }
+  .compact :global(.journey-heading) {
+    margin-bottom: 8px;
+  }
+  .compact :global(.journey-heading h1) {
+    font-size: 1.5rem;
   }
 </style>

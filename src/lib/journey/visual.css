@@ -94,6 +94,24 @@
   font-family: var(--lmu-display);
   font-size: 1.05rem;
 }
+.visual-shell input[type='time'] {
+  min-height: 44px;
+  cursor: pointer;
+  color-scheme: dark;
+}
+.visual-shell input[type='time']::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 1;
+  min-width: 20px;
+  min-height: 20px;
+}
+.visual-shell input[type='time']:focus-visible {
+  outline: 2px solid #edc36b;
+  outline-offset: 2px;
+}
+.visual-shell input[type='time']:disabled {
+  cursor: not-allowed;
+}
 .visual-shell .rpg-frame::before {
   border: 0;
   inset: 2px;

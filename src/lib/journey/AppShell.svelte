@@ -15,15 +15,15 @@
   const links: { href: string; label: string; icon: IconName }[] = [
     { href: '/', label: destinations.today, icon: 'today' },
     { href: '/missoes', label: destinations.missions, icon: 'missions' },
-    { href: '/projetos', label: destinations.projects, icon: 'projects' },
     { href: '/mundo', label: 'Mundo', icon: 'world' },
   ];
   const extras = [
-    { href: '/aventura?campanha=ermos', label: 'Aventura nos Ermos' },
+    { href: '/projetos', label: 'Projetos' },
+    { href: '/refugio/acampamento', label: 'Acampamento' },
     { href: '/aposentos', label: 'Aposentos' },
-    { href: '/aventura', label: 'Aventura (experimento)' },
+    { href: '/mundo', label: 'Mundo, mapa e aventuras' },
     { href: '/progresso', label: 'Meu progresso' },
-    { href: '/perfil', label: 'Perfil e equipamentos' },
+    { href: '/perfil', label: 'Herói e equipamentos' },
     { href: '/config', label: 'Configurações e backup' },
     { href: '/revisoes', label: 'Revisões e sessões' },
     { href: '/arquivo/missoes', label: 'Organização avançada de missões' },
@@ -40,19 +40,23 @@
     { href: '/mundo', label: 'Mundo', icon: 'mundo' },
     { href: '/perfil', label: 'Herói', icon: 'heroi' },
     { href: '/projetos', label: 'Projetos', icon: 'projetos_navegacao' },
-    { href: '/aventura?campanha=ermos', label: 'Aventura', icon: 'aventura' },
     { href: '/aposentos', label: 'Aposentos', icon: 'refugio' },
     { href: '/bestiario', label: 'Companheiros', icon: 'companheiros' },
-    { href: '/mundo#mapa', label: 'Mapa', icon: 'mapa' },
   ];
   function active(href: string) {
     const path = page.url.pathname;
-    if (href === '/') return path === '/' || path.startsWith('/missao/');
+    if (href === '/') return path === '/';
+    if (href === '/mundo')
+      return path.startsWith('/mundo') || path.startsWith('/aventura');
     if (href === '/missoes')
       return (
         path.startsWith('/missoes') ||
         path.startsWith('/arquivo/missoes') ||
-        path === '/revisoes'
+        path === '/revisoes' ||
+        path === '/sessoes' ||
+        path === '/sessao' ||
+        path.startsWith('/missao/') ||
+        path.startsWith('/ocorrencia/')
       );
     if (href === '/aposentos')
       return [
@@ -140,6 +144,14 @@
           size={28}
         /><span>{link.label}</span></a
       >{/each}
+    <button
+      type="button"
+      class="mobile-more"
+      aria-label="Mais"
+      aria-expanded={menu}
+      onclick={() => (menu = true)}
+      ><ApprovedIcon name="perfil" size={28} /><span>Mais</span></button
+    >
   </nav>
   <Dialog bind:open={menu} title="Seu espaço"
     ><nav class="journey-extra-links" aria-label="Perfil e ferramentas">
@@ -149,3 +161,24 @@
     </nav></Dialog
   >
 </div>
+
+<style>
+  .mobile-more {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 56px;
+    background: none;
+    border: 0;
+    color: inherit;
+    font: inherit;
+    font-size: 0.7rem;
+    cursor: pointer;
+  }
+  .mobile-more:focus-visible {
+    outline: 2px solid #e0b45b;
+    outline-offset: -3px;
+  }
+</style>

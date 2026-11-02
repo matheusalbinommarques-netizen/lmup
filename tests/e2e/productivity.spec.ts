@@ -1,3 +1,4 @@
+import { fillMissionSteps, chooseTracking } from './mission-form';
 import { test, expect, type Page, type Locator } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
@@ -21,14 +22,18 @@ async function create(
 }
 async function advanced(form: Locator) {
   await form.getByLabel('Esforço desta missão').selectOption('medium');
+  await form.getByRole('tab', { name: 'Planejamento', exact: true }).click();
   await form.getByLabel('Recorrência').selectOption('daily');
-  await form
-    .getByText('Horário, prioridade e acompanhamento', { exact: true })
-    .click();
+  await form.getByRole('tab', { name: 'Acompanhamento', exact: true }).click();
+  await form.getByRole('tab', { name: 'Planejamento', exact: true }).click();
   await form.getByLabel('Início desejado', { exact: true }).fill('19:00');
+  await form.getByRole('tab', { name: 'Acompanhamento', exact: true }).click();
   await form.getByLabel('Duração estimada (minutos)').fill('45');
+  await form.getByRole('tab', { name: 'Planejamento', exact: true }).click();
   await form.getByLabel('Importância').selectOption('high');
-  await form.getByLabel('Acompanhar progresso por').selectOption('time');
+  await form.getByRole('tab', { name: 'Acompanhamento', exact: true }).click();
+  await chooseTracking(form, 'time');
+  await form.getByRole('tab', { name: 'Acompanhamento', exact: true }).click();
   await form.getByLabel('Meta de tempo recompensável (minutos)').fill('40');
 }
 async function saveTime(page: Page, value: number, correction = false) {
@@ -86,14 +91,17 @@ test('conclusão direta mantém passos auxiliares sem exigir sua marcação', as
   page,
 }) => {
   await create(page, 'Uma entrega direta', async (form) => {
-    await form.getByText('Passos e outros detalhes', { exact: true }).click();
     await form
-      .getByLabel('Passos, um por linha')
-      .fill('Referência opcional\nConferência opcional');
-    await form
-      .getByText('Horário, prioridade e acompanhamento', { exact: true })
+      .getByRole('tab', { name: 'Passos e detalhes', exact: true })
       .click();
-    await form.getByLabel('Acompanhar progresso por').selectOption('direct');
+    await fillMissionSteps(form, 'Referência opcional\nConferência opcional');
+    await form
+      .getByRole('tab', { name: 'Acompanhamento', exact: true })
+      .click();
+    await form
+      .getByRole('tab', { name: 'Acompanhamento', exact: true })
+      .click();
+    await chooseTracking(form, 'direct');
   });
   await page
     .getByRole('link', { name: 'Uma entrega direta', exact: true })
@@ -206,6 +214,17 @@ test('rotina semanal vira sessão persistente e aceita pausa, retomada e conclus
     page.getByRole('heading', { name: 'Noite produtiva', exact: true }),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Visão geral', exact: true }).click();
+  if (!(await page.locator('.queue-panel').getAttribute('open'))) {
+    if (
+      !(await page
+        .locator('.queue-panel')
+        .evaluate((el) => (el as HTMLDetailsElement).open))
+    )
+      await page.locator('.queue-panel summary').click();
+  }
+  await page
+    .getByRole('button', { name: 'Organizar Lavar louça', exact: true })
+    .click();
   await page
     .getByRole('button', { name: 'Mover Lavar louça para baixo', exact: true })
     .click();
@@ -213,6 +232,9 @@ test('rotina semanal vira sessão persistente e aceita pausa, retomada e conclus
     .getByRole('complementary', { name: 'Fila de missões' })
     .getByRole('button')
     .filter({ hasText: 'Ler um livro' })
+    .click();
+  await page
+    .getByRole('button', { name: 'Execução detalhada', exact: true })
     .click();
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
@@ -227,6 +249,9 @@ test('rotina semanal vira sessão persistente e aceita pausa, retomada e conclus
   ).toHaveLength(1);
   await page.getByRole('link', { name: 'Pausar sessão', exact: true }).click();
   await page.clock.setFixedTime(new Date('2026-11-03T15:00:00-03:00'));
+  await page
+    .getByRole('button', { name: 'Ferramentas de missões', exact: true })
+    .click();
   await page
     .getByRole('button', { name: 'Sessões salvas', exact: true })
     .click();
@@ -256,6 +281,9 @@ test('recuperação reagendada convive com a ocorrência do dia sem duplicação
 }) => {
   await create(page, 'Praticar inglês', advanced);
   await page.clock.setFixedTime(new Date('2026-11-03T15:00:00-03:00'));
+  await page
+    .getByRole('button', { name: 'Ferramentas de missões', exact: true })
+    .click();
   await page
     .getByRole('button', { name: 'Recuperar ocorrências', exact: true })
     .click();

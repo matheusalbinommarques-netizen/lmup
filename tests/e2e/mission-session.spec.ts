@@ -51,7 +51,7 @@ async function createSession(page: Page) {
     await expect(form).not.toBeVisible();
   }
   await page
-    .getByRole('button', { name: 'Montar sessão', exact: true })
+    .getByRole('button', { name: 'Selecionar para sessão', exact: true })
     .click();
   for (const title of ['Primeira', 'Intermediária', 'Última']) {
     await page
@@ -64,6 +64,35 @@ async function createSession(page: Page) {
   await expect(
     page.getByRole('heading', { name: 'Primeira', exact: true }),
   ).toBeVisible();
+  await detailed(page);
+}
+
+async function detailed(page: Page) {
+  const button = page.getByRole('button', {
+    name: 'Execução detalhada',
+    exact: true,
+  });
+  await button.click();
+}
+async function notes(page: Page, text: string) {
+  await detailed(page);
+  const panel = page.locator('.detailed-execution .journey-notes');
+  await panel.waitFor();
+  if ((await panel.getAttribute('open')) === null)
+    await panel.locator('summary').click();
+  await page.getByLabel('Notas da missão', { exact: true }).fill(text);
+  await expect(page.getByText('Tudo salvo neste navegador')).toBeVisible();
+}
+async function remove(page: Page, title: string) {
+  const queue = page.locator('.queue-panel');
+  if ((await queue.getAttribute('open')) === null)
+    await queue.locator('summary').click();
+  await queue
+    .getByRole('button', { name: `Organizar ${title}`, exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: `Remover da sessão: ${title}`, exact: true })
+    .click();
 }
 
 for (const removed of ['Primeira', 'Intermediária', 'Última']) {
@@ -71,16 +100,11 @@ for (const removed of ['Primeira', 'Intermediária', 'Última']) {
     page,
   }) => {
     await createSession(page);
-    await page.getByLabel('Notas da missão').fill('Meu progresso preservado');
+    await notes(page, 'Meu progresso preservado');
     await expect(page.getByText('Tudo salvo neste navegador')).toBeVisible();
     const before = await storedData(page);
-    await page
-      .getByRole('button', {
-        name: `Remover da sessão: ${removed}`,
-        exact: true,
-      })
-      .click();
-    await expect(page.getByText('0 de 2 missões concluídas')).toBeVisible();
+    await remove(page, removed);
+    await expect(page.getByText('0 de 2 concluídas')).toBeVisible();
     await expect(
       page.getByRole('heading', {
         name: removed === 'Primeira' ? 'Intermediária' : 'Primeira',
@@ -88,7 +112,7 @@ for (const removed of ['Primeira', 'Intermediária', 'Última']) {
       }),
     ).toBeVisible();
     await page.reload();
-    await expect(page.getByText('0 de 2 missões concluídas')).toBeVisible();
+    await expect(page.getByText('0 de 2 concluídas')).toBeVisible();
     await expect(
       page.getByRole('complementary', { name: 'Fila de missões' }),
     ).not.toContainText(removed);
@@ -109,9 +133,7 @@ test('remover todas as pendentes limpa a sessão e mantém as missões', async (
   await createSession(page);
   const before = await storedData(page);
   for (const title of ['Primeira', 'Intermediária', 'Última']) {
-    await page
-      .getByRole('button', { name: `Remover da sessão: ${title}`, exact: true })
-      .click();
+    await remove(page, title);
   }
   await expect(
     page.getByRole('heading', { name: 'Nenhuma sessão em foco.' }),
@@ -125,8 +147,9 @@ test('remover todas as pendentes limpa a sessão e mantém as missões', async (
   ).toBeNull();
   expect(await storedData(page)).toEqual(before);
   await page
-    .getByRole('link', { name: 'Escolher missões', exact: true })
+    .getByRole('link', { name: 'Ver sessões salvas', exact: true })
     .click();
+  await page.getByRole('button', { name: 'Lista', exact: true }).click();
   await page.getByRole('button', { name: 'Todas', exact: true }).click();
   for (const title of ['Primeira', 'Intermediária', 'Última']) {
     await expect(
@@ -139,6 +162,10 @@ test('pular fica junto de editar e revisão e preserva os dados da missão', asy
   page,
 }, info) => {
   await createSession(page);
+  await page
+    .locator('.detailed-execution')
+    .getByText('Ações e revisão', { exact: true })
+    .click();
   const actions = page.locator('.journey-actions').filter({
     has: page.getByRole('button', { name: 'Editar missão', exact: true }),
   });
@@ -168,7 +195,7 @@ test('pular fica junto de editar e revisão e preserva os dados da missão', asy
   await expect(
     page.getByRole('heading', { name: 'Intermediária', exact: true }),
   ).toBeVisible();
-  await expect(page.getByText('0 de 3 missões concluídas')).toBeVisible();
+  await expect(page.getByText('0 de 3 concluídas')).toBeVisible();
   expect(await storedData(page)).toEqual(before);
 });
 
@@ -191,16 +218,14 @@ test('remoção preserva recompensas, histórico e progresso das outras missões
   await page
     .getByRole('button', { name: 'Próxima missão', exact: true })
     .click();
-  await page.getByLabel('Notas da missão').fill('Retomar daqui');
+  await notes(page, 'Retomar daqui');
   await expect(page.getByText('Tudo salvo neste navegador')).toBeVisible();
   const before = await storedData(page);
-  await page
-    .getByRole('button', { name: 'Remover da sessão: Última', exact: true })
-    .click();
-  await expect(page.getByText('1 de 2 missões concluídas')).toBeVisible();
+  await remove(page, 'Última');
+  await expect(page.getByText('1 de 2 concluídas')).toBeVisible();
   await expect(page.getByLabel('Notas da missão')).toHaveValue('Retomar daqui');
   await page.reload();
-  await expect(page.getByText('1 de 2 missões concluídas')).toBeVisible();
+  await expect(page.getByText('1 de 2 concluídas')).toBeVisible();
   expect(await storedData(page)).toEqual(before);
 });
 
@@ -222,25 +247,16 @@ test('falha ao persistir remoção mantém a fila até conseguir salvar', async 
       return original.apply(this, args);
     };
   });
-  await page
-    .getByRole('button', { name: 'Remover da sessão: Primeira', exact: true })
-    .click();
+  await remove(page, 'Primeira');
   await expect(page.getByRole('alert')).toContainText(
     'Não foi possível salvar a sessão',
   );
-  await expect(page.getByText('0 de 3 missões concluídas')).toBeVisible();
+  await expect(page.getByText('0 de 3 concluídas')).toBeVisible();
   await page.reload();
-  await expect(page.getByText('0 de 3 missões concluídas')).toBeVisible();
-  await page
-    .getByRole('button', { name: 'Remover da sessão: Primeira', exact: true })
-    .click();
-  await page
-    .getByRole('button', {
-      name: 'Remover da sessão: Intermediária',
-      exact: true,
-    })
-    .click();
-  await expect(page.getByText('0 de 1 missões concluídas')).toBeVisible();
+  await expect(page.getByText('0 de 3 concluídas')).toBeVisible();
+  await remove(page, 'Primeira');
+  await remove(page, 'Intermediária');
+  await expect(page.getByText('0 de 1 concluídas')).toBeVisible();
   await page.evaluate(() => {
     const original = IDBObjectStore.prototype.put;
     IDBObjectStore.prototype.put = function (
@@ -255,21 +271,22 @@ test('falha ao persistir remoção mantém a fila até conseguir salvar', async 
       return original.apply(this, args);
     };
   });
-  await page
-    .getByRole('button', { name: 'Remover da sessão: Última', exact: true })
-    .click();
+  await remove(page, 'Última');
   await expect(page.getByRole('alert')).toContainText(
     'Não foi possível salvar a sessão',
   );
-  await expect(page.getByText('0 de 1 missões concluídas')).toBeVisible();
+  await expect(page.getByText('0 de 1 concluídas')).toBeVisible();
   await page.reload();
-  await expect(page.getByText('0 de 1 missões concluídas')).toBeVisible();
+  await expect(page.getByText('0 de 1 concluídas')).toBeVisible();
 });
 
 test('remover a última missão em foco permite voltar às pendentes', async ({
   page,
 }) => {
   await createSession(page);
+  const queue = page.locator('.queue-panel');
+  if ((await queue.getAttribute('open')) === null)
+    await queue.locator('summary').click();
   await page
     .getByRole('complementary', { name: 'Fila de missões' })
     .getByRole('button', { name: /Última Pendente/ })
@@ -278,13 +295,11 @@ test('remover a última missão em foco permite voltar às pendentes', async ({
     page.getByRole('heading', { name: 'Última', exact: true }),
   ).toBeVisible();
   const before = await storedData(page);
-  await page
-    .getByRole('button', { name: 'Remover da sessão: Última', exact: true })
-    .click();
+  await remove(page, 'Última');
   await expect(
     page.getByRole('heading', { name: 'Fim da sequência', exact: true }),
   ).toBeVisible();
-  await expect(page.getByText('0 de 2 missões concluídas')).toBeVisible();
+  await expect(page.getByText('0 de 2 concluídas')).toBeVisible();
   await page.reload();
   await expect(
     page.getByRole('heading', { name: 'Fim da sequência', exact: true }),
@@ -349,7 +364,7 @@ test('sessão executa missões em sequência, persiste e não gera XP ao pular',
     await expect(form).not.toBeVisible();
   }
   await page
-    .getByRole('button', { name: 'Montar sessão', exact: true })
+    .getByRole('button', { name: 'Selecionar para sessão', exact: true })
     .click();
   await page
     .getByRole('checkbox', { name: 'Incluir Lavar a louça na sessão' })
@@ -361,12 +376,14 @@ test('sessão executa missões em sequência, persiste e não gera XP ao pular',
     .getByRole('button', { name: 'Iniciar sessão', exact: true })
     .click();
   await expect(page).toHaveURL(/\/sessoes$/);
-  await expect(page.getByText('0 de 2 missões concluídas')).toBeVisible();
+  await detailed(page);
+  await expect(page.getByText('0 de 2 concluídas')).toBeVisible();
   await page.reload();
   await expect(
     page.getByRole('heading', { name: 'Sessão de Missões' }),
   ).toBeVisible();
-  await expect(page.getByText('0 de 2 missões concluídas')).toBeVisible();
+  await detailed(page);
+  await expect(page.getByText('0 de 2 concluídas')).toBeVisible();
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
@@ -376,19 +393,23 @@ test('sessão executa missões em sequência, persiste e não gera XP ao pular',
   await page
     .getByRole('button', { name: 'Próxima missão', exact: true })
     .click();
-  await expect(page.getByText('1 de 2 missões concluídas')).toBeVisible();
+  await expect(page.getByText('1 de 2 concluídas')).toBeVisible();
   await page.getByRole('button', { name: 'Pular por agora' }).click();
   await expect(
     page.getByRole('heading', { name: 'Fim da sequência' }),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Revisar pendentes' }).click();
+  await detailed(page);
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
   await page.getByRole('button', { name: 'Próxima missão' }).click();
-  await expect(page.getByText('2 de 2 missões concluídas')).toBeVisible();
+  await expect(page.getByText('2 de 2 concluídas')).toBeVisible();
   await page.getByRole('button', { name: 'Finalizar sessão' }).click();
-  await expect(page).toHaveURL(/\/missoes$/);
+  await expect(
+    page.getByRole('heading', { name: 'Nenhuma sessão em foco.' }),
+  ).toBeVisible();
+  await page.goto('/missoes');
   await page.getByRole('button', { name: 'Concluídas', exact: true }).click();
   await expect(
     page

@@ -33,7 +33,8 @@ it('restaura ícones, exclusão e arquivo juntos, preservando recibos e acampame
   }
   await saveArea('Estudos', areaId, 'exercicio');
   const backup = await createJourneyBackup();
-  for (const key of ['profile', 'activityEvents', 'xpLogs', 'executionRecords'])
+  expect(backup.data.profile).toMatchObject(before.data.profile!);
+  for (const key of ['activityEvents', 'xpLogs', 'executionRecords'])
     expect(backup.data[key]).toEqual(before.data[key]);
   await restoreJourneyBackup(backup);
   expect(await db.tasks.get(unused)).toBeUndefined();
@@ -44,7 +45,7 @@ it('restaura ícones, exclusão e arquivo juntos, preservando recibos e acampame
   const restoredProfile = (await db.profile.get(1))!;
   // Restoration invalidates old camp commands by issuing a fresh epoch.
   expect(restoredProfile.camp!.epoch).not.toBe(savedProfile.camp!.epoch);
-  expect(restoredProfile).toEqual({
+  expect(restoredProfile).toMatchObject({
     ...savedProfile,
     camp: { ...savedProfile.camp, epoch: restoredProfile.camp!.epoch },
   });

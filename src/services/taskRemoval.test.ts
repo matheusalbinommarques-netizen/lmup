@@ -47,7 +47,8 @@ it('apaga cadastro sem uso e metadados automáticos, mantém saldos e permite re
   expect(await db.tasks.get(id)).toBeUndefined();
   expect(await db.occurrences.count()).toBe(0);
   expect(await db.planVersions.count()).toBe(0);
-  expect((await createJourneyBackup()).data.profile).toEqual(before);
+  expect((await createJourneyBackup()).data.profile).toMatchObject(before!);
+  expect((await db.profile.get(1))!.personalTaskDeletions).toHaveLength(1);
   await restoreJourneyBackup(await createJourneyBackup());
   expect(await db.tasks.count()).toBe(0);
   expect(db.verno).toBe(6);

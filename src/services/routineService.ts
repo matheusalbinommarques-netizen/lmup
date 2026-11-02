@@ -9,6 +9,7 @@ type RoutineInput = {
   id: string;
   name: string;
   description?: string;
+  defaultAreaId?: number;
   days: number[];
   startDate: string;
   entries: { taskId: number; time: string | null }[];
@@ -64,6 +65,13 @@ export async function saveRoutine(input: RoutineInput) {
     const current = await db.routines.get(input.id);
     if (current && current.revision !== input.expectedRevision)
       throw new Error('A rotina mudou em outra aba. Reabra para comparar.');
+    const defaultAreaId = input.defaultAreaId ?? current?.defaultAreaId ?? 0;
+    if (
+      !Number.isSafeInteger(defaultAreaId) ||
+      defaultAreaId < 0 ||
+      (defaultAreaId !== 0 && !(await db.areas.get(defaultAreaId)))
+    )
+      throw new Error('A área padrão não está disponível. Escolha outra área.');
     const entries: Routine['entries'] = [];
     for (const entry of input.entries) {
       validateTime(entry.time);
@@ -107,6 +115,7 @@ export async function saveRoutine(input: RoutineInput) {
         }
       }
     const row: Routine = {
+      defaultAreaId,
       id: input.id,
       name: input.name.trim(),
       description: input.description?.trim() ?? '',

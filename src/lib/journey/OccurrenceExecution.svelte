@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { timePicker } from '$lib/ui/timePicker';
   import { onMount } from 'svelte';
   import { beforeNavigate } from '$app/navigation';
   import { liveQuery } from 'dexie';
@@ -24,7 +25,12 @@
   let {
     id,
     onBusyChange,
-  }: { id: string; onBusyChange?: (busy: boolean) => void } = $props();
+    sessionId,
+  }: {
+    id: string;
+    sessionId?: string;
+    onBusyChange?: (busy: boolean) => void;
+  } = $props();
   let archived = $state(false);
   let row = $state<Occurrence>();
   let history = $state<ExecutionRecord[]>([]),
@@ -128,6 +134,7 @@
     if (!row) throw new Error('Reabra a ocorrência.');
     return {
       requestId: crypto.randomUUID(),
+      sessionId,
       occurrenceId: row.id,
       expectedRevision: draftRevision,
       value,
@@ -369,7 +376,11 @@
         <summary>Reagendar e organizar</summary>
         <div class="execution-fields">
           <label>Nova data<input type="date" bind:value={date} /></label><label
-            >Novo início desejado<input type="time" bind:value={time} /></label
+            >Novo início desejado<input
+              type="time"
+              use:timePicker
+              bind:value={time}
+            /></label
           >
         </div>
         <Button

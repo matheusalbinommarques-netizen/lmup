@@ -8,12 +8,14 @@
     description = '',
     children,
     dismissible = true,
+    wide = false,
   }: {
     open?: boolean;
     title: string;
     description?: string;
     children: Snippet;
     dismissible?: boolean;
+    wide?: boolean;
   } = $props();
   let element: HTMLDialogElement;
   function containFocus(event: KeyboardEvent) {
@@ -45,12 +47,12 @@
     document.body.style.overflow = 'hidden';
     (
       element.querySelector('[data-initial-focus]') as HTMLElement | null
-    )?.focus();
+    )?.focus({ preventScroll: true });
     return () => {
       if (element.open) element.close();
       document.body.style.overflow = oldOverflow;
       if (previous instanceof HTMLElement && previous.isConnected)
-        previous.focus();
+        previous.focus({ preventScroll: true });
     };
   });
 </script>
@@ -59,6 +61,7 @@
   onkeydown={containFocus}
   bind:this={element}
   class="lmu-dialog"
+  class:wide
   aria-labelledby={`${uid}-title`}
   aria-describedby={description ? `${uid}-description` : undefined}
   oncancel={(event) => {
@@ -85,3 +88,9 @@
     </p>{/if}
   {@render children()}
 </dialog>
+
+<style>
+  .wide {
+    width: min(840px, calc(100% - 24px));
+  }
+</style>

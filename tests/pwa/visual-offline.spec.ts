@@ -42,7 +42,9 @@ test('seis telas e biblioteca visual estão disponíveis na primeira navegação
     .getByRole('button', { name: 'Gerenciar áreas', exact: true })
     .click();
   const form = page.getByRole('dialog', { name: 'Minhas áreas', exact: true });
-  await form.getByText('Ícone da área', { exact: true }).click();
+  await form
+    .getByRole('button', { name: 'Editar ícone da área', exact: true })
+    .click();
   await form.getByLabel('Buscar ícone').fill('exercício');
   await expect(
     form.getByRole('button', { name: 'Exercício', exact: true }),

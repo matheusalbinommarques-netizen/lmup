@@ -14,6 +14,7 @@ export type Planning = {
   tracking?: ProgressConfig;
 };
 export type Occurrence = Planning & {
+  removedFromDays?: string[];
   id: string;
   taskId: number;
   originDate: string;
@@ -24,6 +25,7 @@ export type Occurrence = Planning & {
   projectId?: number | null;
   routineId?: string;
   baseXp: number;
+  definitionRevision?: number;
   legacyCompletionOnly?: boolean;
   steps: string[];
   checkedSteps: number[];
@@ -54,6 +56,7 @@ export type Occurrence = Planning & {
   createdAt: string;
 };
 export type Routine = {
+  defaultAreaId?: number;
   id: string;
   name: string;
   description: string;
@@ -79,6 +82,8 @@ export type PlanVersion = {
   definition: Record<string, unknown>;
 };
 export type ExecutionRecord = {
+  sessionId?: string;
+  source?: 'individual' | 'session';
   id: string;
   occurrenceId: string;
   before: number;

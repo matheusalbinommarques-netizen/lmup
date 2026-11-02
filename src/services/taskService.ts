@@ -22,6 +22,7 @@ import {
   ensureOccurrence,
   recordProgress,
   previewProgress,
+  occurrenceId,
 } from './occurrenceService';
 import { progressTarget } from './productivityRules';
 import { refreshAchievementReceipts } from './productivityAchievements';
@@ -142,6 +143,7 @@ export async function completeTask(
   options: {
     reviewOutcome?: 'recalled' | 'partial' | 'again';
     occurrenceDate?: string;
+    sessionId?: string;
   } = {},
 ): Promise<ActivityEvent | null> {
   return progressTransaction(async () => {
@@ -149,7 +151,10 @@ export async function completeTask(
     const task = await db.tasks.get(taskId);
     if (!task || task.archived)
       throw new Error('Esta missão não está disponível.');
-    if (task.productivityVersion && !task.reviewEnabled) {
+    const linkedOccurrence = !task.reviewEnabled
+      ? await db.occurrences.get(occurrenceId(task, dateKey()))
+      : undefined;
+    if ((task.productivityVersion || linkedOccurrence) && !task.reviewEnabled) {
       if (
         task.recurrence &&
         options.occurrenceDate &&
@@ -180,6 +185,7 @@ export async function completeTask(
           'Abra a ocorrência de hoje e conclua os passos ou registre progresso parcial.',
         );
       return recordProgress({
+        sessionId: options.sessionId,
         requestId: `complete:${occurrence.id}:${occurrence.revision}`,
         occurrenceId: occurrence.id,
         expectedRevision: occurrence.revision,

@@ -1,3 +1,4 @@
+import { fillMissionSteps } from './mission-form';
 import { confirmBackupImport } from './backup-ui';
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
@@ -61,9 +62,10 @@ async function createTask(
       .getByRole('combobox', { name: 'Esforço desta missão', exact: true })
       .selectOption(options.effort);
   if (options.project || options.steps) {
-    await dialog.getByText('Passos e outros detalhes', { exact: true }).click();
-    if (options.steps)
-      await dialog.getByLabel('Passos, um por linha').fill(options.steps);
+    await dialog
+      .getByRole('tab', { name: 'Passos e detalhes', exact: true })
+      .click();
+    if (options.steps) await fillMissionSteps(dialog, options.steps);
     if (options.project)
       await dialog
         .getByRole('combobox', { name: 'Projeto', exact: true })
@@ -345,14 +347,13 @@ test('esforço define a recompensa e editar passos não fabrica XP', async ({
     .getByRole('button', { name: 'Editar missão', exact: true })
     .click();
   const edit = page.getByRole('dialog', { name: 'Editar missão', exact: true });
-  await expect(
-    edit.getByText(
-      'Prévia com seus bônus atuais: +105 XP · +50 Gold · +4 Comida.',
-      { exact: true },
-    ),
-  ).toBeVisible();
-  await edit.getByText('Passos e outros detalhes', { exact: true }).click();
-  await edit.getByLabel('Passos, um por linha').fill('Um passo de verdade');
+  await expect(edit.locator('.reward-preview')).toContainText('+105 XP');
+  await expect(edit.locator('.reward-preview')).toContainText('+50 Ouro');
+  await expect(edit.locator('.reward-preview')).toContainText('+4 Comida');
+  await edit
+    .getByRole('tab', { name: 'Passos e detalhes', exact: true })
+    .click();
+  await fillMissionSteps(edit, 'Um passo de verdade');
   await edit
     .getByRole('button', { name: 'Salvar missão', exact: true })
     .click();
@@ -377,6 +378,7 @@ test('esforço define a recompensa e editar passos não fabrica XP', async ({
 test('datas de projeto novas e legadas não mudam entre fusos', async ({
   browser,
   page,
+  baseURL,
 }) => {
   for (const timezoneId of [
     'America/Sao_Paulo',
@@ -384,7 +386,7 @@ test('datas de projeto novas e legadas não mudam entre fusos', async ({
     'Pacific/Auckland',
   ]) {
     const context = await browser.newContext({
-      baseURL: 'http://127.0.0.1:4174',
+      baseURL,
       timezoneId,
       viewport: page.viewportSize() ?? { width: 1280, height: 900 },
       serviceWorkers: 'block',

@@ -13,8 +13,10 @@
     open = $bindable(false),
     task,
     onremoved,
+    mode = 'delete',
   }: {
     open?: boolean;
+    mode?: RemovalMode;
     task?: Task;
     onremoved?: (mode: RemovalMode) => void;
   } = $props();
@@ -54,9 +56,14 @@
     busy = true;
     error = '';
     try {
-      const mode = await removeTask(preview.taskId, preview.token, requestId);
+      const result = await removeTask(
+        preview.taskId,
+        preview.token,
+        requestId,
+        mode,
+      );
       open = false;
-      onremoved?.(mode);
+      onremoved?.(result);
     } catch (cause) {
       error =
         cause instanceof Error
@@ -75,13 +82,31 @@
     </p>{/if}
   {#if preview}
     <h3>{preview.title}</h3>
-    {#if preview.mode === 'delete'}
-      <p>
-        Esta missão não tem histórico relevante nem vínculos que precisem ser
-        preservados. O cadastro e seu planejamento sem uso serão apagados
-        definitivamente.
-      </p>
-      <p>Essa ação não pode ser desfeita. Nenhum saldo será alterado.</p>
+    {#if mode === 'delete'}
+      {#if !preview.canDelete}<p role="alert">
+          Missões de história não podem ser excluídas definitivamente.
+        </p>{:else}
+        <p>
+          O cadastro, a descrição, os passos, as notas e o progresso pessoal
+          serão apagados definitivamente, incluindo {preview.occurrences} ocorrências.
+          Os vínculos desta missão com rotinas e sessões serão removidos; as demais
+          atividades serão preservadas.
+        </p>
+        <p>
+          {preview.receipts} recibos contábeis serão mantidos sem título, notas ou
+          vínculo com a missão para preservar XP, ouro, comida, níveis e saldos. Não
+          haverá recompensa nem estorno.
+        </p>
+        <p>
+          As cópias locais de recuperação também serão limpas. Um registro de
+          exclusão impedirá que esta missão reapareça ao restaurar backups nesta
+          instalação. Arquivos exportados anteriormente não podem ser apagados
+          pelo aplicativo.
+        </p>
+        <p>
+          <strong>Esta ação é irreversível.</strong> O histórico pessoal da missão
+          não poderá ser recuperado por esse fluxo.
+        </p>{/if}
     {:else}
       <p>
         Esta missão será arquivada e sairá das atividades ativas. Seu histórico,
@@ -106,12 +131,18 @@
       cadastro ativo.
     </p>
     <div class="journey-actions">
-      <Button variant="danger" disabled={busy || !!error} onclick={confirm}
-        >{preview.mode === 'delete'
+      <Button
+        variant={mode === 'delete' ? 'danger' : 'secondary'}
+        disabled={busy || !!error || (mode === 'delete' && !preview.canDelete)}
+        onclick={confirm}
+        >{mode === 'delete'
           ? 'Excluir definitivamente'
           : 'Arquivar missão'}</Button
-      ><Button variant="quiet" disabled={busy} onclick={() => (open = false)}
-        >Cancelar</Button
+      ><Button
+        variant="quiet"
+        data-initial-focus
+        disabled={busy}
+        onclick={() => (open = false)}>Cancelar</Button
       >
     </div>
   {:else if !busy}<Button variant="quiet" onclick={() => (open = false)}

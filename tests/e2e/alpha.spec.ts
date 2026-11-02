@@ -1,3 +1,4 @@
+import { fillMissionSteps, chooseTracking } from './mission-form';
 import { confirmBackupImport } from './backup-ui';
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
@@ -8,8 +9,10 @@ async function create(page: Page, title: string, steps = '', projectName = '') {
   const dialog = page.getByRole('dialog', { name: 'Uma nova missão' });
   await dialog.getByLabel('O que você quer fazer?').fill(title);
   if (steps || projectName) {
-    await dialog.getByText('Passos e outros detalhes', { exact: true }).click();
-    if (steps) await dialog.getByLabel('Passos, um por linha').fill(steps);
+    await dialog
+      .getByRole('tab', { name: 'Passos e detalhes', exact: true })
+      .click();
+    if (steps) await fillMissionSteps(dialog, steps);
     if (projectName)
       await dialog
         .getByRole('combobox', { name: 'Projeto', exact: true })
@@ -17,9 +20,12 @@ async function create(page: Page, title: string, steps = '', projectName = '') {
   }
   if (steps) {
     await dialog
-      .getByText('Horário, prioridade e acompanhamento', { exact: true })
+      .getByRole('tab', { name: 'Acompanhamento', exact: true })
       .click();
-    await dialog.getByLabel('Acompanhar progresso por').selectOption('steps');
+    await dialog
+      .getByRole('tab', { name: 'Acompanhamento', exact: true })
+      .click();
+    await chooseTracking(dialog, 'steps');
   }
   await dialog
     .getByRole('button', { name: 'Criar missão', exact: true })
@@ -404,10 +410,16 @@ test('plano e fixação são explícitos; navegação secundária preserva acess
   await page
     .getByRole('button', { name: 'Tirar de hoje', exact: true })
     .click();
+  await page
+    .getByRole('button', { name: 'Ações para Escolher meu dia', exact: true })
+    .click();
   await expect(
     page.getByRole('button', { name: 'Planejar para hoje', exact: true }),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Fixar', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Ações para Escolher meu dia', exact: true })
+    .click();
   await expect(
     page.getByRole('button', { name: 'Desafixar', exact: true }),
   ).toBeVisible();
@@ -426,11 +438,15 @@ test('plano e fixação são explícitos; navegação secundária preserva acess
     page.getByRole('heading', { name: 'Mundo', level: 1, exact: true }),
   ).toBeVisible();
   await page
-    .getByRole('button', { name: 'Perfil e mais', exact: true })
+    .getByRole('button', {
+      name: isMobile ? 'Mais' : 'Perfil e mais',
+      exact: true,
+    })
+    .first()
     .click();
   await page
     .getByRole('dialog', { name: 'Seu espaço' })
-    .getByRole('link', { name: 'Perfil e equipamentos', exact: true })
+    .getByRole('link', { name: 'Herói e equipamentos', exact: true })
     .click();
   await expect(
     page.getByRole('heading', { name: 'Perfil e equipamentos', exact: true }),

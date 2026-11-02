@@ -8,6 +8,13 @@ export const EFFORTS: {
   rarity: TaskRarity;
 }[] = [
   {
+    key: 'micro',
+    label: 'Microação',
+    description: 'Uma ação muito simples, rápida ou de baixo esforço',
+    xp: 10,
+    rarity: 'common',
+  },
+  {
     key: 'small',
     label: 'Leve',
     description: 'Um passo curto e familiar',

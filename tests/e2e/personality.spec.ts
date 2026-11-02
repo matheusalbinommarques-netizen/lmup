@@ -1,3 +1,4 @@
+import { fillMissionSteps } from './mission-form';
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 async function capture(page: Page, name: string, project: string) {
@@ -111,18 +112,24 @@ test('rascunho editável: cancelar não cria missão e salvar permite pausar, co
   await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click();
   await page.getByRole('button', { name: 'Nova missão', exact: true }).click();
   await expect(dialog.getByLabel('O que você quer fazer?')).toHaveValue('');
-  await dialog.getByText('Passos e outros detalhes', { exact: true }).click();
-  await expect(dialog.getByLabel('Passos, um por linha')).toHaveValue('');
+  await dialog
+    .getByRole('tab', { name: 'Passos e detalhes', exact: true })
+    .click();
+  await expect(
+    dialog.getByRole('textbox', { name: /^Passo \d+$/ }),
+  ).toHaveCount(0);
   await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click();
   await page.getByRole('button', { name: 'Nova missão', exact: true }).click();
   await dialog
     .getByLabel('O que você quer fazer?')
     .fill('Meu rascunho de verdade');
-  await dialog.getByText('Passos e outros detalhes', { exact: true }).click();
-  await expect(dialog.getByLabel('Passos, um por linha')).toBeVisible();
   await dialog
-    .getByLabel('Passos, um por linha')
-    .fill('Escolher uma parte\nFazer um rascunho');
+    .getByRole('tab', { name: 'Passos e detalhes', exact: true })
+    .click();
+  await expect(
+    dialog.getByRole('button', { name: '+ Adicionar passo', exact: true }),
+  ).toBeVisible();
+  await fillMissionSteps(dialog, 'Escolher uma parte\nFazer um rascunho');
   await dialog
     .getByRole('button', { name: 'Criar missão', exact: true })
     .click();

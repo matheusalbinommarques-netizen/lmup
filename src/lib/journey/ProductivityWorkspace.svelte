@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { timePicker } from '$lib/ui/timePicker';
   import { areaIconKey } from '$services/areaIcons';
   import { onMount } from 'svelte';
   import { page } from '$app/state';
@@ -15,9 +16,13 @@
     plannedOccurrences,
     ensureOccurrence,
   } from '$services/occurrenceService';
-  import { newSavedSession, saveSession } from '$services/savedSessionService';
+  import SessionSummary from './SessionSummary.svelte';
+  import {
+    startOrResumeSession,
+    saveSession,
+  } from '$services/savedSessionService';
   import { saveRoutine, setRoutineStatus } from '$services/routineService';
-  import { WEEKDAYS } from '$services/recurrence';
+  import { WEEKDAYS, routineRecurrenceLabel } from '$services/recurrence';
   import { freeSlot, recommendations } from '$services/productivityInsights';
   import type {
     Occurrence,
@@ -47,7 +52,9 @@
   let tasks = $state<Task[]>([]),
     routineId = $state(''),
     routineName = $state(''),
+    routineArea = $state('0'),
     description = $state('');
+  let frequency = $state('weekdays');
   let days = $state<number[]>([1, 2, 3, 4, 5]),
     start = $state(dateKey()),
     entries = $state<{ taskId: number; time: string | null }[]>([]);
@@ -111,6 +118,19 @@
   const completedDay = $derived(
     dayRows.filter((row) => row.status === 'completed').length,
   );
+  const sessionIsToday = (session: SavedMissionSession) =>
+    session.occurrenceIds.every(
+      (id) =>
+        snapshot.occurrences.find((row) => row.id === id)?.originDate ===
+        dateKey(),
+    );
+  const orderedSessions = $derived(
+    [...sessions].sort(
+      (a, b) =>
+        Number(sessionIsToday(b)) - Number(sessionIsToday(a)) ||
+        b.createdAt.localeCompare(a.createdAt),
+    ),
+  );
   const availableTasks = $derived(
     tasks.filter(
       (task) =>
@@ -130,9 +150,9 @@
     url.searchParams.set('mode', mode);
     void goto(url.pathname + url.search, { noScroll: true, keepFocus: true });
   }
-  function addedMission(id: number) {
+  function addedMission(id: number, time: string | null = null) {
     if (creatingForRoutine && !entries.some((entry) => entry.taskId === id))
-      entries = [...entries, { taskId: id, time: null }];
+      entries = [...entries, { taskId: id, time }];
     creatingForRoutine = false;
     notice =
       'Missão criada e adicionada à sequência. Salve a rotina para aplicar o vínculo.';
@@ -236,7 +256,10 @@
     routineId = row?.id ?? crypto.randomUUID();
     routineName = row?.name ?? '';
     description = row?.description ?? '';
+    routineArea = String(row?.defaultAreaId ?? 0);
     days = [...(row?.days ?? [1, 2, 3, 4, 5])];
+    frequency =
+      days.length === 7 ? 'daily' : days.length === 1 ? 'weekly' : 'weekdays';
     start = row?.startDate ?? dateKey();
     entries = row?.entries.map(({ taskId, time }) => ({ taskId, time })) ?? [];
     routineRevision = row?.revision;
@@ -260,7 +283,7 @@
             )
           ).id,
         );
-      await saveSession(newSavedSession(name, ids));
+      await startOrResumeSession(name, ids, dateKey(), true);
       await goto('/sessoes');
     });
   }
@@ -270,6 +293,7 @@
       await saveRoutine({
         id: routineId,
         name: routineName,
+        defaultAreaId: Number(routineArea),
         description,
         days,
         startDate: start,
@@ -402,26 +426,33 @@
                 )}>Executar seleção como sessão ({selected.length})</Button
             >{/if}
           {#each ['timed', 'flexible'] as group (group)}
-            <h2 class="timeline-label">
-              {group === 'timed' ? 'Com horário' : 'Horário flexível'}
-            </h2>
-            {#each dayRows.filter( (row) => (group === 'timed' ? !!row.plannedTime : !row.plannedTime) ) as row (row.id)}
-              <div class="timeline-entry">
-                <OccurrenceRow
-                  {row}
-                  iconKey={iconKey(row)}
-                  area={areaName(row)}
-                  {busy}
-                  checked={selected.includes(row.id)}
-                  onselect={(checked) =>
-                    (selected = checked
-                      ? [...selected, row.id]
-                      : selected.filter((id) => id !== row.id))}
-                  onopen={() => open(row)}
-                  onedit={() => editFuture(row)}
-                />
-              </div>
-            {/each}
+            {@const groupRows = dayRows.filter((row) =>
+              group === 'timed' ? !!row.plannedTime : !row.plannedTime,
+            )}
+            {#if groupRows.length}
+              <h2 class="timeline-label">
+                <ApprovedIcon name="agenda" size={18} />{group === 'timed'
+                  ? 'Com horário'
+                  : 'Horário flexível'}<span>{groupRows.length}</span>
+              </h2>
+              {#each groupRows as row (row.id)}
+                <div class="timeline-entry">
+                  <OccurrenceRow
+                    {row}
+                    iconKey={iconKey(row)}
+                    area={areaName(row)}
+                    {busy}
+                    checked={selected.includes(row.id)}
+                    onselect={(checked) =>
+                      (selected = checked
+                        ? [...selected, row.id]
+                        : selected.filter((id) => id !== row.id))}
+                    onopen={() => open(row)}
+                    onedit={() => editFuture(row)}
+                  />
+                </div>
+              {/each}
+            {/if}
           {/each}
           {#if !dayRows.length}<p class="workspace-empty">
               Sem compromissos neste dia. Sua agenda está livre para planejar.
@@ -607,6 +638,39 @@
                   : 'Ativar rotina'}</Button
               >
             </div>
+            {#if sessions.some((session) => session.status !== 'ended' && session.occurrenceIds.some((id) => snapshot.occurrences.find((row) => row.id === id)?.routineId === routine.id))}<details
+              >
+                <summary>Execuções preservadas</summary
+                >{#each sessions.filter((session) => session.status !== 'ended' && session.occurrenceIds.some((id) => snapshot.occurrences.find((row) => row.id === id)?.routineId === routine.id)) as saved (saved.id)}<p
+                    class="lmu-hint"
+                  >
+                    {[
+                      ...new Set(
+                        saved.occurrenceIds
+                          .map(
+                            (id) =>
+                              snapshot.occurrences.find((row) => row.id === id)
+                                ?.originDate,
+                          )
+                          .filter(Boolean),
+                      ),
+                    ].join(' · ')} · {saved.status === 'paused'
+                      ? 'Sessão pausada'
+                      : 'Sessão em andamento'}
+                  </p>
+                  <Button
+                    variant="secondary"
+                    disabled={busy}
+                    onclick={() =>
+                      run(async () => {
+                        await saveSession(
+                          { ...saved, status: 'active' },
+                          saved.revision,
+                        );
+                        await goto('/sessoes');
+                      })}>Retomar execução preservada</Button
+                  >{/each}
+              </details>{/if}
             <details>
               <summary>Mais ações</summary><Button
                 variant="quiet"
@@ -653,21 +717,71 @@
                 required
               /></label
             >
+            <label
+              >Área padrão para novas missões<select bind:value={routineArea}
+                ><option value="0">Geral</option
+                >{#each snapshot.areas as area (area.id)}<option
+                    value={String(area.id)}>{area.nome}</option
+                  >{/each}</select
+              ></label
+            >
           </div>
-          <fieldset class="weekday-picker">
-            <legend>Dias de execução</legend
-            >{#each WEEKDAYS as weekday (weekday.value)}<label
-                class:chosen={days.includes(weekday.value)}
-                ><input
-                  type="checkbox"
-                  checked={days.includes(weekday.value)}
-                  onchange={(event) =>
-                    (days = event.currentTarget.checked
-                      ? [...days, weekday.value]
-                      : days.filter((day) => day !== weekday.value))}
-                />{weekday.short}</label
-              >{/each}
-          </fieldset>
+          <p class="lmu-hint">
+            Novas missões começam nesta área. Você pode alterá-la em cada
+            missão; as já cadastradas mantêm sua área.
+          </p>
+          <div class="routine-fields routine-calendar">
+            <label
+              >Recorrência da rotina<select
+                bind:value={frequency}
+                onchange={() => {
+                  if (frequency === 'daily') days = [0, 1, 2, 3, 4, 5, 6];
+                  else if (frequency === 'weekly') days = [days[0] ?? 1];
+                  else if (days.length === 7) days = [1, 2, 3, 4, 5];
+                }}
+                ><option value="daily">Diariamente</option><option
+                  value="weekdays">Dias específicos da semana</option
+                ><option value="weekly">Semanalmente</option></select
+              ></label
+            >
+            <label
+              >Início da rotina<input
+                type="date"
+                bind:value={start}
+                required
+              /></label
+            >
+          </div>
+          {#if frequency === 'weekdays'}
+            <fieldset class="weekday-picker">
+              <legend>Dias de execução</legend
+              >{#each WEEKDAYS as weekday (weekday.value)}<label
+                  class:chosen={days.includes(weekday.value)}
+                  ><input
+                    type="checkbox"
+                    checked={days.includes(weekday.value)}
+                    onchange={(event) =>
+                      (days = event.currentTarget.checked
+                        ? [...days, weekday.value]
+                        : days.filter((day) => day !== weekday.value))}
+                  />{weekday.short}</label
+                >{/each}
+            </fieldset>
+          {:else if frequency === 'weekly'}<label
+              >Dia da rotina<select
+                value={days[0] ?? 1}
+                onchange={(event) =>
+                  (days = [Number(event.currentTarget.value)])}
+                >{#each WEEKDAYS as weekday (weekday.value)}<option
+                    value={weekday.value}>{weekday.label}</option
+                  >{/each}</select
+              ></label
+            >{/if}
+          <p class="lmu-hint">
+            {routineRecurrenceLabel(days)}. Todas as missões vinculadas herdam
+            esta recorrência ao salvar a rotina. Os horários podem ser ajustados
+            em cada atividade.
+          </p>
           <div class="sequence-heading">
             <h3>Sequência de missões ({entries.length})</h3>
             <Button
@@ -688,9 +802,13 @@
                   name={areaIconKey(task, snapshot.areas)}
                   size={32}
                 /><span class="sequence-title"
-                  >{task?.title ?? 'Missão criada'}</span
+                  >{task?.title ?? 'Missão criada'}<small
+                    >{snapshot.areas.find((area) => area.id === task?.areaId)
+                      ?.nome ?? 'Geral'}</small
+                  ></span
                 ><input
                   type="time"
+                  use:timePicker
                   aria-label={`Horário de ${task?.title ?? 'missão'}`}
                   value={entry.time ?? ''}
                   onchange={(event) =>
@@ -701,6 +819,16 @@
                     ))}
                 />
                 <div class="sequence-actions">
+                  <Button
+                    variant="quiet"
+                    aria-label={`Editar ${task?.title ?? 'missão'}`}
+                    disabled={!task || task.archived}
+                    onclick={() => {
+                      creatingForRoutine = false;
+                      editTask = task;
+                      editOpen = true;
+                    }}>Editar</Button
+                  >
                   <Button
                     variant="quiet"
                     disabled={index === 0}
@@ -751,8 +879,6 @@
           </details>
           <details>
             <summary>Descrição e pausas justificadas</summary><label
-              >Início da rotina<input type="date" bind:value={start} /></label
-            ><label
               >Descrição<textarea bind:value={description}></textarea></label
             >
             <p class="lmu-hint">
@@ -784,30 +910,81 @@
     <p class="lmu-hint">
       O progresso pertence à ocorrência e é compartilhado entre sessões.
     </p>
-    {#each sessions as session (session.id)}<article
-        class="rpg-frame routine-card"
-      >
-        <h3>{session.name}</h3>
-        <p>
-          {session.occurrenceIds.length} atividades · {session.status ===
-          'active'
-            ? 'Em foco'
-            : session.status === 'paused'
-              ? 'Pausada'
-              : 'Encerrada'}
-        </p>
-        <Button
-          disabled={!session.occurrenceIds.length}
-          onclick={() =>
-            run(async () => {
-              await saveSession(
-                { ...session, status: 'active' },
-                session.revision,
-              );
-              await goto('/sessoes');
-            })}>Retomar sessão</Button
+    {#each orderedSessions as session, index (session.id)}
+      {#if index === 0 || sessionIsToday(orderedSessions[index - 1]) !== sessionIsToday(session)}<h3
         >
-      </article>{/each}
+          {sessionIsToday(session)
+            ? 'Execuções do dia atual'
+            : 'Execuções anteriores'}
+        </h3>{/if}
+      {@const completed = session.occurrenceIds.filter(
+        (id) =>
+          snapshot.occurrences.find((row) => row.id === id)?.status ===
+          'completed',
+      ).length}
+      {@const total = session.occurrenceIds.length}
+      {@const percent = total ? Math.round((completed * 100) / total) : 0}
+      <article class="rpg-frame saved-session-card">
+        <p class="lmu-hint">
+          {[
+            ...new Set(
+              session.occurrenceIds
+                .map(
+                  (id) =>
+                    snapshot.occurrences.find((row) => row.id === id)
+                      ?.originDate,
+                )
+                .filter(Boolean),
+            ),
+          ].join(' · ')} · {[
+            ...new Set(
+              session.occurrenceIds.map(
+                (id) =>
+                  snapshot.occurrences.find((row) => row.id === id)?.originDate,
+              ),
+            ),
+          ].some((day) => day !== dateKey())
+            ? 'Execução anterior'
+            : 'Execução do dia'}
+        </p>
+        <div class="saved-session-heading">
+          <div>
+            <h3>{session.name}</h3>
+            <p>
+              {total} atividades ·
+              <span
+                >{session.status === 'active'
+                  ? 'Em andamento'
+                  : session.status === 'paused'
+                    ? 'Pausada'
+                    : 'Encerrada'}</span
+              >
+            </p>
+          </div>
+          <Button
+            disabled={!total}
+            onclick={() =>
+              run(async () => {
+                await saveSession(
+                  { ...session, status: 'active' },
+                  session.revision,
+                );
+                await goto('/sessoes');
+              })}>Retomar sessão</Button
+          >
+        </div>
+        <div class="saved-session-progress">
+          <progress
+            value={completed}
+            max={Math.max(1, total)}
+            aria-label={`Progresso de ${session.name}`}
+          ></progress><strong
+            >{completed} de {total} <span>({percent}%)</span></strong
+          >
+        </div>
+        <SessionSummary {session} data={snapshot} compact />
+      </article>
+    {/each}
     {#if !sessions.length}<p class="workspace-empty">
         Selecione atividades na agenda para montar sua primeira sessão.
       </p>{/if}
@@ -816,9 +993,30 @@
     bind:open={editOpen}
     {snapshot}
     {editTask}
+    defaultAreaId={creatingForRoutine ? Number(routineArea) : undefined}
+    routineContext={creatingForRoutine
+      ? { name: routineName, startDate: start, days: [...days] }
+      : undefined}
     allowSaveAnother={!creatingForRoutine}
-    oncreated={(id) => {
-      if (creatingForRoutine) addedMission(id);
+    oncreated={async (id, time) => {
+      if (creatingForRoutine) addedMission(id, time);
+      else if (editing) {
+        if (
+          editTask?.routineId === routineId &&
+          (editTask.plannedTime ?? null) !== (time ?? null)
+        ) {
+          const saved = await db.routines.get(routineId);
+          // Only accept this editor's one atomic time change; other-tab changes
+          // keep the existing revision conflict instead of overwriting the draft.
+          if (saved && saved.revision === (routineRevision ?? 0) + 1) {
+            entries = entries.map((entry) =>
+              entry.taskId === id ? { ...entry, time: time ?? null } : entry,
+            );
+            routineRevision = saved.revision;
+          }
+        }
+        notice = 'Missão atualizada. O rascunho da rotina foi preservado.';
+      }
     }}
   />
 </section>
@@ -910,10 +1108,25 @@
     box-shadow: 0 0 0 4px #091619;
   }
   .timeline-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: fit-content;
+    padding: 7px 10px;
+    border: 1px solid #8d744a77;
+    border-radius: 6px;
+    background: #122326;
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #ead6a5;
+    margin: 8px 0 2px;
+  }
+  .timeline-label span {
+    padding-left: 6px;
+    border-left: 1px solid #8d744a66;
+    color: #bccbbd;
     font-size: 0.75rem;
-    font-weight: 500;
-    color: #d2bd88;
-    margin: 8px 0;
   }
   .week-grid {
     display: grid;
@@ -1181,9 +1394,9 @@
     min-width: 0;
   }
   .routine-sequence input {
-    width: 100px;
-    padding: 0.3rem;
-    font-size: 0.7rem;
+    width: 124px;
+    padding: 0.5rem;
+    font-size: 0.82rem;
   }
   .sequence-actions {
     display: flex;
@@ -1365,6 +1578,73 @@
     }
     .routine-actions {
       gap: 8px;
+    }
+  }
+  .sequence-title small {
+    display: block;
+    color: #adbfaf;
+    font-size: 0.75rem;
+    margin-top: 3px;
+  }
+
+  .saved-session-card {
+    padding: 16px;
+  }
+  .saved-session-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .saved-session-heading h3 {
+    font: 500 1.55rem var(--lmu-display);
+    color: #e9d29d;
+    margin: 0 0 6px;
+  }
+  .saved-session-heading p {
+    color: #acbfae;
+    font-size: 0.78rem;
+    margin: 0;
+  }
+  .saved-session-heading p span {
+    color: #d4bc82;
+  }
+  .saved-session-heading :global(.lmu-button) {
+    font-size: 0.8rem;
+    padding: 8px 12px;
+    min-height: 40px;
+  }
+  .saved-session-progress {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .saved-session-progress progress {
+    height: 8px;
+    accent-color: #dfb658;
+    width: auto;
+    flex: 1;
+    min-width: 0;
+  }
+  .saved-session-progress strong {
+    font-size: 0.78rem;
+    color: #dec992;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .saved-session-progress strong span {
+    color: #a8bda9;
+  }
+  @media (max-width: 600px) {
+    .saved-session-card {
+      padding: 12px;
+    }
+    .saved-session-heading {
+      flex-wrap: wrap;
+    }
+    .saved-session-heading h3 {
+      font-size: 1.4rem;
     }
   }
 </style>

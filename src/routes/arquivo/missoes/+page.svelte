@@ -1,6 +1,8 @@
 <!-- src/routes/missoes/+page.svelte -->
 <script lang="ts">
+  import { isPersonalTask } from '$services/personalTaskDeletion';
   import TaskRemovalDialog from '$lib/journey/TaskRemovalDialog.svelte';
+  let removalMode = $state<'delete' | 'archive'>('delete');
   let removalOpen = $state(false),
     removalTask = $state<Task>();
   import {
@@ -681,7 +683,8 @@
     }
   }
 
-  function handleDeleteTask(task: Task) {
+  function handleDeleteTask(task: Task, mode: 'delete' | 'archive' = 'delete') {
+    removalMode = mode;
     removalTask = task;
     removalOpen = true;
   }
@@ -712,7 +715,11 @@
   );
 </script>
 
-<TaskRemovalDialog bind:open={removalOpen} task={removalTask} />
+<TaskRemovalDialog
+  bind:open={removalOpen}
+  task={removalTask}
+  mode={removalMode}
+/>
 <Dialog bind:open={undoOpen} title="Revisar correção">
   {#if undoTaskSelection && undoImpact}<p>
       Débito a compensar: {undoImpact.xp} XP · {undoImpact.gold} Ouro · {undoImpact.food}
@@ -1213,12 +1220,19 @@
               {/if}
 
               <button
-                onclick={() => handleDeleteTask(task)}
-                class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-slate-800"
-                aria-label="Excluir"
+                onclick={() => handleDeleteTask(task, 'archive')}
+                class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800"
+                aria-label="Arquivar missão">▣</button
               >
-                🗑️
-              </button>
+              {#if isPersonalTask(task)}
+                <button
+                  onclick={() => handleDeleteTask(task)}
+                  class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-slate-800"
+                  aria-label="Excluir"
+                >
+                  🗑️
+                </button>
+              {/if}
             </div>
           </div>
         {/each}

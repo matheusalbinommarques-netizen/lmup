@@ -39,6 +39,21 @@ export function validateProductivityBackup(
     if (task.productivityVersion) validatePlanning(task, task.subtasks ?? []);
   for (const row of lists.occurrences) {
     requireValue(tasks.has(row.taskId), 'ocorrência sem missão');
+    if (row.removedFromDays !== undefined)
+      requireValue(
+        Array.isArray(row.removedFromDays) &&
+          new Set(row.removedFromDays).size === row.removedFromDays.length &&
+          row.removedFromDays.every((day: unknown) =>
+            (() => {
+              try {
+                return typeof day === 'string' && calendarDate(day) === day;
+              } catch {
+                return false;
+              }
+            })(),
+          ),
+        'retiradas do dia inválidas',
+      );
     requireValue(
       calendarDate(row.originDate) && calendarDate(row.plannedDate),
       'data de ocorrência inválida',
@@ -68,6 +83,12 @@ export function validateProductivityBackup(
       ].includes(row.status),
       'estado de ocorrência inválido',
     );
+    if (row.definitionRevision !== undefined)
+      requireValue(
+        Number.isSafeInteger(row.definitionRevision) &&
+          row.definitionRevision >= 0,
+        'versão de definição inválida',
+      );
     validatePlanning(row, row.steps);
     validateTime(row.originalTime);
     if (row.modifiers)
@@ -119,7 +140,14 @@ export function validateProductivityBackup(
     }
   }
   const bound = new Set<number>();
+  const areaIds = new Set([0, ...lists.areas.map((area) => area.id)]);
   for (const row of lists.routines) {
+    if (row.defaultAreaId !== undefined)
+      requireValue(
+        Number.isSafeInteger(row.defaultAreaId) &&
+          areaIds.has(row.defaultAreaId),
+        'área padrão de rotina inválida',
+      );
     requireValue(
       typeof row.name === 'string' &&
         row.name.trim() &&
@@ -174,6 +202,20 @@ export function validateProductivityBackup(
       'versão de planejamento inválida',
     );
   for (const row of lists.executionRecords) {
+    if (row.source !== undefined)
+      requireValue(
+        ['individual', 'session'].includes(row.source),
+        'origem de execução inválida',
+      );
+    if (row.sessionId !== undefined)
+      requireValue(
+        typeof row.sessionId === 'string' &&
+          row.source === 'session' &&
+          lists.savedMissionSessions.some(
+            (session) => session.id === row.sessionId,
+          ),
+        'sessão de execução inválida',
+      );
     requireValue(
       occurrences.has(row.occurrenceId) &&
         Number.isSafeInteger(row.revision) &&
@@ -314,7 +356,9 @@ export function validateProductivityBackup(
           (row) => row.id === event.id.replace(/^debt:/, 'progress:'),
         );
         requireValue(
-          audit?.action === 'correction',
+          audit?.action === 'correction' &&
+            (!event.deletedPersonalTask ||
+              audit.deletedPersonalTask === event.deletedPersonalTask),
           'débito sem correção auditada',
         );
         for (const key of ['xp', 'gold', 'food'])

@@ -14,6 +14,7 @@ export async function readJourneySnapshot() {
     const profile = await db.profile.get(1);
     const tasks = await db.tasks.toArray();
     const areas = await db.areas.toArray();
+    const routines = await db.routines.toArray();
     const companions = await db.companions.toArray();
     const owned = await db.ownedShopItems.toArray();
     const inventory = await db.inventory.toArray();
@@ -21,6 +22,7 @@ export async function readJourneySnapshot() {
     const events = await db.activityEvents.toArray();
     const logs = await db.xpLogs.toArray();
     const occurrences = await db.occurrences.toArray();
+    const executionRecords = await db.executionRecords.toArray();
     const plannedToday = await plannedOccurrences(dateKey(), dateKey());
     const achievementReceipts = await db.achievementReceipts.toArray();
     const achievementStats = await readAchievementStats();
@@ -54,10 +56,12 @@ export async function readJourneySnapshot() {
       inventory,
       tasks,
       areas,
+      routines,
       projects,
       events,
       logs,
       occurrences,
+      executionRecords,
       plannedToday,
       achievementReceipts,
       achievementStats,

@@ -54,7 +54,7 @@ async function seedLegacy(page: Page) {
   );
   await page.reload();
   await expect(
-    page.getByText('Ler um capítulo', { exact: true }),
+    page.getByRole('link', { name: 'Ler um capítulo', exact: true }),
   ).toBeVisible();
 }
 
@@ -100,6 +100,9 @@ async function assertIcon(page: Page, title: string, key: string) {
   );
 }
 async function manage(page: Page) {
+  await page
+    .getByRole('button', { name: 'Ferramentas de missões', exact: true })
+    .click();
   await page
     .getByRole('button', { name: 'Gerenciar áreas', exact: true })
     .click();
@@ -215,7 +218,9 @@ test('editor configura conflitos; criação e edição herdam área sem sobrescr
     'src',
     /exercicio/,
   );
-  await form.getByText('Passos e outros detalhes', { exact: true }).click();
+  await form
+    .getByRole('tab', { name: 'Passos e detalhes', exact: true })
+    .click();
   await expect(
     form.getByText('Ícone da missão (opcional)', { exact: true }),
   ).toHaveCount(0);

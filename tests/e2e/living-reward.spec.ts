@@ -99,7 +99,8 @@ async function receipt(page: Page) {
 }
 
 async function capture(page: Page, name: string) {
-  const directory = 'docs/recompensa-viva-capturas';
+  const directory =
+    process.env.LMU_REWARD_CAPTURE_DIR ?? 'docs/recompensa-viva-capturas';
   await mkdir(directory, { recursive: true });
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({
@@ -164,12 +165,14 @@ for (const state of [
     await summary.getByRole('button', { name: 'Pular efeitos' }).click();
     await expect(summary).not.toHaveClass(/celebrate/);
     await summary
-      .getByRole('link', { name: 'Continuar', exact: true })
+      .getByRole('link', { name: 'Ir para Missões', exact: true })
       .press('Enter');
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL('/missoes');
+    await page.goto('/');
     await expect(
       page.getByRole('region', { name: 'Seu personagem', exact: true }),
     ).toContainText(String(granted.gold));
+    expect(await receipt(page)).toEqual(granted);
     await capture(page, `${info.project.name}-${state.name}-home`);
     await page.goto('/missao/800');
     await expect(summary).toBeVisible();
@@ -229,8 +232,10 @@ test('movimento reduzido, marcos simultâneos e saída imediata', async ({
         bars.map((bar) => getComputedStyle(bar).animationName),
       ),
   ).toEqual(['none', 'none']);
-  await summary.getByRole('link', { name: 'Continuar', exact: true }).click();
-  await expect(page).toHaveURL('/');
+  await summary
+    .getByRole('link', { name: 'Ir para Missões', exact: true })
+    .click();
+  await expect(page).toHaveURL('/missoes');
 });
 
 test('bônus de projeto participa do progresso e conclusões antigas não fabricam barras', async ({

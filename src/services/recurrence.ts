@@ -90,3 +90,14 @@ export function recurrenceLabel(
     .map((day) => day.short)
     .join(' · ')}`;
 }
+
+/** Human-readable routine schedule; the persisted weekday plan remains unchanged. */
+export function routineRecurrenceLabel(days: number[]): string {
+  if (days.length === 7) return 'Diariamente';
+  const labels = WEEKDAYS.filter((day) => days.includes(day.value))
+    .map((day) => day.short)
+    .join(' · ');
+  return days.length === 1
+    ? `Semanal · ${labels}`
+    : labels || 'Escolha os dias da rotina';
+}

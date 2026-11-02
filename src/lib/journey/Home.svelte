@@ -1,4 +1,12 @@
 <script lang="ts">
+  import { todayView } from './todayView';
+  import {
+    changeToday,
+    dayChangeNeedsConfirmation,
+  } from '$services/dailyPlanningService';
+  import ContextMenu from '$lib/ui/ContextMenu.svelte';
+  import Dialog from '$lib/ui/Dialog.svelte';
+  import { addCalendarDays, formatCalendar } from '$services/calendar';
   import { areaIconKey } from '$services/areaIcons';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
@@ -23,7 +31,6 @@
     savePriority,
     PRIORITY_KEY,
     selectNextOccurrence,
-    homeOccurrences,
     usesTaskExecution,
   } from './homePriority';
   let data = $state<JourneySnapshot>();
@@ -33,7 +40,7 @@
   let now = $state(new Date()),
     pinned = $state<number | null>(null);
   const today = $derived(dateKey(now));
-  guardUpdates(() => !data || busy);
+  guardUpdates(() => !data || busy || actionOpen);
   onMount(() => {
     pinned = readPriority();
     const sub = journeyQuery().subscribe({
@@ -73,9 +80,68 @@
       ? ''
       : profileName,
   );
-  const todayRows = $derived(
-    homeOccurrences(data?.plannedToday ?? [], data?.tasks ?? [], today),
-  );
+  const view = $derived(data ? todayView(data, today) : undefined);
+  const todayRows = $derived([
+    ...(view?.planned ?? []),
+    ...(view?.flexible ?? []),
+  ]);
+  let actionOpen = $state(false);
+  let dayAction = $state<{
+    row: Occurrence;
+    action: 'remove' | 'reschedule';
+    requiresConfirmation: boolean;
+  }>();
+  let rescheduleDate = $state(''),
+    actionError = $state(''),
+    notice = $state('');
+  async function chooseAction(
+    row: Occurrence,
+    action: 'remove' | 'reschedule',
+  ) {
+    actionError = '';
+    const confirm = await dayChangeNeedsConfirmation(row.id);
+    if (action === 'remove' && !confirm) {
+      await applyAction(row, action, false);
+      return;
+    }
+    rescheduleDate = addCalendarDays(today, 1);
+    actionOpen = true;
+    dayAction = { row, action, requiresConfirmation: confirm };
+  }
+  async function applyAction(
+    row: Occurrence,
+    action: 'remove' | 'restore' | 'reschedule',
+    acknowledged: boolean,
+  ) {
+    if (busy) return;
+    busy = true;
+    actionError = '';
+    try {
+      await changeToday({
+        row,
+        action,
+        day: today,
+        targetDate: rescheduleDate,
+        acknowledged,
+        requestId: crypto.randomUUID(),
+      });
+      actionOpen = false;
+      dayAction = undefined;
+      notice =
+        action === 'remove'
+          ? 'Removida de hoje. Cadastro, progresso e recompensas preservados.'
+          : action === 'restore'
+            ? 'Ocorrência devolvida ao planejamento.'
+            : 'Ocorrência reagendada. Progresso e recompensas preservados.';
+    } catch (cause) {
+      actionError =
+        cause instanceof Error
+          ? cause.message
+          : 'Não foi possível alterar o planejamento.';
+    } finally {
+      busy = false;
+    }
+  }
   $effect(() => {
     if (
       data &&
@@ -86,23 +152,18 @@
       savePriority(null);
     }
   });
-  const planned = $derived(
-    todayRows.filter((row) => {
-      const task = data?.tasks.find((task) => task.id === row.taskId);
-      return (
-        row.value > 0 ||
-        !!task?.plannedDate ||
-        !!task?.recurrence ||
-        row.originDate !== row.plannedDate
-      );
-    }),
-  );
-  const next = $derived(
-    selectNextOccurrence(
-      todayRows,
-      pinned ?? data?.tasks.find((task) => task.pinned)?.id ?? null,
-    ),
-  );
+  const planned = $derived(view?.planned ?? []);
+  const next = $derived.by(() => {
+    const chosen =
+      pinned ?? data?.tasks.find((task) => task.pinned)?.id ?? null;
+    return chosen !== null &&
+      todayRows.some(
+        (row) => row.taskId === chosen && row.status !== 'completed',
+      )
+      ? selectNextOccurrence(todayRows, chosen)
+      : (selectNextOccurrence(view?.planned ?? []) ??
+          selectNextOccurrence(view?.flexible ?? []));
+  });
   const completed = $derived(
     planned.filter((row) => row.status === 'completed').length,
   );
@@ -114,15 +175,16 @@
       .filter(
         (event) =>
           event.date === today &&
-          !event.reversedAt &&
-          ['task', 'review', 'project'].includes(event.kind),
+          (['task', 'review', 'project'].includes(event.kind) ||
+            (event.kind === 'adjustment' && !!event.sourceEventId)),
       )
       .reduce(
         (sum, event) => ({
           xp: sum.xp + event.reward.xp,
           gold: sum.gold + event.reward.gold,
+          food: sum.food + event.reward.food,
         }),
-        { xp: 0, gold: 0 },
+        { xp: 0, gold: 0, food: 0 },
       ),
   );
   const earned = $derived(
@@ -146,11 +208,11 @@
   );
   const cards = [
     {
-      title: 'Aventura',
-      icon: 'aventura',
-      image: paintings.adventure,
-      href: '/aventura?campanha=ermos',
-      copy: 'Continue a narrativa e descubra o próximo capítulo.',
+      title: 'Mundo',
+      icon: 'mundo',
+      image: paintings.map,
+      href: '/mundo',
+      copy: 'Explore o mapa, acompanhe a campanha e continue suas aventuras.',
     },
     {
       title: 'Aposentos',
@@ -165,13 +227,6 @@
       image: paintings.projects,
       href: '/projetos',
       copy: 'Planeje e acompanhe seus projetos de longo prazo.',
-    },
-    {
-      title: 'Mapa',
-      icon: 'mapa',
-      image: paintings.map,
-      href: '/mundo',
-      copy: 'Explore os Ermos Centrais e investigue com Lucan.',
     },
   ];
   const taskIcon = (row: Occurrence) =>
@@ -212,6 +267,8 @@
   {#if error}<p class="journey-error" role="alert">
       {error} <a href="/" data-sveltekit-reload>Tentar novamente</a>
     </p>{/if}
+  {#if notice}<p class="journey-banner" role="status">{notice}</p>{/if}
+  {#if actionError}<p class="journey-error" role="alert">{actionError}</p>{/if}
   {#if !data}<p role="status">Abrindo sua jornada…</p>{:else}
     <header class="today-hero">
       <img
@@ -280,6 +337,19 @@
                 : 'Começar'}</Button
             >{:else}<Button onclick={() => (open = true)}>Nova missão</Button
             >{/if}
+          {#if next}<ContextMenu label={`Ações de hoje para ${next.title}`}
+              ><Button
+                variant="quiet"
+                disabled={busy}
+                onclick={() => chooseAction(next!, 'remove')}
+                >Remover de hoje</Button
+              ><Button
+                variant="quiet"
+                disabled={busy}
+                onclick={() => chooseAction(next!, 'reschedule')}
+                >Reagendar</Button
+              ></ContextMenu
+            >{/if}
           <details class="next-options">
             <summary aria-label="Escolher próxima missão">⋯</summary><label
               >Manter em destaque<select
@@ -297,14 +367,14 @@
         <section class="day-plan rpg-frame" aria-labelledby="plan-title">
           <header>
             <h2 id="plan-title">
-              Plano do dia <small>({planned.length} missões)</small>
+              Plano do dia <small>({planned.length} ocorrências)</small>
             </h2>
             <a href="/missoes?view=agenda&mode=day"
               ><ApprovedIcon name="agenda" size={24} />Ver agenda →</a
             >
           </header>
           {#if remaining.length}<ul>
-              {#each remaining.slice(0, 3) as row (row.id)}<li>
+              {#each remaining as row (row.id)}<li>
                   <span class="time-chip">{row.plannedTime ?? 'Flex.'}</span
                   ><ApprovedIcon name={taskIcon(row)} size={32} />
                   <div>
@@ -319,11 +389,22 @@
                         : ''}</small
                     >
                   </div>
-                  <Button
-                    variant="quiet"
-                    disabled={busy}
-                    aria-label={`Executar ${row.title}`}
-                    onclick={() => execute(row)}>→</Button
+                  <ContextMenu label={`Ações de hoje para ${row.title}`}
+                    ><Button
+                      variant="quiet"
+                      disabled={busy}
+                      onclick={() => execute(row)}>Executar atividade</Button
+                    ><Button
+                      variant="quiet"
+                      disabled={busy}
+                      onclick={() => chooseAction(row, 'remove')}
+                      >Remover de hoje</Button
+                    ><Button
+                      variant="quiet"
+                      disabled={busy}
+                      onclick={() => chooseAction(row, 'reschedule')}
+                      >Reagendar</Button
+                    ></ContextMenu
                   >
                 </li>{/each}
             </ul>{:else}<p class="empty-plan">
@@ -343,12 +424,26 @@
         <section class="rpg-frame daily-summary">
           <h2>Progresso do dia</h2>
           <div>
-            <DayProgress {completed} total={planned.length} />
+            <DayProgress
+              {completed}
+              total={planned.length}
+              noun="ocorrências"
+            />
+            <small>Somente o planejamento atual</small>
             <div class="daily-rewards">
-              <span><ApprovedIcon name="xp" size={32} />+{received.xp} XP</span
+              <span
+                ><ApprovedIcon name="xp" size={32} />{received.xp >= 0
+                  ? '+'
+                  : ''}{received.xp} XP</span
               ><span
-                ><ApprovedIcon name="ouro" size={32} />+{received.gold} Ouro</span
-              ><small>Recebidos hoje</small>
+                ><ApprovedIcon name="ouro" size={32} />{received.gold >= 0
+                  ? '+'
+                  : ''}{received.gold} Ouro</span
+              ><span
+                ><ApprovedIcon name="comida" size={26} />{received.food >= 0
+                  ? '+'
+                  : ''}{received.food} Comida</span
+              ><small>Recebidos hoje · ganhos líquidos</small>
             </div>
           </div>
         </section>
@@ -365,11 +460,94 @@
         </section>
       </aside>
     </div>
+    <section class="rpg-frame today-completions" aria-label="Concluídas hoje">
+      <header>
+        <h2>
+          Concluídas hoje <small
+            >({(view?.completedEvents.length ?? 0) + (view?.legacy.length ?? 0)} conclusões)</small
+          >
+        </h2>
+        <p>Execuções realizadas hoje, incluindo atividades de outras datas.</p>
+      </header>
+      {#if view?.completedEvents.length || view?.legacy.length}<ul>
+          {#each view?.completedEvents ?? [] as event (event.id)}<li>
+              <ApprovedIcon name="concluida" size={26} />
+              <div>
+                <strong
+                  >{event.taskTitle ??
+                    data.tasks.find((task) => task.id === event.taskId)
+                      ?.title ??
+                    'Atividade concluída'}</strong
+                ><small
+                  >{event.occurrenceDate && event.occurrenceDate !== today
+                    ? `Ocorrência original: ${formatCalendar(event.occurrenceDate)}`
+                    : 'Realizada hoje'} · +{event.reward.xp} XP · +{event.reward
+                    .gold} Ouro</small
+                >
+              </div>
+            </li>{/each}{#each view?.legacy ?? [] as task (task.id)}<li>
+              <strong>{task.title}</strong><small
+                >Conclusão anterior preservada</small
+              >
+            </li>{/each}
+        </ul>{:else}<p class="lmu-hint">
+          Suas conclusões aparecerão aqui conforme você realizar as atividades.
+        </p>{/if}
+    </section>
+    {#if view?.old.length}<details class="rpg-frame today-secondary">
+        <summary>Atividades de outros dias ({view.old.length})</summary>
+        <p class="lmu-hint">
+          Não entram no progresso do planejamento atual. Retome conscientemente
+          ou escolha outra data.
+        </p>
+        <ul>
+          {#each view.old as row (row.id)}<li>
+              <div>
+                <strong>{row.title}</strong><small
+                  >Planejada para {formatCalendar(row.plannedDate)}{row.value >
+                  0
+                    ? ' · Progresso parcial preservado'
+                    : ''}</small
+                >
+              </div>
+              <ContextMenu label={`Organizar atividade antiga ${row.title}`}
+                ><Button variant="quiet" onclick={() => execute(row)}
+                  >Retomar atividade</Button
+                ><Button
+                  variant="quiet"
+                  onclick={() => chooseAction(row, 'reschedule')}
+                  >Reagendar</Button
+                ><a
+                  class="lmu-button lmu-button--quiet"
+                  href="/missoes?view=recovery"
+                  >Ver recuperação de ocorrências</a
+                ></ContextMenu
+              >
+            </li>{/each}
+        </ul>
+      </details>{/if}
+    {#if view?.removed.length}<details class="rpg-frame today-secondary">
+        <summary>Removidas de hoje ({view.removed.length})</summary>
+        <p class="lmu-hint">
+          Não são sugeridas novamente hoje. Cadastro e execução permanecem
+          preservados.
+        </p>
+        <ul>
+          {#each view.removed as row (row.id)}<li>
+              <strong>{row.title}</strong><Button
+                variant="quiet"
+                disabled={busy}
+                onclick={() => applyAction(row, 'restore', false)}
+                >Devolver a hoje</Button
+              >
+            </li>{/each}
+        </ul>
+      </details>{/if}
     <nav class="world-cards" aria-label="Explore seu mundo">
       {#each cards as card (card.href + card.title)}<a
           class="rpg-frame world-card"
           href={card.href}
-          id={card.title === 'Mapa' ? 'home-map' : undefined}
+          id={card.title === 'Mundo' ? 'home-map' : undefined}
           ><img src={card.image} alt="" loading="lazy" />
           <div>
             <h2><ApprovedIcon name={card.icon} size={32} />{card.title}</h2>
@@ -406,7 +584,92 @@
   {/if}
 </div>
 
+<Dialog
+  bind:open={actionOpen}
+  title={dayAction?.action === 'remove'
+    ? 'Remover somente de hoje?'
+    : 'Reagendar ocorrência'}
+>
+  {#if dayAction}<p>{dayAction.row.title}</p>
+    {#if dayAction.requiresConfirmation}<p>
+        O progresso já registrado e os recibos serão preservados. Remover de
+        hoje não remove a atividade da sessão iniciada. Reagendar não pode
+        alterar uma ocorrência congelada por uma sessão.
+      </p>{/if}{#if dayAction.action === 'reschedule'}<label
+        class="journey-label lmu-field"
+        >Nova data<input type="date" bind:value={rescheduleDate} /></label
+      >{/if}{#if actionError}<p role="alert" class="journey-error">
+        {actionError}
+      </p>{/if}
+    <div class="journey-actions">
+      <Button
+        disabled={busy}
+        onclick={() => applyAction(dayAction!.row, dayAction!.action, true)}
+        >{dayAction.action === 'remove'
+          ? 'Remover de hoje'
+          : 'Confirmar reagendamento'}</Button
+      ><Button
+        variant="quiet"
+        disabled={busy}
+        onclick={() => {
+          actionOpen = false;
+          dayAction = undefined;
+        }}>Cancelar</Button
+      >
+    </div>{/if}
+</Dialog>
+
 <style>
+  .today-completions,
+  .today-secondary {
+    padding: 18px;
+    margin: 16px 0;
+  }
+  .today-completions h2 {
+    font-family: var(--lmu-display);
+    color: #edce91;
+    font-size: 1.6rem;
+    margin: 0;
+  }
+  .today-completions header p,
+  .today-secondary p {
+    color: #aebfae;
+    font-size: 0.8rem;
+  }
+  .today-completions ul,
+  .today-secondary ul {
+    list-style: none;
+    padding: 0;
+    margin: 12px 0 0;
+    display: grid;
+    gap: 8px;
+  }
+  .today-completions li,
+  .today-secondary li {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px;
+    border: 1px solid #8d744a44;
+    border-radius: 7px;
+  }
+  .today-completions li div,
+  .today-secondary li div {
+    flex: 1;
+    min-width: 0;
+  }
+  .today-completions small,
+  .today-secondary small {
+    display: block;
+    color: #afbfaa;
+    font-size: 0.77rem;
+  }
+  .today-secondary summary {
+    cursor: pointer;
+    color: #e4c78d;
+  }
+
   .today-view {
     display: grid;
     gap: 16px;
@@ -693,7 +956,7 @@
   }
   .world-cards {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 16px;
   }
   .world-card {

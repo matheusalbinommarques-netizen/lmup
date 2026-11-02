@@ -353,7 +353,9 @@
       </p>
       <p>
         Este arquivo substituirá os dados atuais. Uma cópia local do estado
-        anterior será guardada antes da troca.
+        anterior será guardada antes da troca. Missões excluídas definitivamente
+        nesta instalação continuarão excluídas, mesmo que apareçam neste
+        arquivo.
       </p>
       <p class="lmu-hint">
         Se quiser uma cópia independente do estado atual, cancele e use Exportar

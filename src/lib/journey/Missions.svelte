@@ -1,8 +1,16 @@
 <script lang="ts">
+  import {
+    changeToday,
+    dayChangeNeedsConfirmation,
+  } from '$services/dailyPlanningService';
+  import { makeOccurrence } from '$services/occurrenceService';
+  import type { Occurrence } from '$services/productivityTypes';
+  import SessionSelection from './SessionSelection.svelte';
   import { areaIconKey } from '$services/areaIcons';
+  import ContextMenu from '$lib/ui/ContextMenu.svelte';
   import TaskRemovalDialog from './TaskRemovalDialog.svelte';
   import '$lib/rpg-theme.css';
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { journeyQuery, type JourneySnapshot } from '$services/journeyQuery';
@@ -19,7 +27,9 @@
   } from '$services/taskService';
   import Dialog from '$lib/ui/Dialog.svelte';
   import type { Resources } from '$services/productivityTypes';
-  import { celebrateReward } from '$services/rewardPresentation';
+  import { isPersonalTask } from '$services/personalTaskDeletion';
+  import type { RemovalMode } from '$services/taskRemoval';
+  import type { ActivityEvent } from '$services/db';
   import {
     MISSION_SESSION_KEY,
     newMissionSession,
@@ -45,19 +55,63 @@
   import RpgTrim from '$lib/ui/RpgTrim.svelte';
   import ProductivityWorkspace from './ProductivityWorkspace.svelte';
   import { ensureOccurrence } from '$services/occurrenceService';
-  import { newSavedSession, saveSession } from '$services/savedSessionService';
+  import { startOrResumeSession } from '$services/savedSessionService';
   import { fraction } from '$services/productivityRules';
+  let todayRemovalOpen = $state(false),
+    removalRows = $state<Occurrence[]>([]);
+  async function removeToday(task: Task) {
+    const rows =
+      data?.plannedToday.filter(
+        (row) => row.taskId === task.id && row.status !== 'completed',
+      ) ?? [];
+    const candidates = rows.length ? rows : [makeOccurrence(task, today)];
+    if (
+      candidates.length === 1 &&
+      !(await dayChangeNeedsConfirmation(candidates[0].id))
+    ) {
+      await changeToday({
+        row: candidates[0],
+        action: 'remove',
+        day: today,
+        requestId: crypto.randomUUID(),
+      });
+      notice = 'Removida de hoje; cadastro e progresso preservados.';
+      return;
+    }
+    removalRows = candidates;
+    todayRemovalOpen = true;
+  }
+  async function confirmTodayRemoval(row: Occurrence) {
+    try {
+      await changeToday({
+        row,
+        action: 'remove',
+        day: today,
+        acknowledged: true,
+        requestId: crypto.randomUUID(),
+      });
+      removalRows = removalRows.filter((item) => item.id !== row.id);
+      todayRemovalOpen = removalRows.length > 0;
+      notice = 'Removida de hoje; sessão, progresso e recompensas preservados.';
+    } catch (cause) {
+      error =
+        cause instanceof Error ? cause.message : 'Não foi possível retirar.';
+    }
+  }
+  let selectionOpen = $state(false);
   let workspaceView = $state<
-    'list' | 'agenda' | 'routines' | 'recovery' | 'sessions'
+    'list' | 'agenda' | 'routines' | 'areas' | 'recovery' | 'sessions'
   >('list');
   $effect(() => {
     const value = page.url.searchParams.get('view');
     workspaceView =
-      value && ['agenda', 'routines', 'recovery', 'sessions'].includes(value)
+      value &&
+      ['agenda', 'routines', 'areas', 'recovery', 'sessions'].includes(value)
         ? (value as typeof workspaceView)
         : 'list';
   });
   function changeView(view: string) {
+    completion = undefined;
     const url = new URL(page.url);
     url.searchParams.set('view', view);
     void goto(url.pathname + url.search, { noScroll: true, keepFocus: true });
@@ -72,6 +126,7 @@
       routines: 'Rotinas',
       recovery: 'Recuperar Ocorrências',
       sessions: 'Sessões salvas',
+      areas: 'Áreas',
     }[workspaceView],
   );
   const workspaceSubtitle = $derived(
@@ -81,6 +136,7 @@
       routines: 'Organize suas sequências e mantenha a constância.',
       recovery: 'Recupere, reorganize e mantenha o progresso.',
       sessions: 'Retome suas atividades com o progresso preservado.',
+      areas: 'Cuide das áreas que organizam suas missões.',
     }[workspaceView],
   );
   let data = $state<JourneySnapshot>();
@@ -121,14 +177,24 @@
   let open = $state(false),
     areasOpen = $state(false);
   let editTask = $state<Task>();
+  let removalMode = $state<RemovalMode>('delete');
+  let completion = $state<{ title: string; event: ActivityEvent }>();
   let removalTask = $state<Task>(),
     removalOpen = $state(false);
   let search = $state(''),
     project = $state(''),
     area = $state('all');
   let filter = $state<
-    'today' | 'upcoming' | 'all' | 'undated' | 'completed' | 'archived'
-  >('all');
+    | 'pending'
+    | 'today'
+    | 'upcoming'
+    | 'all'
+    | 'undated'
+    | 'completed'
+    | 'archived'
+  >('pending');
+  let historyFrom = $state(''),
+    historyTo = $state('');
   let groupAreas = $state(false),
     pinnedOnly = $state(false);
   let selecting = $state(false),
@@ -227,7 +293,10 @@
   const archivedTasks = $derived(
     data?.tasks.filter((task) => task.archived && matchesFilters(task)) ?? [],
   );
+  const hasPendingWork = (task: Task) =>
+    !task.completed || !!task.recurrence || !!task.reviewEnabled;
   const counts = $derived({
+    pending: tasks.filter(hasPendingWork).length,
     today: tasks.filter((task) => scheduledToday(task)).length,
     upcoming: tasks.filter(
       (task) =>
@@ -251,6 +320,7 @@
       .filter(
         (task) =>
           filter === 'archived' ||
+          (filter === 'pending' && hasPendingWork(task)) ||
           filter === 'all' ||
           (filter === 'undated' && category(task) === 'Sem data') ||
           (filter === 'today'
@@ -288,8 +358,17 @@
   const history = $derived(
     data?.events
       .filter((event) => {
-        if (!['task', 'review'].includes(event.kind)) return false;
+        if (
+          event.deletedPersonalTask ||
+          !['task', 'review'].includes(event.kind)
+        )
+          return false;
         if (!historyCompletion(event)) return false;
+        if (
+          (historyFrom && event.date < historyFrom) ||
+          (historyTo && event.date > historyTo)
+        )
+          return false;
         const task = data?.tasks.find((item) => item.id === event.taskId);
         return (
           (event.taskTitle ?? task?.title ?? '')
@@ -304,7 +383,10 @@
       .sort((a, b) => b.sequence - a.sequence) ?? [],
   );
   const legacy = $derived(
-    tasks.filter((task) => task.completed && !task.completionEventId),
+    tasks.filter(
+      (task) =>
+        task.completed && !task.completionEventId && !historyFrom && !historyTo,
+    ),
   );
   async function act(key: string, work: () => Promise<unknown>, message = '') {
     if (pending.includes(key)) return;
@@ -324,13 +406,16 @@
     }
   }
   async function complete(task: Task) {
+    const scroll = window.scrollY;
     await act(String(task.id), async () => {
       const event = await completeTask(task.id!, {
         occurrenceDate: task.recurrence ? today : undefined,
       });
       if (event) {
-        celebrateReward(event.id);
-        await goto(`/missao/${task.id}?evento=${encodeURIComponent(event.id)}`);
+        completion = { title: task.title, event };
+        await tick();
+        window.scrollTo({ top: scroll });
+        notice = 'Missão concluída. Sua recompensa foi registrada.';
       } else
         notice =
           'Esta ocorrência já foi registrada. Sua recompensa foi preservada.';
@@ -370,7 +455,7 @@
           for (const row of planned)
             ids.push((await ensureOccurrence(id, row.originDate)).id);
         }
-        await saveSession(newSavedSession('Sessão de Missões', ids));
+        await startOrResumeSession('Sessão de Missões', ids);
         selecting = false;
         selected = [];
         error = '';
@@ -410,47 +495,99 @@
   </header>
   {#if error}<p role="alert" class="journey-error">{error}</p>{/if}
   <p role="status" class="journey-save-status">{notice}</p>
-  {#if !data}<p>Abrindo suas missões…</p>{:else}
-    <nav class="journey-actions" aria-label="Visualização das missões">
-      {#each [{ id: 'list', label: 'Lista' }, { id: 'agenda', label: 'Agenda' }, { id: 'routines', label: 'Rotinas' }, { id: 'recovery', label: 'Recuperar ocorrências' }, { id: 'sessions', label: 'Sessões salvas' }] as tab (tab.id)}
-        <Button
-          variant="secondary"
-          aria-pressed={workspaceView === tab.id}
-          onclick={() => changeView(tab.id)}
-          ><ApprovedIcon
-            name={tab.id === 'agenda'
-              ? 'agenda'
-              : tab.id === 'routines'
-                ? 'rotina'
-                : tab.id === 'recovery'
-                  ? 'recover'
-                  : tab.id === 'sessions'
-                    ? 'em_andamento'
-                    : 'missions'}
-            size={24}
-          />{tab.label}</Button
+  {#if completion}<aside
+      class="completion-feedback"
+      role="status"
+      aria-label="Recompensa da conclusão"
+    >
+      <ApprovedIcon name="concluida" size={28} />
+      <div>
+        <strong>{completion.title}</strong><span
+          >Concluída · +{completion.event.reward.xp} XP · +{completion.event
+            .reward.gold} Ouro{completion.event.reward.food
+            ? ` · +${completion.event.reward.food} Comida`
+            : ''}</span
         >
-      {/each}
-    </nav>
-    {#if workspaceView !== 'list'}<ProductivityWorkspace
+      </div>
+      <button
+        type="button"
+        aria-label="Fechar feedback de conclusão"
+        onclick={() => (completion = undefined)}>✕</button
+      >
+    </aside>{/if}
+  {#if !data}<p>Abrindo suas missões…</p>{:else}
+    <div class="workspace-navigation">
+      <nav class="workspace-tabs" aria-label="Visualização das missões">
+        {#each [{ id: 'list', label: 'Lista', icon: 'missions' }, { id: 'agenda', label: 'Agenda', icon: 'agenda' }, { id: 'routines', label: 'Rotinas', icon: 'rotina' }, { id: 'areas', label: 'Áreas', icon: 'mapa' }] as tab (tab.id)}
+          <Button
+            variant="secondary"
+            aria-pressed={workspaceView === tab.id}
+            onclick={() => changeView(tab.id)}
+            ><ApprovedIcon name={tab.icon} size={24} />{tab.label}</Button
+          >
+        {/each}
+      </nav>
+      <ContextMenu
+        label="Ferramentas de missões"
+        text="Ferramentas"
+        tabStyle
+        icon="perfil"
+      >
+        <Button variant="quiet" onclick={() => changeView('recovery')}
+          >Recuperar ocorrências</Button
+        >
+        <Button variant="quiet" onclick={() => changeView('sessions')}
+          >Sessões salvas</Button
+        >
+        <Button
+          variant="quiet"
+          onclick={() => {
+            filter = 'archived';
+            changeView('list');
+          }}>Arquivadas</Button
+        >
+        <Button variant="quiet" onclick={() => (areasOpen = true)}
+          >Gerenciar áreas</Button
+        >
+        <a href="/revisoes">Revisões e suas sessões</a>
+        <a href="/arquivo/missoes">Organização avançada</a>
+      </ContextMenu>
+    </div>
+    {#if workspaceView === 'areas'}
+      <AreasDialog
+        embedded
+        snapshot={data}
+        onbrowse={(id) => {
+          area = String(id);
+          pinnedOnly = false;
+          search = '';
+          project = '';
+          filter = 'all';
+          changeView('list');
+        }}
+      />
+    {:else if workspaceView !== 'list'}<ProductivityWorkspace
         view={workspaceView}
         snapshot={data}
       />{:else}
       <div class="organizer-toolbar">
         <div class="organizer-primary-controls">
           <nav class="organizer-tabs" aria-label="Agenda de missões">
-            {#each [{ key: 'today', label: 'Hoje' }, { key: 'upcoming', label: 'Próximas' }, { key: 'all', label: 'Todas' }, { key: 'undated', label: 'Sem data' }, { key: 'completed', label: 'Concluídas' }, { key: 'archived', label: 'Arquivadas' }] as tab (tab.key)}<Button
+            {#each [{ key: 'pending', label: 'Pendentes' }, { key: 'completed', label: 'Concluídas' }, { key: 'all', label: 'Todas' }] as tab (tab.key)}<Button
                 variant="secondary"
                 aria-label={tab.label}
-                aria-pressed={filter === tab.key}
+                aria-pressed={filter === tab.key ||
+                  (tab.key === 'pending' &&
+                    ['today', 'upcoming', 'undated'].includes(filter))}
                 onclick={() => (filter = tab.key as typeof filter)}
                 >{tab.label}<small aria-hidden="true"
                   >{tab.key === 'completed'
                     ? history.filter((event) => !event.reversedAt).length +
                       legacy.length
-                    : counts[tab.key as keyof typeof counts]}</small
+                    : counts[tab.key as 'pending' | 'all']}</small
                 ></Button
-              >{/each}
+              >
+            {/each}
           </nav>
           <div class="mission-session-tools">
             {#if selecting}
@@ -475,12 +612,10 @@
               <Button
                 variant="secondary"
                 onclick={() => {
-                  selecting = true;
-                  filter = 'today';
-                  selected = [];
+                  selectionOpen = true;
                 }}
               >
-                <Icon name="missions" size={18} />Montar sessão
+                <Icon name="missions" size={18} />Selecionar para sessão
               </Button>
               {#if storedSession}<a
                   class="lmu-button lmu-button--secondary"
@@ -509,14 +644,33 @@
                   >{/each}</select
               ></label
             >
-            <Button variant="quiet" onclick={() => (areasOpen = true)}
-              >Gerenciar áreas</Button
-            >
           </div>
           <details class="extra-filters">
             <summary
-              >Mais filtros{project || pinnedOnly ? ' · ativos' : ''}</summary
+              >Mais filtros{project ||
+              pinnedOnly ||
+              groupAreas ||
+              ['today', 'upcoming', 'undated'].includes(filter)
+                ? ' · ativos'
+                : ''}</summary
             >
+            {#if filter !== 'completed' && filter !== 'archived'}<label
+                class="journey-label"
+                >Quando fazer<select
+                  aria-label="Filtrar por data"
+                  value={['today', 'upcoming', 'undated'].includes(filter)
+                    ? filter
+                    : ''}
+                  onchange={(event) =>
+                    (filter = (event.currentTarget.value ||
+                      'pending') as typeof filter)}
+                  ><option value="">Qualquer data</option><option value="today"
+                    >Hoje</option
+                  ><option value="upcoming">Próximas</option><option
+                    value="undated">Sem data</option
+                  ></select
+                ></label
+              >{/if}
             <label class="journey-label"
               >Projeto<select bind:value={project}
                 ><option value="">Todos os projetos</option
@@ -536,16 +690,46 @@
             </div>
           </details>
         </div>
-        {#if search || area !== 'all' || project || pinnedOnly}<Button
+        {#if search || area !== 'all' || project || pinnedOnly || groupAreas || historyFrom || historyTo || ['today', 'upcoming', 'undated'].includes(filter)}<Button
             variant="quiet"
             onclick={() => {
               search = '';
               area = 'all';
               project = '';
               pinnedOnly = false;
+              groupAreas = false;
+              historyFrom = '';
+              historyTo = '';
+              if (['today', 'upcoming', 'undated'].includes(filter))
+                filter = 'pending';
             }}>Limpar filtros</Button
           >{/if}
       </div>
+      {#if filter === 'completed'}<div class="history-period">
+          <div>
+            <strong>Histórico de execuções</strong><small
+              >Cada conclusão é um registro, inclusive nas missões recorrentes.</small
+            >
+          </div>
+          <label class="journey-label"
+            >De<input
+              type="date"
+              bind:value={historyFrom}
+              max={historyTo || undefined}
+            /></label
+          ><label class="journey-label"
+            >Até<input
+              type="date"
+              bind:value={historyTo}
+              min={historyFrom || undefined}
+            /></label
+          >
+        </div>{/if}
+      <p class="result-context" role="status">
+        {filter === 'completed'
+          ? `${history.filter((event) => !event.reversedAt).length + legacy.length} conclusões · registros corrigidos continuam consultáveis`
+          : `${visible.length} ${visible.length === 1 ? 'missão' : 'missões'}${filter === 'archived' ? ' arquivadas' : ''}`}
+      </p>
       <section
         class="rpg-frame organizer-list"
         aria-label={filter === 'completed'
@@ -554,17 +738,26 @@
       >
         <RpgTrim />
         <h2 class:sr-only={filter === 'all' && !groupAreas}>
-          {filter === 'today'
-            ? 'Hoje'
-            : filter === 'upcoming'
-              ? 'Próximas atividades'
-              : filter === 'undated'
-                ? 'Sem data'
-                : filter === 'completed'
-                  ? 'Suas conclusões'
-                  : 'Todas as missões'}
+          {filter === 'pending'
+            ? 'Missões pendentes'
+            : filter === 'archived'
+              ? 'Missões arquivadas'
+              : filter === 'today'
+                ? 'Hoje'
+                : filter === 'upcoming'
+                  ? 'Próximas atividades'
+                  : filter === 'undated'
+                    ? 'Sem data'
+                    : filter === 'completed'
+                      ? 'Suas conclusões'
+                      : 'Todas as missões'}
         </h2>
         {#if filter === 'completed'}
+          {#if historyFrom && historyTo && historyFrom > historyTo}<p
+              role="alert"
+            >
+              A data inicial deve ser anterior ou igual à data final.
+            </p>{/if}
           {#if history.length || legacy.length}<ul>
               {#each history as event (event.id)}
                 {@const corrected =
@@ -592,8 +785,11 @@
                           task?.title ??
                           'Missão registrada'}</strong
                       >{/if}<small
-                      >{formatCalendar(event.occurrenceDate ?? event.date)} · {event.areaName ??
-                        areaName(task?.areaId)} · {corrected || event.reversedAt
+                      >{formatCalendar(event.date)}{event.occurrenceDate &&
+                      event.occurrenceDate !== event.date
+                        ? ` · Origem ${formatCalendar(event.occurrenceDate)}`
+                        : ''} · {event.areaName ?? areaName(task?.areaId)} · {corrected ||
+                      event.reversedAt
                         ? 'Corrigida'
                         : event.kind === 'review'
                           ? 'Revisão realizada'
@@ -664,7 +860,10 @@
                         !entry.reversedAt,
                     )?.reward
                   : data.rewards[task.id!]}
-              <li class="mission-row" class:mission-done={done}>
+              <li
+                class="mission-row mission-task-row"
+                class:mission-done={done}
+              >
                 {#if selecting && filter === 'today'}<label
                     class="mission-selection"
                   >
@@ -697,10 +896,14 @@
                       'Flexível'}{task.estimatedMinutes
                       ? ` · ${task.estimatedMinutes} min`
                       : ''} · {done
-                      ? 'Concluída'
-                      : task.plannedDate
-                        ? formatCalendar(task.plannedDate)
-                        : recurrenceLabel(task)}</small
+                      ? task.recurrence
+                        ? `Concluída hoje · Próxima ${formatCalendar(nextPlannedDate(task, today) ?? today)}`
+                        : 'Concluída'
+                      : task.recurrence
+                        ? `${scheduledToday(task) ? 'Hoje' : formatCalendar(nextPlannedDate(task, today) ?? task.recurrence.startDate)} · ${recurrenceLabel(task)}`
+                        : task.plannedDate
+                          ? formatCalendar(task.plannedDate)
+                          : recurrenceLabel(task)}</small
                   >
                   {#if todayRows.length > 1}<details
                       class="mission-occurrences"
@@ -744,63 +947,71 @@
                       >+{reward.gold} Ouro</small
                     >
                   </div>{/if}
-                <details class="mission-menu">
-                  <summary aria-label={`Ações para ${task.title}`}>⋯</summary>
-                  <div>
-                    {#if task.archived}<a
-                        class="journey-link"
-                        href={`/missao/${task.id}`}>Ver registros</a
-                      >{:else}
-                      <Button
-                        variant="danger"
-                        onclick={() => {
-                          removalTask = task;
-                          removalOpen = true;
-                        }}>Excluir missão</Button
-                      >
-                      <Button
-                        variant="quiet"
-                        onclick={() => {
-                          editTask = task;
-                          open = true;
-                        }}>Editar missão</Button
-                      ><a class="journey-link" href={`/missao/${task.id}`}
-                        >Abrir missão</a
-                      ><Button
+                <ContextMenu label={`Ações para ${task.title}`}>
+                  {#if task.archived}<a
+                      class="journey-link"
+                      href={`/missao/${task.id}`}>Ver registros</a
+                    >{:else}
+                    <Button
+                      variant="quiet"
+                      onclick={() => {
+                        editTask = task;
+                        open = true;
+                      }}>Editar missão</Button
+                    ><a class="journey-link" href={`/missao/${task.id}`}
+                      >Abrir missão</a
+                    ><Button
+                      variant="quiet"
+                      disabled={pending.includes(String(task.id))}
+                      onclick={() =>
+                        act(
+                          String(task.id),
+                          () =>
+                            scheduledToday(task)
+                              ? removeToday(task)
+                              : planTask(task.id!, true),
+                          'Plano atualizado.',
+                        )}
+                      >{scheduledToday(task)
+                        ? 'Tirar de hoje'
+                        : 'Planejar para hoje'}</Button
+                    ><Button
+                      variant="quiet"
+                      aria-pressed={!!task.pinned}
+                      disabled={pending.includes(String(task.id))}
+                      onclick={() =>
+                        act(
+                          String(task.id),
+                          () => pinTask(task.id!, !task.pinned),
+                          'Destaque atualizado.',
+                        )}>{task.pinned ? 'Desafixar' : 'Fixar'}</Button
+                    >{#if canComplete && !taskSteps(task).length && filter !== 'upcoming'}<Button
+                        disabled={pending.includes(String(task.id))}
+                        onclick={() => complete(task)}>Completar missão</Button
+                      >{/if}{#if done && task.completionEventId}<Button
                         variant="quiet"
                         disabled={pending.includes(String(task.id))}
-                        onclick={() =>
-                          act(
-                            String(task.id),
-                            () => planTask(task.id!, !scheduledToday(task)),
-                            'Plano atualizado.',
-                          )}
-                        >{scheduledToday(task)
-                          ? 'Tirar de hoje'
-                          : 'Planejar para hoje'}</Button
-                      ><Button
-                        variant="quiet"
-                        aria-pressed={!!task.pinned}
-                        disabled={pending.includes(String(task.id))}
-                        onclick={() =>
-                          act(
-                            String(task.id),
-                            () => pinTask(task.id!, !task.pinned),
-                            'Destaque atualizado.',
-                          )}>{task.pinned ? 'Desafixar' : 'Fixar'}</Button
-                      >{#if canComplete && !taskSteps(task).length && filter !== 'upcoming'}<Button
-                          disabled={pending.includes(String(task.id))}
-                          onclick={() => complete(task)}
-                          >Completar missão</Button
-                        >{/if}{#if done && task.completionEventId}<Button
-                          variant="quiet"
-                          disabled={pending.includes(String(task.id))}
-                          onclick={() => requestUndo(task.id!)}
-                          >Desfazer conclusão</Button
-                        >{/if}
-                    {/if}
-                  </div>
-                </details>
+                        onclick={() => requestUndo(task.id!)}
+                        >Desfazer conclusão</Button
+                      >{/if}
+                  {/if}
+                  {#if !task.archived}<Button
+                      variant="quiet"
+                      onclick={() => {
+                        removalTask = task;
+                        removalMode = 'archive';
+                        removalOpen = true;
+                      }}>Arquivar missão</Button
+                    >{/if}
+                  {#if isPersonalTask(task)}<Button
+                      variant="danger"
+                      onclick={() => {
+                        removalTask = task;
+                        removalMode = 'delete';
+                        removalOpen = true;
+                      }}>Excluir definitivamente</Button
+                    >{/if}
+                </ContextMenu>
               </li>
             {/each}
           </ul>{:else}<div class="organizer-empty">
@@ -825,6 +1036,21 @@
         >
       </div>
     {/if}
+    <Dialog bind:open={todayRemovalOpen} title="Remover de hoje"
+      ><p>
+        Escolha a ocorrência. O progresso, as recompensas e as sessões iniciadas
+        serão preservados. Esta ação não arquiva nem exclui a missão.
+      </p>
+      {#each removalRows as row (row.id)}<Button
+          variant="secondary"
+          onclick={() => confirmTodayRemoval(row)}
+          >Remover {row.title} · origem {formatCalendar(row.originDate)}</Button
+        >{/each}<Button
+        variant="quiet"
+        onclick={() => (todayRemovalOpen = false)}>Cancelar</Button
+      ></Dialog
+    >
+    <SessionSelection bind:open={selectionOpen} snapshot={data} />
     <QuickCreate
       bind:open
       snapshot={data}
@@ -840,6 +1066,7 @@
 <TaskRemovalDialog
   bind:open={removalOpen}
   task={removalTask}
+  mode={removalMode}
   onremoved={(mode) => {
     selected = selected.filter((id) => id !== removalTask?.id);
     notice =
@@ -895,22 +1122,6 @@
     color: #e4c481;
     letter-spacing: 0.04em;
   }
-  .missions-organizer > nav {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 8px;
-    margin: 0 0 12px;
-    padding: 0 0 10px;
-    border-bottom: 1px solid #69603b66;
-  }
-  .missions-organizer > nav :global(.lmu-button) {
-    min-width: 0;
-    min-height: 38px;
-    font-size: 0.82rem;
-    padding: 5px 8px;
-    white-space: nowrap;
-  }
-  .missions-organizer > nav :global([aria-pressed='true']),
   .organizer-tabs :global([aria-pressed='true']) {
     border-color: #d8a94c;
     color: #ffe5af;
@@ -1128,33 +1339,6 @@
   .reversed {
     opacity: 0.75;
   }
-  .mission-menu {
-    margin-left: auto;
-  }
-  .mission-menu summary {
-    cursor: pointer;
-    padding: 6px;
-    list-style: none;
-    min-width: 32px;
-    min-height: 36px;
-    font-size: 1.3rem;
-  }
-  .mission-menu[open] {
-    width: 100%;
-  }
-  .mission-menu[open] summary {
-    text-align: right;
-  }
-  .mission-menu > div {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    padding: 8px;
-    background: #102326;
-    border: 1px solid #736845;
-    border-radius: 6px;
-    align-items: center;
-  }
   .mission-occurrences {
     font-size: 0.78rem;
     padding-top: 4px;
@@ -1184,16 +1368,6 @@
     }
     .missions-heading h1 {
       font-size: 2.1rem;
-    }
-    .missions-organizer > nav {
-      display: flex;
-      overflow-x: auto;
-      flex-wrap: nowrap;
-      gap: 6px;
-    }
-    .missions-organizer > nav :global(.lmu-button) {
-      flex: 0 0 auto;
-      font-size: 0.78rem;
     }
   }
   @media (max-width: 600px) {
@@ -1259,9 +1433,6 @@
     .mission-reward small {
       margin: 0;
     }
-    .mission-menu {
-      margin-left: auto;
-    }
     .mission-copy > a {
       font-size: 1.1rem;
     }
@@ -1270,6 +1441,200 @@
     .mission-selection {
       width: 28px;
       flex-basis: 28px;
+    }
+  }
+
+  .workspace-navigation {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: space-between;
+    margin: 0 0 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #9b7c3e55;
+  }
+  .workspace-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 7px;
+    flex: 1;
+  }
+  .workspace-tabs :global(.lmu-button) {
+    min-width: 0;
+    min-height: 42px;
+    padding: 7px 10px;
+    font-size: 0.88rem;
+  }
+  .workspace-tabs :global([aria-pressed='true']) {
+    border-color: #c99b46;
+    background: linear-gradient(#765626, #362b1c);
+    color: #ffe3a1;
+  }
+  .history-period {
+    display: flex;
+    align-items: end;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 14px 16px;
+    background: #0d2021;
+    border: 1px solid #8f78473d;
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+  .history-period > div {
+    flex: 1;
+    min-width: 190px;
+  }
+  .history-period strong {
+    color: #efdaaa;
+    font: 500 1.3rem var(--lmu-display);
+  }
+  .history-period small {
+    display: block;
+    color: #acbdb1;
+    font-size: 0.8rem;
+    margin-top: 4px;
+  }
+  .history-period label {
+    flex: 0 1 155px;
+    margin: 0;
+  }
+  .result-context {
+    font-size: 0.77rem;
+    color: #a9bcae;
+    margin: 0 0 8px;
+  }
+  @media (max-width: 600px) {
+    .workspace-navigation {
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .workspace-tabs {
+      flex-basis: 100%;
+      gap: 4px;
+    }
+    .workspace-tabs :global(.lmu-button) {
+      font-size: 0.76rem;
+      padding: 6px 3px;
+      gap: 3px;
+    }
+    .workspace-tabs :global(img) {
+      width: 20px;
+      height: 20px;
+    }
+    .history-period {
+      padding: 12px;
+      gap: 8px;
+    }
+    .history-period label {
+      flex: 1;
+      min-width: 0;
+    }
+    .mission-row {
+      gap: 7px;
+      padding: 9px 7px;
+    }
+    .mission-copy > a,
+    .mission-copy > strong {
+      font-size: 1.06rem;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .mission-task-row {
+      display: grid;
+      grid-template-columns: 28px 28px minmax(0, 1fr) 36px;
+      gap: 3px 7px;
+    }
+    .mission-task-row > .mission-copy {
+      grid-column: 3;
+    }
+    .mission-task-row > .mission-reward {
+      grid-column: 3;
+      grid-row: 2;
+      margin: 0;
+      justify-self: start;
+    }
+    .mission-task-row > :global(.context-trigger) {
+      grid-column: 4;
+      grid-row: 1/3;
+    }
+    .organizer-tabs small {
+      display: inline;
+    }
+  }
+
+  .mission-check :global(svg) {
+    opacity: 0;
+  }
+  .mission-check:hover :global(svg),
+  .mission-check:focus-visible :global(svg) {
+    opacity: 1;
+  }
+  @media (max-width: 600px) {
+    .workspace-tabs :global(.lmu-button) {
+      white-space: nowrap;
+      flex-direction: column;
+      gap: 1px;
+    }
+  }
+
+  .workspace-navigation {
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+  }
+  .organizer-toolbar {
+    gap: 8px;
+  }
+  .organizer-toolbar > :global(.lmu-button) {
+    justify-self: start;
+    min-height: 28px;
+    padding: 3px 8px;
+    font-size: 0.75rem;
+  }
+
+  .completion-feedback {
+    position: fixed;
+    bottom: 22px;
+    right: 22px;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: min(450px, calc(100vw - 24px));
+    background: #102727;
+    color: #e9d5a2;
+    border: 1px solid #b38a3c;
+    border-radius: 8px;
+    padding: 13px;
+    box-shadow: 0 8px 28px #0008;
+  }
+  .completion-feedback div {
+    min-width: 0;
+  }
+  .completion-feedback strong {
+    display: block;
+    overflow-wrap: anywhere;
+    font: 500 1.2rem var(--lmu-display);
+  }
+  .completion-feedback span {
+    display: block;
+    font-size: 0.8rem;
+    margin-top: 4px;
+  }
+  .completion-feedback button {
+    background: transparent;
+    color: #d7c597;
+    border: 0;
+    min-width: 36px;
+    min-height: 36px;
+    cursor: pointer;
+  }
+  @media (max-width: 760px) {
+    .completion-feedback {
+      bottom: 85px;
+      right: 12px;
     }
   }
 </style>
