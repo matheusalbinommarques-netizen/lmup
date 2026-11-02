@@ -54,7 +54,7 @@ async function seedLegacy(page: Page) {
   );
   await page.reload();
   await expect(
-    page.getByText('Ler um capítulo', { exact: true }),
+    page.getByRole('link', { name: 'Ler um capítulo', exact: true }),
   ).toBeVisible();
 }
 

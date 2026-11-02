@@ -1,3 +1,4 @@
+import { fillMissionSteps, chooseTracking } from './mission-form';
 import { confirmBackupImport } from './backup-ui';
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
@@ -11,7 +12,7 @@ async function create(page: Page, title: string, steps = '', projectName = '') {
     await dialog
       .getByRole('tab', { name: 'Passos e detalhes', exact: true })
       .click();
-    if (steps) await dialog.getByLabel('Passos, um por linha').fill(steps);
+    if (steps) await fillMissionSteps(dialog, steps);
     if (projectName)
       await dialog
         .getByRole('combobox', { name: 'Projeto', exact: true })
@@ -24,7 +25,7 @@ async function create(page: Page, title: string, steps = '', projectName = '') {
     await dialog
       .getByRole('tab', { name: 'Acompanhamento', exact: true })
       .click();
-    await dialog.getByLabel('Acompanhar progresso por').selectOption('steps');
+    await chooseTracking(dialog, 'steps');
   }
   await dialog
     .getByRole('button', { name: 'Criar missão', exact: true })

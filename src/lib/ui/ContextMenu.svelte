@@ -1,10 +1,19 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import ApprovedIcon from './ApprovedIcon.svelte';
   let {
     label,
     text = '⋯',
+    tabStyle = false,
+    icon,
     children,
-  }: { label: string; text?: string; children: Snippet } = $props();
+  }: {
+    label: string;
+    text?: string;
+    tabStyle?: boolean;
+    icon?: string;
+    children: Snippet;
+  } = $props();
   const uid = $props.id();
   let trigger: HTMLButtonElement;
   let panel: HTMLDivElement;
@@ -54,8 +63,10 @@
 <button
   bind:this={trigger}
   type="button"
-  class:with-label={text !== '⋯'}
-  class="context-trigger"
+  class:with-label={!tabStyle && text !== '⋯'}
+  class={tabStyle
+    ? 'lmu-button lmu-button--secondary context-tab'
+    : 'context-trigger'}
   aria-label={label}
   aria-haspopup="dialog"
   aria-expanded={expanded}
@@ -66,7 +77,8 @@
       event.preventDefault();
       if (!expanded) toggle();
     }
-  }}>{text}</button
+  }}
+  >{#if icon}<ApprovedIcon name={icon} size={24} />{/if}{text}</button
 >
 <div
   bind:this={panel}
@@ -86,6 +98,16 @@
 </div>
 
 <style>
+  .context-tab {
+    min-height: 42px;
+    padding: 7px 10px;
+    font-size: 0.88rem;
+  }
+  .context-tab[aria-expanded='true'] {
+    border-color: #c99b46;
+    background: linear-gradient(#765626, #362b1c);
+    color: #ffe3a1;
+  }
   .context-trigger {
     border: 1px solid transparent;
     border-radius: 6px;

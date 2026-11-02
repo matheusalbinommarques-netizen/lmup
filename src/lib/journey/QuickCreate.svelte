@@ -16,7 +16,6 @@
   import PlanningDetails from './PlanningDetails.svelte';
   import type { Planning } from '$services/productivityTypes';
   import { dateKey } from '$services/rewardService';
-  import { formatCalendar } from '$services/calendar';
   import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
   import { areaIconKey } from '$services/areaIcons';
   let {
@@ -40,8 +39,8 @@
     defaultProjectId?: number;
     defaultStageId?: string | null;
   } = $props();
+  let steps = $state<{ id: string; label: string }[]>([]);
   let title = $state(''),
-    steps = $state(''),
     description = $state(''),
     name = $state(''),
     project = $state(''),
@@ -88,18 +87,19 @@
       (item) => current[item.id] !== initialGroups[item.id],
     );
   });
-  const dateSummary = $derived(
-    plannedDate === dateKey()
-      ? 'Hoje'
-      : plannedDate
-        ? formatCalendar(plannedDate)
-        : 'Sem data',
-  );
-  const effortSummary = $derived(
-    effort === 'legacy'
-      ? 'Recompensa anterior'
-      : effortDefinition(effort).label,
-  );
+  async function addStep() {
+    const id = crypto.randomUUID();
+    steps = [...steps, { id, label: '' }];
+    await tick();
+    document.getElementById(id)?.focus();
+  }
+  function moveStep(index: number, direction: number) {
+    const next = [...steps],
+      target = index + direction;
+    if (target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target], next[index]];
+    steps = next;
+  }
   function tabsKey(event: KeyboardEvent) {
     if (
       ![
@@ -136,7 +136,10 @@
         section = 'general';
         savedNotice = '';
         title = editTask?.title ?? starter?.title ?? '';
-        steps = (editTask?.subtasks ?? starter?.steps ?? []).join('\n');
+        steps = (editTask?.subtasks ?? starter?.steps ?? []).map((label) => ({
+          id: crypto.randomUUID(),
+          label,
+        }));
         description = editTask?.description ?? '';
         error = '';
         project = String(editTask?.projectId ?? defaultProjectId ?? '');
@@ -199,7 +202,7 @@
         ...planning,
         title,
         requestId,
-        steps: steps.split('\n'),
+        steps: steps.map((step) => step.label),
         description,
         projectId: project ? Number(project) : null,
         projectStageId: projectStage || null,
@@ -226,7 +229,7 @@
         savedNotice = `Missão “${title.trim()}” criada. Pronta para a próxima.`;
         section = 'general';
         title = '';
-        steps = '';
+        steps = [];
         description = '';
         requestId = crypto.randomUUID();
         saveAnother = false;
@@ -404,6 +407,8 @@
             </p>
             <PlanningDetails
               section="tracking"
+              stepCount={steps.filter((step) => step.label.trim()).length}
+              onEditSteps={() => (section = 'details')}
               bind:value={planning}
               legacy={!!editTask && !editTask.productivityVersion}
             />
@@ -419,17 +424,65 @@
             <p class="section-hint">
               Divida o trabalho e conecte esta missão aos seus projetos.
             </p>
-            <label class="journey-label"
-              >Passos, um por linha<textarea
-                bind:value={steps}
-                rows="4"
-                placeholder="Escolher uma referência&#10;Experimentar uma possibilidade"
-              ></textarea></label
-            >
-            <p class="lmu-hint">
-              Passos ajudam a executar; sua quantidade não aumenta a recompensa
-              total. Escolha o esforço que faz sentido para você.
-            </p>
+            <div class="step-builder">
+              <div class="step-heading">
+                <h4>Passos da missão</h4>
+                <span
+                  >{steps.length}
+                  {steps.length === 1 ? 'passo' : 'passos'}</span
+                >
+              </div>
+              {#if !steps.length}<p class="lmu-hint">
+                  Divida a missão em ações menores, se precisar.
+                </p>{/if}
+              <ol>
+                {#each steps as step, index (step.id)}
+                  <li>
+                    <span class="step-number" aria-hidden="true"
+                      >{index + 1}</span
+                    >
+                    <input
+                      id={step.id}
+                      aria-label={`Passo ${index + 1}`}
+                      bind:value={step.label}
+                      maxlength="500"
+                      placeholder="O que fazer neste passo?"
+                      onkeydown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          void addStep();
+                        }
+                      }}
+                    />
+                    <div class="step-controls">
+                      <Button
+                        variant="quiet"
+                        aria-label={`Mover passo ${index + 1} para cima`}
+                        disabled={index === 0}
+                        onclick={() => moveStep(index, -1)}>↑</Button
+                      ><Button
+                        variant="quiet"
+                        aria-label={`Mover passo ${index + 1} para baixo`}
+                        disabled={index === steps.length - 1}
+                        onclick={() => moveStep(index, 1)}>↓</Button
+                      ><Button
+                        variant="quiet"
+                        aria-label={`Remover passo ${index + 1}`}
+                        onclick={() => {
+                          steps = steps.filter((item) => item.id !== step.id);
+                        }}>✕</Button
+                      >
+                    </div>
+                  </li>
+                {/each}
+              </ol>
+              <Button variant="secondary" onclick={addStep}
+                >+ Adicionar passo</Button
+              >
+              <p class="lmu-hint">
+                A quantidade de passos não aumenta a recompensa total.
+              </p>
+            </div>
             <label class="journey-label"
               >Projeto<select
                 bind:value={project}
@@ -469,22 +522,6 @@
             concluída para outro projeto.
           </p>
         </details>{/if}
-      <div class="save-summary">
-        <span
-          ><ApprovedIcon
-            name="agenda"
-            size={20}
-          />{dateSummary}{planning.plannedTime
-            ? ` · ${planning.plannedTime}`
-            : ''}{recurrenceKind !== 'none' ? ' · Recorrente' : ''}</span
-        ><span
-          ><ApprovedIcon name="xp" size={20} />Esforço: {effortSummary}</span
-        >{#if editTask}<small
-            >{changed.length
-              ? `Alterações em: ${changed.map((item) => item.label).join(', ')}`
-              : 'Nenhuma alteração'}</small
-          >{/if}
-      </div>
       <footer>
         <Button variant="quiet" disabled={busy} onclick={() => (open = false)}
           >Cancelar</Button
@@ -510,6 +547,70 @@
 </div>
 
 <style>
+  .step-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+  .step-heading h4 {
+    margin: 0;
+    color: #edcf91;
+    font-size: 1rem;
+  }
+  .step-heading span {
+    font-size: 0.75rem;
+    color: #afbdac;
+  }
+  .step-builder ol {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: 10px;
+  }
+  .step-builder li {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+  }
+  .step-builder input {
+    width: 100%;
+    min-width: 0;
+    background: #07171a;
+    color: #e9e2cb;
+    border: 1px solid #8d744a88;
+    border-radius: 7px;
+    padding: 10px 12px;
+    font: inherit;
+    font-size: 0.85rem;
+  }
+  .step-builder input:focus-visible {
+    outline: 2px solid #e0b45b;
+    outline-offset: 2px;
+  }
+  .step-number {
+    color: #c5a568;
+    font-size: 0.8rem;
+  }
+  .step-controls {
+    display: flex;
+  }
+  .step-controls :global(button) {
+    padding: 6px;
+    min-width: 32px;
+    min-height: 36px;
+  }
+  @media (max-width: 600px) {
+    .step-builder li {
+      grid-template-columns: 18px minmax(0, 1fr);
+    }
+    .step-controls {
+      grid-column: 2;
+      justify-content: flex-end;
+    }
+  }
+
   .quick-mission-form {
     display: flex !important;
     flex-direction: column;
@@ -631,24 +732,6 @@
     min-width: 0;
     margin: 0;
   }
-  .save-summary {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 7px 18px;
-    padding: 10px 0;
-    border-top: 1px solid #9a7b4740;
-    color: #dbc28a;
-    font-size: 0.78rem;
-  }
-  .save-summary > span {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
-  .save-summary small {
-    flex-basis: 100%;
-    color: #aebfae;
-  }
   footer {
     gap: 8px !important;
     flex-shrink: 0;
@@ -715,10 +798,6 @@
     }
     .editor-content [role='tabpanel'] {
       gap: 10px;
-    }
-    .save-summary {
-      font-size: 0.74rem;
-      gap: 5px 10px;
     }
     footer {
       display: grid !important;

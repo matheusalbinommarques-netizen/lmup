@@ -1,3 +1,4 @@
+import { fillMissionSteps } from './mission-form';
 import { confirmBackupImport } from './backup-ui';
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
@@ -64,8 +65,7 @@ async function createTask(
     await dialog
       .getByRole('tab', { name: 'Passos e detalhes', exact: true })
       .click();
-    if (options.steps)
-      await dialog.getByLabel('Passos, um por linha').fill(options.steps);
+    if (options.steps) await fillMissionSteps(dialog, options.steps);
     if (options.project)
       await dialog
         .getByRole('combobox', { name: 'Projeto', exact: true })
@@ -353,7 +353,7 @@ test('esforço define a recompensa e editar passos não fabrica XP', async ({
   await edit
     .getByRole('tab', { name: 'Passos e detalhes', exact: true })
     .click();
-  await edit.getByLabel('Passos, um por linha').fill('Um passo de verdade');
+  await fillMissionSteps(edit, 'Um passo de verdade');
   await edit
     .getByRole('button', { name: 'Salvar missão', exact: true })
     .click();

@@ -1,3 +1,4 @@
+import { fillMissionSteps, chooseTracking } from './mission-form';
 import { test, expect, type Page, type Locator } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
@@ -31,7 +32,7 @@ async function advanced(form: Locator) {
   await form.getByRole('tab', { name: 'Planejamento', exact: true }).click();
   await form.getByLabel('Importância').selectOption('high');
   await form.getByRole('tab', { name: 'Acompanhamento', exact: true }).click();
-  await form.getByLabel('Acompanhar progresso por').selectOption('time');
+  await chooseTracking(form, 'time');
   await form.getByRole('tab', { name: 'Acompanhamento', exact: true }).click();
   await form.getByLabel('Meta de tempo recompensável (minutos)').fill('40');
 }
@@ -93,16 +94,14 @@ test('conclusão direta mantém passos auxiliares sem exigir sua marcação', as
     await form
       .getByRole('tab', { name: 'Passos e detalhes', exact: true })
       .click();
-    await form
-      .getByLabel('Passos, um por linha')
-      .fill('Referência opcional\nConferência opcional');
+    await fillMissionSteps(form, 'Referência opcional\nConferência opcional');
     await form
       .getByRole('tab', { name: 'Acompanhamento', exact: true })
       .click();
     await form
       .getByRole('tab', { name: 'Acompanhamento', exact: true })
       .click();
-    await form.getByLabel('Acompanhar progresso por').selectOption('direct');
+    await chooseTracking(form, 'direct');
   });
   await page
     .getByRole('link', { name: 'Uma entrega direta', exact: true })

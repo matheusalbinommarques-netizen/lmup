@@ -1,5 +1,7 @@
 # LMUP — prévia de Missões, formulário, rotinas e sessões
 
+Atualização da segunda avaliação: [ajustes e validação](missions-ux-review-2-2026-11-02.md).
+
 Data: 02/11/2026. Branch local: `feat/missions-ux-round1`. Base: `8c6f55a` (PR #50 integrado). Nenhum PR, push, merge ou publicação na instalação principal.
 
 ## Avaliação
@@ -14,7 +16,7 @@ A demonstração prepara exemplos apenas quando não existe banco nessa origem. 
 
 **Incremento 1 — organização da Lista:** quatro destinos principais (Lista, Agenda, Rotinas e Áreas), ferramentas secundárias agrupadas, seleção Pendentes/Concluídas/Todas, período de histórico e ações em menu ancorado. Busca, filtros de área/projeto/data, agrupamento, prioridades, seleção de sessão, recuperação, arquivo e ferramentas existentes permanecem acessíveis. Estados vazios e contadores acompanham o filtro atual.
 
-**Incremento 2 — formulário unificado:** criação e edição usam as mesmas quatro seções: Geral, Planejamento, Acompanhamento e Passos e detalhes. No desktop, navegação lateral; no mobile, abas horizontais dentro do formulário. Os campos essenciais vêm primeiro. Os valores continuam montados ao alternar seções; resumo de data, recorrência e esforço fica visível. Mantidos campos opcionais, projetos, ícones herdados, revisão, rascunho durante a edição, padrões de criação, restrições de rotina, validações e Salvar e criar outra. O fechamento por teclado e a volta do foco preservam o contexto.
+**Incremento 2 — formulário unificado:** criação e edição usam as mesmas quatro seções: Geral, Planejamento, Acompanhamento e Passos e detalhes. No desktop, navegação lateral; no mobile, abas horizontais dentro do formulário. Os campos essenciais vêm primeiro. Os valores continuam montados ao alternar seções; data, recorrência e esforço continuam nos respectivos campos; o resumo no rodapé foi removido na segunda avaliação. Mantidos campos opcionais, projetos, ícones herdados, revisão, rascunho durante a edição, padrões de criação, restrições de rotina, validações e Salvar e criar outra. O fechamento por teclado e a volta do foco preservam o contexto.
 
 **Microação:** novo menor esforço, com 10 XP e 5 ouro base, um quinto do tier Leve. Escala anterior preservada:
 

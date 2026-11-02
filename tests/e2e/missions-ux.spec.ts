@@ -1,3 +1,4 @@
+import { fillMissionSteps, chooseTracking } from './mission-form';
 import { expect, test, type Page } from '@playwright/test';
 
 async function create(page: Page, title = 'Missão de avaliação') {
@@ -134,21 +135,19 @@ test('formulário preserva valores entre seções, edição e recarga', async ({
   await form.getByLabel('Prazo final opcional').fill('2026-11-15T18:00');
   await form.getByRole('tab', { name: 'Acompanhamento', exact: true }).click();
   await form.getByLabel('Duração estimada (minutos)').fill('30');
-  await form.getByLabel('Acompanhar progresso por').selectOption('quantity');
+  await chooseTracking(form, 'quantity');
   await form.getByLabel('Quantidade da meta').fill('20');
   await form.getByLabel('Unidade (páginas, exercícios…)').fill('páginas');
   await form
     .getByRole('tab', { name: 'Passos e detalhes', exact: true })
     .click();
-  await form
-    .getByLabel('Passos, um por linha')
-    .fill('Escolher capítulo\nAnotar ideias');
+  await fillMissionSteps(form, 'Escolher capítulo\nAnotar ideias');
   await form.getByLabel('Fixar missão em destaque').check();
   await form.getByRole('tab', { name: 'Geral', exact: true }).click();
   await expect(
     form.getByLabel('Descrição (opcional)', { exact: true }),
   ).toHaveValue('Preservar o rascunho completo');
-  await expect(form.locator('.save-summary')).toContainText('Moderado');
+  await expect(form.locator('.save-summary')).toHaveCount(0);
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
   await expect(form).not.toBeVisible();
   await page.reload();
@@ -160,9 +159,7 @@ test('formulário preserva valores entre seções, edição e recarga', async ({
   await editor
     .getByLabel('O que você quer fazer?')
     .fill('Ler com atenção editada');
-  await expect(editor.locator('.save-summary')).toContainText(
-    'Alterações em: Geral',
-  );
+  await expect(editor.locator('.save-summary')).toHaveCount(0);
   await editor.getByRole('tab', { name: 'Planejamento', exact: true }).click();
   await expect(
     editor.getByLabel('Início desejado', { exact: true }),
@@ -186,9 +183,12 @@ test('formulário preserva valores entre seções, edição e recarga', async ({
   await editor
     .getByRole('tab', { name: 'Passos e detalhes', exact: true })
     .click();
-  await expect(editor.getByLabel('Passos, um por linha')).toHaveValue(
-    'Escolher capítulo\nAnotar ideias',
-  );
+  await expect(
+    editor.getByRole('textbox', { name: 'Passo 1', exact: true }),
+  ).toHaveValue('Escolher capítulo');
+  await expect(
+    editor.getByRole('textbox', { name: 'Passo 2', exact: true }),
+  ).toHaveValue('Anotar ideias');
   await editor
     .getByRole('button', { name: 'Salvar missão', exact: true })
     .click();
@@ -208,8 +208,8 @@ test('criação mínima, Microação e salvar outra mantêm padrões e validaç�
     name: 'Uma nova missão',
     exact: true,
   });
-  await expect(form.locator('.save-summary')).toContainText('Hoje');
-  await expect(form.locator('.save-summary')).toContainText('Leve');
+  await expect(form.locator('.save-summary')).toHaveCount(0);
+  await expect(form.locator('.save-summary')).toHaveCount(0);
   await form.getByRole('tab', { name: 'Planejamento', exact: true }).click();
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
   await expect(form.getByLabel('O que você quer fazer?')).toBeFocused();

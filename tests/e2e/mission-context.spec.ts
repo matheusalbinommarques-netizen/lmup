@@ -1,3 +1,4 @@
+import { chooseTracking } from './mission-form';
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { confirmBackupImport } from './backup-ui';
@@ -252,7 +253,7 @@ test('execução aberta pela Agenda registra conclusão sem navegação', async 
   });
   await form.getByLabel('O que você quer fazer?').fill('Progresso percentual');
   await form.getByRole('tab', { name: 'Acompanhamento', exact: true }).click();
-  await form.getByLabel('Acompanhar progresso por').selectOption('percentage');
+  await chooseTracking(form, 'percentage');
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
   await expect(form).not.toBeVisible();
   await page.getByRole('button', { name: 'Agenda', exact: true }).click();

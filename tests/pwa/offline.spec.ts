@@ -1,3 +1,4 @@
+import { chooseTracking } from '../e2e/mission-form';
 import { test, expect, type Page } from '@playwright/test';
 import { captureProtocolDiagnostics } from './protocol-diagnostics';
 import { readFile } from 'node:fs/promises';
@@ -73,7 +74,7 @@ test('agenda e progresso proporcional persistem offline e entram no backup', asy
   await form.getByLabel('O que você quer fazer?').fill('Prática offline');
   await form.getByRole('tab', { name: 'Acompanhamento', exact: true }).click();
   await form.getByRole('tab', { name: 'Acompanhamento', exact: true }).click();
-  await form.getByLabel('Acompanhar progresso por').selectOption('time');
+  await chooseTracking(form, 'time');
   await form.getByRole('tab', { name: 'Acompanhamento', exact: true }).click();
   await form.getByLabel('Meta de tempo recompensável (minutos)').fill('40');
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();

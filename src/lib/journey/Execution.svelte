@@ -41,6 +41,7 @@
   import { ensureOccurrence } from '$services/occurrenceService';
   import Button from '$lib/ui/Button.svelte';
   import Card from '$lib/ui/Card.svelte';
+  import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
   import Icon from '$lib/ui/Icon.svelte';
   let {
     id,
@@ -64,6 +65,10 @@
   let editOpen = $state(false),
     reviewOpen = $state(false),
     revealNotes = $state(false);
+  let notesExpanded = $state(false);
+  $effect(() => {
+    if (!compact || dirty || noteError) notesExpanded = true;
+  });
   let reviewOutcome = $state<'' | 'recalled' | 'partial' | 'again'>('');
   let busy = $state(false);
   let freshEventId = $state('');
@@ -541,10 +546,14 @@
                   /><span>{step.label}</span></label
                 >
               </li>{/each}
-          </ul>{:else}<h2>Um passo simples já conta.</h2>
-          <p class="lmu-muted">
-            Conclua quando terminar esta atividade.
-          </p>{/if}</Card
+          </ul>{:else}<div class="execution-guidance">
+            <strong
+              >{task.executionState === 'active'
+                ? 'Em andamento'
+                : 'No seu ritmo'}</strong
+            >
+            <p>Conclua quando terminar esta atividade.</p>
+          </div>{/if}</Card
       >
       {#if task.reviewEnabled}<p class="journey-banner">
           Tente explicar o que lembra antes de consultar as notas. Sua avaliação
@@ -559,8 +568,38 @@
             ></select
           ></label
         >{/if}
+      {#if reward}<div class="execution-reward">
+          <span>Recompensa prevista</span><strong
+            ><ApprovedIcon name="xp" size={23} />+{reward.xp} XP</strong
+          ><strong
+            ><ApprovedIcon name="ouro" size={23} />+{reward.gold} Ouro</strong
+          >{#if reward.food}<small>+{reward.food} Comida</small>{/if}
+        </div>{/if}
+      <div class="journey-actions completion-actions">
+        <Button
+          variant="secondary"
+          disabled={busy || saves > 0 || starting > 0}
+          onclick={pause}
+          ><Icon name="pause" size={18} />{!task ||
+          !['active', 'paused'].includes(task.executionState ?? '')
+            ? 'Voltar às missões'
+            : sessionMode
+              ? 'Pausar e voltar às missões'
+              : 'Pausar e voltar'}</Button
+        ><Button
+          disabled={!ready ||
+            busy ||
+            saves > 0 ||
+            dirty ||
+            starting > 0 ||
+            !canExecute}
+          onclick={conclude}
+          >Concluir missão<Icon name="check" size={18} /></Button
+        >
+      </div>
+      {#if !ready}<p class="lmu-hint">Marque os passos para concluir.</p>{/if}
       {#if !task.reviewEnabled || revealNotes || dirty || noteError}
-        <details class="journey-notes" open={!compact || dirty || !!noteError}>
+        <details class="journey-notes" bind:open={notesExpanded}>
           <summary>Notas da missão</summary>
           <label class="journey-label" for="execution-notes" id="notes-label"
             >Notas da missão<textarea
@@ -594,34 +633,7 @@
             revealNotes = true;
           }}>Consultar e editar notas</Button
         >{/if}
-      <div class="journey-actions">
-        <Button
-          variant="secondary"
-          disabled={busy || saves > 0 || starting > 0}
-          onclick={pause}
-          ><Icon name="pause" size={18} />{!task ||
-          !['active', 'paused'].includes(task.executionState ?? '')
-            ? 'Voltar às missões'
-            : sessionMode
-              ? 'Pausar e voltar às missões'
-              : 'Pausar e voltar'}</Button
-        ><Button
-          disabled={!ready ||
-            busy ||
-            saves > 0 ||
-            dirty ||
-            starting > 0 ||
-            !canExecute}
-          onclick={conclude}
-          >Concluir missão<Icon name="check" size={18} /></Button
-        >
-      </div>
-      {#if !ready}<p class="lmu-hint">
-          Marque os passos para concluir.
-        </p>{/if}{#if reward}<p class="lmu-hint">
-          Prévia atual: +{reward.xp} XP · +{reward.gold} Gold · +{reward.food} Comida.
-          Bônus de projeto são registrados separadamente.
-        </p>{/if}{/if}
+    {/if}
   {/if}
   {#if finished && (dirty || saves || noteError)}<section class="journey-notes">
       <p role="status">
@@ -717,7 +729,72 @@
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
   }
 
+  .execution-reward {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 18px;
+    padding: 12px 0;
+    border-top: 1px solid #8b704534;
+  }
+  .execution-reward > span {
+    width: 100%;
+    color: #b7c5b1;
+    font-size: 0.77rem;
+  }
+  .execution-reward strong {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #edce85;
+    font-size: 0.88rem;
+  }
+  .execution-reward small {
+    color: #afbfaa;
+  }
+  .completion-actions {
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .completion-actions :global(button:last-child) {
+    width: 100%;
+    min-height: 48px;
+    font-size: 1rem;
+  }
+  .completion-actions :global(button:first-child) {
+    align-self: start;
+  }
+  .execution-guidance strong {
+    color: #e5c686;
+    font-size: 0.85rem;
+  }
+  .execution-guidance p {
+    color: #b9c6b1;
+    font-size: 0.85rem;
+    margin: 6px 0 0;
+  }
+  .compact :global(.lmu-card) {
+    padding: 12px 14px;
+    border-radius: 8px;
+  }
+  .compact .journey-notes {
+    margin-top: 0;
+  }
+  .compact .execution-more {
+    margin-top: 0;
+  }
+  .compact .journey-actions {
+    margin: 0;
+  }
+  .compact details {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
   .compact {
+    width: 100%;
+    max-width: none;
     display: grid;
     gap: 10px;
   }

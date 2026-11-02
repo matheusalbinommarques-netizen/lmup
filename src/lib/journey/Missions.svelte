@@ -62,6 +62,7 @@
         : 'list';
   });
   function changeView(view: string) {
+    completion = undefined;
     const url = new URL(page.url);
     url.searchParams.set('view', view);
     void goto(url.pathname + url.search, { noScroll: true, keepFocus: true });
@@ -477,7 +478,12 @@
           >
         {/each}
       </nav>
-      <ContextMenu label="Ferramentas de missões" text="Ferramentas ⋯">
+      <ContextMenu
+        label="Ferramentas de missões"
+        text="Ferramentas"
+        tabStyle
+        icon="perfil"
+      >
         <Button variant="quiet" onclick={() => changeView('recovery')}
           >Recuperar ocorrências</Button
         >
@@ -499,7 +505,18 @@
       </ContextMenu>
     </div>
     {#if workspaceView === 'areas'}
-      <AreasDialog embedded snapshot={data} />
+      <AreasDialog
+        embedded
+        snapshot={data}
+        onbrowse={(id) => {
+          area = String(id);
+          pinnedOnly = false;
+          search = '';
+          project = '';
+          filter = 'all';
+          changeView('list');
+        }}
+      />
     {:else if workspaceView !== 'list'}<ProductivityWorkspace
         view={workspaceView}
         snapshot={data}
