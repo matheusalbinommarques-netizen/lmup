@@ -95,29 +95,35 @@ test('Mundo entrega investigação completa, retomada, consequência e campanha 
   ).toBeVisible();
   expect(errors).toEqual([]);
 });
-test('mapa e atlas funcionam com teclado, zoom e largura estreita', async ({
+test('mapa sem controles ou lista redundante permite selecionar os pontos com teclado e toque', async ({
   page,
   isMobile,
 }) => {
   await page.goto('/mundo');
-  const zoom = page.getByRole('button', {
-    name: 'Aproximar mapa',
+  const map = page.getByRole('region', {
+    name: 'Mapa dos Ermos Centrais',
     exact: true,
   });
-  await zoom.press('Enter');
-  await expect(page.locator('.map-art')).toHaveAttribute(
-    'style',
-    /scale\(1.2\)/,
-  );
-  await page.getByRole('button', { name: 'Enquadrar', exact: true }).click();
-  await page
-    .getByRole('navigation', {
-      name: 'Selecionar localidade sem usar a pintura',
-    })
-    .getByRole('button', { name: 'Desfiladeiro do Norte', exact: true })
-    .press('Enter');
+  await expect(map.locator('.map-marker')).toHaveCount(5);
+  await expect(map.locator('.location-list')).toHaveCount(0);
+  await expect(
+    map.getByRole('button', { name: /Aproximar mapa|Afastar mapa|Enquadrar/ }),
+  ).toHaveCount(0);
+  const north = map.getByRole('button', { name: /^Desfiladeiro do Norte/ });
+  await north.press('Enter');
+  await expect(north).toHaveAttribute('aria-pressed', 'true');
+  await north.press('ArrowRight');
+  await expect(
+    map.getByRole('button', { name: /^Bosque de Pedra/ }),
+  ).toBeFocused();
   await expect(
     page.getByRole('heading', { name: 'Desfiladeiro do Norte', exact: true }),
+  ).toBeVisible();
+  const stone = map.getByRole('button', { name: /^Bosque de Pedra/ });
+  if (isMobile) await stone.tap();
+  else await stone.click();
+  await expect(
+    page.getByRole('heading', { name: 'Bosque de Pedra', exact: true }),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Atlas', exact: true }).click();
   await expect(page.locator('.founder-grid article')).toHaveCount(4);

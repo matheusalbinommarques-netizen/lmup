@@ -1,63 +1,25 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { locations, worldArt, type LocationId } from './content';
   import type { WorldState } from './worldState';
   let {
     world,
     selected = $bindable<LocationId>('oasis'),
   }: { world: WorldState; selected?: LocationId } = $props();
-  let viewport: HTMLDivElement;
-  let zoom = $state(1),
-    x = $state(0),
-    y = $state(0),
-    width = $state(1),
-    height = $state(1);
-  let drag:
-    | { id: number; x: number; y: number; startX: number; startY: number }
-    | undefined;
-  function clamp() {
-    x = Math.max(
-      (-width * (zoom - 1)) / 2,
-      Math.min((width * (zoom - 1)) / 2, x),
-    );
-    y = Math.max(
-      (-height * (zoom - 1)) / 2,
-      Math.min((height * (zoom - 1)) / 2, y),
-    );
+  function focusNeighbour(event: KeyboardEvent, id: LocationId) {
+    const step =
+      event.key === 'ArrowRight' || event.key === 'ArrowDown'
+        ? 1
+        : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
+          ? -1
+          : 0;
+    if (!step) return;
+    event.preventDefault();
+    const index = locations.findIndex((place) => place.id === id),
+      next = locations[(index + step + locations.length) % locations.length];
+    (event.currentTarget as HTMLElement).parentElement
+      ?.querySelector<HTMLButtonElement>(`[data-location="${next.id}"]`)
+      ?.focus();
   }
-  function magnify(value: number) {
-    zoom = Math.max(1, Math.min(2.4, value));
-    clamp();
-  }
-  function down(e: PointerEvent) {
-    if ((e.target as HTMLElement).closest('button')) return;
-    drag = {
-      id: e.pointerId,
-      x: e.clientX,
-      y: e.clientY,
-      startX: x,
-      startY: y,
-    };
-    viewport.setPointerCapture(e.pointerId);
-  }
-  function move(e: PointerEvent) {
-    if (drag?.id !== e.pointerId) return;
-    x = drag.startX + e.clientX - drag.x;
-    y = drag.startY + e.clientY - drag.y;
-    clamp();
-  }
-  function end() {
-    drag = undefined;
-  }
-  onMount(() => {
-    const observer = new ResizeObserver(() => {
-      width = viewport.clientWidth;
-      height = viewport.clientHeight;
-      clamp();
-    });
-    observer.observe(viewport);
-    return () => observer.disconnect();
-  });
 </script>
 
 <section id="mapa" class="region-map" aria-label="Mapa dos Ermos Centrais">
@@ -66,39 +28,9 @@
       <p class="lmu-eyebrow">Sua região</p>
       <h2>Ermos Centrais</h2>
     </div>
-    <div class="camera" aria-label="Controles do mapa">
-      <button
-        onclick={() => magnify(zoom - 0.2)}
-        aria-label="Afastar mapa"
-        disabled={zoom === 1}>−</button
-      ><button
-        onclick={() => magnify(zoom + 0.2)}
-        aria-label="Aproximar mapa"
-        disabled={zoom === 2.4}>+</button
-      ><button
-        onclick={() => {
-          zoom = 1;
-          x = 0;
-          y = 0;
-        }}>Enquadrar</button
-      >
-    </div>
   </div>
-  <div
-    class="viewport"
-    bind:this={viewport}
-    role="group"
-    aria-label="Pintura e localidades"
-    onpointerdown={down}
-    onpointermove={move}
-    onpointerup={end}
-    onpointercancel={end}
-    onlostpointercapture={end}
-  >
-    <div
-      class="map-art"
-      style:transform={`translate(${x}px,${y}px) scale(${zoom})`}
-    >
+  <div class="viewport" role="group" aria-label="Pintura e localidades">
+    <div class="map-art">
       <img
         src={worldArt + 'mapa-ermos-centrais.webp'}
         alt="Região árida com o Oásis em construção, montanhas, entreposto e ruínas"
@@ -118,6 +50,8 @@
       >
       {#each locations as place (place.id)}<button
           class="map-marker"
+          data-location={place.id}
+          onkeydown={(event) => focusNeighbour(event, place.id)}
           class:current={place.id === 'oasis'}
           class:selected={selected === place.id}
           class:unknown={!world.discovered.includes(place.id)}
@@ -147,18 +81,8 @@
       >◌ Não descoberto</span
     ><span>⊘ Acesso indisponível nesta etapa</span>
   </p>
-  <nav
-    class="location-list"
-    aria-label="Selecionar localidade sem usar a pintura"
-  >
-    {#each locations as place (place.id)}<button
-        aria-pressed={selected === place.id}
-        onclick={() => (selected = place.id)}>{place.name}</button
-      >{/each}
-  </nav>
   <p class="map-hint">
-    Amplie pelos controles e arraste para observar. Selecionar um ponto não
-    inicia uma viagem.
+    Selecione um ponto do mapa para ver os detalhes do local.
   </p>
 </section>
 
@@ -184,41 +108,16 @@
   .map-top p {
     margin: 0 0 4px;
   }
-  .camera {
-    display: flex;
-    gap: 5px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-  }
-  .camera button,
-  .location-list button {
-    background: #12252a;
-    color: #efdfbb;
-    border: 1px solid #8c744a;
-    border-radius: 6px;
-    padding: 8px 10px;
-    min-height: 44px;
-    cursor: pointer;
-  }
-  .camera button:disabled {
-    opacity: 0.4;
-    cursor: default;
-  }
   .viewport {
     position: relative;
     aspect-ratio: 16/9;
     overflow: hidden;
-    touch-action: none;
+    touch-action: manipulation;
     background: #101b1d;
-    cursor: grab;
-  }
-  .viewport:active {
-    cursor: grabbing;
   }
   .map-art {
     position: absolute;
     inset: 0;
-    transform-origin: center;
   }
   .map-art > img {
     width: 100%;
@@ -321,19 +220,6 @@
     font-size: 0.78rem;
     color: #d7d6c6;
   }
-  .location-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    padding: 0 16px;
-  }
-  .location-list button {
-    font-size: 0.78rem;
-    flex: 1 1 120px;
-  }
-  .location-list button[aria-pressed='true'] {
-    background: #67502b;
-  }
   .map-hint {
     font-size: 0.76rem;
     color: #b4c4bb;
@@ -348,7 +234,33 @@
       font-size: 1.4rem;
     }
     .marker-label {
-      display: none;
+      display: block;
+      position: absolute;
+      top: 38px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: max-content;
+      max-width: 140px;
+      font-size: 0.72rem;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .map-marker:hover .marker-label,
+    .map-marker:focus-visible .marker-label,
+    .map-marker.selected .marker-label {
+      opacity: 1;
+      visibility: visible;
+    }
+    .map-marker[data-location='stone'] .marker-label,
+    .map-marker[data-location='sareth'] .marker-label {
+      left: auto;
+      right: 0;
+      transform: none;
+    }
+    .map-marker[data-location='variel'] .marker-label {
+      left: 0;
+      transform: none;
     }
     .map-marker {
       font-size: 1rem;
@@ -361,12 +273,6 @@
     .legend {
       gap: 9px;
       font-size: 0.7rem;
-    }
-    .camera button {
-      padding: 6px 9px;
-    }
-    .location-list button {
-      flex-basis: 100px;
     }
   }
 </style>

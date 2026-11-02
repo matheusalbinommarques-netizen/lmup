@@ -958,22 +958,23 @@
     overflow: auto;
   }
   .character-portrait {
-    position: absolute;
+    position: fixed;
     left: 0;
-    bottom: 0;
-    top: 28px;
+    bottom: 66px;
+    top: 20px;
     width: 100%;
     pointer-events: none;
-    mask-image:
-      linear-gradient(90deg, #000 38%, #0009 57%, transparent 83%),
-      linear-gradient(transparent, #000 7%, #000 84%, transparent);
-    mask-composite: intersect;
   }
   .character-portrait img {
     height: 100%;
-    width: 100%;
-    object-fit: cover;
-    object-position: center;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+    object-position: left top;
+    mask-image:
+      linear-gradient(90deg, #000 38%, #0009 57%, transparent 98%),
+      linear-gradient(#000 0%, #000 86%, transparent 100%);
+    mask-composite: intersect;
   }
   .conversation-copy {
     position: relative;
@@ -1296,12 +1297,12 @@
       height: clamp(155px, 28dvh, 260px);
       width: calc(100% + 28px);
       margin: 0 -14px -30px;
-      mask-image: linear-gradient(#000 62%, transparent);
+      mask-image: none;
     }
     .character-portrait img {
-      object-position: center;
-      transform: scale(1.7);
-      transform-origin: 30% 8%;
+      object-position: left top;
+      transform: none;
+      mask-image: linear-gradient(#000 70%, transparent);
     }
     .conversation-copy {
       padding: 16px 18px 21px;
@@ -1370,8 +1371,9 @@
     }
     .character-portrait {
       position: fixed;
-      top: 0;
-      height: 100dvh;
+      top: 16px;
+      bottom: 66px;
+      height: auto;
     }
     .scene-hud.subdued {
       opacity: 0;
