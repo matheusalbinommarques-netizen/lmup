@@ -1,3 +1,4 @@
+import type { CampState } from '$lib/camp/campState';
 // src/services/db.ts
 import Dexie, { type Table } from 'dexie';
 import { trackWrite } from './updateSafety';
@@ -17,6 +18,8 @@ import type {
 // PROFILE (herói)
 // ---------------------------------------------
 export interface Profile {
+  /** Optional atomic settlement; no new table/index, compatible with schema 6. */
+  camp?: CampState;
   rewardDebt?: Resources;
   id?: number;
   name: string;
