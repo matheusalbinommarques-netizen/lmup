@@ -24,6 +24,7 @@
   import Artwork from '$lib/ui/Artwork.svelte';
   import Card from '$lib/ui/Card.svelte';
   import CollectionNav from './CollectionNav.svelte';
+  let { heading = destinations.world }: { heading?: string } = $props();
   let data = $state<RefugeSnapshot>();
   let error = $state('');
   onMount(() => {
@@ -60,11 +61,11 @@
   }
 </script>
 
-<svelte:head><title>{destinations.world} · {identity.name}</title></svelte:head>
+<svelte:head><title>{heading} · {identity.name}</title></svelte:head>
 <header class="journey-heading collection-heading">
   <div>
     <p class="lmu-eyebrow">{refugeCopy.eyebrow}</p>
-    <h1>{destinations.world}</h1>
+    <h1>{heading}</h1>
     <p>{refugeCopy.description}</p>
   </div>
 </header>

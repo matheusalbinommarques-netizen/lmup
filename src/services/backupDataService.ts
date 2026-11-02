@@ -1,3 +1,4 @@
+import { validateWorld } from '$lib/world/worldState';
 import { isTaskIconKey } from '$lib/content/visualAssets';
 import { validateRecurrence } from './recurrence';
 import {
@@ -115,6 +116,7 @@ export function validateBackup(input: unknown): JourneyBackup {
   }
   const profile = data.profile == null ? null : object(data.profile, 'profile');
   if (profile) {
+    if (profile.world != null) validateWorld(profile.world);
     if (profile.id !== 1) fail('o perfil deve ter ID 1.');
     text(profile.name, 'profile.name');
     for (const field of [
@@ -669,7 +671,10 @@ export async function restoreJourneyBackup(input: unknown): Promise<void> {
       const data = backup.data[name] as Row[];
       if (data.length) await db.table(name).bulkPut(data);
     }
-    await db.profile.put(backup.data.profile ?? createDefaultProfile());
+    const restored = { ...(backup.data.profile ?? createDefaultProfile()) };
+    if (restored.world)
+      restored.world = { ...restored.world, epoch: crypto.randomUUID() };
+    await db.profile.put(restored);
     await initializeJourney();
   });
   invalidateHeroModifiersCache();

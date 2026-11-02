@@ -1,3 +1,4 @@
+import type { WorldState } from '$lib/world/worldState';
 // src/services/db.ts
 import Dexie, { type Table } from 'dexie';
 import { trackWrite } from './updateSafety';
@@ -17,6 +18,8 @@ import type {
 // PROFILE (herói)
 // ---------------------------------------------
 export interface Profile {
+  /** Versioned narrative state, separate from the legacy pilot and all resources. */
+  world?: WorldState;
   rewardDebt?: Resources;
   id?: number;
   name: string;

@@ -148,15 +148,15 @@
       title: 'Aventura',
       icon: 'aventura',
       image: paintings.adventure,
-      href: '/aventura',
+      href: '/aventura?campanha=ermos',
       copy: 'Continue a narrativa e descubra o próximo capítulo.',
     },
     {
-      title: 'Refúgio',
+      title: 'Aposentos',
       icon: 'refugio',
       image: paintings.refuge,
-      href: '/refugio',
-      copy: 'Cuide do seu acampamento e acompanhe sua evolução.',
+      href: '/aposentos',
+      copy: 'Consulte seu espaço pessoal, equipamentos e progresso preservado.',
     },
     {
       title: 'Projetos',
@@ -169,8 +169,8 @@
       title: 'Mapa',
       icon: 'mapa',
       image: paintings.map,
-      href: '/refugio',
-      copy: 'Visite as paisagens do Refúgio. Mapa explorável em preparação.',
+      href: '/mundo',
+      copy: 'Explore os Ermos Centrais e investigue com Lucan.',
     },
   ];
   const taskIcon = (row: Occurrence) =>

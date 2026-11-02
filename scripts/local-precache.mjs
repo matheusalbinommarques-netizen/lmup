@@ -7,6 +7,15 @@ import { join, relative, sep } from 'node:path';
 
 const limit = 3 * 1024 * 1024;
 const exact = new Set([
+  ...[
+    'mapa-ermos-centrais.webp',
+    'cena-oasis-construcao.webp',
+    'cena-arredores-pistas.webp',
+    'eldrin-vane.webp',
+    'alaric-conall.webp',
+    'elowen-morrigan.webp',
+    'lucan-dorian.webp',
+  ].map((name) => `art/world/${name}`),
   ...approvedIcons.flatMap(({ key }) =>
     [64, 128].map((size) => `art/approved/icons/${key}/${size}.png`),
   ),

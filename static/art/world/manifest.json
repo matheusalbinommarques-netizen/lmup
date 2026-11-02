@@ -1,0 +1,47 @@
+{
+  "usage": "Artes fornecidas pelo usuário para prototipagem do LMUP; identidades preservadas, sem edição ou nova licença atribuída.",
+  "files": [
+    {
+      "file": "mapa-ermos-centrais.webp",
+      "bytes": 315296,
+      "sha256": "1263577093b828d0c2b8e0f9333677f325ad46d8277b0d19aad0243d8fa113fd",
+      "source": "LMUP_Mundo_Parte_1_LEVE.zip:artes/mapa-ermos-centrais.webp"
+    },
+    {
+      "file": "cena-oasis-construcao.webp",
+      "bytes": 312900,
+      "sha256": "21d6b7db2966cd6f2db7ec936e05b36b3f68599879998bd47010146528ca09ca",
+      "source": "LMUP_Mundo_Parte_1_LEVE.zip:artes/cena-oasis-construcao.webp"
+    },
+    {
+      "file": "cena-arredores-pistas.webp",
+      "bytes": 253902,
+      "sha256": "d4cd3bb37b09a6ab8569d85d546cda0d729dc90b5cfca4265d516c1b35e89ac0",
+      "source": "LMUP_Mundo_Parte_1_LEVE.zip:artes/cena-arredores-pistas.webp"
+    },
+    {
+      "file": "eldrin-vane.webp",
+      "bytes": 141558,
+      "sha256": "97f3a2ce1924ab6535151b03a353b39a209ce499eb2969ef15930b6de577bf46",
+      "source": "LMUP_Mundo_Parte_2_LEVE.zip:artes/eldrin-vane.webp"
+    },
+    {
+      "file": "alaric-conall.webp",
+      "bytes": 172590,
+      "sha256": "81a063ecf7dcefde3c94ff90124d3c355862d9e1f7974badef5198b449e627c7",
+      "source": "LMUP_Mundo_Parte_2_LEVE.zip:artes/alaric-conall.webp"
+    },
+    {
+      "file": "elowen-morrigan.webp",
+      "bytes": 168870,
+      "sha256": "406e1711e06abc827e329e251d3f82e7ace60afd0e14a5546308c9cfdea73664",
+      "source": "LMUP_Mundo_Parte_2_LEVE.zip:artes/elowen-morrigan.webp"
+    },
+    {
+      "file": "lucan-dorian.webp",
+      "bytes": 115944,
+      "sha256": "76ae4d7114d49f412806aac82cd8a6ae5c0b3daee7f57f393c07377a457faf03",
+      "source": "LMUP_Mundo_Parte_2_LEVE.zip:artes/lucan-dorian.webp"
+    }
+  ]
+}

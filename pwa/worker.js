@@ -37,7 +37,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 const route =
-  /^\/(?:$|missoes\/?$|sessao\/?$|sessoes\/?$|ocorrencia\/mission(?::|%3A)\d+(?::|%3A)(?:once|\d{4}-\d{2}-\d{2})\/?$|progresso\/?$|config\/?$|refugio\/?$|aventura\/?$|bestiario\/?$|inventario\/?$|loja\/?$|trofeus\/?$|perfil\/?$|santuario\/?$|revisoes\/?$|cla\/?$|arquivo\/missoes\/?$|laboratorio\/?$|(?:missao|projetos)\/\d+\/?$|projetos\/?$)/;
+  /^\/(?:$|missoes\/?$|sessao\/?$|sessoes\/?$|ocorrencia\/mission(?::|%3A)\d+(?::|%3A)(?:once|\d{4}-\d{2}-\d{2})\/?$|mundo\/?$|aposentos\/?$|progresso\/?$|config\/?$|refugio\/?$|aventura\/?$|bestiario\/?$|inventario\/?$|loja\/?$|trofeus\/?$|perfil\/?$|santuario\/?$|revisoes\/?$|cla\/?$|arquivo\/missoes\/?$|laboratorio\/?$|(?:missao|projetos)\/\d+\/?$|projetos\/?$)/;
 async function storeArt(request, response) {
   try {
     if (
