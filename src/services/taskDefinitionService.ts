@@ -90,12 +90,10 @@ export async function saveTaskDefinition(
       current?.routineId &&
       (plannedDate !== current.plannedDate ||
         JSON.stringify(recurrence) !==
-          JSON.stringify(validateRecurrence(current.recurrence)) ||
-        (input.plannedTime !== undefined &&
-          input.plannedTime !== current.plannedTime))
+          JSON.stringify(validateRecurrence(current.recurrence)))
     )
       throw new Error(
-        'O calendário desta missão é controlado pela rotina. Edite a rotina para alterar dias e horários.',
+        'Os dias desta missão são controlados pela rotina. Edite a rotina para alterar a recorrência.',
       );
     const project = projectId ? await db.projects.get(projectId) : undefined;
     if (projectId && !project)
@@ -175,6 +173,37 @@ export async function saveTaskDefinition(
     };
     let id: number;
     if (current) {
+      if (
+        current.routineId &&
+        (content.plannedTime ?? null) !== (current.plannedTime ?? null)
+      ) {
+        const routine = await db.routines.get(current.routineId);
+        if (
+          !routine ||
+          !routine.entries.some((entry) => entry.taskId === current.id)
+        )
+          throw new Error(
+            'O vínculo com a rotina mudou. Reabra a missão para comparar.',
+          );
+        const updated = {
+          ...routine,
+          entries: routine.entries.map((entry) =>
+            entry.taskId === current.id
+              ? { ...entry, time: content.plannedTime ?? null }
+              : entry,
+          ),
+          revision: routine.revision + 1,
+        };
+        await db.routines.put(updated);
+        await db.productivityAudit.add({
+          id: crypto.randomUUID(),
+          entityId: routine.id,
+          action: 'routine-time-edit',
+          recordedAt: now,
+          before: routine,
+          after: updated,
+        });
+      }
       if (!(await db.planVersions.where('taskId').equals(current.id!).count()))
         await savePlanVersion(current);
       if (

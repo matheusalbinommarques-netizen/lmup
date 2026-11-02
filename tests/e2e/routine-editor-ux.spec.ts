@@ -168,7 +168,7 @@ test('edição de missão vinculada preserva a configuração da sessão iniciad
   ).toHaveCount(0);
   await expect(
     edit.getByLabel('Início desejado', { exact: true }),
-  ).toBeDisabled();
+  ).toBeEnabled();
   await edit
     .getByRole('button', { name: 'Salvar missão', exact: true })
     .click();

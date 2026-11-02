@@ -998,10 +998,25 @@
       ? { name: routineName, startDate: start, days: [...days] }
       : undefined}
     allowSaveAnother={!creatingForRoutine}
-    oncreated={(id, time) => {
+    oncreated={async (id, time) => {
       if (creatingForRoutine) addedMission(id, time);
-      else if (editing)
+      else if (editing) {
+        if (
+          editTask?.routineId === routineId &&
+          (editTask.plannedTime ?? null) !== (time ?? null)
+        ) {
+          const saved = await db.routines.get(routineId);
+          // Only accept this editor's one atomic time change; other-tab changes
+          // keep the existing revision conflict instead of overwriting the draft.
+          if (saved && saved.revision === (routineRevision ?? 0) + 1) {
+            entries = entries.map((entry) =>
+              entry.taskId === id ? { ...entry, time: time ?? null } : entry,
+            );
+            routineRevision = saved.revision;
+          }
+        }
         notice = 'Missão atualizada. O rascunho da rotina foi preservado.';
+      }
     }}
   />
 </section>

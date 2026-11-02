@@ -232,3 +232,102 @@ test('gestão fica após a execução e exclusão continua exigindo confirmaçã
   await expect(heading).toBeVisible();
   await expect(page).toHaveURL(url);
 });
+
+test('editor aproveita o espaço e altera o horário da rotina pela Lista sem perder rascunho ou execução', async ({
+  page,
+}) => {
+  await instrumentPicker(page);
+  await page.goto('/missoes');
+  const create = await newMission(page, 'Alongar');
+  await create.getByLabel('Esforço desta missão').selectOption('micro');
+  await save(create);
+  await page.getByRole('button', { name: 'Rotinas', exact: true }).click();
+  await page.getByRole('button', { name: 'Nova rotina', exact: true }).click();
+  const routine = page.locator('.routine-form');
+  await routine
+    .getByLabel('Nome da rotina', { exact: true })
+    .fill('Rotina diária');
+  await routine
+    .getByText('Adicionar missão existente', { exact: true })
+    .click();
+  await routine
+    .locator('.mission-results')
+    .getByRole('button')
+    .filter({ hasText: 'Alongar' })
+    .click();
+  await routine.getByLabel('Horário de Alongar', { exact: true }).fill('08:30');
+  await routine
+    .getByRole('button', { name: 'Salvar rotina', exact: true })
+    .click();
+  await expect(routine).not.toBeVisible();
+  await page
+    .locator('.routine-card')
+    .getByText('Mais ações', { exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Executar rotina', exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/sessoes$/);
+  await page.goto('/missoes');
+  await page
+    .getByRole('button', { name: 'Ações para Alongar', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Editar missão', exact: true })
+    .click();
+  const edit = page.getByRole('dialog', { name: 'Editar missão', exact: true });
+  await expect(
+    edit.getByText('Como as alterações são aplicadas', { exact: true }),
+  ).toHaveCount(0);
+  const panel = (await edit.locator('.mission-editor').boundingBox())!;
+  const footer = (await edit.locator('footer').boundingBox())!;
+  expect(footer.y - panel.y - panel.height).toBeGreaterThanOrEqual(8);
+  expect(footer.y - panel.y - panel.height).toBeLessThanOrEqual(24);
+  await capture(page, 'edit-layout');
+  await edit.getByRole('tab', { name: 'Planejamento', exact: true }).click();
+  await clickTime(
+    page,
+    edit.getByLabel('Início desejado', { exact: true }),
+    '14:45',
+  );
+  await capture(page, 'edit-time');
+  await edit
+    .getByRole('button', { name: 'Salvar missão', exact: true })
+    .click();
+  await expect(edit).not.toBeVisible();
+  await expect(page).toHaveURL(/\/missoes$/);
+  await expect(
+    page.locator('.mission-row').filter({ hasText: 'Alongar' }),
+  ).toContainText('14:45');
+  await page.goto('/missoes?view=routines');
+  await page
+    .getByRole('button', { name: 'Editar rotina', exact: true })
+    .click();
+  await expect(
+    routine.getByLabel('Horário de Alongar', { exact: true }),
+  ).toHaveValue('14:45');
+  await routine
+    .getByLabel('Nome da rotina', { exact: true })
+    .fill('Rascunho preservado');
+  await routine
+    .getByRole('button', { name: 'Editar Alongar', exact: true })
+    .click();
+  await edit.getByRole('tab', { name: 'Planejamento', exact: true }).click();
+  await edit.getByLabel('Início desejado', { exact: true }).fill('15:10');
+  await edit
+    .getByRole('button', { name: 'Salvar missão', exact: true })
+    .click();
+  await expect(edit).not.toBeVisible();
+  await expect(
+    routine.getByLabel('Nome da rotina', { exact: true }),
+  ).toHaveValue('Rascunho preservado');
+  await expect(
+    routine.getByLabel('Horário de Alongar', { exact: true }),
+  ).toHaveValue('15:10');
+  await routine
+    .getByRole('button', { name: 'Salvar rotina', exact: true })
+    .click();
+  await expect(routine).not.toBeVisible();
+  await page.goto('/sessoes');
+  await expect(page.locator('.activity-identity')).toContainText('08:30');
+});

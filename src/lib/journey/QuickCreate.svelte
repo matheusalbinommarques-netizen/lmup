@@ -228,7 +228,7 @@
         editId: editTask?.id,
         expectedRevision: definitionRevision,
       });
-      oncreated?.(id, planning.plannedTime ?? null);
+      await oncreated?.(id, planning.plannedTime ?? null);
       if (!editTask && saveAnother) {
         // Preserve area, effort and schedule for fast planning of several missions.
         savedNotice = `Missão “${title.trim()}” criada. Pronta para a próxima.`;
@@ -413,12 +413,11 @@
                   />
                 </fieldset>{/key}
               {#if editTask?.routineId}<p class="form-feedback">
-                  Os dias e horários desta missão são controlados pela rotina.
+                  Os dias desta missão são controlados pela rotina.
                 </p>{/if}
             {/if}
             <PlanningDetails
               section="planning"
-              calendarLocked={!!editTask?.routineId}
               bind:value={planning}
               legacy={!!editTask && !editTask.productivityVersion}
             />
@@ -539,15 +538,6 @@
           </div>
         </div>
       </div>
-      {#if editTask}<details class="edit-policy">
-          <summary>Como as alterações são aplicadas</summary>
-          <p class="lmu-hint">
-            Alterações valem para próximas ocorrências; uma ocorrência iniciada
-            mantém sua configuração. Use a correção na execução para mudar
-            progresso premiado. Desfaça a conclusão antes de mover uma missão
-            concluída para outro projeto.
-          </p>
-        </details>{/if}
       <footer>
         <Button variant="quiet" disabled={busy} onclick={() => (open = false)}
           >Cancelar</Button
@@ -685,7 +675,7 @@
     grid-template-columns: 177px minmax(0, 1fr);
     min-height: 0;
     grid-template-rows: minmax(0, 1fr);
-    max-height: min(480px, calc(90dvh - 240px));
+    max-height: calc(90dvh - 220px);
   }
   .editor-tabs {
     display: flex;
@@ -816,13 +806,6 @@
     border-color: #d3876b;
     color: #f3c0ab;
   }
-  .edit-policy {
-    font-size: 0.78rem;
-    color: #bcccba;
-  }
-  .edit-policy summary {
-    cursor: pointer;
-  }
   @media (max-width: 600px) {
     .quick-mission-form {
       gap: 10px !important;
@@ -832,7 +815,7 @@
       flex-direction: column;
       min-height: 0;
       height: 460px;
-      max-height: calc(90dvh - 310px);
+      max-height: calc(90dvh - 270px);
     }
     .editor-tabs {
       flex-direction: row;
