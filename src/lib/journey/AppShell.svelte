@@ -1,5 +1,4 @@
 <script lang="ts">
-  import RpgTrim from '$lib/ui/RpgTrim.svelte';
   import { page } from '$app/state';
   import { identity, destinations } from '$lib/content/experience';
   import type { Snippet } from 'svelte';
@@ -81,8 +80,7 @@
   class:journey-home={page.url.pathname === '/'}
 >
   <a class="lmu-skip" href="#journey-main">Pular para o conteúdo</a>
-  <aside class="journey-sidebar" class:rpg-frame={page.url.pathname === '/'}>
-    {#if page.url.pathname === '/'}<RpgTrim />{/if}
+  <aside class="journey-sidebar" aria-label="Navegação lateral">
     <a href="/" class="journey-brand" aria-label={identity.name}
       ><Icon name="spark" size={28} /><span
         >{identity.name}<small>{identity.tagline}</small></span

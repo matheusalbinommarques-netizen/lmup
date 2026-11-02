@@ -270,14 +270,14 @@
   {#if notice}<p class="journey-banner" role="status">{notice}</p>{/if}
   {#if actionError}<p class="journey-error" role="alert">{actionError}</p>{/if}
   {#if !data}<p role="status">Abrindo sua jornada…</p>{:else}
-    <header class="today-hero">
+    <header class="journey-heading today-hero">
       <img
         src={paintings.vedria}
         alt="Viajante contemplando Vèdria ao pôr do sol"
         fetchpriority="high"
       />
       <div class="hero-copy">
-        <p class="lmu-eyebrow">Level Me Up · Seu mundo, sua jornada</p>
+        <p class="lmu-eyebrow">Hoje · Level Me Up</p>
         <h1>{greeting}{name ? `, ${name}` : ''}.</h1>
         <p>Seu plano de hoje, em um só lugar.</p>
       </div>
@@ -677,50 +677,65 @@
   }
   .today-hero {
     position: relative;
-    height: 240px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'copy date' 'profile date';
+    align-content: center;
+    gap: 8px 16px;
+    min-height: 144px;
+    padding: 16px 20px;
+    margin: 0;
     overflow: hidden;
     border-radius: 10px;
     border: 1px solid #927143;
   }
   .today-hero > img {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: 55% 45%;
+    object-position: center 42%;
   }
   .today-hero::after {
     content: '';
     position: absolute;
     inset: 0;
     background:
-      linear-gradient(90deg, #02090bb8, transparent 65%),
-      linear-gradient(0deg, #02090b80, transparent 40%);
+      linear-gradient(90deg, #061115f5 20%, #06111580 65%, #06111522),
+      linear-gradient(0deg, #02090b80, transparent 55%);
     pointer-events: none;
   }
   .hero-copy {
-    position: absolute;
+    position: relative;
+    grid-area: copy;
+    display: grid;
+    gap: 6px;
     z-index: 1;
-    top: 28px;
-    left: 28px;
-    max-width: 65%;
+    max-width: 700px;
+    min-width: 0;
   }
   .hero-copy .lmu-eyebrow {
     color: #ffe19a;
     font-size: 0.66rem;
+    margin: 0;
+    letter-spacing: 0.04em;
   }
   .hero-copy h1 {
-    font: 500 clamp(2.1rem, 3.6vw, 3.5rem)/1.08 var(--lmu-display);
+    font: 500 clamp(1.8rem, 2.8vw, 2.65rem)/1.1 var(--lmu-display);
     color: #fff1d6;
-    margin: 10px 0;
+    margin: 0;
   }
   .hero-copy > p:last-child {
-    font: 500 1.2rem var(--lmu-display);
+    font: 500 0.85rem/1.4 var(--lmu-font);
     color: #fff3da;
+    margin: 0;
   }
   .today-date {
-    position: absolute;
-    right: 18px;
-    top: 16px;
+    position: relative;
+    grid-area: date;
+    align-self: start;
+    justify-self: end;
     z-index: 1;
     display: flex;
     align-items: center;
@@ -732,9 +747,8 @@
     font-size: 0.8rem;
   }
   .hero-profile {
-    position: absolute;
-    left: 28px;
-    bottom: 14px;
+    position: relative;
+    grid-area: profile;
     z-index: 1;
     font-size: 0.7rem;
     color: #d7dfcf;
@@ -1085,22 +1099,33 @@
   }
   @media (max-width: 760px) {
     .today-hero {
-      height: 280px;
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas: 'copy' 'profile';
+      padding: 16px;
+      min-height: 156px;
     }
     .hero-copy {
-      max-width: 90%;
-      left: 18px;
-      top: 54px;
+      max-width: 100%;
     }
     .hero-copy h1 {
-      font-size: 2.3rem;
+      font-size: 1.9rem;
+    }
+    .hero-copy .lmu-eyebrow {
+      max-width: calc(100% - 125px);
     }
     .today-hero > img {
       object-position: 76% center;
     }
     .today-date {
-      font-size: 0.7rem;
-      padding: 0.25rem 0.4rem;
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      font-size: 0.65rem;
+      padding: 0.2rem 0.35rem;
+    }
+    .today-date :global(img) {
+      width: 20px;
+      height: 20px;
     }
     .today-main {
       grid-template-columns: 1fr;
