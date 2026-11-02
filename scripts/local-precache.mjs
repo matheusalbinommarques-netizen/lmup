@@ -15,6 +15,7 @@ const exact = new Set([
     'alaric-conall.webp',
     'elowen-morrigan.webp',
     'lucan-dorian.webp',
+    'lucan-dorian-horizontal.png',
   ].map((name) => `art/world/${name}`),
   ...approvedIcons.flatMap(({ key }) =>
     [64, 128].map((size) => `art/approved/icons/${key}/${size}.png`),

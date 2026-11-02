@@ -3,6 +3,11 @@ import { db } from './db';
 import { initializeJourney } from './profileService';
 import { actInWorld, ensureWorld, type WorldCommand } from './worldService';
 import { createJourneyBackup, restoreJourneyBackup } from './backupDataService';
+import {
+  returnNoticeAvailable,
+  returnNotice,
+  personalTasks,
+} from '$lib/world/content';
 import { validateWorld } from '$lib/world/worldState';
 
 beforeEach(async () => {
@@ -73,6 +78,10 @@ it.each(['rescue', 'route'] as const)(
     expect(w.resolution).toBe(resolution);
     expect(w.clues).toEqual(['axle', 'cargo', 'tracks']);
     expect(w.journal.map((x) => x.id)).toContain('quest:solved');
+    expect(w.journal.find((x) => x.id === 'quest:solved')?.text).toContain(
+      personalTasks[resolution].journal,
+    );
+    expect(w.clues).not.toContain('manifest');
     await expect(
       act({
         type: 'choose',
@@ -173,4 +182,35 @@ it('falha ao salvar reverte escolha, diário e ponto de retomada', async () => {
     db.profile.hook('updating').unsubscribe(fail);
   }
   expect(await ensureWorld()).toEqual(before);
+});
+
+it('aviso de retorno é informação derivada, sem nova pista obrigatória ou desbloqueio indevido', async () => {
+  expect(returnNoticeAvailable(await ensureWorld())).toBe(false);
+  await start();
+  await act({ type: 'enter', scene: 'outskirts' });
+  await act({ type: 'enter', scene: 'settlement' });
+  const before = await createJourneyBackup();
+  expect(returnNoticeAvailable(await ensureWorld())).toBe(true);
+  expect(returnNotice.text).toContain('todos os carregadores');
+  expect((await createJourneyBackup()).data).toEqual(before.data);
+  await act({ type: 'inspect', id: 'board' });
+  expect((await ensureWorld()).clues).toEqual([]);
+  await act({ type: 'talk' });
+  expect((await ensureWorld()).dialogue).toBe('progress');
+  await expect(act({ type: 'choose', choice: 'rescue' })).rejects.toThrow(
+    'disponível',
+  );
+});
+it('mantém conclusões e registros antigos sem migração nem reescrever o diário', async () => {
+  await start();
+  await evidence();
+  const w = await act({ type: 'choose', choice: 'route' });
+  w.journal.find((x) => x.id === 'quest:solved')!.text =
+    'Registro da versão anterior, preservado.';
+  await db.profile.update(1, { world: w });
+  expect(await ensureWorld()).toEqual(w);
+  await act({ type: 'talk' });
+  const restored = await ensureWorld();
+  expect(restored.resolution).toBe('route');
+  expect(restored.journal).toEqual(w.journal);
 });

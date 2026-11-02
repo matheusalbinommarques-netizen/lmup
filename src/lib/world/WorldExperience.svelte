@@ -10,12 +10,13 @@
   } from '$services/worldService';
   import {
     worldArt,
+    lucanArt,
+    returnNoticeAvailable,
+    personalTasks,
     locations,
     founders,
     clues,
     requiredClues,
-    hotspots,
-    sceneContent,
     type LocationId,
     type SceneId,
     type HotspotId,
@@ -96,8 +97,6 @@
     };
   });
   const selectedPlace = $derived(locations.find((p) => p.id === selected)!);
-  const scene = $derived(world?.lastScene ?? 'settlement');
-  const point = $derived(hotspots.find((p) => p.id === world?.focus));
   const gathered = $derived(
     requiredClues.filter((id) => world?.clues.includes(id)).length,
   );
@@ -112,21 +111,23 @@
     if (!world?.dialogue) return '';
     switch (world.dialogue) {
       case 'welcome':
-        return 'Uma caravana de mantimentos não chegou no horário combinado. Com o assentamento em obras, cada entrega faz falta. Quero saber o que aconteceu antes de mandar gente pela estrada.';
+        return 'A caravana de mantimentos está atrasada, e os carregadores ainda não chegaram. Precisamos dessa entrega para quem trabalha no Oásis. Investigue a estrada antes de enviarmos ajuda.';
       case 'briefing':
-        return 'A entrega vem pelo caminho do Entreposto de Variel. Comece no quadro de avisos e examine os arredores. Separe o que pode verificar daquilo que parece apenas estranho.';
+        return 'A entrega vem do Entreposto de Variel. Siga para os arredores e examine a carroça, os sacos e as pegadas. Precisamos saber por que pararam e para onde foram os carregadores.';
       case 'progress':
-        return 'O que você encontrou? Precisamos entender a avaria, o destino da carga e para onde foram os carregadores. Não é preciso adivinhar: a estrada deixa sinais.';
+        return returnNoticeAvailable(world)
+          ? 'Os carregadores já voltaram pelo caminho alto. O retorno foi registrado no quadro. Ainda precisamos ligar as três pistas para entender a parada e decidir como recuperar os mantimentos.'
+          : 'Precisamos entender por que a caravana parou, o que aconteceu com a carga e para onde foram os carregadores. Examine e registre os sinais nos arredores.';
       case 'hint':
         return 'Olhe de perto a carroça, os sacos e as pegadas no caminho. Registre as pistas que conseguir confirmar. Depois volte para conversarmos.';
       case 'report':
-        return 'Suas pistas fazem sentido. Enquanto você estava fora, dois carregadores chegaram pelo portão: todos estão seguros. O eixo quebrou, e eles trouxeram parte da carga pelo caminho alto. O restante da caravana aguarda no entreposto. Como vamos encaminhar isso?';
+        return 'Todos os carregadores voltaram em segurança; o aviso do portão confirma a chegada. A carga restante está junto à carroça, nos arredores. Precisamos recolhê-la e preparar o caminho das próximas entregas. Qual tarefa você assume? Eu cuido da outra.';
       case 'evidence':
-        return 'A madeira rompeu sob o peso, a carga foi dividida para transporte e as pegadas seguem de volta ao Oásis. O relato dos carregadores confirma os três sinais. Foi uma avaria, não um desaparecimento inexplicável.';
+        return 'O eixo explica a parada. Os sacos menores e as alças de corda explicam o transporte à mão. As pegadas ligam a carroça ao Oásis. Foi uma avaria: parte dos mantimentos chegou, e o restante ficou onde você encontrou a carroça.';
       case 'ending':
         return world.resolution === 'rescue'
-          ? 'Já organizei a saída de uma pequena equipe com as cordas que você separou. A carga será recolhida e os carregadores poderão descansar. Você agiu com cuidado quando precisávamos de ajuda. Vou me lembrar disso.'
-          : 'O aviso seguiu para o entreposto, e sua indicação do caminho alto ficou registrada. A próxima entrega terá uma rota de retorno conhecida. Você sabe observar antes de concluir. Isso é útil por aqui.';
+          ? 'Combinado: você acompanha a recuperação dos sacos junto à carroça. Vou preparar as marcações do caminho alto para as próximas entregas. Separei cordas na mesa; os carregadores podem descansar. Sei que posso contar com sua iniciativa.'
+          : 'Combinado: você prepara as marcações e orientações do caminho alto. Eu acompanho a recuperação dos sacos junto à carroça. Deixei um esboço da rota na mesa. Sua atenção aos detalhes vai ajudar quem vier depois.';
     }
   });
   const choices = $derived.by(() => {
@@ -152,14 +153,22 @@
     if (n === 'report' || n === 'evidence')
       return [
         {
+          id: 'rescue',
+          label: 'Vou ajudar a recuperar a carga restante.',
+          detail: 'Lucan prepara a rota das próximas entregas.',
+        },
+        {
+          id: 'route',
+          label: 'Vou preparar uma rota mais segura.',
+          detail: 'Lucan acompanha a recuperação da carga.',
+        },
+        {
           id: 'review',
           label:
             n === 'report'
               ? 'Rever as pistas antes de decidir.'
               : 'Voltar à decisão.',
         },
-        { id: 'rescue', label: 'Organizar ajuda para recuperar a carga.' },
-        { id: 'route', label: 'Registrar a rota e avisar o entreposto.' },
         { id: 'leave', label: 'Vou pensar antes de decidir.' },
       ];
     return [{ id: 'leave', label: 'Até a próxima, Lucan.' }];
@@ -267,7 +276,7 @@
     </p>{/if}
   <p class="lmu-hint">A aventura também pode ser jogada sem som.</p>
 {/snippet}
-{#if world && !campaign && section === 'explore' && view === 'scene' && scene === 'settlement'}
+{#if world && !campaign && section === 'explore' && view === 'scene'}
   <OasisCinematic
     {world}
     {dialogueText}
@@ -370,95 +379,7 @@
               >
             </aside>
           </div>
-        {:else}<div class="scene-toolbar">
-            <Button variant="secondary" onclick={() => (view = 'map')}
-              >Voltar ao mapa</Button
-            >
-            <h2>{sceneContent[scene].name}</h2>
-            <span class="lmu-hint"
-              >Seu ponto de retomada é salvo a cada ação.</span
-            >
-          </div>
-          <div class="exploration-layout scene-layout">
-            <section class="scene-panel" aria-label="Cena explorável">
-              <div class="illustrated-scene">
-                <img
-                  src={worldArt + sceneContent[scene].art}
-                  alt={sceneContent[scene].description}
-                />{#each hotspots.filter((p) => p.scene === scene) as hotspot, index (hotspot.id)}<button
-                    class="hotspot"
-                    style:left={hotspot.x + '%'}
-                    style:top={hotspot.y + '%'}
-                    aria-label={hotspot.name}
-                    disabled={busy}
-                    onclick={() => interact(hotspot.id)}
-                    ><span aria-hidden="true">{index + 1}</span><small
-                      >{hotspot.name}</small
-                    ></button
-                  >{/each}
-              </div>
-              <p class="scene-caption">{sceneContent[scene].description}</p>
-              <nav class="interaction-list" aria-label="Interações da cena">
-                {#each hotspots.filter((p) => p.scene === scene) as hotspot, index (hotspot.id)}<Button
-                    variant="secondary"
-                    disabled={busy}
-                    onclick={() => interact(hotspot.id)}
-                    >{index + 1}. {hotspot.name}</Button
-                  >{/each}
-              </nav>
-            </section>
-            <aside class="world-panel interaction-panel" aria-live="polite">
-              {#if world.dialogue}<div class="speaker">
-                  <img
-                    src={worldArt + 'lucan-dorian.webp'}
-                    alt="Retrato de Lucan Dorian"
-                  />
-                  <div>
-                    <p class="lmu-eyebrow">Fundador · Ladino</p>
-                    <h2>Lucan Dorian</h2>
-                  </div>
-                </div>
-                <p class="dialogue-text">{dialogueText}</p>
-                <div class="dialogue-choices">
-                  {#each choices as choice (choice.id)}<Button
-                      variant="secondary"
-                      disabled={busy}
-                      onclick={() => choose(choice.id)}>{choice.label}</Button
-                    >{/each}
-                </div>
-                {@render narrationControls()}
-              {:else if point}<p class="lmu-eyebrow">Investigação</p>
-                <h2>{point.name}</h2>
-                <p>
-                  {point.id === 'supplies' && world.quest === 'solved'
-                    ? world.resolution === 'rescue'
-                      ? 'Cordas e recipientes foram separados para a equipe que recuperará a carga. Sua decisão mudou os preparativos do assentamento.'
-                      : 'O registro da rota segura está sobre a mesa, junto do aviso enviado ao entreposto.'
-                    : point.text}
-                </p>
-                {#if 'clue' in point}{#if world.clues.includes(point.clue)}<p
-                      class="clue-recorded"
-                    >
-                      ✓ Pista registrada no diário
-                    </p>{:else if world.quest === 'active'}<Button
-                      disabled={busy}
-                      onclick={() => perform({ type: 'collect' })}
-                      >Registrar pista</Button
-                    >{:else}<p class="lmu-hint">
-                      Converse com Lucan para iniciar a investigação.
-                    </p>{/if}{/if}
-              {:else}<p class="lmu-eyebrow">Observe antes de concluir</p>
-                <h2>
-                  {scene === 'settlement'
-                    ? 'Um começo entre andaimes'
-                    : 'Sinais na estrada'}
-                </h2>
-                <p>
-                  Escolha um ponto na cena ou na lista de interações. As falas e
-                  investigações avançam no seu ritmo.
-                </p>{/if}
-            </aside>
-          </div>{/if}
+        {/if}
       {/if}
       {#if !campaign && section === 'atlas'}<section class="atlas">
           <h2>Os quatro fundadores</h2>
@@ -469,7 +390,10 @@
           <div class="founder-grid">
             {#each founders as founder (founder.id)}<article>
                 <img
-                  src={worldArt + founder.id + '.webp'}
+                  src={founder.id === 'lucan-dorian'
+                    ? lucanArt
+                    : worldArt + founder.id + '.webp'}
+                  class:lucan={founder.id === 'lucan-dorian'}
                   alt={'Retrato de ' + founder.name}
                   loading="lazy"
                 />
@@ -493,7 +417,7 @@
           <h2>A Caravana Perdida</h2>
           <p>
             {world.quest === 'solved'
-              ? 'A caravana foi localizada. Os carregadores estão seguros, e sua decisão ficou registrada.'
+              ? 'Os carregadores voltaram ao Oásis. A carga restante está junto à carroça; as duas providências foram divididas entre você e Lucan.'
               : world.quest === 'active'
                 ? 'Examine a carroça, a carga e os rastros. Registre as três pistas e retorne a Lucan.'
                 : 'Lucan precisa entender o atraso de uma entrega antes de enviar ajuda.'}
@@ -510,6 +434,11 @@
             </p>{/if}
         </div>
       </section>
+      {#if world.resolution}<p class="task-assignment">
+          <strong>Sua tarefa:</strong>
+          {personalTasks[world.resolution].player} <strong>Lucan:</strong>
+          {personalTasks[world.resolution].lucan}
+        </p>{/if}
       {#if campaign || section === 'history'}<section class="journal">
           <h2>Diário da campanha</h2>
           <p>
@@ -546,8 +475,8 @@
   dismissible={!busy}
   ><p>
     {confirmation?.choice === 'rescue'
-      ? 'Você organizará ajuda para recuperar a carga. Lucan reconhecerá sua iniciativa.'
-      : 'Você registrará a rota segura e avisará o entreposto. Lucan reconhecerá sua atenção aos detalhes.'}
+      ? 'Você ajudará a recuperar a carga restante junto à carroça. Lucan preparará a rota das próximas entregas.'
+      : 'Você preparará uma rota mais segura pelo caminho alto. Lucan acompanhará a recuperação da carga restante.'}
   </p>
   <p>
     Esta escolha ficará na história da campanha. Nenhum XP, ouro ou comida será
@@ -664,119 +593,6 @@
   .world-panel .journey-link {
     font-size: 0.85rem;
   }
-  .scene-toolbar {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 16px;
-    margin-bottom: 15px;
-  }
-  .scene-toolbar h2 {
-    margin: 0;
-    font: 600 1.8rem var(--lmu-display);
-  }
-  .scene-toolbar > span {
-    margin-left: auto;
-  }
-  .scene-panel {
-    border: 1px solid #8c744a;
-    border-radius: 14px;
-    overflow: hidden;
-    background: #091a1e;
-  }
-  .illustrated-scene {
-    position: relative;
-    aspect-ratio: 16/9;
-  }
-  .illustrated-scene > img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-  }
-  .hotspot {
-    position: absolute;
-    transform: translate(-50%, -50%);
-    background: none;
-    border: none;
-    color: #ffe4a5;
-    display: grid;
-    justify-items: center;
-    gap: 3px;
-    cursor: pointer;
-    max-width: 32%;
-    min-width: 44px;
-    min-height: 44px;
-  }
-  .hotspot > span {
-    width: 27px;
-    height: 27px;
-    border: 2px solid #f4cc7a;
-    border-radius: 50%;
-    background: #132328e8;
-    display: grid;
-    place-items: center;
-    font-size: 0.85rem;
-    box-shadow: 0 0 12px #d8aa4c88;
-  }
-  .hotspot > small {
-    background: #071519ee;
-    padding: 3px 7px;
-    border: 1px solid #aa8950;
-    border-radius: 5px;
-    font-size: 0.78rem;
-    white-space: nowrap;
-  }
-  .hotspot:focus-visible {
-    outline: 3px solid #fff2cc;
-    border-radius: 8px;
-    z-index: 2;
-  }
-  .scene-caption {
-    padding: 0 16px;
-    color: #c6d1c4;
-    font-size: 0.86rem;
-    line-height: 1.55;
-  }
-  .interaction-list {
-    padding: 5px 16px 16px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 7px;
-  }
-  .speaker {
-    display: flex;
-    align-items: center;
-    gap: 13px;
-  }
-  .speaker img {
-    width: 90px;
-    height: 120px;
-    object-fit: cover;
-    border: 1px solid #9b7c47;
-    border-radius: 8px;
-  }
-  .speaker h2 {
-    margin: 4px 0;
-  }
-  .speaker p {
-    font-size: 0.7rem;
-  }
-  .dialogue-text {
-    font-family: var(--lmu-display);
-    font-size: 1.3rem;
-    line-height: 1.5;
-    color: #f1e5cb !important;
-  }
-  .dialogue-choices {
-    display: grid;
-    gap: 9px;
-    margin: 20px 0;
-  }
-  .dialogue-choices :global(button) {
-    text-align: left;
-    justify-content: flex-start;
-    line-height: 1.4;
-  }
   .quest-card {
     display: flex;
     align-items: flex-start;
@@ -811,8 +627,7 @@
     height: 7px;
     accent-color: #e3ba68;
   }
-  .relationship,
-  .clue-recorded {
+  .relationship {
     color: #c7e2a8 !important;
   }
   .world-footnote {
@@ -846,6 +661,13 @@
     width: 100%;
     aspect-ratio: 3/4;
     object-fit: cover;
+  }
+  .founder-grid img.lucan {
+    object-position: 30% center;
+  }
+  .task-assignment {
+    line-height: 1.7;
+    color: #e5d8b8;
   }
   .founder-grid h3,
   .founder-grid p,
@@ -897,15 +719,8 @@
     .world-panel {
       padding: 18px;
     }
-    .scene-layout .world-panel {
-      min-height: 180px;
-    }
     .local-preview {
       max-height: 180px;
-    }
-    .speaker img {
-      width: 72px;
-      height: 96px;
     }
     .world-tabs .journey-link {
       margin-left: 0;
@@ -933,18 +748,6 @@
     .world-panel h2 {
       font-size: 1.6rem;
     }
-    .hotspot small {
-      display: none;
-    }
-    .hotspot > span {
-      width: 23px;
-      height: 23px;
-    }
-    .interaction-list :global(button) {
-      flex: 1 1 130px;
-      font-size: 0.78rem;
-      padding: 8px;
-    }
     .quest-card {
       padding: 17px;
       gap: 10px;
@@ -954,12 +757,6 @@
     }
     .quest-card p {
       font-size: 0.86rem;
-    }
-    .scene-toolbar h2 {
-      font-size: 1.4rem;
-    }
-    .scene-toolbar > span {
-      margin-left: 0;
     }
     .atlas,
     .journal {
@@ -976,9 +773,6 @@
     }
     .world-experience.campaign {
       padding: 18px;
-    }
-    .dialogue-text {
-      font-size: 1.18rem;
     }
   }
   @media (prefers-reduced-motion: no-preference) {

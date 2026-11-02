@@ -1,4 +1,6 @@
+import type { WorldState } from './worldState';
 export const worldArt = '/art/world/';
+export const lucanArt = worldArt + 'lucan-dorian-horizontal.png';
 export const locations = [
   {
     id: 'oasis',
@@ -76,15 +78,15 @@ export const clues = {
   },
   axle: {
     name: 'Eixo rompido',
-    text: 'As fibras da madeira se abriram sob o peso da carga. Não há marcas de lâmina ou de combate: a carroça sofreu uma avaria.',
+    text: 'O eixo de madeira cedeu sob o peso dos mantimentos e imobilizou a carroça. Não há marcas de lâmina ou de combate.',
   },
   cargo: {
     name: 'Carga organizada',
-    text: 'Os sacos restantes foram separados em pequenos volumes. A farinha derramada está junto da roda, enquanto cordas foram cortadas para improvisar alças de transporte.',
+    text: 'Sacos menores e alças feitas com as cordas da carroça mostram como os carregadores levaram parte dos mantimentos à mão. A carga restante ainda está junto à roda.',
   },
   tracks: {
     name: 'Rastro de retorno',
-    text: 'Pegadas de botas e animais deixam a carroça e seguem pelo caminho alto de volta ao Oásis. As marcas são regulares, sem sinal de perseguição.',
+    text: 'Pegadas saem da carroça pelo caminho alto e seguem até o Oásis. As marcas são regulares: os carregadores voltaram por ali, sem sinais de perseguição.',
   },
 } as const;
 export type ClueId = keyof typeof clues;
@@ -163,7 +165,7 @@ export const hotspots = [
     scene: 'outskirts',
     x: 72,
     y: 33,
-    name: 'Voltar ao assentamento',
+    name: 'Voltar ao Oásis',
     text: 'O caminho alto retorna ao portão do Oásis.',
   },
 ] as const;
@@ -180,5 +182,49 @@ export const sceneContent = {
     art: 'cena-arredores-pistas.webp',
     description:
       'Uma carroça avariada ficou à margem da estrada. Examine o que aconteceu e procure sinais do destino dos viajantes.',
+  },
+} as const;
+
+// Public notice derived from existing progress; reading it is never a quest requirement.
+export function returnNoticeAvailable(world: WorldState) {
+  return world.quest !== 'new' && world.visitedScenes.includes('outskirts');
+}
+export const returnNotice = {
+  title: 'Aviso de retorno',
+  text: 'Registro do portão: todos os carregadores chegaram em segurança pelo caminho alto, trazendo parte dos mantimentos à mão. A carga restante ficou junto à carroça avariada, nos arredores.',
+};
+export const investigationFindings = [
+  {
+    id: 'axle',
+    title: 'Por que parou',
+    text: 'O eixo quebrou sob o peso da carga.',
+  },
+  {
+    id: 'cargo',
+    title: 'Como transportaram',
+    text: 'Dividiram os mantimentos em sacos menores, com alças de corda para carregá-los à mão.',
+  },
+  {
+    id: 'tracks',
+    title: 'Por onde voltaram',
+    text: 'As pegadas seguem pelo caminho alto até o Oásis.',
+  },
+] as const;
+export const personalTasks = {
+  rescue: {
+    player: 'Recuperar a carga restante junto à carroça.',
+    lucan: 'Preparar o caminho alto para as próximas entregas.',
+    scene:
+      'Cordas e alças estão separadas para você acompanhar a recuperação dos sacos. Lucan ficou com o esboço das marcações do caminho alto.',
+    journal:
+      'Você assumiu a recuperação da carga restante junto à carroça. Lucan ficou responsável por preparar o caminho alto para as próximas entregas. Ele passou a confiar em sua iniciativa.',
+  },
+  route: {
+    player: 'Preparar uma rota mais segura para as próximas entregas.',
+    lucan: 'Acompanhar a recuperação da carga restante.',
+    scene:
+      'O esboço do caminho alto e as orientações aos viajantes estão prontos para você preparar a rota. Lucan separou as cordas para acompanhar a recuperação dos sacos.',
+    journal:
+      'Você assumiu a preparação de uma rota mais segura pelo caminho alto. Lucan ficou responsável por recuperar a carga restante junto à carroça. Ele passou a respeitar sua atenção aos detalhes.',
   },
 } as const;

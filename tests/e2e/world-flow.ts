@@ -23,27 +23,35 @@ export async function interact(page: Page, name: string) {
     name: 'Exploração do Oásis',
     exact: true,
   });
-  if (await stage.isVisible()) {
-    const back = stage.getByRole('button', {
-      name: 'Voltar à exploração',
-      exact: false,
-    });
-    if (await back.isVisible()) await back.click();
-    if (
-      !(await stage
-        .getByRole('navigation', { name: 'Interações da cena', exact: true })
-        .isVisible())
-    )
-      await stage
-        .getByRole('button', { name: 'Pontos interativos', exact: false })
-        .click();
+  await expect(stage).toBeVisible();
+  await expect(
+    stage.getByRole('button', { name: 'Voltar ao mapa', exact: true }),
+  ).toBeEnabled();
+  const back = stage.getByRole('button', {
+    name: 'Voltar à exploração',
+    exact: false,
+  });
+  if (await back.isVisible()) {
+    await back.click();
+    await expect(back).toHaveCount(0);
   }
+  if (
+    !(await stage
+      .getByRole('navigation', { name: 'Interações da cena', exact: true })
+      .isVisible())
+  )
+    await stage
+      .getByRole('button', { name: 'Pontos interativos', exact: false })
+      .click();
 
   await page
     .getByRole('navigation', { name: 'Interações da cena', exact: true })
     .getByRole('button', { name: new RegExp(name) })
     .click();
-  if (name === 'Voltar ao assentamento') await expect(stage).toBeVisible();
+  if (name === 'Voltar ao Oásis')
+    await expect(
+      stage.getByRole('heading', { name: 'Oásis dos Fundadores', exact: true }),
+    ).toBeVisible();
   if (name === 'Caminho dos arredores')
     await expect(
       page.getByRole('heading', { name: 'Arredores do Oásis', exact: true }),
@@ -76,7 +84,7 @@ export async function investigate(page: Page) {
   }
 }
 export async function resolveInvestigation(page: Page) {
-  await interact(page, 'Voltar ao assentamento');
+  await interact(page, 'Voltar ao Oásis');
   await interact(page, 'Conversar com Lucan');
   await page
     .getByRole('button', {
@@ -85,14 +93,17 @@ export async function resolveInvestigation(page: Page) {
     })
     .click();
   await expect(
-    page.getByText('O relato dos carregadores confirma os três sinais.', {
-      exact: false,
-    }),
+    page.getByText(
+      'parte dos mantimentos chegou, e o restante ficou onde você encontrou a carroça.',
+      {
+        exact: false,
+      },
+    ),
   ).toBeVisible();
   await page
     .getByRole('button', {
-      name: 'Registrar a rota e avisar o entreposto.',
-      exact: true,
+      name: 'Vou preparar uma rota mais segura.',
+      exact: false,
     })
     .click();
   const confirm = page.getByRole('dialog', {

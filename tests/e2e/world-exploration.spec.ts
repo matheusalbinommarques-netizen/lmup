@@ -57,7 +57,7 @@ test('Mundo entrega investigação completa, retomada, consequência e campanha 
   expect(old.quest).toBe('new');
   await interact(page, 'Mesa de provisões');
   await expect(
-    page.getByText('O registro da rota segura está sobre a mesa', {
+    page.getByText('O esboço do caminho alto e as orientações aos viajantes', {
       exact: false,
     }),
   ).toBeVisible();

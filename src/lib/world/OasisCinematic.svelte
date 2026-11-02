@@ -1,7 +1,18 @@
 <script lang="ts">
-  import { onMount, tick, type Snippet } from 'svelte';
+  import { onMount, tick, untrack, type Snippet } from 'svelte';
   import { fade } from 'svelte/transition';
-  import { worldArt, hotspots, clues, type HotspotId } from './content';
+  import {
+    worldArt,
+    lucanArt,
+    hotspots,
+    clues,
+    sceneContent,
+    returnNotice,
+    returnNoticeAvailable,
+    investigationFindings,
+    personalTasks,
+    type HotspotId,
+  } from './content';
   import type { WorldState } from './worldState';
   import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
   let {
@@ -20,7 +31,7 @@
   }: {
     world: WorldState;
     dialogueText: string;
-    choices: { id: string; label: string }[];
+    choices: { id: string; label: string; detail?: string }[];
     busy: boolean;
     error: string;
     notice: string;
@@ -31,13 +42,18 @@
     onMap: () => void;
     onSound?: (cue: 'scene' | 'interact' | 'discovery' | 'dialogue') => void;
   } = $props();
-  const points = hotspots.filter((p) => p.scene === 'settlement');
+  const scene = $derived(world.lastScene ?? 'settlement');
+  const sceneInfo = $derived(sceneContent[scene]);
+  const points = $derived(hotspots.filter((p) => p.scene === scene));
+  const hasReturnNotice = $derived(returnNoticeAvailable(world));
   let stage: HTMLDialogElement;
   let canvas: HTMLDivElement;
   let wholeScene = $state(false),
     reduceMotion = $state(false);
   let displayLine = $state(''),
-    displayChoices = $state<{ id: string; label: string }[]>([]);
+    displayChoices = $state<{ id: string; label: string; detail?: string }[]>(
+      [],
+    );
   let reveal = $state(false),
     panel = $state<'points' | 'journal' | 'audio'>(),
     inspecting = $state(false);
@@ -86,6 +102,22 @@
         stage?.querySelector<HTMLElement>('[data-speaker]')?.focus(),
       );
   });
+  $effect(() => {
+    const nextScene = scene;
+    untrack(() => {
+      selected = world.focus ?? hotspots.find((p) => p.scene === nextScene)!.id;
+      inspecting = !!world.focus;
+      panel = undefined;
+      canvas?.scrollTo({ left: 0 });
+    });
+    void tick().then(() =>
+      stage
+        ?.querySelector<HTMLElement>(
+          world.dialogue ? '[data-speaker]' : '[data-scene-title]',
+        )
+        ?.focus(),
+    );
+  });
   async function interact(id: HotspotId) {
     selected = id;
     panel = undefined;
@@ -102,7 +134,8 @@
     else if (speaking) await onChoose('leave');
     else if (inspecting) inspecting = false;
     else {
-      onMap();
+      if (scene === 'outskirts') await onInteract('return');
+      else onMap();
       return;
     }
     await tick();
@@ -165,7 +198,9 @@
     {:else if id === 'supplies'}<path
         d="M4 7h16v13H4zM3 7V4h18v3M9 11h6v4H9zM12 11v5"
       />
-    {:else}<path d="M4 12h15m-6-6 6 6-6 6M4 5v14" />{/if}
+    {:else if id === 'return'}<path d="M20 12H5m6-6-6 6 6 6M20 5v14" />
+    {:else if id === 'exit'}<path d="M4 12h15m-6-6 6 6-6 6M4 5v14" />
+    {:else}<circle cx="10" cy="10" r="6" /><path d="m14.5 14.5 6 6" />{/if}
   </svg>
 {/snippet}
 
@@ -182,7 +217,11 @@
     void back();
   }}
 >
-  <div class="atmosphere" aria-hidden="true"></div>
+  <div
+    class="atmosphere"
+    style:background-image={`linear-gradient(#1b110d22,#100e0acc),url("${worldArt + sceneInfo.art}")`}
+    aria-hidden="true"
+  ></div>
   <div
     class="scene-canvas"
     bind:this={canvas}
@@ -194,8 +233,8 @@
     <div class="scene-painting">
       <img
         class="settlement-art"
-        src={worldArt + 'cena-oasis-construcao.webp'}
-        alt="Oásis em construção, com tendas, oficinas, andaimes e um caminho junto à água"
+        src={worldArt + sceneInfo.art}
+        alt={sceneInfo.description}
         draggable="false"
       />
       {#each points as hotspot (hotspot.id)}<button
@@ -230,13 +269,27 @@
     <div class="location-plaque">
       <ApprovedIcon name="mundo" size={42} />
       <div>
-        <h1 data-scene-title tabindex="-1">Oásis dos Fundadores</h1>
-        <p>Assentamento em construção</p>
+        <h1 data-scene-title tabindex="-1">
+          {scene === 'settlement' ? 'Oásis dos Fundadores' : sceneInfo.name}
+        </h1>
+        <p>
+          {scene === 'settlement'
+            ? 'Assentamento em construção'
+            : 'Estrada da caravana'}
+        </p>
       </div>
     </div>
     <div class="quest-plaque">
       <ApprovedIcon name="missions" size={30} />
-      <div><strong>A Caravana Perdida</strong><span>{questLabel}</span></div>
+      <div>
+        <strong>A Caravana Perdida</strong><span
+          >{scene === 'settlement' &&
+          world.quest === 'active' &&
+          hasReturnNotice
+            ? 'Há um aviso de retorno no quadro.'
+            : questLabel}</span
+        >
+      </div>
     </div>
   </header>
   {#if speaking}
@@ -248,10 +301,7 @@
       aria-hidden={panel ? true : undefined}
     >
       <div class="character-portrait">
-        <img
-          src={worldArt + 'lucan-dorian.webp'}
-          alt="Lucan Dorian, um dos quatro fundadores"
-        />
+        <img src={lucanArt} alt="Lucan Dorian, um dos quatro fundadores" />
       </div>
       <div class="conversation-copy">
         <p class="speaker-role">Um dos quatro fundadores · Ladino</p>
@@ -259,11 +309,31 @@
         {#key world.dialogue}<div class="dialogue-line">
             <p>{displayLine}</p>
           </div>{/key}
+        {#if world.dialogue === 'report' || world.dialogue === 'evidence'}<dl
+            class="findings-summary"
+            aria-label="Resumo das descobertas"
+          >
+            {#each investigationFindings as finding (finding.id)}<div>
+                <dt>{finding.title}</dt>
+                <dd>{finding.text}</dd>
+              </div>{/each}
+          </dl>{/if}
+        {#if world.dialogue === 'ending' && world.resolution}<p
+            class="role-assignment"
+          >
+            <strong>Você:</strong>
+            {personalTasks[world.resolution].player}<br /><strong>Lucan:</strong
+            >
+            {personalTasks[world.resolution].lucan}
+          </p>{/if}
         <div class="cinematic-choices" aria-label="Respostas a Lucan">
           {#each displayChoices as choice (choice.id)}<button
-              disabled={busy}
+              disabled={busy || !speaking}
               onclick={() => onChoose(choice.id)}
-              ><span aria-hidden="true">➤</span>{choice.label}</button
+              ><span aria-hidden="true">➤</span><span class="choice-copy"
+                >{choice.label}{#if choice.detail}<small>{choice.detail}</small
+                  >{/if}</span
+              ></button
             >{/each}
         </div>
       </div>
@@ -273,23 +343,29 @@
       <button class="close-card" aria-label="Fechar inspeção" onclick={back}
         >×</button
       >
-      <p class="overline">Observe de perto</p>
       <h2 data-inspection-title tabindex="-1">{point.name}</h2>
+      {#if point.id === 'board' && hasReturnNotice}<div class="return-notice">
+          <h3>{returnNotice.title}</h3>
+          <p>{returnNotice.text}</p>
+        </div>{/if}
       <p>
-        {point.id === 'supplies' && world.quest === 'solved'
-          ? world.resolution === 'rescue'
-            ? 'Cordas e recipientes foram separados para a equipe que recuperará a carga. Sua decisão mudou os preparativos do assentamento.'
-            : 'O registro da rota segura está sobre a mesa, junto do aviso enviado ao entreposto.'
+        {point.id === 'supplies' && world.resolution
+          ? personalTasks[world.resolution].scene
           : point.text}
       </p>
       {#if 'clue' in point}{#if world.clues.includes(point.clue)}<p
             class="recorded"
           >
-            ✓ Pista registrada no diário
+            {point.clue === 'manifest'
+              ? '✓ Registro opcional guardado'
+              : '✓ Pista registrada no diário'}
           </p>{:else if world.quest === 'active'}<button
             class="gold-control"
             disabled={busy}
-            onclick={onCollect}>Registrar pista</button
+            onclick={onCollect}
+            >{point.clue === 'manifest'
+              ? 'Guardar registro opcional'
+              : 'Registrar pista'}</button
           >{:else}<p class="hint">
             Converse com Lucan para iniciar a investigação.
           </p>{/if}{/if}
@@ -306,7 +382,7 @@
       <button class="close-card" aria-label="Fechar painel" onclick={back}
         >×</button
       >
-      <p class="overline">Oásis dos Fundadores</p>
+      <p class="overline">{sceneInfo.name}</p>
       <h2 data-panel-title tabindex="-1">
         {panel === 'points'
           ? 'Pontos interativos'
@@ -362,7 +438,14 @@
     </p>{/if}
   <footer class="scene-controls">
     <nav class="primary-controls" aria-label="Controles da exploração">
-      {#if speaking}<button
+      {#if scene === 'outskirts'}<button
+          class="quiet-control main-control"
+          disabled={busy}
+          aria-label="Voltar ao Oásis"
+          onclick={() => interact('return')}
+          ><span aria-hidden="true">←</span>Oásis</button
+        >
+      {:else if speaking}<button
           class="quiet-control main-control"
           disabled={busy}
           aria-label="Voltar à exploração"
@@ -407,11 +490,19 @@
         aria-expanded={panel === 'audio'}
         onclick={() => togglePanel('audio')}>Áudio</button
       >
-      <a
-        class="quiet-control exit-control"
-        href="/"
-        aria-label="Sair da exploração"><span aria-hidden="true">↗</span>Sair</a
-      >
+      {#if scene === 'outskirts'}<button
+          class="quiet-control"
+          aria-label="Pontos interativos"
+          aria-expanded={panel === 'points'}
+          onclick={() => togglePanel('points')}
+          ><span aria-hidden="true">☷</span>Interações</button
+        >
+      {:else}<a
+          class="quiet-control exit-control"
+          href="/"
+          aria-label="Sair da exploração"
+          ><span aria-hidden="true">↗</span>Sair</a
+        >{/if}
     </nav>
   </footer>
   {#if !speaking && !panel}<button
@@ -451,9 +542,8 @@
     position: absolute;
     inset: 0;
     z-index: -2;
-    background:
-      linear-gradient(#1b110d22, #100e0acc),
-      url('/art/world/cena-oasis-construcao.webp') center/cover;
+    background-position: center;
+    background-size: cover;
     filter: blur(16px);
     opacity: 0.85;
     pointer-events: none;
@@ -872,10 +962,10 @@
     left: 0;
     bottom: 0;
     top: 28px;
-    width: 48%;
+    width: 100%;
     pointer-events: none;
     mask-image:
-      linear-gradient(90deg, #000 61%, transparent 100%),
+      linear-gradient(90deg, #000 38%, #0009 57%, transparent 83%),
       linear-gradient(transparent, #000 7%, #000 84%, transparent);
     mask-composite: intersect;
   }
@@ -883,8 +973,7 @@
     height: 100%;
     width: 100%;
     object-fit: cover;
-    object-position: center top;
-    filter: sepia(0.1) saturate(0.96) brightness(1.025);
+    object-position: center;
   }
   .conversation-copy {
     position: relative;
@@ -896,6 +985,60 @@
     background: linear-gradient(90deg, #10140fed, #10140fd9);
     box-shadow: 0 12px 50px #0003;
     max-width: 760px;
+  }
+  .inspection-card h2 {
+    border: 0;
+    text-decoration: none;
+    padding-top: 0;
+  }
+  .inspection-card h2::before,
+  .inspection-card h2::after {
+    content: none;
+  }
+  .return-notice {
+    padding: 12px 0;
+    border-bottom: 1px solid #c5ab7255;
+    margin-bottom: 14px;
+  }
+  .return-notice h3 {
+    font: 600 1.25rem var(--lmu-display);
+    color: #f2d797;
+    margin: 0 0 8px;
+  }
+  .findings-summary {
+    margin: 0 0 20px;
+    padding: 0;
+    font-size: 0.85rem;
+    line-height: 1.45;
+  }
+  .findings-summary > div {
+    padding: 7px 0;
+    border-top: 1px solid #baa27433;
+  }
+  .findings-summary dt {
+    font-weight: 600;
+    color: #edcf95;
+  }
+  .findings-summary dd {
+    margin: 3px 0 0;
+    color: #e1dac9;
+  }
+  .role-assignment {
+    line-height: 1.6;
+    font-size: 0.88rem;
+    color: #e4d5b5;
+    margin: 0 0 18px;
+  }
+  .cinematic-choices .choice-copy {
+    color: inherit;
+    font-size: inherit;
+  }
+  .choice-copy small {
+    display: block;
+    color: #d3c6ab;
+    font-size: 0.78rem;
+    margin-top: 5px;
+    font-weight: 400;
   }
   .speaker-role {
     text-transform: uppercase;
@@ -964,7 +1107,7 @@
       padding: 22px;
     }
     .character-portrait {
-      width: 46%;
+      width: 100%;
     }
     .dialogue-line {
       font-size: 1.18rem;
@@ -1156,7 +1299,9 @@
       mask-image: linear-gradient(#000 62%, transparent);
     }
     .character-portrait img {
-      object-position: center top;
+      object-position: center;
+      transform: scale(1.7);
+      transform-origin: 30% 8%;
     }
     .conversation-copy {
       padding: 16px 18px 21px;

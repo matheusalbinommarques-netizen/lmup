@@ -2,6 +2,7 @@ import { db } from './db';
 import {
   hotspots,
   clues,
+  personalTasks,
   type SceneId,
   type HotspotId,
 } from '$lib/world/content';
@@ -145,9 +146,8 @@ export async function actInWorld(
         w.dialogue = 'ending';
         log(
           'quest:solved',
-          choice === 'rescue'
-            ? 'Caravana localizada: a carroça sofreu uma avaria e os carregadores voltaram em segurança. Você ajudou a organizar a recuperação da carga. Lucan passou a confiar em sua iniciativa.'
-            : 'Caravana localizada: a carroça sofreu uma avaria e os carregadores voltaram em segurança. Você registrou a rota de retorno e enviou um aviso ao entreposto. Lucan passou a respeitar sua atenção aos detalhes.',
+          'A carroça parou por um eixo quebrado. Os carregadores voltaram ao Oásis com parte dos mantimentos; a carga restante ficou junto à carroça. ' +
+            personalTasks[w.resolution].journal,
         );
       } else throw Error('Esta resposta não está disponível no momento.');
     } else throw Error('Ação desconhecida.');

@@ -42,6 +42,13 @@
       "bytes": 115944,
       "sha256": "76ae4d7114d49f412806aac82cd8a6ae5c0b3daee7f57f393c07377a457faf03",
       "source": "LMUP_Mundo_Parte_2_LEVE.zip:artes/lucan-dorian.webp"
+    },
+    {
+      "file": "lucan-dorian-horizontal.png",
+      "bytes": 2634871,
+      "sha256": "20712c0eb9c8d1a9df5ae18d3ef1330a9c1d582e0c40706ece041c0bc14cdcb9",
+      "source": "codex-clipboard-90d62d16-b64c-4de9-9a61-6ed0c8ea5c5b.png",
+      "usage": "Arte horizontal indicada explicitamente pelo usuário para Lucan. PNG original, sem edição."
     }
   ]
 }

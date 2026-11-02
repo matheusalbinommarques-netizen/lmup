@@ -48,7 +48,10 @@ test('Oásis imersivo preserva escolhas, interação por teclado e retorno ao co
     .click();
   await interact(page, 'Conversar com Lucan');
   const portrait = stage.locator('.character-portrait img');
-  await expect(portrait).toHaveAttribute('src', '/art/world/lucan-dorian.webp');
+  await expect(portrait).toHaveAttribute(
+    'src',
+    '/art/world/lucan-dorian-horizontal.png',
+  );
   await expect(
     stage.getByRole('heading', { name: 'Lucan Dorian', exact: true }),
   ).toBeFocused();
