@@ -69,6 +69,10 @@
   </div>
 </header>
 <CollectionNav />
+<p>
+  <a class="journey-link" href="/refugio/acampamento">Entrar no acampamento →</a
+  >
+</p>
 {#if error}<p role="alert">{error}</p>{:else if data?.profile}
   <section class="collection-scene" aria-label="Seu ambiente">
     <Artwork
