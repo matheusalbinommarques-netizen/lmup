@@ -42,7 +42,6 @@
   let steps = $state<{ id: string; label: string }[]>([]);
   let title = $state(''),
     description = $state(''),
-    name = $state(''),
     project = $state(''),
     projectStage = $state(''),
     area = $state('0'),
@@ -78,7 +77,7 @@
         planning.deadline,
       ]),
       tracking: JSON.stringify([planning.estimatedMinutes, planning.tracking]),
-      details: JSON.stringify([steps, project, projectStage, pinned, name]),
+      details: JSON.stringify([steps, project, projectStage, pinned]),
     };
   }
   const changed = $derived.by(() => {
@@ -159,7 +158,6 @@
           tracking: editTask?.tracking,
         };
         today = true;
-        name = '';
         requestId = crypto.randomUUID();
         saveAnother = false;
         effort = editTask?.effort ?? (editTask ? 'legacy' : 'small');
@@ -218,7 +216,6 @@
                 startDate: plannedDate || dateKey(),
                 days: recurrenceDays,
               },
-        heroName: name,
         effort: effort === 'legacy' ? undefined : effort,
         editId: editTask?.id,
         expectedRevision: definitionRevision,
@@ -505,11 +502,6 @@
               ><input type="checkbox" bind:checked={pinned} />Fixar missão em
               destaque</label
             >
-            {#if !editTask && snapshot.profile?.name === 'Herói sem nome'}<Field
-                label="Como quer ser chamado? (opcional)"
-                bind:value={name}
-                maxlength={80}
-              />{/if}
           </div>
         </div>
       </div>
