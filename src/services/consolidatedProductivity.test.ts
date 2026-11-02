@@ -201,6 +201,76 @@ it('conclusões efetivas de outras datas aparecem hoje sem inflar o percentual d
     old.id,
   );
 });
+it('traz uma pendência parcial para hoje sem recriar a ocorrência nem conceder recompensa', async () => {
+  vi.setSystemTime(new Date('2026-11-01T15:00:00'));
+  const id = await create('Pendente', '2026-11-01', true);
+  const original = await ensureOccurrence(id, '2026-11-01');
+  await progress(original.id, 10);
+  vi.setSystemTime(new Date(day + 'T15:00:00'));
+  const row = (await db.occurrences.get(original.id))!;
+  const before = await readJourneySnapshot();
+  const input = {
+    row,
+    action: 'reschedule' as const,
+    day,
+    targetDate: day,
+    requestId: 'bring-today',
+  };
+  await expect(changeToday(input)).rejects.toThrow('Confirme');
+  await changeToday({ ...input, acknowledged: true });
+  await changeToday({ ...input, acknowledged: true });
+  const after = await readJourneySnapshot();
+  expect(after.occurrences).toHaveLength(1);
+  expect(after.occurrences[0]).toMatchObject({
+    id: original.id,
+    originDate: '2026-11-01',
+    plannedDate: day,
+    value: 10,
+    due: row.due,
+  });
+  expect(after.profile).toEqual(before.profile);
+  expect(after.events).toEqual(before.events);
+  expect(after.executionRecords).toEqual(before.executionRecords);
+  expect(todayView(after, day).old).toHaveLength(0);
+  expect(todayView(after, day).pending.map((row) => row.id)).toContain(
+    original.id,
+  );
+  const backup = JSON.parse(JSON.stringify(await createJourneyBackup()));
+  await restoreJourneyBackup(backup);
+  expect(
+    todayView(await readJourneySnapshot(), day).pending.map((row) => row.id),
+  ).toContain(original.id);
+});
+it('traz um cadastro antigo sem execução para hoje e preserva a proteção da sessão iniciada', async () => {
+  const id = await create('Sem execução', '2026-11-01');
+  await changeToday({
+    row: makeOccurrence((await db.tasks.get(id))!, '2026-11-01'),
+    action: 'reschedule',
+    day,
+    targetDate: day,
+    requestId: 'bring-definition',
+  });
+  expect((await db.tasks.get(id))?.plannedDate).toBe(day);
+  expect(await db.occurrences.count()).toBe(0);
+  expect(await db.activityEvents.count()).toBe(0);
+  vi.setSystemTime(new Date('2026-11-01T15:00:00'));
+  const frozenId = await create('Em sessão', '2026-11-01');
+  const frozen = await ensureOccurrence(frozenId, '2026-11-01');
+  const session = await startOrResumeSession('Preservada', [frozen.id]);
+  vi.setSystemTime(new Date(day + 'T15:00:00'));
+  await expect(
+    changeToday({
+      row: frozen,
+      action: 'reschedule',
+      day,
+      targetDate: day,
+      acknowledged: true,
+      requestId: 'bring-frozen',
+    }),
+  ).rejects.toThrow('sessão iniciada');
+  expect(await db.occurrences.get(frozen.id)).toEqual(frozen);
+  expect(await db.savedMissionSessions.get(session.id)).toEqual(session);
+});
 it('repetição e comando desatualizado não mudam economia nem perdem a retirada', async () => {
   const id = await create(),
     row = await ensureOccurrence(id),

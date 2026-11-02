@@ -108,7 +108,7 @@ test('prioridade manual persiste, não duplica e volta ao automático ao conclui
     [109, 'deleted'],
   ] as const) {
     const title = `Atividade real ${id - 99}`;
-    await page.getByLabel('Escolher próxima missão').click();
+    await page.locator('.next-mission .context-trigger').click();
     const picker = page.getByLabel('Manter em destaque');
     await picker.selectOption(String(id));
     await expect(page.locator('#next-title')).toHaveText(title);
@@ -156,7 +156,7 @@ test('prioridade manual persiste, não duplica e volta ao automático ao conclui
       )
       .toBeNull();
   }
-  await page.getByLabel('Escolher próxima missão').click();
+  await page.locator('.next-mission .context-trigger').click();
   await page.getByLabel('Manter em destaque').selectOption('102');
   await expect(page.locator('.next-mission')).toContainText(
     'Escolhida por você',

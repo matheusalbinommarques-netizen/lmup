@@ -76,7 +76,7 @@ test('Hoje conserva criação e escolha manual com duas missões sem data', asyn
       .click();
     await expect(form).not.toBeVisible();
   }
-  await page.getByLabel('Escolher próxima missão').click();
+  await page.locator('.next-mission .context-trigger').click();
   await page
     .getByLabel('Manter em destaque')
     .selectOption({ label: 'Outra ideia flexível · Flexível' });

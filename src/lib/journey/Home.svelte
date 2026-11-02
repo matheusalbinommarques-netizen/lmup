@@ -97,6 +97,7 @@
   async function chooseAction(
     row: Occurrence,
     action: 'remove' | 'reschedule',
+    targetDate?: string,
   ) {
     actionError = '';
     const confirm = await dayChangeNeedsConfirmation(row.id);
@@ -104,7 +105,13 @@
       await applyAction(row, action, false);
       return;
     }
-    rescheduleDate = addCalendarDays(today, 1);
+    rescheduleDate =
+      targetDate ??
+      (row.plannedDate < today ? today : addCalendarDays(today, 1));
+    if (targetDate && !confirm) {
+      await applyAction(row, action, false);
+      return;
+    }
     actionOpen = true;
     dayAction = { row, action, requiresConfirmation: confirm };
   }
@@ -337,8 +344,11 @@
                 : 'Começar'}</Button
             >{:else}<Button onclick={() => (open = true)}>Nova missão</Button
             >{/if}
-          {#if next}<ContextMenu label={`Ações de hoje para ${next.title}`}
-              ><Button
+          <ContextMenu
+            label={next
+              ? `Ações de hoje para ${next.title}`
+              : 'Escolher próxima missão'}
+            >{#if next}<Button
                 variant="quiet"
                 disabled={busy}
                 onclick={() => chooseAction(next!, 'remove')}
@@ -348,10 +358,7 @@
                 disabled={busy}
                 onclick={() => chooseAction(next!, 'reschedule')}
                 >Reagendar</Button
-              ></ContextMenu
-            >{/if}
-          <details class="next-options">
-            <summary aria-label="Escolher próxima missão">⋯</summary><label
+              >{/if}<label class="priority-option"
               >Manter em destaque<select
                 value={pinned ?? ''}
                 onchange={(event) => setPriority(event.currentTarget.value)}
@@ -362,7 +369,7 @@
                   >{/each}</select
               ></label
             >
-          </details>
+          </ContextMenu>
         </section>
         <section class="day-plan rpg-frame" aria-labelledby="plan-title">
           <header>
@@ -440,7 +447,8 @@
                   ? '+'
                   : ''}{received.gold} Ouro</span
               ><span
-                ><ApprovedIcon name="alimentacao" size={26} />{received.food >= 0
+                ><ApprovedIcon name="alimentacao" size={26} />{received.food >=
+                0
                   ? '+'
                   : ''}{received.food} Comida</span
               ><small>Recebidos hoje · ganhos líquidos</small>
@@ -494,20 +502,33 @@
           Suas conclusões aparecerão aqui conforme você realizar as atividades.
         </p>{/if}
     </section>
-    {#if view?.old.length}<details class="rpg-frame today-secondary">
+    {#if view?.old.length}<details class="rpg-frame today-secondary" open>
         <summary>Atividades de outros dias ({view.old.length})</summary>
         <p class="lmu-hint">
-          Não entram no progresso do planejamento atual. Retome conscientemente
-          ou escolha outra data.
+          Ficaram pendentes. Traga para hoje ou escolha outra data, mantendo o
+          progresso já registrado.
         </p>
         <ul>
-          {#each view.old as row (row.id)}<li>
+          {#each view.old as row (row.id)}<li class="overdue-row">
               <div>
                 <strong>{row.title}</strong><small
                   >Planejada para {formatCalendar(row.plannedDate)}{row.value >
                   0
                     ? ' · Progresso parcial preservado'
                     : ''}</small
+                >
+              </div>
+              <div class="old-actions">
+                <Button
+                  disabled={busy}
+                  onclick={() => chooseAction(row, 'reschedule', today)}
+                  >Trazer para hoje</Button
+                >
+                <Button
+                  variant="secondary"
+                  disabled={busy}
+                  onclick={() => chooseAction(row, 'reschedule')}
+                  >Escolher data</Button
                 >
               </div>
               <ContextMenu label={`Organizar atividade antiga ${row.title}`}
@@ -669,6 +690,49 @@
     cursor: pointer;
     color: #e4c78d;
   }
+  .today-secondary li .old-actions {
+    display: flex;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    gap: 8px;
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .today-secondary li.overdue-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .overdue-row :global(.context-trigger) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .priority-option {
+    display: grid;
+    gap: 8px;
+    padding: 10px 8px;
+    color: #dfd5b5;
+    font-size: 0.85rem;
+  }
+  .priority-option select {
+    max-width: 100%;
+    min-width: 0;
+    background: #071416;
+    color: #f1e5c9;
+    border: 1px solid #8f7847;
+    border-radius: 6px;
+    padding: 8px;
+  }
+  @media (max-width: 700px) {
+    .today-secondary li {
+      flex-wrap: wrap;
+    }
+    .today-secondary li > div:first-child {
+      flex-basis: calc(100% - 60px);
+    }
+    .today-secondary li .old-actions {
+      flex: 1 1 100%;
+    }
+  }
 
   .today-view {
     display: grid;
@@ -810,29 +874,6 @@
     flex-wrap: wrap;
     font-size: 0.75rem;
     color: #d5d8c9;
-  }
-  .next-options {
-    position: relative;
-  }
-  .next-options summary {
-    cursor: pointer;
-    font-size: 1.7rem;
-    list-style: none;
-  }
-  .next-options label {
-    position: absolute;
-    right: 0;
-    top: 40px;
-    z-index: 8;
-    width: 240px;
-    padding: 14px;
-    background: #102328;
-    border: 1px solid #a28548;
-    display: grid;
-    font-size: 0.8rem;
-  }
-  .next-options select {
-    width: 100%;
   }
   .day-plan {
     padding: 0 18px 8px;
@@ -1209,7 +1250,7 @@
       grid-column: 2;
       justify-self: start;
     }
-    .next-options {
+    .next-mission :global(.context-trigger) {
       grid-column: 3;
     }
     .next-copy .gold-label {
