@@ -1,3 +1,4 @@
+import { isTaskIconKey } from '$lib/content/visualAssets';
 import { validateRecurrence } from './recurrence';
 import {
   db,
@@ -175,6 +176,8 @@ export function validateBackup(input: unknown): JourneyBackup {
   const areaIds = new Set([0, ...lists.areas.map((row) => row.id)]);
   const projectIds = new Set(lists.projects.map((row) => row.id));
   for (const task of lists.tasks) {
+    if (task.iconKey != null && !isTaskIconKey(task.iconKey))
+      fail('ícone de missão inválido.');
     text(task.title, 'tasks.title');
     if (task.recurrence != null) {
       try {

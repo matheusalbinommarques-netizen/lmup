@@ -7,7 +7,9 @@ import { validateRecurrence } from './recurrence';
 import type { Planning } from './productivityTypes';
 import { validatePlanning } from './productivityRules';
 import { savePlanVersion } from './occurrenceService';
+import { isTaskIconKey } from '$lib/content/visualAssets';
 export type TaskDefinitionInput = Planning & {
+  iconKey?: string | null;
   title: string;
   requestId: string;
   steps?: string[];
@@ -28,6 +30,8 @@ export async function saveTaskDefinition(
   input: TaskDefinitionInput,
 ): Promise<number> {
   const title = input.title.trim();
+  if (input.iconKey != null && !isTaskIconKey(input.iconKey))
+    throw new Error('Escolha um ícone da biblioteca disponível.');
   if (!title || title.length > 160)
     throw new Error('Escreva um título de até 160 caracteres.');
   if (!input.requestId || input.requestId.length > 100)
@@ -124,6 +128,7 @@ export async function saveTaskDefinition(
         .modify({ pinned: false });
     const now = new Date().toISOString();
     const content: Partial<Task> = {
+      ...(input.iconKey !== undefined ? { iconKey: input.iconKey } : {}),
       ...validatePlanning({ ...current, ...input }, steps),
       productivityVersion:
         current && !current.productivityVersion && !input.tracking

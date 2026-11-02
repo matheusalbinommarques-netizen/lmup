@@ -1,555 +1,905 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import {
-    identity,
-    destinations,
-    homeCopy,
-    missionStarters,
-    type MissionStarter,
-  } from '$lib/content/experience';
+  import { goto } from '$app/navigation';
   import { journeyQuery, type JourneySnapshot } from '$services/journeyQuery';
-  import { selectNext, isAvailable, taskSteps } from '$services/journeyService';
-  import { scheduledOn } from '$services/recurrence';
   import { dateKey } from '$services/rewardService';
+  import { ensureOccurrence } from '$services/occurrenceService';
+  import { fraction } from '$services/productivityRules';
   import { getEcoStageForTotalXp } from '$services/ecoConfig';
-  import { sanctuaryContent } from '$lib/content/world';
-  import Button from '$lib/ui/Button.svelte';
-  import Icon from '$lib/ui/Icon.svelte';
-  import QuickCreate from './QuickCreate.svelte';
-  import HeroIdentity from './HeroIdentity.svelte';
-  import WorldProgress from './WorldProgress.svelte';
-  import HomeScene from './HomeScene.svelte';
-  import WorldDestination from './WorldDestination.svelte';
-  import { MAX_LEVEL } from '$services/progression';
-  import { chapterTwoProgress, sanitizePilot } from '$services/rpgPilotService';
-  import { chapterTwoScenes } from '$lib/content/pilot';
-  import '$lib/rpg-theme.css';
-  import './home.css';
-  import RpgTrim from '$lib/ui/RpgTrim.svelte';
-  import TodayPlanning from './TodayPlanning.svelte';
   import { ALL_ACHIEVEMENTS } from '$services/achievementsCatalog';
+  import type { Occurrence } from '$services/productivityTypes';
+  import { paintings } from '$lib/content/visualAssets';
+  import Button from '$lib/ui/Button.svelte';
+  import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
+  import DayProgress from '$lib/ui/DayProgress.svelte';
+  import RpgTrim from '$lib/ui/RpgTrim.svelte';
+  import QuickCreate from './QuickCreate.svelte';
+  import WorldProgress from './WorldProgress.svelte';
+  import HeroIdentity from './HeroIdentity.svelte';
+  import { guardUpdates } from './guardUpdates';
   import {
-    PRIORITY_KEY,
     readPriority,
     savePriority,
-    priorityTask,
+    PRIORITY_KEY,
+    selectNextOccurrence,
+    homeOccurrences,
+    usesTaskExecution,
   } from './homePriority';
   let data = $state<JourneySnapshot>();
-  let error = $state('');
-  let open = $state(false);
-  let starter = $state<MissionStarter>();
-  let greeting = $state('Boa jornada');
-  let pinnedId = $state<number | null>(null);
-  let priorityNotice = $state('');
-  function pin(id: number | null) {
-    pinnedId = id;
-    priorityNotice = savePriority(id)
-      ? ''
-      : 'A prioridade vale nesta visita, mas não foi possível salvá-la neste navegador.';
-  }
-  function createMission(example?: MissionStarter) {
-    starter = example;
-    open = true;
-  }
-  let today = $state(dateKey());
+  let error = $state(''),
+    busy = $state(false),
+    open = $state(false);
+  let now = $state(new Date()),
+    pinned = $state<number | null>(null);
+  const today = $derived(dateKey(now));
+  guardUpdates(() => !data || busy);
   onMount(() => {
-    pinnedId = readPriority();
-    const syncPriority = (event: StorageEvent) => {
-      if (event.key === PRIORITY_KEY || event.key === null)
-        pinnedId = readPriority();
-    };
-    window.addEventListener('storage', syncPriority);
-    const subscription = journeyQuery().subscribe({
+    pinned = readPriority();
+    const sub = journeyQuery().subscribe({
       next: (value) => {
         data = value;
         error = '';
       },
-      error: () => {
-        error =
-          'Não foi possível ler sua jornada. Seus dados foram preservados.';
-      },
+      error: () =>
+        (error =
+          'Não foi possível carregar sua jornada. Seus dados foram preservados.'),
     });
-    const refreshDay = () => {
-      today = dateKey();
-      const hour = new Date().getHours();
-      greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
+    const update = () => (now = new Date());
+    const sync = (event: StorageEvent) => {
+      if (event.key === PRIORITY_KEY || event.key === null)
+        pinned = readPriority();
     };
-    refreshDay();
-    window.addEventListener('focus', refreshDay);
-    const clock = setInterval(refreshDay, 30000);
+    const timer = setInterval(update, 30000);
+    window.addEventListener('focus', update);
+    window.addEventListener('storage', sync);
     return () => {
-      subscription.unsubscribe();
-      window.removeEventListener('storage', syncPriority);
-      window.removeEventListener('focus', refreshDay);
-      clearInterval(clock);
+      sub.unsubscribe();
+      clearInterval(timer);
+      window.removeEventListener('focus', update);
+      window.removeEventListener('storage', sync);
     };
   });
-  const automatic = $derived(
-    data
-      ? selectNext(
-          data.tasks.filter((task) => scheduledOn(task, today)),
-          today,
-        )
-      : null,
+  const greeting = $derived(
+    now.getHours() < 12
+      ? 'Bom dia'
+      : now.getHours() < 18
+        ? 'Boa tarde'
+        : 'Boa noite',
   );
-  const manual = $derived(
-    data ? priorityTask(data.tasks, pinnedId, today) : null,
+  const profileName = $derived(data?.profile?.name?.trim() ?? '');
+  const name = $derived(
+    profileName.toLocaleLowerCase('pt-BR') === 'herói sem nome'
+      ? ''
+      : profileName,
   );
-  const next = $derived(
-    manual
-      ? {
-          task: manual,
-          reason: 'Fixada por você',
-          explanation: 'Você escolheu manter esta missão em destaque.',
-        }
-      : automatic,
+  const todayRows = $derived(
+    homeOccurrences(data?.plannedToday ?? [], data?.tasks ?? [], today),
   );
   $effect(() => {
-    if (data && pinnedId !== null && !manual) pin(null);
-  });
-  const hasVisibleTasks = $derived(
-    data?.tasks.some((task) => !task.archived) ?? false,
-  );
-  const waitingReview = $derived(
-    !next &&
-      (data?.tasks.some((task) => !task.archived && task.reviewEnabled) ??
-        false),
-  );
-  const activeTasks = $derived(
-    data?.tasks.filter((task) => !task.archived) ?? [],
-  );
-  const dayTasks = $derived(
-    activeTasks.filter(
-      (task) =>
-        scheduledOn(task, today) ||
-        data?.events.some(
-          (event) =>
-            event.taskId === task.id &&
-            ['task', 'review'].includes(event.kind) &&
-            !event.reversedAt &&
-            event.date === today,
-        ),
-    ),
-  );
-  const availableToday = (task: (typeof activeTasks)[number]) =>
-    isAvailable(task, new Date(`${today}T12:00:00`));
-  const otherTasks = $derived.by(() => {
-    const remaining = dayTasks.filter(
-      (task) => task.id !== next?.task.id && availableToday(task),
-    );
-    const result: typeof remaining = [];
-    while (remaining.length && result.length < 2) {
-      const candidate = selectNext(remaining, today)?.task;
-      if (!candidate) break;
-      result.push(candidate);
-      remaining.splice(remaining.indexOf(candidate), 1);
+    if (
+      data &&
+      pinned !== null &&
+      selectNextOccurrence(todayRows, pinned)?.taskId !== pinned
+    ) {
+      pinned = null;
+      savePriority(null);
     }
-    return result;
   });
-  const steps = $derived(next ? taskSteps(next.task) : []);
-  const currentStepSession = $derived.by(() => {
-    const task = next?.task;
-    if (!task) return false;
-    if (task.recurrence) return task.occurrenceSession === today;
-    if (!task.reviewEnabled) return true;
-    const base = new Date(task.reviewStartedAt ?? task.createdAt).toISOString();
-    return (
-      task.reviewSession === `${base}:${task.completionRevision ?? 0}` ||
-      (task.reviewSession === base &&
-        ['active', 'paused'].includes(task.executionState ?? ''))
-    );
-  });
-  const doneSteps = $derived(
-    currentStepSession
-      ? steps.filter((step) =>
-          next?.task.completedSubtasks?.includes(step.index),
-        ).length
-      : 0,
+  const planned = $derived(
+    todayRows.filter((row) => {
+      const task = data?.tasks.find((task) => task.id === row.taskId);
+      return (
+        row.value > 0 ||
+        !!task?.plannedDate ||
+        !!task?.recurrence ||
+        row.originDate !== row.plannedDate
+      );
+    }),
   );
-  const status = (task: (typeof activeTasks)[number]) =>
-    task.executionState === 'active'
-      ? 'Em andamento'
-      : task.executionState === 'paused'
-        ? 'Pausada'
-        : task.reviewEnabled
-          ? 'Revisão disponível'
-          : 'Disponível';
-  const stage = $derived(
-    getEcoStageForTotalXp(data?.profile?.totalXpEarned ?? 0).id,
-  );
-  const reward = $derived(next ? data?.rewards[next.task.id!] : null);
-  const achievementStats = $derived(
-    data?.profile ? data.achievementStats : null,
-  );
-  const achievements = $derived(
-    ALL_ACHIEVEMENTS.filter(
-      (item) =>
-        !item.future &&
-        !data?.achievementReceipts.find((row) => row.id === item.id)
-          ?.invalidatedAt &&
-        (!!data?.achievementReceipts.some((row) => row.id === item.id) ||
-          (!!achievementStats && item.condition(achievementStats))),
+  const next = $derived(
+    selectNextOccurrence(
+      todayRows,
+      pinned ?? data?.tasks.find((task) => task.pinned)?.id ?? null,
     ),
   );
   const completed = $derived(
-    dayTasks.filter(
-      (task) =>
-        !availableToday(task) &&
-        (!!task.completed ||
-          task.status === 'completed' ||
-          task.lastOccurrenceDate === today ||
-          task.lastReviewDate === today),
+    planned.filter((row) => row.status === 'completed').length,
+  );
+  const remaining = $derived(
+    planned.filter((row) => row.id !== next?.id && row.status !== 'completed'),
+  );
+  const received = $derived(
+    (data?.events ?? [])
+      .filter(
+        (event) =>
+          event.date === today &&
+          !event.reversedAt &&
+          ['task', 'review', 'project'].includes(event.kind),
+      )
+      .reduce(
+        (sum, event) => ({
+          xp: sum.xp + event.reward.xp,
+          gold: sum.gold + event.reward.gold,
+        }),
+        { xp: 0, gold: 0 },
+      ),
+  );
+  const earned = $derived(
+    ALL_ACHIEVEMENTS.filter(
+      (item) =>
+        !item.future &&
+        data?.achievementReceipts.some(
+          (receipt) => receipt.id === item.id && !receipt.invalidatedAt,
+        ),
     ),
   );
-  const projects = $derived(
-    data?.projects.filter((project) =>
-      ['planejando', 'em_andamento', 'pausado'].includes(project.status),
-    ) ?? [],
-  );
-  const pilot = $derived(sanitizePilot(data?.profile?.rpgPilot));
-  const chapter = $derived(
-    chapterTwoProgress(
-      pilot,
-      data?.profile?.totalXpEarned ?? 0,
-      data?.profile?.rewardDebt?.xp ?? 0,
+  const nextAchievement = $derived(
+    ALL_ACHIEVEMENTS.find(
+      (item) =>
+        !item.future &&
+        !earned.some((achievement) => achievement.id === item.id),
     ),
   );
-  const adventureStatus = $derived(
-    pilot.scene < 6
-      ? pilot.scene === 0
-        ? 'Capítulo 1 · ainda por descobrir'
-        : `Capítulo 1 · cena ${pilot.scene + 1} de 6`
-      : pilot.chapterTwoUnlocked
-        ? (pilot.chapterTwoScene ?? 0) >= chapterTwoScenes.length
-          ? 'Demonstração concluída'
-          : `Capítulo 2 · cena ${(pilot.chapterTwoScene ?? 0) + 1} de ${chapterTwoScenes.length}`
-        : pilot.chapterOneEndXp === undefined
-          ? 'Capítulo 1 concluído · ative o próximo marco na aventura'
-          : chapter.available
-            ? 'Capítulo 2 disponível'
-            : `Capítulo 1 concluído · faltam ${chapter.remaining} XP para o capítulo 2`,
+  const stage = $derived(
+    getEcoStageForTotalXp(data?.profile?.totalXpEarned ?? 0),
   );
+  const cards = [
+    {
+      title: 'Aventura',
+      icon: 'aventura',
+      image: paintings.adventure,
+      href: '/aventura',
+      copy: 'Continue a narrativa e descubra o próximo capítulo.',
+    },
+    {
+      title: 'Refúgio',
+      icon: 'refugio',
+      image: paintings.refuge,
+      href: '/refugio',
+      copy: 'Cuide do seu acampamento e acompanhe sua evolução.',
+    },
+    {
+      title: 'Projetos',
+      icon: 'projetos_navegacao',
+      image: paintings.projects,
+      href: '/projetos',
+      copy: 'Planeje e acompanhe seus projetos de longo prazo.',
+    },
+    {
+      title: 'Mapa',
+      icon: 'mapa',
+      image: paintings.map,
+      href: '/refugio',
+      copy: 'Visite as paisagens do Refúgio. Mapa explorável em preparação.',
+    },
+  ];
+  const taskIcon = (row: Occurrence) =>
+    data?.tasks.find((task) => task.id === row.taskId)?.iconKey;
+  async function execute(row: Occurrence) {
+    if (busy) return;
+    busy = true;
+    try {
+      const task = data?.tasks.find((task) => task.id === row.taskId);
+      if (task && usesTaskExecution(task, row, today)) {
+        await goto('/missao/' + row.taskId);
+        return;
+      }
+      await ensureOccurrence(row.taskId, row.originDate, row.reconstructed);
+      await goto('/ocorrencia/' + encodeURIComponent(row.id));
+    } catch (cause) {
+      error =
+        cause instanceof Error
+          ? cause.message
+          : 'Não foi possível abrir a ocorrência.';
+    } finally {
+      busy = false;
+    }
+  }
+  function setPriority(value: string) {
+    pinned = value ? Number(value) : null;
+    if (!savePriority(pinned))
+      error =
+        'Sua escolha vale nesta visita, mas não pôde ser salva neste navegador.';
+  }
 </script>
 
-<svelte:head><title>{destinations.today} · {identity.name}</title></svelte:head>
-<div class="home-world rpg-home">
-  {#if error}
-    <div role="alert" class="journey-error">
-      {error}<a class="journey-link" href="/" data-sveltekit-reload
-        >Tentar novamente</a
-      >
-    </div>
-  {:else if !data}
-    <div class="rpg-loading" role="status">
-      <Icon name="world" size={36} />Abrindo sua jornada…
-    </div>
-  {:else}
-    <TodayPlanning />
-    <div class="rpg-top">
-      <section
-        class="rpg-world-panel rpg-frame"
-        aria-label="Personagem e mundo"
-      >
-        <RpgTrim />
-        <header class="rpg-heading">
-          <div>
-            <p class="lmu-eyebrow">Level Me Up · Seu mundo, sua jornada</p>
-            <h1>
-              {data?.profile
-                ? `${greeting}, ${data.profile.name}.`
-                : 'Hoje, no seu mundo.'}
-            </h1>
-            <p class="rpg-heading-note">
-              O que você faz hoje deixa marcas no seu mundo.
-            </p>
-          </div>
-        </header>
-        <HomeScene companion={data.companion} />
-        <div class="rpg-character-status">
-          {#if data.profile}<HeroIdentity
-              profile={data.profile}
-              owned={data.owned}
-              achievements={achievements.map((item) => item.title)}
-              compact
-            />{:else}<p role="alert">
-              Seu perfil não está disponível. Seus dados foram preservados. <a
-                href="/"
-                data-sveltekit-reload>Tentar novamente</a
-              >
-            </p>{/if}
-        </div>
-      </section>
-      <section
-        class="rpg-missions rpg-frame"
-        aria-labelledby="rpg-missions-title"
-      >
-        <RpgTrim />
-        <header class="rpg-missions-heading">
-          <Icon name="today" size={25} />
-          <h2 id="rpg-missions-title">Suas missões</h2>
-          <span>{completed.length} de {dayTasks.length} concluídas hoje</span>
-        </header>
-        <progress
-          class="rpg-day-progress"
-          max={dayTasks.length || 1}
-          value={completed.length}
-          aria-label="Missões concluídas hoje"
-        ></progress>
-        <div
-          class="rpg-mission-content"
-          role="region"
-          aria-label="Lista de missões"
-        >
-          {#if next}
-            <article class="rpg-priority" aria-labelledby="priority-title">
-              <div class="rpg-priority-heading">
-                <span class="rpg-priority-label"
-                  ><Icon name="spark" size={19} />Missão prioritária</span
-                >
-                <span class="rpg-priority-mode"
-                  >{manual ? 'Manual' : 'Automática'}</span
-                >
-                <button
-                  type="button"
-                  class="rpg-pin"
-                  aria-label={manual
-                    ? 'Voltar à prioridade automática'
-                    : 'Fixar ' + next.task.title + ' como prioritária'}
-                  aria-pressed={!!manual}
-                  onclick={() => pin(manual ? null : next!.task.id!)}
-                  ><Icon name="spark" size={18} /></button
-                >
-              </div>
-              <div class="rpg-priority-body">
-                <span class="rpg-priority-art"
-                  ><Icon name="missions" size={32} /></span
-                >
-                <div class="rpg-priority-copy">
-                  <h3 id="priority-title">{next.task.title}</h3>
-                  <span class="rpg-priority-status">{status(next.task)}</span>
-                  <p>
-                    {['active', 'paused'].includes(
-                      next.task.executionState ?? '',
-                    )
-                      ? homeCopy.resume
-                      : next.explanation}
-                  </p>
-                </div>
-                {#if reward}<span class="rpg-task-reward"
-                    >+{reward.xp} XP<span class="sr-only">
-                      previstos</span
-                    ></span
-                  >{/if}
-              </div>
-              {#if steps.length}<progress
-                  max={steps.length}
-                  value={doneSteps}
-                  aria-label="Etapas da missão prioritária"
-                ></progress>{/if}
-              <a
-                class="lmu-button lmu-button--primary"
-                href={`/missao/${next.task.id}`}
-                >{['active', 'paused'].includes(next.task.executionState ?? '')
-                  ? 'Continuar missão'
-                  : 'Começar missão'}<Icon name="arrow" size={19} /></a
-              >
-            </article>
-          {/if}
-          {#if !next}
-            <div
-              class="rpg-empty"
-              class:rpg-empty-compact={data.tasks.length > 0}
-            >
-              <Icon name={data.tasks.length ? 'check' : 'missions'} size={24} />
-              <h2>
-                {!data.tasks.length
-                  ? homeCopy.firstTitle
-                  : waitingReview
-                    ? homeCopy.waitingTitle
-                    : hasVisibleTasks
-                      ? homeCopy.clearTitle
-                      : homeCopy.archivedTitle}
-              </h2>
-              <p class="lmu-muted">
-                {!data.tasks.length
-                  ? homeCopy.firstDescription
-                  : waitingReview
-                    ? homeCopy.waitingDescription
-                    : hasVisibleTasks
-                      ? homeCopy.clearDescription
-                      : homeCopy.archivedDescription}
-              </p>
-              {#if !data.tasks.length}
-                <Button onclick={() => createMission()}
-                  >Criar minha primeira missão<Icon
-                    name="plus"
-                    size={16}
-                  /></Button
-                >
-                <details class="rpg-starters">
-                  <summary>{homeCopy.examplesTitle}</summary>
-                  <p class="lmu-hint">{homeCopy.examplesHint}</p>
-                  <div class="journey-starter-list">
-                    {#each missionStarters as example (example.key)}<Button
-                        variant="secondary"
-                        onclick={() => createMission(example)}
-                        >{example.label}<Icon name="arrow" size={16} /></Button
-                      >{/each}
-                  </div>
-                </details>
-              {:else}<a class="journey-link" href="/progresso"
-                  >Rever meu progresso</a
-                >{/if}
-            </div>
-          {/if}
-          {#if otherTasks.length}
-            <div class="rpg-other-heading">
-              <Icon name="missions" size={20} />
-              <h3>Outras missões</h3>
-            </div>
-            <ul class="rpg-task-list">
-              {#each otherTasks as task (task.id)}
-                <li>
-                  <a href={`/missao/${task.id}`}>
-                    <span class="rpg-task-mark"
-                      ><Icon name="missions" size={22} /></span
-                    >
-                    <span class="rpg-task-copy"
-                      ><strong>{task.title}</strong><small>{status(task)}</small
-                      ></span
-                    >
-                    {#if data.rewards[task.id!]}<span class="rpg-task-reward"
-                        >+{data.rewards[task.id!].xp} XP<span class="sr-only">
-                          previstos</span
-                        ></span
-                      >{/if}
-                    <Icon name="arrow" size={16} />
-                  </a>
-                  <button
-                    type="button"
-                    class="rpg-pin"
-                    aria-label={`Fixar ${task.title} como prioritária`}
-                    onclick={() => pin(task.id!)}
-                    ><Icon name="spark" size={18} /></button
-                  >
-                </li>
-              {/each}
-            </ul>
-          {/if}
-        </div>
-        {#if priorityNotice}<p class="rpg-priority-notice" role="status">
-            {priorityNotice}
-          </p>{/if}
-        <footer class="rpg-missions-footer">
-          <a class="lmu-button lmu-button--secondary" href="/missoes"
-            ><Icon name="missions" size={18} />Ver todas</a
-          >
-          <Button aria-label="Nova missão" onclick={() => createMission()}
-            ><Icon name="plus" size={18} />Nova missão</Button
-          >
-        </footer>
-      </section>
-    </div>
-    <div class="rpg-destinations" aria-label="Explorar seu mundo">
-      <WorldDestination
-        title="Aventura"
-        icon="swords"
-        image="/art/home-rpg/adventure-small.webp"
-        detail={adventureStatus}
-        href="/aventura"
-        action={pilot.scene > 0 ? 'Continuar aventura' : 'Entrar na aventura'}
-      >
-        {#if pilot.scene === 6 && pilot.chapterOneEndXp !== undefined && !pilot.chapterTwoUnlocked}<progress
-            value={Math.min(chapter.required, chapter.earned)}
-            max={chapter.required}
-            aria-label="XP para o capítulo 2"
-          ></progress><small
-            >{Math.min(chapter.required, chapter.earned)} / {chapter.required} XP</small
-          >{:else}<small>O outro lado da ponte · experiência narrativa</small
-          >{/if}
-      </WorldDestination>
-      <WorldDestination
-        title="Refúgio"
-        icon="world"
-        image={sanctuaryContent[stage].pilot}
-        alt={`Seu ambiente no estágio ${sanctuaryContent[stage].label}`}
-        detail={`Estágio ${stage} · ${sanctuaryContent[stage].label}`}
-        href="/refugio"
-        action="Acessar refúgio"
-        ><small>{sanctuaryContent[stage].description}</small></WorldDestination
-      >
-      <WorldDestination
-        title="Projetos"
-        icon="projects"
-        image="/art/home-rpg/planning-small.webp"
-        detail={projects.length
-          ? `${projects.length} ${projects.length === 1 ? 'projeto em curso' : 'projetos em curso'}`
-          : 'Seu próximo projeto começa com uma ideia.'}
-        href="/projetos"
-        action="Ver projetos"
-      >
-        {#if projects.length}<a
-            class="rpg-project-name"
-            href={`/projetos/${projects[0].id}`}
-            >{projects[0].name}<span
-              >{projects[0].status === 'pausado'
-                ? 'Pausado'
-                : projects[0].status === 'planejando'
-                  ? 'Planejando'
-                  : 'Em andamento'}</span
-            ></a
-          >{:else}<small>Organize o que você quer construir.</small>{/if}
-      </WorldDestination>
-      <WorldDestination
-        id="home-map"
-        title="Mapa"
-        icon="map"
-        image="/art/home-rpg/atlas.webp"
-        detail="Um atlas ainda por explorar."
-        href="/refugio"
-        action="Ver lugares do refúgio"
-        ><small
-          >Mapa explorável em preparação. As paisagens do refúgio já estão
-          disponíveis.</small
-        ></WorldDestination
-      >
-    </div>
-    <section
-      class="rpg-horizons rpg-frame rpg-frame--secondary"
-      aria-label="Próximos marcos"
-    >
-      <RpgTrim />
-      <div class="rpg-horizons-title">
-        <Icon name="spark" size={25} />
-        <h2>O caminho adiante</h2>
-        <a href="/progresso">Ver progresso <Icon name="arrow" size={14} /></a>
+<svelte:head><title>Hoje · Level Me Up</title></svelte:head>
+<div class="today-view">
+  {#if error}<p class="journey-error" role="alert">
+      {error} <a href="/" data-sveltekit-reload>Tentar novamente</a>
+    </p>{/if}
+  {#if !data}<p role="status">Abrindo sua jornada…</p>{:else}
+    <header class="today-hero">
+      <img
+        src={paintings.vedria}
+        alt="Viajante contemplando Vèdria ao pôr do sol"
+        fetchpriority="high"
+      />
+      <div class="hero-copy">
+        <p class="lmu-eyebrow">Level Me Up · Seu mundo, sua jornada</p>
+        <h1>{greeting}{name ? `, ${name}` : ''}.</h1>
+        <p>Seu plano de hoje, em um só lugar.</p>
       </div>
-      <div class="rpg-horizons-grid">
-        <WorldProgress totalXp={data.profile?.totalXpEarned ?? 0} />
-        <div class="rpg-level-goal">
-          <p class="lmu-eyebrow">Seu personagem</p>
-          <h3>
-            {(data.profile?.level ?? 0) >= MAX_LEVEL
-              ? 'Nível máximo alcançado'
-              : `Rumo ao nível ${(data.profile?.level ?? 1) + 1}`}
-          </h3>
-          <p>
-            {(data.profile?.level ?? 0) >= MAX_LEVEL
-              ? 'Cada novo passo continua registrado.'
-              : `${Math.max(0, (data.profile?.xpNext ?? 0) - (data.profile?.xpCurrent ?? 0))} XP para a próxima evolução.`}
-          </p>
-          <a href="/perfil">Ver personagem <Icon name="arrow" size={14} /></a>
-        </div>
-        <a class="rpg-earned" href="/trofeus"
-          ><Icon name="spark" size={28} /><span
-            ><strong
-              >{achievements.length}
-              {achievements.length === 1 ? 'conquista' : 'conquistas'}</strong
-            ><small>Marcas do que você já construiu.</small></span
-          ><Icon name="arrow" size={15} /></a
-        >
+      <span class="today-date"
+        ><ApprovedIcon name="agenda" size={26} />{now.toLocaleDateString(
+          'pt-BR',
+          { weekday: 'short', day: '2-digit', month: 'short' },
+        )}</span
+      >
+      <a class="hero-profile" href="/perfil"
+        >Seu personagem · Nível {data.profile?.level ?? 1}{data.companion
+          ? ` · ${data.companion.name}`
+          : ''}</a
+      >
+    </header>
+    <div class="today-main">
+      <div class="today-plan">
+        <section class="next-mission rpg-frame" aria-labelledby="next-title">
+          <ApprovedIcon name={next ? taskIcon(next) : 'missions'} size={56} />
+          <div class="next-copy">
+            <p class="gold-label">Próxima missão</p>
+            <h2 id="next-title">
+              {next?.title ??
+                (planned.length
+                  ? 'Seu plano está em dia'
+                  : 'Qual será seu primeiro passo?')}
+            </h2>
+            {#if next}<p class="mission-meta">
+                <ApprovedIcon name="horario" size={22} />{next.estimatedMinutes
+                  ? `${next.estimatedMinutes} min`
+                  : 'Tempo livre'} · {next.plannedTime ?? 'Horário flexível'} · {next.taskId ===
+                pinned
+                  ? 'Escolhida por você'
+                  : ['active', 'paused', 'partial'].includes(next.status)
+                    ? 'Em andamento'
+                    : planned.some((row) => row.id === next.id)
+                      ? 'Planejada para hoje'
+                      : 'Sugestão flexível'}
+              </p>{:else}<p>
+                Escolha uma missão para começar sua jornada de hoje.
+              </p>{/if}
+          </div>
+          {#if next}<Button disabled={busy} onclick={() => execute(next)}
+              ><ApprovedIcon name="comecar" size={28} />{[
+                'active',
+                'paused',
+                'partial',
+              ].includes(next.status)
+                ? 'Continuar'
+                : 'Começar'}</Button
+            >{:else}<Button onclick={() => (open = true)}>Nova missão</Button
+            >{/if}
+          <details class="next-options">
+            <summary aria-label="Escolher próxima missão">⋯</summary><label
+              >Manter em destaque<select
+                value={pinned ?? ''}
+                onchange={(event) => setPriority(event.currentTarget.value)}
+                ><option value="">Seleção automática</option
+                >{#each todayRows.filter((row) => row.status !== 'completed') as row (row.id)}<option
+                    value={row.taskId}
+                    >{row.title} · {row.plannedTime ?? 'Flexível'}</option
+                  >{/each}</select
+              ></label
+            >
+          </details>
+        </section>
+        <section class="day-plan rpg-frame" aria-labelledby="plan-title">
+          <header>
+            <h2 id="plan-title">
+              Plano do dia <small>({planned.length} missões)</small>
+            </h2>
+            <a href="/missoes?view=agenda&mode=day"
+              ><ApprovedIcon name="agenda" size={24} />Ver agenda →</a
+            >
+          </header>
+          {#if remaining.length}<ul>
+              {#each remaining.slice(0, 3) as row (row.id)}<li>
+                  <span class="time-chip">{row.plannedTime ?? 'Flex.'}</span
+                  ><ApprovedIcon name={taskIcon(row)} size={32} />
+                  <div>
+                    <button class="text-action" onclick={() => execute(row)}
+                      >{row.title}</button
+                    ><small
+                      >{row.estimatedMinutes
+                        ? `${row.estimatedMinutes} min · `
+                        : ''}{data.areas.find((area) => area.id === row.areaId)
+                        ?.nome ?? 'Geral'}{row.value > 0
+                        ? ` · ${Math.round(fraction(row) * 100)}%`
+                        : ''}</small
+                    >
+                  </div>
+                  <Button
+                    variant="quiet"
+                    disabled={busy}
+                    aria-label={`Executar ${row.title}`}
+                    onclick={() => execute(row)}>→</Button
+                  >
+                </li>{/each}
+            </ul>{:else}<p class="empty-plan">
+              {planned.length
+                ? 'Nenhuma outra missão pendente. Seu progresso está registrado.'
+                : 'Seu dia ainda está livre. Adicione uma missão para montar seu plano.'}
+            </p>{/if}
+          <div class="day-plan-footer">
+            {#if next}<Button variant="quiet" onclick={() => (open = true)}
+                ><ApprovedIcon name="criar" size={22} />Nova missão</Button
+              >{/if}
+            <a href="/missoes">Ver todas as missões</a>
+          </div>
+        </section>
+      </div>
+      <aside class="today-aside">
+        <section class="rpg-frame daily-summary">
+          <h2>Progresso do dia</h2>
+          <div>
+            <DayProgress {completed} total={planned.length} />
+            <div class="daily-rewards">
+              <span><ApprovedIcon name="xp" size={32} />+{received.xp} XP</span
+              ><span
+                ><ApprovedIcon name="ouro" size={32} />+{received.gold} Ouro</span
+              ><small>Recebidos hoje</small>
+            </div>
+          </div>
+        </section>
+        <section class="rpg-frame upcoming-achievement">
+          <ApprovedIcon name="conquista" size={48} />
+          <div>
+            <p class="gold-label">Próxima conquista</p>
+            <strong>{nextAchievement?.title ?? 'Suas conquistas'}</strong>
+            <p>
+              {nextAchievement?.description ?? 'Veja as marcas da sua jornada.'}
+            </p>
+            <a href="/trofeus">Ver conquistas →</a>
+          </div>
+        </section>
+      </aside>
+    </div>
+    <nav class="world-cards" aria-label="Explore seu mundo">
+      {#each cards as card (card.href + card.title)}<a
+          class="rpg-frame world-card"
+          href={card.href}
+          id={card.title === 'Mapa' ? 'home-map' : undefined}
+          ><img src={card.image} alt="" loading="lazy" />
+          <div>
+            <h2><ApprovedIcon name={card.icon} size={32} />{card.title}</h2>
+            <p>{card.copy}</p>
+            <span class="card-arrow" aria-hidden="true">→</span>
+          </div></a
+        >{/each}
+    </nav>
+    <section class="rpg-frame horizons" aria-label="O caminho adiante">
+      <RpgTrim />
+      <div class="horizon-title">
+        <ApprovedIcon name="evolucao" size={48} />
+        <h2>O caminho adiante</h2>
+        <p>Seu progresso no mundo e na jornada pessoal.</p>
+      </div>
+      <WorldProgress totalXp={data.profile?.totalXpEarned ?? 0} />
+      <div class="horizon-hero">
+        {#if data.profile}<HeroIdentity
+            profile={data.profile}
+            owned={data.owned}
+            achievements={earned.map((item) => item.title)}
+            compact
+          />{/if}
+      </div>
+      <div>
+        <ApprovedIcon name="conquista" size={34} />
+        <p class="gold-label">Suas conquistas</p>
+        <h3>{earned.length} conquistadas</h3>
+        <p>Seu mundo: {stage.label}</p>
+        <a href="/trofeus">Ver conquistas →</a>
       </div>
     </section>
-    <QuickCreate bind:open snapshot={data} {starter} />
+    <QuickCreate bind:open snapshot={data} />
   {/if}
 </div>
+
+<style>
+  .today-view {
+    display: grid;
+    gap: 16px;
+    min-width: 0;
+  }
+  .today-hero {
+    position: relative;
+    height: 240px;
+    overflow: hidden;
+    border-radius: 10px;
+    border: 1px solid #927143;
+  }
+  .today-hero > img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 55% 45%;
+  }
+  .today-hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(90deg, #02090bb8, transparent 65%),
+      linear-gradient(0deg, #02090b80, transparent 40%);
+    pointer-events: none;
+  }
+  .hero-copy {
+    position: absolute;
+    z-index: 1;
+    top: 28px;
+    left: 28px;
+    max-width: 65%;
+  }
+  .hero-copy .lmu-eyebrow {
+    color: #ffe19a;
+    font-size: 0.66rem;
+  }
+  .hero-copy h1 {
+    font: 500 clamp(2.1rem, 3.6vw, 3.5rem)/1.08 var(--lmu-display);
+    color: #fff1d6;
+    margin: 10px 0;
+  }
+  .hero-copy > p:last-child {
+    font: 500 1.2rem var(--lmu-display);
+    color: #fff3da;
+  }
+  .today-date {
+    position: absolute;
+    right: 18px;
+    top: 16px;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #061115ee;
+    border: 1px solid #9e7b3e;
+    border-radius: 6px;
+    padding: 0.4rem 0.7rem;
+    font-size: 0.8rem;
+  }
+  .hero-profile {
+    position: absolute;
+    left: 28px;
+    bottom: 14px;
+    z-index: 1;
+    font-size: 0.7rem;
+    color: #d7dfcf;
+    text-decoration: none;
+  }
+  .today-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1.85fr) minmax(285px, 1fr);
+    gap: 16px;
+  }
+  .today-plan,
+  .today-aside {
+    display: grid;
+    gap: 14px;
+  }
+  .next-mission {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+    background:
+      linear-gradient(90deg, #2f2418f0, #111916df),
+      url('/art/approved/paintings/04_Cartao_Projetos.webp') center/cover;
+  }
+  .next-copy {
+    flex: 1;
+    min-width: 0;
+  }
+  .gold-label {
+    color: #f0d189;
+    font: 600 1.2rem var(--lmu-display);
+    margin: 0 0 3px;
+  }
+  .next-copy h2 {
+    font: 500 2rem/1.05 var(--lmu-display);
+    color: #fff2d9;
+    margin: 5px 0 10px;
+  }
+  .mission-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    font-size: 0.75rem;
+    color: #d5d8c9;
+  }
+  .next-options {
+    position: relative;
+  }
+  .next-options summary {
+    cursor: pointer;
+    font-size: 1.7rem;
+    list-style: none;
+  }
+  .next-options label {
+    position: absolute;
+    right: 0;
+    top: 40px;
+    z-index: 8;
+    width: 240px;
+    padding: 14px;
+    background: #102328;
+    border: 1px solid #a28548;
+    display: grid;
+    font-size: 0.8rem;
+  }
+  .next-options select {
+    width: 100%;
+  }
+  .day-plan {
+    padding: 0 18px 8px;
+  }
+  .day-plan > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid #61705b66;
+  }
+  .day-plan h2,
+  .today-aside h2 {
+    font: 500 1.55rem var(--lmu-display);
+    color: #f2dda9;
+  }
+  .day-plan h2 small {
+    font-size: 0.85rem;
+  }
+  .day-plan a {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #edcb83;
+    text-decoration: none;
+    font-size: 0.8rem;
+  }
+  .day-plan ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .day-plan li {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-bottom: 1px solid #55624e55;
+    padding: 7px 0;
+  }
+  .day-plan li > div {
+    flex: 1;
+    min-width: 0;
+  }
+  .day-plan li small {
+    display: block;
+    font-size: 0.72rem;
+    color: #a7b9ab;
+  }
+  .time-chip {
+    background: #26342b66;
+    border: 1px solid #5c6b5144;
+    border-radius: 6px;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.82rem;
+    min-width: 58px;
+    text-align: center;
+  }
+  .text-action {
+    border: 0;
+    background: none;
+    color: #efecdf;
+    font: 600 1.1rem var(--lmu-display);
+    padding: 0;
+    text-align: left;
+  }
+  .day-plan li :global(.lmu-button) {
+    min-height: 34px;
+    min-width: 34px;
+    padding: 4px;
+  }
+  .day-plan-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .day-plan-footer :global(.lmu-button) {
+    font-size: 0.75rem;
+    min-height: 32px;
+    padding: 0.3rem;
+  }
+  .empty-plan {
+    padding: 18px 0;
+    color: #aebfab;
+    font-size: 0.85rem;
+  }
+  .daily-summary {
+    padding: 14px 18px;
+  }
+  .daily-summary > div {
+    display: flex;
+    gap: 22px;
+    justify-content: space-evenly;
+    align-items: center;
+    margin-top: 12px;
+  }
+  .daily-rewards {
+    display: grid;
+    gap: 6px;
+    border-left: 1px solid #8d7d4b77;
+    padding-left: 20px;
+  }
+  .daily-rewards > span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+  }
+  .daily-rewards small {
+    color: #98ae9f;
+    font-size: 0.65rem;
+  }
+  .upcoming-achievement {
+    display: flex;
+    gap: 12px;
+    padding: 16px;
+  }
+  .upcoming-achievement > div {
+    min-width: 0;
+  }
+  .upcoming-achievement strong {
+    display: block;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+    font: 500 1.3rem/1.25 var(--lmu-display);
+  }
+  .upcoming-achievement p:not(.gold-label) {
+    font-size: 0.75rem;
+    color: #afbfad;
+    margin: 5px 0;
+  }
+  .upcoming-achievement a {
+    color: #efd399;
+    font-size: 0.75rem;
+  }
+  .world-cards {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .world-card {
+    overflow: hidden;
+    display: block;
+    text-decoration: none;
+  }
+  .world-card > img {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+    object-position: center 48%;
+    display: block;
+  }
+  .world-card > div {
+    position: relative;
+    padding: 10px 14px 14px;
+    min-height: 105px;
+  }
+  .world-card h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font: 500 1.7rem var(--lmu-display);
+    color: #f5e9c9;
+  }
+  .world-card p {
+    font-size: 0.77rem;
+    color: #bdcdbf;
+    line-height: 1.5;
+    max-width: 90%;
+    margin-top: 5px;
+  }
+  .card-arrow {
+    position: absolute;
+    right: 12px;
+    top: 18px;
+    color: #f1ce82;
+  }
+  .horizons {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr 1fr 0.9fr;
+    padding: 22px;
+    gap: 24px;
+  }
+  .horizons > div,
+  .horizons :global(.world-progress) {
+    min-width: 0;
+    border-left: 1px solid #897b4a77;
+    padding-left: 20px;
+  }
+  .horizons > .horizon-title {
+    border: 0;
+    padding: 0;
+  }
+  .horizon-title h2 {
+    font: 500 1.9rem var(--lmu-display);
+    color: #f4e4b9;
+  }
+  .horizons h3 {
+    font: 500 1.4rem var(--lmu-display);
+    color: #eee4c8;
+  }
+  .horizons p:not(.gold-label) {
+    font-size: 0.75rem;
+    color: #afc0ad;
+    margin: 6px 0;
+  }
+  .horizons a {
+    font-size: 0.75rem;
+    color: #edcc86;
+  }
+  .horizons :global(progress) {
+    width: 100%;
+    margin: 8px 0;
+  }
+  .horizons :global(.world-progress h2) {
+    font-size: 1.4rem;
+  }
+  .horizons :global(.world-progress .lmu-eyebrow) {
+    font-size: 0.65rem;
+  }
+  .horizons :global(.world-progress a) {
+    min-height: 28px;
+  }
+  .horizons .gold-label {
+    font-size: 0.95rem;
+  }
+  @media (max-width: 1100px) {
+    .today-main {
+      grid-template-columns: 1.6fr 1fr;
+    }
+    .next-mission {
+      flex-wrap: wrap;
+    }
+    .next-mission > :global(.lmu-button) {
+      margin-left: auto;
+    }
+    .horizons {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .world-cards {
+      gap: 10px;
+    }
+    .world-card h2 {
+      font-size: 1.4rem;
+    }
+  }
+  @media (max-width: 760px) {
+    .today-hero {
+      height: 280px;
+    }
+    .hero-copy {
+      max-width: 90%;
+      left: 18px;
+      top: 54px;
+    }
+    .hero-copy h1 {
+      font-size: 2.3rem;
+    }
+    .today-hero > img {
+      object-position: 76% center;
+    }
+    .today-date {
+      font-size: 0.7rem;
+      padding: 0.25rem 0.4rem;
+    }
+    .today-main {
+      grid-template-columns: 1fr;
+    }
+    .today-aside {
+      grid-template-columns: 1fr;
+    }
+    .daily-summary > div {
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .daily-rewards {
+      border: 0;
+      padding: 0;
+    }
+    .daily-summary {
+      padding: 14px;
+    }
+    .upcoming-achievement {
+      align-items: flex-start;
+    }
+    .next-copy h2 {
+      font-size: 1.8rem;
+    }
+    .next-mission {
+      gap: 10px;
+      padding: 16px;
+    }
+    .world-cards {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .horizons {
+      gap: 18px;
+      padding: 18px;
+    }
+    .horizons > div,
+    .horizons :global(.world-progress) {
+      padding-left: 0;
+      border: 0;
+    }
+    .day-plan > header {
+      flex-wrap: wrap;
+    }
+    .day-plan li {
+      gap: 8px;
+    }
+    .day-plan h2 {
+      font-size: 1.35rem;
+    }
+    .world-card > img {
+      height: 110px;
+    }
+    .horizons .horizon-title {
+      grid-column: 1/-1;
+    }
+    .world-card > div {
+      padding: 10px;
+      min-height: 120px;
+    }
+    .day-plan-footer {
+      flex-wrap: wrap;
+    }
+    .today-aside h2 {
+      font-size: 1.3rem;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .next-mission {
+      display: grid;
+      grid-template-columns: 48px minmax(0, 1fr) auto;
+      align-items: start;
+    }
+    .next-mission > .next-copy {
+      grid-column: 2/4;
+    }
+    .next-mission > .next-copy h2 {
+      font-size: 1.7rem;
+    }
+    .next-mission :global(.lmu-button) {
+      grid-column: 2;
+      justify-self: start;
+    }
+    .next-options {
+      grid-column: 3;
+    }
+    .next-copy .gold-label {
+      font-size: 1rem;
+    }
+    .mission-meta {
+      font-size: 0.68rem;
+    }
+  }
+  .horizons .horizon-hero :global(.hero-details) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .horizons .horizon-hero :global(.hero-resources) {
+    grid-column: 1;
+    grid-row: auto;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 0.3rem 0.8rem;
+  }
+  @media (max-width: 760px) {
+    .horizons {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>

@@ -1,3 +1,4 @@
+import approvedIcons from '../src/lib/content/approved-icons.json' with { type: 'json' };
 // A deterministic manifest for this app's static assets; no globbing dependency.
 // Personal data never enters this generator: only the compiled build/ tree is read.
 import { createHash } from 'node:crypto';
@@ -6,6 +7,19 @@ import { join, relative, sep } from 'node:path';
 
 const limit = 3 * 1024 * 1024;
 const exact = new Set([
+  ...approvedIcons.flatMap(({ key }) =>
+    [64, 128].map((size) => `art/approved/icons/${key}/${size}.png`),
+  ),
+  ...['Hoje', 'Missoes', 'Recuperar', 'XP'].flatMap((key) =>
+    [64, 128].map((size) => `art/approved/navigation/${key}_${size}.png`),
+  ),
+  ...[
+    '01_Hoje_Vedria_panorama',
+    '02_Cartao_Aventura',
+    '03_Cartao_Refugio',
+    '04_Cartao_Projetos',
+    '05_Cartao_Mapa',
+  ].map((key) => `art/approved/paintings/${key}.webp`),
   '200.html',
   'manifest.webmanifest',
   'favicon-shield.ico',

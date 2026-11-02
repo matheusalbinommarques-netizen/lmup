@@ -1,0 +1,214 @@
+[
+  {
+    "key": "agenda",
+    "label": "Agenda"
+  },
+  {
+    "key": "alimentacao",
+    "label": "Alimentação"
+  },
+  {
+    "key": "atrasada",
+    "label": "Atrasada"
+  },
+  {
+    "key": "aventura",
+    "label": "Aventura"
+  },
+  {
+    "key": "bem_estar",
+    "label": "Bem-estar"
+  },
+  {
+    "key": "buscar",
+    "label": "Buscar"
+  },
+  {
+    "key": "bonus",
+    "label": "Bônus"
+  },
+  {
+    "key": "comecar",
+    "label": "Começar"
+  },
+  {
+    "key": "companheiros",
+    "label": "Companheiros"
+  },
+  {
+    "key": "concluida",
+    "label": "Concluída"
+  },
+  {
+    "key": "conquista",
+    "label": "Conquista"
+  },
+  {
+    "key": "cozinha",
+    "label": "Cozinha"
+  },
+  {
+    "key": "criar",
+    "label": "Criar"
+  },
+  {
+    "key": "dia",
+    "label": "Dia"
+  },
+  {
+    "key": "duplicar",
+    "label": "Duplicar"
+  },
+  {
+    "key": "editar",
+    "label": "Editar"
+  },
+  {
+    "key": "em_andamento",
+    "label": "Em andamento"
+  },
+  {
+    "key": "estudo",
+    "label": "Estudo"
+  },
+  {
+    "key": "evolucao",
+    "label": "Evolução"
+  },
+  {
+    "key": "excluir",
+    "label": "Excluir"
+  },
+  {
+    "key": "exercicio",
+    "label": "Exercício"
+  },
+  {
+    "key": "filtrar",
+    "label": "Filtrar"
+  },
+  {
+    "key": "heroi",
+    "label": "Herói"
+  },
+  {
+    "key": "horario",
+    "label": "Horário"
+  },
+  {
+    "key": "habito",
+    "label": "Hábito"
+  },
+  {
+    "key": "lembrete",
+    "label": "Lembrete"
+  },
+  {
+    "key": "limpeza",
+    "label": "Limpeza"
+  },
+  {
+    "key": "manha",
+    "label": "Manhã"
+  },
+  {
+    "key": "mapa",
+    "label": "Mapa"
+  },
+  {
+    "key": "meta",
+    "label": "Meta"
+  },
+  {
+    "key": "mundo",
+    "label": "Mundo"
+  },
+  {
+    "key": "nivel",
+    "label": "Nivel"
+  },
+  {
+    "key": "noite",
+    "label": "Noite"
+  },
+  {
+    "key": "opcoes",
+    "label": "Opções"
+  },
+  {
+    "key": "ouro",
+    "label": "Ouro"
+  },
+  {
+    "key": "pausada",
+    "label": "Pausada"
+  },
+  {
+    "key": "pendente",
+    "label": "Pendente"
+  },
+  {
+    "key": "perfil",
+    "label": "Perfil"
+  },
+  {
+    "key": "pessoal",
+    "label": "Pessoal"
+  },
+  {
+    "key": "planejada",
+    "label": "Planejada"
+  },
+  {
+    "key": "progresso",
+    "label": "Progresso"
+  },
+  {
+    "key": "projeto_atividade",
+    "label": "Projeto"
+  },
+  {
+    "key": "projetos_navegacao",
+    "label": "Projetos"
+  },
+  {
+    "key": "recompensa",
+    "label": "Recompensa"
+  },
+  {
+    "key": "recorrencia",
+    "label": "Recorrência"
+  },
+  {
+    "key": "refugio",
+    "label": "Refúgio"
+  },
+  {
+    "key": "repetir",
+    "label": "Repetir"
+  },
+  {
+    "key": "reputacao",
+    "label": "Reputação"
+  },
+  {
+    "key": "rotina",
+    "label": "Rotina"
+  },
+  {
+    "key": "semana",
+    "label": "Semana"
+  },
+  {
+    "key": "social",
+    "label": "Social"
+  },
+  {
+    "key": "sono",
+    "label": "Sono"
+  },
+  {
+    "key": "tarde",
+    "label": "Tarde"
+  }
+]

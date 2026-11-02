@@ -6,6 +6,9 @@
   import { afterNavigate } from '$app/navigation';
   import Icon, { type IconName } from '$lib/ui/Icon.svelte';
   import Button from '$lib/ui/Button.svelte';
+  import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
+  import '$lib/rpg-theme.css';
+  import './visual.css';
   import Dialog from '$lib/ui/Dialog.svelte';
   let { children }: { children: Snippet } = $props();
   let menu = $state(false);
@@ -29,15 +32,16 @@
     { href: '/trofeus', label: destinations.achievements },
     { href: '/cla', label: 'Clã (demonstração)' },
   ];
-  const homeLinks: { href: string; label: string; icon: IconName }[] = [
-    links[0],
-    links[1],
-    links[2],
-    { href: '/aventura', label: 'Aventura', icon: 'swords' },
-    links[3],
-    { href: '/perfil', label: 'Personagem', icon: 'person' },
-    { href: '/bestiario', label: 'Companheiros', icon: 'companion' },
-    { href: '#home-map', label: 'Mapa', icon: 'map' },
+  const homeLinks = [
+    { href: '/', label: 'Hoje', icon: 'today' },
+    { href: '/missoes', label: 'Missões', icon: 'missions' },
+    { href: '/progresso', label: 'Mundo', icon: 'mundo' },
+    { href: '/perfil', label: 'Herói', icon: 'heroi' },
+    { href: '/projetos', label: 'Projetos', icon: 'projetos_navegacao' },
+    { href: '/aventura', label: 'Aventura', icon: 'aventura' },
+    { href: '/refugio', label: 'Refúgio', icon: 'refugio' },
+    { href: '/bestiario', label: 'Companheiros', icon: 'companheiros' },
+    { href: '/#home-map', label: 'Mapa', icon: 'mapa' },
   ];
   function active(href: string) {
     const path = page.url.pathname;
@@ -65,9 +69,8 @@
 </script>
 
 <div
-  class="lmu-design journey-shell"
+  class="lmu-design journey-shell rpg-theme visual-shell"
   class:journey-adventure={page.url.pathname === '/aventura'}
-  class:rpg-theme={page.url.pathname === '/'}
   class:journey-home={page.url.pathname === '/'}
 >
   <a class="lmu-skip" href="#journey-main">Pular para o conteúdo</a>
@@ -79,13 +82,13 @@
       ></a
     >
     <nav aria-label="Navegação principal">
-      {#each page.url.pathname === '/' ? homeLinks : links as link (link.href)}<a
+      {#each homeLinks as link (link.href)}<a
           href={link.href}
           aria-label={link.label}
           title={link.label}
           aria-current={active(link.href) ? 'page' : undefined}
-          ><Icon name={link.icon} /><span class="journey-nav-label"
-            >{link.label}</span
+          ><ApprovedIcon name={link.icon} size={32} /><span
+            class="journey-nav-label">{link.label}</span
           ></a
         >{/each}
     </nav>
@@ -96,7 +99,7 @@
         onclick={() => {
           menu = true;
         }}
-        ><Icon name="settings" /><span class="journey-nav-label"
+        ><ApprovedIcon name="perfil" size={28} /><span class="journey-nav-label"
           >Perfil e mais</span
         ></Button
       >
@@ -125,7 +128,14 @@
     {#each links as link (link.href)}<a
         href={link.href}
         aria-current={active(link.href) ? 'page' : undefined}
-        ><Icon name={link.icon} /><span>{link.label}</span></a
+        ><ApprovedIcon
+          name={link.icon === 'projects'
+            ? 'projetos_navegacao'
+            : link.icon === 'world'
+              ? 'refugio'
+              : link.icon}
+          size={28}
+        /><span>{link.label}</span></a
       >{/each}
   </nav>
   <Dialog bind:open={menu} title="Seu espaço"

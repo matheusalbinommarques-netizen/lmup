@@ -1,3 +1,4 @@
+import { makeOccurrence } from '$services/occurrenceService';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Task } from '$services/db';
 import {
@@ -5,6 +6,8 @@ import {
   readPriority,
   savePriority,
   priorityTask,
+  homeOccurrences,
+  usesTaskExecution,
 } from './homePriority';
 
 const today = '2026-10-31';
@@ -84,5 +87,75 @@ describe('prioridade local da Home', () => {
     };
     expect(priorityTask([recurring], 7, today)).toBe(recurring);
     expect(priorityTask([], 7, today)).toBeNull();
+  });
+});
+
+describe('compatibilidade de apresentação da Home', () => {
+  it('retém pausa e notas do fluxo anterior sem alterar tarefas ou ocorrências', () => {
+    const legacy = {
+      ...task,
+      productivityVersion: 1 as const,
+      executionState: 'paused' as const,
+      executionNotes: 'Guardadas',
+    };
+    const row = makeOccurrence(legacy, today),
+      original = structuredClone(row);
+    const view = homeOccurrences([row], [legacy], today);
+    expect(view[0].status).toBe('paused');
+    expect(usesTaskExecution(legacy, view[0], today)).toBe(true);
+    expect(row).toEqual(original);
+    expect(legacy.executionNotes).toBe('Guardadas');
+  });
+  it('não oferece tarefa arquivada, excluída ou concluída com uma ocorrência antiga pendente', () => {
+    const row = makeOccurrence(task, today);
+    expect(homeOccurrences([row], [], today)).toEqual([]);
+    expect(
+      homeOccurrences([row], [{ ...task, archived: true }], today),
+    ).toEqual([]);
+    expect(
+      homeOccurrences(
+        [row],
+        [{ ...task, productivityVersion: 1, completed: true }],
+        today,
+      ),
+    ).toEqual([]);
+  });
+  it('mostra conclusão legada de hoje sem persistir ou recalcular a recompensa', () => {
+    const done = { ...task, completed: true, plannedDate: today };
+    const view = homeOccurrences([], [done], today);
+    expect(view[0]).toMatchObject({
+      status: 'completed',
+      due: { xp: 0, gold: 0, food: 0 },
+    });
+    expect(
+      homeOccurrences([makeOccurrence(done, today)], [done], today)[0].status,
+    ).toBe('completed');
+    expect(done).not.toHaveProperty('completionEventId');
+  });
+  it('não reutiliza a pausa de uma ocorrência antiga e preserva a identidade reagendada', () => {
+    const recurring = {
+      ...task,
+      productivityVersion: 1 as const,
+      executionState: 'paused' as const,
+      recurrence: { kind: 'daily' as const, startDate: today },
+      occurrenceSession: '2026-10-30',
+      tracking: { method: 'direct' as const },
+    };
+    const row = makeOccurrence(recurring, today);
+    expect(homeOccurrences([row], [recurring], today)[0].status).toBe(
+      'planned',
+    );
+    expect(
+      usesTaskExecution(recurring, { ...row, originDate: '2026-10-30' }, today),
+    ).toBe(false);
+  });
+  it('revisão pronta usa o fluxo existente e revisão futura não é oferecida', () => {
+    const review = { ...task, reviewEnabled: true, reviewDueDate: today };
+    const ready = homeOccurrences([], [review], today);
+    expect(ready).toHaveLength(1);
+    expect(usesTaskExecution(review, ready[0], today)).toBe(true);
+    expect(
+      homeOccurrences([], [{ ...review, reviewDueDate: '2099-01-01' }], today),
+    ).toEqual([]);
   });
 });
