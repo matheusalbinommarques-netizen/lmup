@@ -172,7 +172,13 @@ export function validateBackup(input: unknown): JourneyBackup {
     )
       fail('companheiro ativo não encontrado.');
   }
-  for (const area of lists.areas) text(area.nome, 'areas.nome');
+  for (const area of lists.areas) {
+    text(area.nome, 'areas.nome');
+    if (area.iconKey != null && !isTaskIconKey(area.iconKey))
+      fail('ícone de área inválido.');
+    if (area.iconConflict != null && typeof area.iconConflict !== 'boolean')
+      fail('indicação de ícones conflitantes inválida.');
+  }
   const areaIds = new Set([0, ...lists.areas.map((row) => row.id)]);
   const projectIds = new Set(lists.projects.map((row) => row.id));
   for (const task of lists.tasks) {

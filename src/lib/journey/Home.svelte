@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { areaIconKey } from '$services/areaIcons';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { journeyQuery, type JourneySnapshot } from '$services/journeyQuery';
@@ -174,7 +175,10 @@
     },
   ];
   const taskIcon = (row: Occurrence) =>
-    data?.tasks.find((task) => task.id === row.taskId)?.iconKey;
+    areaIconKey(
+      data?.tasks.find((task) => task.id === row.taskId),
+      data?.areas ?? [],
+    );
   async function execute(row: Occurrence) {
     if (busy) return;
     busy = true;

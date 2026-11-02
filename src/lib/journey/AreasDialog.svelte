@@ -3,6 +3,8 @@
   import { saveArea, deleteArea } from '$services/areaService';
   import Dialog from '$lib/ui/Dialog.svelte';
   import Button from '$lib/ui/Button.svelte';
+  import IconPicker from '$lib/ui/IconPicker.svelte';
+  import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
   import { guardUpdates } from './guardUpdates';
   let {
     open = $bindable(false),
@@ -16,6 +18,8 @@
   let name = $state(''),
     error = $state(''),
     notice = $state('');
+  let newIcon = $state<string | null>(null);
+  let editIcon = $state<string | null>(null);
   let editing = $state<number | null>(null),
     rename = $state(''),
     removing = $state<number | null>(null),
@@ -54,8 +58,9 @@
     onsubmit={(event) => {
       event.preventDefault();
       void act(async () => {
-        const id = await saveArea(name);
+        const id = await saveArea(name, undefined, newIcon);
         name = '';
+        newIcon = null;
         oncreated?.(id);
       }, 'Área criada.');
     }}
@@ -68,27 +73,30 @@
         data-initial-focus
       /></label
     >
+    <fieldset disabled={busy} class="area-icon-field">
+      <IconPicker bind:value={newIcon} />
+    </fieldset>
     <Button type="submit" disabled={busy || !name.trim()}>Criar área</Button>
   </form>
   <ul class="area-list">
     <li>
       <div>
-        <strong>Geral</strong><small
+        <strong><ApprovedIcon size={28} /> Geral</strong><small
           >{snapshot.tasks.filter((task) => !task.archived && !task.areaId)
             .length} missões · Área padrão</small
         >
       </div>
     </li>
-    {#each [...snapshot.areas].sort( (a, b) => a.nome.localeCompare(b.nome, 'pt-BR'), ) as area (area.id)}
+    {#each [...snapshot.areas].sort( (a, b) => a.nome.localeCompare(b.nome, 'pt-BR') ) as area (area.id)}
       <li>
         {#if editing === area.id}
           <form
             onsubmit={(event) => {
               event.preventDefault();
               void act(async () => {
-                await saveArea(rename, area.id);
+                await saveArea(rename, area.id, editIcon);
                 editing = null;
-              }, 'Área renomeada.');
+              }, 'Área atualizada.');
             }}
           >
             <label class="journey-label lmu-field"
@@ -97,8 +105,11 @@
                 maxlength="80"
               /></label
             >
+            <fieldset disabled={busy} class="area-icon-field">
+              <IconPicker bind:value={editIcon} />
+            </fieldset>
             <div class="journey-actions">
-              <Button type="submit" disabled={busy}>Salvar nome</Button><Button
+              <Button type="submit" disabled={busy}>Salvar área</Button><Button
                 variant="quiet"
                 disabled={busy}
                 onclick={() => (editing = null)}>Cancelar</Button
@@ -106,22 +117,30 @@
             </div>
           </form>
         {:else}<div>
-            <strong>{area.nome}</strong><small
+            <strong
+              ><ApprovedIcon name={area.iconKey} size={28} />
+              {area.nome}</strong
+            ><small
               >{snapshot.tasks.filter(
                 (task) => !task.archived && task.areaId === area.id,
               ).length} missões</small
             >
           </div>
+          {#if area.iconConflict}<p class="lmu-hint area-icon-conflict">
+              Ícones anteriores diferentes. Edite a área para escolher um único
+              símbolo.
+            </p>{/if}
           <div class="area-actions">
             <Button
               variant="quiet"
               disabled={busy}
-              aria-label={`Renomear ${area.nome}`}
+              aria-label={`Editar ${area.nome}`}
               onclick={() => {
                 editing = area.id!;
                 rename = area.nome;
+                editIcon = area.iconKey ?? null;
                 removing = null;
-              }}>Renomear</Button
+              }}>Editar</Button
             ><Button
               variant="quiet"
               disabled={busy}
@@ -173,7 +192,23 @@
   .area-create {
     display: flex;
     align-items: end;
+    flex-wrap: wrap;
     gap: 0.7rem;
+  }
+  .area-icon-field {
+    border: 0;
+    padding: 0;
+    min-width: 0;
+    flex-basis: 100%;
+  }
+  .area-icon-conflict {
+    flex-basis: 100%;
+    margin: 0;
+  }
+  strong {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
   }
   .area-create label {
     flex: 1;

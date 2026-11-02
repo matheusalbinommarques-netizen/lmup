@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { areaIconKey } from '$services/areaIcons';
   import '$lib/rpg-theme.css';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
@@ -498,6 +499,9 @@
                   >{/each}</select
               ></label
             >
+            <Button variant="quiet" onclick={() => (areasOpen = true)}
+              >Gerenciar áreas</Button
+            >
           </div>
           <details class="extra-filters">
             <summary
@@ -520,9 +524,6 @@
                 fixadas</label
               >
             </div>
-            <Button variant="quiet" onclick={() => (areasOpen = true)}
-              >Gerenciar áreas</Button
-            >
           </details>
         </div>
         {#if search || area !== 'all' || project || pinnedOnly}<Button
@@ -675,7 +676,10 @@
                         aria-hidden="true">·</span
                       >{/if}</span
                   >{/if}
-                <ApprovedIcon name={task.iconKey} size={32} />
+                <ApprovedIcon
+                  name={areaIconKey(task, data?.areas ?? [])}
+                  size={32}
+                />
                 <div class="mission-copy">
                   <a href={`/missao/${task.id}`}>{task.title}</a>
                   <small
@@ -933,7 +937,15 @@
     padding: 7px 10px;
     border-radius: 6px;
   }
+  .organizer-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
   .organizer-filters label {
+    flex: 1;
+    min-width: 100px;
     display: block;
   }
   .extra-filters {

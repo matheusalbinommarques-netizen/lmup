@@ -60,6 +60,9 @@ export interface Profile {
 // AREAS
 // ---------------------------------------------
 export interface Area {
+  /** Optional presentation fields; no index/schema change. Legacy task icons remain intact. */
+  iconKey?: string | null;
+  iconConflict?: boolean;
   id?: number;
   nome: string;
   descricao?: string;
