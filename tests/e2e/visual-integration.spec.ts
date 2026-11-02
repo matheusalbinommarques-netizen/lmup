@@ -72,10 +72,9 @@ test('criação dentro da rotina preserva rascunho, herança de ícone, sequênc
   await form
     .getByLabel('O que você quer fazer?')
     .fill('Missão criada sem sair');
-  await form.getByText('Passos e outros detalhes', { exact: true }).click();
-  await expect(
-    form.getByText('O ícone acompanha a área.', { exact: false }),
-  ).toBeVisible();
+  await expect(form.locator('.area-icon-preview')).toContainText(
+    'Ícone herdado da área.',
+  );
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
   await expect(form).not.toBeVisible();
   await expect(
@@ -131,16 +130,17 @@ test('edição mantém ícone e navegação por data/aba funciona com Voltar e m
   await expect(
     form.getByText('Ícone da missão (opcional)', { exact: true }),
   ).not.toBeVisible();
-  await form.getByText('Passos e outros detalhes', { exact: true }).click();
-  await expect(
-    form.getByText('O ícone acompanha a área.', { exact: false }),
-  ).toBeVisible();
+  await expect(form.locator('.area-icon-preview')).toContainText(
+    'Ícone herdado da área.',
+  );
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
   await expect(form).not.toBeVisible();
   const row = page
     .locator('.mission-row')
     .filter({ hasText: 'Escolha visual' });
-  await row.getByLabel('Ações para Escolha visual').click();
+  await row
+    .getByRole('button', { name: 'Ações para Escolha visual', exact: true })
+    .click();
   await row.getByRole('button', { name: 'Editar missão', exact: true }).click();
   const edit = page.getByRole('dialog', { name: 'Editar missão' });
   await edit
@@ -169,7 +169,9 @@ test('edição mantém ícone e navegação por data/aba funciona com Voltar e m
     'Agenda — Semana',
   );
   await page
-    .getByRole('navigation', { name: 'Visualização das missões' })
+    .getByRole('button', { name: 'Ferramentas de missões', exact: true })
+    .click();
+  await page
     .getByRole('button', { name: 'Recuperar ocorrências', exact: true })
     .click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
@@ -252,15 +254,15 @@ test('lista compacta preserva busca, filtros e seleção sem iniciar execução'
     .getByRole('button', { name: 'Limpar filtros', exact: true })
     .click();
   await expect(page.locator('.mission-row')).toHaveCount(2);
-  await page.getByText('Mais filtros', { exact: true }).click();
+  await page.getByText('Mais filtros', { exact: false }).click();
   await expect(
-    page.getByRole('button', { name: 'Gerenciar áreas' }),
+    page.getByRole('button', { name: 'Áreas', exact: true }),
   ).toBeVisible();
   await page.getByLabel('Agrupar por área').check();
   await expect(page.locator('.area-group')).toContainText('Geral');
-  await page.getByText('Mais filtros', { exact: true }).click();
+  await page.getByText('Mais filtros', { exact: false }).click();
   await page
-    .getByRole('button', { name: 'Montar sessão', exact: true })
+    .getByRole('button', { name: 'Selecionar para sessão', exact: true })
     .click();
   await expect(
     page.getByRole('button', { name: 'Iniciar sessão', exact: true }),

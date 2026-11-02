@@ -47,6 +47,7 @@
   let tasks = $state<Task[]>([]),
     routineId = $state(''),
     routineName = $state(''),
+    routineArea = $state('0'),
     description = $state('');
   let days = $state<number[]>([1, 2, 3, 4, 5]),
     start = $state(dateKey()),
@@ -236,6 +237,7 @@
     routineId = row?.id ?? crypto.randomUUID();
     routineName = row?.name ?? '';
     description = row?.description ?? '';
+    routineArea = String(row?.defaultAreaId ?? 0);
     days = [...(row?.days ?? [1, 2, 3, 4, 5])];
     start = row?.startDate ?? dateKey();
     entries = row?.entries.map(({ taskId, time }) => ({ taskId, time })) ?? [];
@@ -270,6 +272,7 @@
       await saveRoutine({
         id: routineId,
         name: routineName,
+        defaultAreaId: Number(routineArea),
         description,
         days,
         startDate: start,
@@ -653,7 +656,19 @@
                 required
               /></label
             >
+            <label
+              >Área padrão para novas missões<select bind:value={routineArea}
+                ><option value="0">Geral</option
+                >{#each snapshot.areas as area (area.id)}<option
+                    value={String(area.id)}>{area.nome}</option
+                  >{/each}</select
+              ></label
+            >
           </div>
+          <p class="lmu-hint">
+            Novas missões começam nesta área. Você pode alterá-la em cada
+            missão; as já cadastradas mantêm sua área.
+          </p>
           <fieldset class="weekday-picker">
             <legend>Dias de execução</legend
             >{#each WEEKDAYS as weekday (weekday.value)}<label
@@ -688,7 +703,10 @@
                   name={areaIconKey(task, snapshot.areas)}
                   size={32}
                 /><span class="sequence-title"
-                  >{task?.title ?? 'Missão criada'}</span
+                  >{task?.title ?? 'Missão criada'}<small
+                    >{snapshot.areas.find((area) => area.id === task?.areaId)
+                      ?.nome ?? 'Geral'}</small
+                  ></span
                 ><input
                   type="time"
                   aria-label={`Horário de ${task?.title ?? 'missão'}`}
@@ -701,6 +719,16 @@
                     ))}
                 />
                 <div class="sequence-actions">
+                  <Button
+                    variant="quiet"
+                    aria-label={`Editar ${task?.title ?? 'missão'}`}
+                    disabled={!task || task.archived}
+                    onclick={() => {
+                      creatingForRoutine = false;
+                      editTask = task;
+                      editOpen = true;
+                    }}>Editar</Button
+                  >
                   <Button
                     variant="quiet"
                     disabled={index === 0}
@@ -784,30 +812,52 @@
     <p class="lmu-hint">
       O progresso pertence à ocorrência e é compartilhado entre sessões.
     </p>
-    {#each sessions as session (session.id)}<article
-        class="rpg-frame routine-card"
-      >
-        <h3>{session.name}</h3>
-        <p>
-          {session.occurrenceIds.length} atividades · {session.status ===
-          'active'
-            ? 'Em foco'
-            : session.status === 'paused'
-              ? 'Pausada'
-              : 'Encerrada'}
-        </p>
-        <Button
-          disabled={!session.occurrenceIds.length}
-          onclick={() =>
-            run(async () => {
-              await saveSession(
-                { ...session, status: 'active' },
-                session.revision,
-              );
-              await goto('/sessoes');
-            })}>Retomar sessão</Button
-        >
-      </article>{/each}
+    {#each sessions as session (session.id)}
+      {@const completed = session.occurrenceIds.filter(
+        (id) =>
+          snapshot.occurrences.find((row) => row.id === id)?.status ===
+          'completed',
+      ).length}
+      {@const total = session.occurrenceIds.length}
+      {@const percent = total ? Math.round((completed * 100) / total) : 0}
+      <article class="rpg-frame saved-session-card">
+        <div class="saved-session-heading">
+          <div>
+            <h3>{session.name}</h3>
+            <p>
+              {total} atividades ·
+              <span
+                >{session.status === 'active'
+                  ? 'Em andamento'
+                  : session.status === 'paused'
+                    ? 'Pausada'
+                    : 'Encerrada'}</span
+              >
+            </p>
+          </div>
+          <Button
+            disabled={!total}
+            onclick={() =>
+              run(async () => {
+                await saveSession(
+                  { ...session, status: 'active' },
+                  session.revision,
+                );
+                await goto('/sessoes');
+              })}>Retomar sessão</Button
+          >
+        </div>
+        <div class="saved-session-progress">
+          <progress
+            value={completed}
+            max={Math.max(1, total)}
+            aria-label={`Progresso de ${session.name}`}
+          ></progress><strong
+            >{completed} de {total} <span>({percent}%)</span></strong
+          >
+        </div>
+      </article>
+    {/each}
     {#if !sessions.length}<p class="workspace-empty">
         Selecione atividades na agenda para montar sua primeira sessão.
       </p>{/if}
@@ -816,9 +866,12 @@
     bind:open={editOpen}
     {snapshot}
     {editTask}
+    defaultAreaId={creatingForRoutine ? Number(routineArea) : undefined}
     allowSaveAnother={!creatingForRoutine}
     oncreated={(id) => {
       if (creatingForRoutine) addedMission(id);
+      else if (editing)
+        notice = 'Missão atualizada. O rascunho da rotina foi preservado.';
     }}
   />
 </section>
@@ -1365,6 +1418,73 @@
     }
     .routine-actions {
       gap: 8px;
+    }
+  }
+  .sequence-title small {
+    display: block;
+    color: #adbfaf;
+    font-size: 0.75rem;
+    margin-top: 3px;
+  }
+
+  .saved-session-card {
+    padding: 16px;
+  }
+  .saved-session-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .saved-session-heading h3 {
+    font: 500 1.55rem var(--lmu-display);
+    color: #e9d29d;
+    margin: 0 0 6px;
+  }
+  .saved-session-heading p {
+    color: #acbfae;
+    font-size: 0.78rem;
+    margin: 0;
+  }
+  .saved-session-heading p span {
+    color: #d4bc82;
+  }
+  .saved-session-heading :global(.lmu-button) {
+    font-size: 0.8rem;
+    padding: 8px 12px;
+    min-height: 40px;
+  }
+  .saved-session-progress {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .saved-session-progress progress {
+    height: 8px;
+    accent-color: #dfb658;
+    width: auto;
+    flex: 1;
+    min-width: 0;
+  }
+  .saved-session-progress strong {
+    font-size: 0.78rem;
+    color: #dec992;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .saved-session-progress strong span {
+    color: #a8bda9;
+  }
+  @media (max-width: 600px) {
+    .saved-session-card {
+      padding: 12px;
+    }
+    .saved-session-heading {
+      flex-wrap: wrap;
+    }
+    .saved-session-heading h3 {
+      font-size: 1.4rem;
     }
   }
 </style>

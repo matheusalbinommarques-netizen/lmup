@@ -27,7 +27,7 @@ test('exclusão de cadastro sem uso funciona offline e permanece após recarga',
     .filter({ hasText: 'Apagar offline' });
   await row.getByLabel('Ações para Apagar offline', { exact: true }).click();
   await row
-    .getByRole('button', { name: 'Excluir missão', exact: true })
+    .getByRole('button', { name: 'Excluir definitivamente', exact: true })
     .click();
   const dialog = page.getByRole('dialog', {
     name: 'Remover missão',

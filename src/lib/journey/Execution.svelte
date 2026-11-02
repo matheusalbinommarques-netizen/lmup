@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { isPersonalTask } from '$services/personalTaskDeletion';
+  import type { RemovalMode } from '$services/taskRemoval';
+  let removalMode = $state<RemovalMode>('delete');
   import TaskRemovalDialog from './TaskRemovalDialog.svelte';
   let removalOpen = $state(false);
   import { guardUpdates } from './guardUpdates';
@@ -42,12 +45,16 @@
   let {
     id,
     sessionMode = false,
+    compact = false,
+    onOpenProgress,
     onSessionContinue,
     onSessionSkip,
     onSessionBusyChange,
   }: {
     id: number;
     sessionMode?: boolean;
+    compact?: boolean;
+    onOpenProgress?: () => void;
     onSessionContinue?: () => void;
     onSessionSkip?: () => void;
     onSessionBusyChange?: (blocked: boolean) => void;
@@ -315,6 +322,10 @@
   }
   async function openProgress() {
     if (!task) return;
+    if (onOpenProgress) {
+      onOpenProgress();
+      return;
+    }
     busy = true;
     error = '';
     try {
@@ -343,7 +354,7 @@
 
 <svelte:head><title>{task?.title ?? 'Missão'} · Level Me Up</title></svelte:head
 >
-<div class="journey-execution">
+<div class="journey-execution" class:compact>
   {#if !sessionMode}<a class="journey-link" href="/missoes"
       ><Icon name="back" size={18} />Voltar às missões</a
     >{/if}
@@ -351,6 +362,34 @@
   {#if correctionNotice}<p role="status" class="journey-banner">
       {correctionNotice}
     </p>{/if}
+  {#if task && !compact}<TaskRemovalDialog
+      bind:open={removalOpen}
+      {task}
+      mode={removalMode}
+      onremoved={(mode) =>
+        (correctionNotice =
+          mode === 'delete'
+            ? 'Missão excluída definitivamente. Os saldos foram preservados.'
+            : 'Missão arquivada. Seus registros foram preservados.')}
+    />
+    <div class="journey-actions">
+      {#if !task.archived}<Button
+          variant="quiet"
+          disabled={busy || dirty || saves > 0 || starting > 0}
+          onclick={() => {
+            removalMode = 'archive';
+            removalOpen = true;
+          }}>Arquivar missão</Button
+        >{/if}{#if isPersonalTask(task)}<Button
+          variant="danger"
+          disabled={busy || dirty || saves > 0 || starting > 0}
+          onclick={() => {
+            removalMode = 'delete';
+            removalOpen = true;
+          }}>Excluir definitivamente</Button
+        >{/if}
+    </div>
+  {/if}
   {#if !finished && lastTaskEvent?.kind === 'reversal'}
     <p role="status" class="journey-banner">
       Conclusão desfeita. {#if lastTaskEvent.debtAdded}Débito a compensar: {lastTaskEvent
@@ -430,38 +469,32 @@
           <p style="white-space: pre-wrap; text-align: left">{notes}</p></Card
         >{/if}
     </div>
-  {:else}<TaskRemovalDialog
-      bind:open={removalOpen}
-      {task}
-      onremoved={() => {
-        void goto('/missoes');
-      }}
-    /><Button
-      variant="quiet"
-      disabled={busy || dirty || saves > 0 || starting > 0}
-      onclick={() => (removalOpen = true)}>Excluir missão</Button
-    >
-    <header class="journey-heading">
-      <div>
-        <p class="lmu-eyebrow">
-          {data.projects.find((item) => item.id === task.projectId)?.name ??
-            'Um passo na sua jornada'}
-        </p>
-        <h1>{task.title}</h1>
-        <p class="lmu-hint">
-          {data.areas.find((area) => area.id === task.areaId)?.nome ?? 'Geral'} ·
-          {recurrenceLabel(task)}{task.plannedDate
-            ? ` · ${formatCalendar(task.plannedDate)}`
-            : ''}
-        </p>
-        {#if task.recurrence}<p class="lmu-hint">
-            Próxima ocorrência: {formatCalendar(nextPlannedDate(task, today))}
-          </p>{/if}
-        {#if task.description}<p style="white-space: pre-wrap">
-            {task.description}
-          </p>{/if}
-      </div>
-    </header>
+  {:else}
+    <details class="execution-context" open={!compact}>
+      <summary hidden={!compact}>Descrição e contexto</summary>
+      <header class="journey-heading">
+        <div>
+          <p class="lmu-eyebrow">
+            {data.projects.find((item) => item.id === task.projectId)?.name ??
+              'Um passo na sua jornada'}
+          </p>
+          <h1>{task.title}</h1>
+          <p class="lmu-hint">
+            {data.areas.find((area) => area.id === task.areaId)?.nome ??
+              'Geral'} ·
+            {recurrenceLabel(task)}{task.plannedDate
+              ? ` · ${formatCalendar(task.plannedDate)}`
+              : ''}
+          </p>
+          {#if task.recurrence}<p class="lmu-hint">
+              Próxima ocorrência: {formatCalendar(nextPlannedDate(task, today))}
+            </p>{/if}
+          {#if task.description}<p style="white-space: pre-wrap">
+              {task.description}
+            </p>{/if}
+        </div>
+      </header>
+    </details>
     {#if canExecute && !['active', 'paused'].includes(task.executionState ?? '')}<div
         class="journey-actions"
       >
@@ -527,7 +560,8 @@
           ></label
         >{/if}
       {#if !task.reviewEnabled || revealNotes || dirty || noteError}
-        <section class="journey-notes">
+        <details class="journey-notes" open={!compact || dirty || !!noteError}>
+          <summary>Notas da missão</summary>
           <label class="journey-label" for="execution-notes" id="notes-label"
             >Notas da missão<textarea
               id="execution-notes"
@@ -553,7 +587,7 @@
             ><Button variant="quiet" onclick={leaveUnsaved}
               >Voltar sem salvar notas</Button
             >{/if}
-        </section>
+        </details>
       {:else}<Button
           variant="secondary"
           onclick={() => {
@@ -618,40 +652,41 @@
         >Voltar sem salvar notas</Button
       >
     </section>{/if}
-  {#if task && data}<div
-      class="journey-actions"
-      class:session-mission-actions={sessionMode}
-    >
-      {#if task.productivityVersion && !task.reviewEnabled}<Button
-          disabled={busy || saves > 0 || dirty}
-          onclick={openProgress}
-          >{finished
-            ? 'Corrigir progresso'
-            : 'Registrar progresso parcial'}</Button
-        >{/if}
-      <Button
-        variant="secondary"
-        disabled={busy || saves > 0 || dirty}
-        onclick={() => {
-          editOpen = true;
-        }}>Editar missão</Button
-      ><Button
-        variant="secondary"
-        disabled={busy || saves > 0 || dirty}
-        onclick={() => {
-          reviewOpen = true;
-        }}>Configurar revisão</Button
-      >
-      {#if sessionMode && onSessionSkip}
+  {#if task && data}<details class="execution-more" open={!compact}>
+      <summary hidden={!compact}>Ações e revisão</summary>
+      <div class="journey-actions" class:session-mission-actions={sessionMode}>
+        {#if task.productivityVersion && !task.reviewEnabled}<Button
+            disabled={busy || saves > 0 || dirty}
+            onclick={openProgress}
+            >{finished
+              ? 'Corrigir progresso'
+              : 'Registrar progresso parcial'}</Button
+          >{/if}
         <Button
-          variant="quiet"
-          disabled={busy || saves > 0 || dirty || starting > 0 || !!noteError}
-          onclick={onSessionSkip}
-          >Pular por agora <Icon name="arrow" size={16} /></Button
+          variant="secondary"
+          disabled={busy || saves > 0 || dirty}
+          onclick={() => {
+            editOpen = true;
+          }}>Editar missão</Button
+        ><Button
+          variant="secondary"
+          disabled={busy || saves > 0 || dirty}
+          onclick={() => {
+            reviewOpen = true;
+          }}>Configurar revisão</Button
         >
-      {/if}
-    </div>
-    <ReviewHistory {task} events={data.events} /><QuickCreate
+        {#if sessionMode && onSessionSkip}
+          <Button
+            variant="quiet"
+            disabled={busy || saves > 0 || dirty || starting > 0 || !!noteError}
+            onclick={onSessionSkip}
+            >Pular por agora <Icon name="arrow" size={16} /></Button
+          >
+        {/if}
+      </div>
+      <ReviewHistory {task} events={data.events} />
+    </details>
+    <QuickCreate
       bind:open={editOpen}
       snapshot={data}
       editTask={task}
@@ -680,5 +715,28 @@
   .session-mission-actions {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  }
+
+  .compact {
+    display: grid;
+    gap: 10px;
+  }
+  .compact .execution-context,
+  .compact .execution-more,
+  .compact .journey-notes {
+    border-top: 1px solid #8b704534;
+    padding-top: 10px;
+    font-size: 0.82rem;
+  }
+  .compact summary {
+    cursor: pointer;
+    color: #ccb784;
+    margin-bottom: 8px;
+  }
+  .compact :global(.journey-heading) {
+    margin-bottom: 8px;
+  }
+  .compact :global(.journey-heading h1) {
+    font-size: 1.5rem;
   }
 </style>

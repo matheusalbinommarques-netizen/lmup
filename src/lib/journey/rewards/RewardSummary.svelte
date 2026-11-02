@@ -189,8 +189,8 @@
           class="lmu-button lmu-button--primary"
           onclick={onContinue}
           >{continueLabel}<Icon name="arrow" size={18} /></button
-        >{:else}<a class="lmu-button lmu-button--primary" href="/"
-          >{continueLabel}<Icon name="arrow" size={18} /></a
+        >{:else}<a class="lmu-button lmu-button--primary" href="/missoes"
+          >Ir para Missões<Icon name="arrow" size={18} /></a
         >{/if}{#if evolved}<a
           class="lmu-button lmu-button--secondary"
           href="/refugio">Ver Refúgio</a

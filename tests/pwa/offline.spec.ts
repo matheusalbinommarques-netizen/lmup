@@ -71,10 +71,10 @@ test('agenda e progresso proporcional persistem offline e entram no backup', asy
     exact: true,
   });
   await form.getByLabel('O que você quer fazer?').fill('Prática offline');
-  await form
-    .getByText('Horário, prioridade e acompanhamento', { exact: true })
-    .click();
+  await form.getByRole('tab', { name: 'Acompanhamento', exact: true }).click();
+  await form.getByRole('tab', { name: 'Acompanhamento', exact: true }).click();
   await form.getByLabel('Acompanhar progresso por').selectOption('time');
+  await form.getByRole('tab', { name: 'Acompanhamento', exact: true }).click();
   await form.getByLabel('Meta de tempo recompensável (minutos)').fill('40');
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
   await expect(form).not.toBeVisible();
@@ -106,7 +106,7 @@ test('agenda e progresso proporcional persistem offline e entram no backup', asy
   expect(copy.data.executionRecords).toHaveLength(1);
   await page.goto('/missoes');
   await page
-    .getByRole('button', { name: 'Montar sessão', exact: true })
+    .getByRole('button', { name: 'Selecionar para sessão', exact: true })
     .click();
   await page
     .getByRole('checkbox', {
@@ -119,6 +119,9 @@ test('agenda e progresso proporcional persistem offline e entram no backup', asy
     .click();
   await expect(page).toHaveURL(/\/sessoes$/);
   await page.reload();
+  await page
+    .getByRole('button', { name: 'Execução detalhada', exact: true })
+    .click();
   await expect(
     page.getByText('38% · Parcialmente realizada', { exact: true }),
   ).toBeVisible();
@@ -249,6 +252,7 @@ test('organizador cria área e rotina offline, vira o dia e preserva ocorrência
   await areas
     .getByRole('button', { name: 'Fechar diálogo', exact: true })
     .click();
+  await form.getByRole('tab', { name: 'Planejamento', exact: true }).click();
   await form
     .getByRole('combobox', { name: 'Recorrência', exact: true })
     .selectOption('daily');
@@ -342,8 +346,10 @@ test('Recompensa Viva conclui, compara estágios e estorna inteiramente offline'
   await page.reload();
   await expect(summary).toBeVisible();
   await expect(summary).not.toHaveClass(/celebrate/);
-  await summary.getByRole('link', { name: 'Continuar', exact: true }).click();
-  await expect(page).toHaveURL('/');
+  await summary
+    .getByRole('link', { name: 'Ir para Missões', exact: true })
+    .click();
+  await expect(page).toHaveURL('/missoes');
   await page.goto(url);
   await page
     .getByRole('button', { name: 'Desfazer conclusão', exact: true })

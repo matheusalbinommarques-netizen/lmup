@@ -111,14 +111,18 @@ test('rascunho editável: cancelar não cria missão e salvar permite pausar, co
   await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click();
   await page.getByRole('button', { name: 'Nova missão', exact: true }).click();
   await expect(dialog.getByLabel('O que você quer fazer?')).toHaveValue('');
-  await dialog.getByText('Passos e outros detalhes', { exact: true }).click();
+  await dialog
+    .getByRole('tab', { name: 'Passos e detalhes', exact: true })
+    .click();
   await expect(dialog.getByLabel('Passos, um por linha')).toHaveValue('');
   await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click();
   await page.getByRole('button', { name: 'Nova missão', exact: true }).click();
   await dialog
     .getByLabel('O que você quer fazer?')
     .fill('Meu rascunho de verdade');
-  await dialog.getByText('Passos e outros detalhes', { exact: true }).click();
+  await dialog
+    .getByRole('tab', { name: 'Passos e detalhes', exact: true })
+    .click();
   await expect(dialog.getByLabel('Passos, um por linha')).toBeVisible();
   await dialog
     .getByLabel('Passos, um por linha')

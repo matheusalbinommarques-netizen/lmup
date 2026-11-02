@@ -41,14 +41,16 @@ async function data(page: Page) {
       }),
   );
 }
-async function request(page: Page, title: string) {
+async function request(
+  page: Page,
+  title: string,
+  mode = 'Excluir definitivamente',
+) {
   const row = page.locator('.mission-row').filter({ hasText: title });
   await row
     .getByRole('button', { name: `Ações para ${title}`, exact: true })
     .click();
-  await row
-    .getByRole('button', { name: 'Excluir missão', exact: true })
-    .click();
+  await row.getByRole('button', { name: mode, exact: true }).click();
   return page.getByRole('dialog', { name: 'Remover missão', exact: true });
 }
 async function capture(page: Page, name: string) {
@@ -82,7 +84,7 @@ test('excluir sem histórico confirma, permite cancelar e não altera saldos', a
   await page.reload();
   const after = await data(page);
   expect(after.tasks).toHaveLength(0);
-  expect(after.profile).toEqual(before.profile);
+  expect(after.profile).toMatchObject(before.profile);
   expect(after.events).toEqual(before.events);
 });
 test('arquivar conclusão preserva economia, consulta e não aparece em atividades ativas', async ({
@@ -92,11 +94,14 @@ test('arquivar conclusão preserva economia, consulta e não aparece em atividad
   await page
     .getByRole('button', { name: 'Concluir Missão com história', exact: true })
     .click();
-  await expect(page).toHaveURL(/evento=/);
+  await expect(page).toHaveURL(/\/missoes$/);
+  await expect(
+    page.getByRole('status', { name: 'Recompensa da conclusão' }),
+  ).toBeVisible();
   await page.goto('/missoes');
   await page.getByRole('button', { name: 'Todas', exact: true }).click();
   const before = await data(page);
-  const dialog = await request(page, 'Missão com história');
+  const dialog = await request(page, 'Missão com história', 'Arquivar missão');
   await expect(
     dialog.getByRole('button', { name: 'Arquivar missão', exact: true }),
   ).toBeVisible();

@@ -3,7 +3,7 @@
   import ContextMenu from '$lib/ui/ContextMenu.svelte';
   import TaskRemovalDialog from './TaskRemovalDialog.svelte';
   import '$lib/rpg-theme.css';
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { journeyQuery, type JourneySnapshot } from '$services/journeyQuery';
@@ -20,7 +20,9 @@
   } from '$services/taskService';
   import Dialog from '$lib/ui/Dialog.svelte';
   import type { Resources } from '$services/productivityTypes';
-  import { celebrateReward } from '$services/rewardPresentation';
+  import { isPersonalTask } from '$services/personalTaskDeletion';
+  import type { RemovalMode } from '$services/taskRemoval';
+  import type { ActivityEvent } from '$services/db';
   import {
     MISSION_SESSION_KEY,
     newMissionSession,
@@ -125,6 +127,8 @@
   let open = $state(false),
     areasOpen = $state(false);
   let editTask = $state<Task>();
+  let removalMode = $state<RemovalMode>('delete');
+  let completion = $state<{ title: string; event: ActivityEvent }>();
   let removalTask = $state<Task>(),
     removalOpen = $state(false);
   let search = $state(''),
@@ -304,7 +308,11 @@
   const history = $derived(
     data?.events
       .filter((event) => {
-        if (!['task', 'review'].includes(event.kind)) return false;
+        if (
+          event.deletedPersonalTask ||
+          !['task', 'review'].includes(event.kind)
+        )
+          return false;
         if (!historyCompletion(event)) return false;
         if (
           (historyFrom && event.date < historyFrom) ||
@@ -348,13 +356,16 @@
     }
   }
   async function complete(task: Task) {
+    const scroll = window.scrollY;
     await act(String(task.id), async () => {
       const event = await completeTask(task.id!, {
         occurrenceDate: task.recurrence ? today : undefined,
       });
       if (event) {
-        celebrateReward(event.id);
-        await goto(`/missao/${task.id}?evento=${encodeURIComponent(event.id)}`);
+        completion = { title: task.title, event };
+        await tick();
+        window.scrollTo({ top: scroll });
+        notice = 'Missão concluída. Sua recompensa foi registrada.';
       } else
         notice =
           'Esta ocorrência já foi registrada. Sua recompensa foi preservada.';
@@ -434,6 +445,26 @@
   </header>
   {#if error}<p role="alert" class="journey-error">{error}</p>{/if}
   <p role="status" class="journey-save-status">{notice}</p>
+  {#if completion}<aside
+      class="completion-feedback"
+      role="status"
+      aria-label="Recompensa da conclusão"
+    >
+      <ApprovedIcon name="concluida" size={28} />
+      <div>
+        <strong>{completion.title}</strong><span
+          >Concluída · +{completion.event.reward.xp} XP · +{completion.event
+            .reward.gold} Ouro{completion.event.reward.food
+            ? ` · +${completion.event.reward.food} Comida`
+            : ''}</span
+        >
+      </div>
+      <button
+        type="button"
+        aria-label="Fechar feedback de conclusão"
+        onclick={() => (completion = undefined)}>✕</button
+      >
+    </aside>{/if}
   {#if !data}<p>Abrindo suas missões…</p>{:else}
     <div class="workspace-navigation">
       <nav class="workspace-tabs" aria-label="Visualização das missões">
@@ -896,14 +927,23 @@
                         onclick={() => requestUndo(task.id!)}
                         >Desfazer conclusão</Button
                       >{/if}
-                    <Button
+                  {/if}
+                  {#if !task.archived}<Button
+                      variant="quiet"
+                      onclick={() => {
+                        removalTask = task;
+                        removalMode = 'archive';
+                        removalOpen = true;
+                      }}>Arquivar missão</Button
+                    >{/if}
+                  {#if isPersonalTask(task)}<Button
                       variant="danger"
                       onclick={() => {
                         removalTask = task;
+                        removalMode = 'delete';
                         removalOpen = true;
-                      }}>Excluir missão</Button
-                    >
-                  {/if}
+                      }}>Excluir definitivamente</Button
+                    >{/if}
                 </ContextMenu>
               </li>
             {/each}
@@ -944,6 +984,7 @@
 <TaskRemovalDialog
   bind:open={removalOpen}
   task={removalTask}
+  mode={removalMode}
   onremoved={(mode) => {
     selected = selected.filter((id) => id !== removalTask?.id);
     notice =
@@ -1469,5 +1510,49 @@
     min-height: 28px;
     padding: 3px 8px;
     font-size: 0.75rem;
+  }
+
+  .completion-feedback {
+    position: fixed;
+    bottom: 22px;
+    right: 22px;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: min(450px, calc(100vw - 24px));
+    background: #102727;
+    color: #e9d5a2;
+    border: 1px solid #b38a3c;
+    border-radius: 8px;
+    padding: 13px;
+    box-shadow: 0 8px 28px #0008;
+  }
+  .completion-feedback div {
+    min-width: 0;
+  }
+  .completion-feedback strong {
+    display: block;
+    overflow-wrap: anywhere;
+    font: 500 1.2rem var(--lmu-display);
+  }
+  .completion-feedback span {
+    display: block;
+    font-size: 0.8rem;
+    margin-top: 4px;
+  }
+  .completion-feedback button {
+    background: transparent;
+    color: #d7c597;
+    border: 0;
+    min-width: 36px;
+    min-height: 36px;
+    cursor: pointer;
+  }
+  @media (max-width: 760px) {
+    .completion-feedback {
+      bottom: 85px;
+      right: 12px;
+    }
   }
 </style>

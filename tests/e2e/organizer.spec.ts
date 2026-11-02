@@ -108,12 +108,9 @@ test('áreas no cadastro, edição, exclusão com transferência e criação ape
     page.getByText('Pessoal · Sem repetição', { exact: false }),
   ).toBeVisible();
   await page.goto('/missoes');
-  if (
-    !(await page
-      .getByRole('button', { name: 'Gerenciar áreas', exact: true })
-      .isVisible())
-  )
-    await page.getByText('Mais filtros', { exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Ferramentas de missões', exact: true })
+    .click();
   await page
     .getByRole('button', { name: 'Gerenciar áreas', exact: true })
     .click();
@@ -152,10 +149,12 @@ test('áreas no cadastro, edição, exclusão com transferência e criação ape
   await page
     .getByRole('button', { name: 'Editar missão', exact: true })
     .click();
+  await edit.getByRole('tab', { name: 'Planejamento', exact: true }).click();
   await edit
     .getByRole('combobox', { name: 'Recorrência', exact: true })
     .selectOption('weekdays');
   await edit.getByRole('checkbox', { name: 'Quarta', exact: true }).check();
+  await edit.getByRole('tab', { name: 'Planejamento', exact: true }).click();
   await edit
     .getByRole('combobox', { name: 'Recorrência', exact: true })
     .selectOption('weekly');
@@ -176,6 +175,7 @@ test('rotina persiste por data, impede duplicação entre abas, preserva histór
   context,
 }, info) => {
   const url = await create(page, 'Lavar a louça', async (form) => {
+    await form.getByRole('tab', { name: 'Planejamento', exact: true }).click();
     await form
       .getByRole('combobox', { name: 'Recorrência', exact: true })
       .selectOption('daily');
@@ -247,6 +247,7 @@ test('rotina persiste por data, impede duplicação entre abas, preserva histór
     .click();
   const edit = page.getByRole('dialog', { name: 'Editar missão', exact: true });
   await edit.getByLabel('O que você quer fazer?').fill('Cuidar da cozinha');
+  await edit.getByRole('tab', { name: 'Planejamento', exact: true }).click();
   await edit
     .getByRole('combobox', { name: 'Recorrência', exact: true })
     .selectOption('weekdays');
@@ -286,19 +287,24 @@ test('hoje, amanhã, outra data e dias da semana mostram agenda real em desktop 
   page,
 }, info) => {
   await create(page, 'Estudar uma ideia', async (form) => {
+    await form.getByRole('tab', { name: 'Planejamento', exact: true }).click();
     await form
       .getByRole('combobox', { name: 'Recorrência', exact: true })
       .selectOption('weekdays');
     await form.getByRole('checkbox', { name: 'Quarta', exact: true }).check();
   });
   await create(page, 'Treinar amanhã', async (form) => {
+    await form.getByRole('tab', { name: 'Planejamento', exact: true }).click();
     await form.getByRole('button', { name: 'Amanhã', exact: true }).click();
   });
   await create(page, 'Consulta futura', async (form) => {
+    await form.getByRole('tab', { name: 'Planejamento', exact: true }).click();
     await form.getByRole('button', { name: 'Outra data', exact: true }).click();
+    await form.getByRole('tab', { name: 'Planejamento', exact: true }).click();
     await form.getByLabel('Data planejada', { exact: true }).fill('2026-12-08');
   });
   await create(page, 'Ideia sem compromisso', async (form) => {
+    await form.getByRole('tab', { name: 'Planejamento', exact: true }).click();
     await form.getByRole('button', { name: 'Sem data', exact: true }).click();
   });
   await page.goto('/');
@@ -308,7 +314,8 @@ test('hoje, amanhã, outra data e dias da semana mostram agenda real em desktop 
   expect(await home.innerText()).not.toContain('Consulta futura');
   expect(await home.innerText()).not.toContain('Ideia sem compromisso');
   await page.goto('/missoes');
-  await page.getByRole('button', { name: 'Hoje', exact: true }).click();
+  await page.getByText('Mais filtros', { exact: false }).click();
+  await page.getByLabel('Filtrar por data').selectOption('today');
   const list = page.getByRole('region', {
     name: 'Lista de missões',
     exact: true,
@@ -320,7 +327,7 @@ test('hoje, amanhã, outra data e dias da semana mostram agenda real em desktop 
     list.getByRole('link', { name: 'Treinar amanhã', exact: true }),
   ).toHaveCount(0);
   await capture(page, info.project.name, 'hoje');
-  await page.getByRole('button', { name: 'Próximas', exact: true }).click();
+  await page.getByLabel('Filtrar por data').selectOption('upcoming');
   await expect(list).toContainText('Treinar amanhã');
   await expect(list).toContainText('08/12/2026');
   await capture(page, info.project.name, 'proximas');
@@ -333,7 +340,8 @@ test('hoje, amanhã, outra data e dias da semana mostram agenda real em desktop 
   await page
     .getByRole('button', { name: 'Limpar filtros', exact: true })
     .click();
-  await page.getByText('Mais filtros', { exact: true }).click();
+  if (!(await page.getByLabel('Agrupar por área').isVisible()))
+    await page.getByText('Mais filtros', { exact: false }).click();
   await page
     .getByRole('checkbox', { name: 'Agrupar por área', exact: true })
     .check();

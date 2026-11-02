@@ -69,6 +69,7 @@ test('Hoje conserva criação e escolha manual com duas missões sem data', asyn
       .click();
     const form = page.getByRole('dialog', { name: 'Uma nova missão' });
     await form.getByLabel('O que você quer fazer?').fill(title);
+    await form.getByRole('tab', { name: 'Planejamento', exact: true }).click();
     await form.getByRole('button', { name: 'Sem data', exact: true }).click();
     await form
       .getByRole('button', { name: 'Criar missão', exact: true })

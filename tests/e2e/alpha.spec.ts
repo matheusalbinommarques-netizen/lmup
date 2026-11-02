@@ -8,7 +8,9 @@ async function create(page: Page, title: string, steps = '', projectName = '') {
   const dialog = page.getByRole('dialog', { name: 'Uma nova missão' });
   await dialog.getByLabel('O que você quer fazer?').fill(title);
   if (steps || projectName) {
-    await dialog.getByText('Passos e outros detalhes', { exact: true }).click();
+    await dialog
+      .getByRole('tab', { name: 'Passos e detalhes', exact: true })
+      .click();
     if (steps) await dialog.getByLabel('Passos, um por linha').fill(steps);
     if (projectName)
       await dialog
@@ -17,7 +19,10 @@ async function create(page: Page, title: string, steps = '', projectName = '') {
   }
   if (steps) {
     await dialog
-      .getByText('Horário, prioridade e acompanhamento', { exact: true })
+      .getByRole('tab', { name: 'Acompanhamento', exact: true })
+      .click();
+    await dialog
+      .getByRole('tab', { name: 'Acompanhamento', exact: true })
       .click();
     await dialog.getByLabel('Acompanhar progresso por').selectOption('steps');
   }
