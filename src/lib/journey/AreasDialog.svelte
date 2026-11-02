@@ -10,8 +10,10 @@
     open = $bindable(false),
     snapshot,
     oncreated,
+    embedded = false,
   }: {
     open?: boolean;
+    embedded?: boolean;
     snapshot: JourneySnapshot;
     oncreated?: (id: number) => void;
   } = $props();
@@ -25,7 +27,7 @@
     removing = $state<number | null>(null),
     destination = $state('0'),
     busy = $state(false);
-  guardUpdates(() => open || busy);
+  guardUpdates(() => open || busy || (embedded && (!!name || editing !== null || removing !== null)));
   async function act(work: () => Promise<unknown>, message: string) {
     if (busy) return;
     busy = true;
@@ -45,12 +47,7 @@
   }
 </script>
 
-<Dialog
-  bind:open
-  title="Minhas áreas"
-  description="Organize sua vida do seu jeito. Suas missões e seu histórico são preservados."
-  dismissible={!busy}
->
+{#snippet contents()}
   {#if error}<p class="journey-error" role="alert">{error}</p>{/if}
   <p class="lmu-hint" role="status">{notice}</p>
   <form
@@ -186,9 +183,35 @@
       </li>
     {/each}
   </ul>
-</Dialog>
+{/snippet}
+{#if embedded}
+  <section class="rpg-frame area-workspace" aria-label="Gerenciar áreas">
+    <h2>Minhas áreas</h2>
+    <p class="lmu-hint">
+      Crie e edite seus símbolos. As missões herdam o ícone da área.
+    </p>
+    {@render contents()}
+  </section>
+{:else}
+  <Dialog
+    bind:open
+    title="Minhas áreas"
+    description="Organize sua vida do seu jeito. Suas missões e seu histórico são preservados."
+    dismissible={!busy}
+  >
+    {@render contents()}
+  </Dialog>
+{/if}
 
 <style>
+  .area-workspace {
+    padding: 18px;
+  }
+  .area-workspace h2 {
+    font: 500 1.7rem var(--lmu-display);
+    color: #ebce90;
+    margin: 0 0 8px;
+  }
   .area-create {
     display: flex;
     align-items: end;
