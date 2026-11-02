@@ -440,7 +440,7 @@
                   ? '+'
                   : ''}{received.gold} Ouro</span
               ><span
-                ><ApprovedIcon name="comida" size={26} />{received.food >= 0
+                ><ApprovedIcon name="alimentacao" size={26} />{received.food >= 0
                   ? '+'
                   : ''}{received.food} Comida</span
               ><small>Recebidos hoje · ganhos líquidos</small>

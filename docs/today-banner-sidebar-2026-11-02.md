@@ -4,6 +4,8 @@ O pacote de produtividade aprovado foi integrado pelo PR #51 no commit `5a6d3453
 
 Os ajustes adicionais de Hoje foram desenvolvidos depois desse merge, na branch `fix/today-banner-sidebar`, para avaliação na prévia isolada.
 
+O recurso Comida no resumo do dia agora usa o ícone aprovado de alimentação, com talheres, em vez do livro de fallback. O carregamento da imagem foi conferido na prévia; valores e regras de recompensa não foram alterados.
+
 - **Banner:** reaproveita a mesma pintura de Vèdria utilizada em Missões e a estrutura `journey-heading`. Saudação, data e acesso ao personagem continuam presentes. Texto e degradê mantêm contraste; o conteúdo pode crescer com texto ampliado. Nas capturas comparáveis, a altura passou de 240 para aproximadamente 151 px no desktop e de 280 para 156 px no mobile. A próxima missão aparece mais cedo.
 - **Causa da sidebar:** o AppShell atribuía a classe decorativa `rpg-frame` à sidebar somente em Hoje. Sua regra `position: relative` substituía o `sticky` compartilhado. A medição anterior mostrou o topo da sidebar em -588 px após rolar a página; nas outras telas, a posição já era `sticky`.
 - **Correção compartilhada:** retirada essa decoração condicional do AppShell. A sidebar usa altura limitada à janela, alinhamento superior e rolagem vertical independente, com navegação por teclado e contenção de rolagem. A correção atende Hoje e as demais páginas; não há regra especial para fixar somente Hoje. No mobile, a sidebar continua oculta e permanecem Hoje, Missões, Mundo e Mais.
