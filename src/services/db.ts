@@ -79,6 +79,8 @@ export type TaskRecurrence = {
 };
 
 export interface Task extends Planning {
+  /** Presentation only; optional and not indexed, so schema v6 is unchanged. */
+  iconKey?: string | null;
   productivityVersion?: 1;
   routineId?: string | null;
   planningPaused?: boolean;

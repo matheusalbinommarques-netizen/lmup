@@ -92,9 +92,7 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
   await expect(
     page.getByRole('progressbar', { name: 'Evolução do ambiente' }),
   ).toHaveAttribute('value', '0');
-  await expect(
-    page.getByRole('button', { name: 'Criar minha primeira missão' }),
-  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Nova missão' })).toBeVisible();
   await noOverflow(page);
   await capture(page, info.project.name + '-primeiro-acesso');
 
@@ -102,6 +100,10 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
   await page.goto('/');
   await createMission(page, 'Revisar minhas anotações');
   await page.goto('/');
+  await page.getByLabel('Escolher próxima missão').click();
+  await page
+    .getByLabel('Manter em destaque')
+    .selectOption({ label: 'Revisar minhas anotações · Flexível' });
   await expect(
     page.getByRole('heading', {
       name: 'Revisar minhas anotações',
@@ -109,11 +111,11 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole('link', { name: 'Começar missão', exact: true }),
+    page.getByRole('button', { name: 'Começar', exact: true }),
   ).toBeVisible();
   if (info.project.name === 'mobile') {
     const action = await page
-      .getByRole('link', { name: 'Começar missão', exact: true })
+      .getByRole('button', { name: 'Começar', exact: true })
       .boundingBox();
     const navigation = await page
       .getByRole('navigation', { name: 'Navegação móvel', exact: true })
@@ -121,7 +123,7 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
     expect(action!.y + action!.height).toBeLessThan(navigation!.y);
   }
   await capture(page, info.project.name + '-pendentes');
-  await page.getByRole('link', { name: 'Começar missão', exact: true }).click();
+  await page.getByRole('button', { name: 'Começar', exact: true }).click();
   await page
     .getByRole('button', { name: 'Iniciar missão', exact: true })
     .click();
@@ -131,25 +133,14 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
   await expect(page).toHaveURL(new RegExp('/missoes$'));
   await page.goto('/');
   await expect(
-    page.getByRole('link', { name: 'Continuar missão', exact: true }),
+    page.getByRole('button', { name: 'Continuar', exact: true }),
   ).toBeVisible();
-  await page
-    .getByRole('link', { name: 'Continuar missão', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Continuar', exact: true }).click();
   await expect(page).toHaveURL(new RegExp('/missao/[0-9]+$'));
   const resume = page.getByRole('button', {
     name: 'Retomar missão',
     exact: true,
   });
-  if (!(await resume.isVisible())) {
-    console.log(
-      'LMUP_HOME_PAUSE_DIAGNOSTIC',
-      JSON.stringify({
-        url: page.url(),
-        body: (await page.locator('body').innerText()).slice(0, 800),
-      }),
-    );
-  }
   await resume.click();
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
@@ -158,7 +149,7 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
     page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
   await page.goto('/');
-  await page.getByRole('link', { name: 'Começar missão', exact: true }).click();
+  await page.getByRole('button', { name: 'Começar', exact: true }).click();
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
@@ -167,19 +158,17 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
   ).toBeVisible();
   await page.goto('/');
   await expect(
-    page.getByRole('heading', { name: 'Você está em dia.', exact: true }),
+    page.getByRole('heading', { name: 'Seu plano está em dia', exact: true }),
   ).toBeVisible();
+  await expect(page.locator('.daily-summary')).toContainText('2 de 2 missões');
   await expect(
-    page.getByRole('region', { name: 'Suas missões', exact: true }),
-  ).toContainText('2 de 2 concluídas hoje');
-  await expect(
-    page.getByRole('link', { name: 'Ver todas', exact: true }),
+    page.getByRole('link', { name: 'Ver todas as missões', exact: true }),
   ).toHaveAttribute('href', '/missoes');
   await noOverflow(page);
   await capture(page, info.project.name + '-concluidas');
   await page.reload();
   await expect(
-    page.getByRole('heading', { name: 'Você está em dia.', exact: true }),
+    page.getByRole('heading', { name: 'Seu plano está em dia', exact: true }),
   ).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -264,18 +253,22 @@ test('Home mostra perfil, equipamento, ambiente e capítulo dos dados acumulados
   await expect(
     page.getByRole('link', { name: 'Equipado: Cota da Rotina' }),
   ).toBeVisible();
-  await expect(
-    page.getByText('Capítulo 2 · cena 2 de 3', { exact: true }),
-  ).toBeVisible();
+  await expect(page.locator('.world-card[href="/aventura"]')).toBeVisible();
   await expect(
     page.getByRole('progressbar', { name: 'Experiência do personagem' }),
   ).toHaveAttribute('value', '1484');
+  await page.locator('.world-card[href="/projetos"]').click();
   await expect(
-    page.getByRole('link', {
-      name: 'Preparar o portfólio Em andamento',
-      exact: true,
-    }),
+    page.getByRole('heading', { name: 'Preparar o portfólio', exact: true }),
   ).toBeVisible();
+  await page.goto('/aventura');
+  await expect(page.locator('.rpg-chapter-state')).toContainText(
+    'Capítulo 2: liberado',
+  );
+  await expect(page.locator('.rpg-story-card .rpg-overline')).toHaveText(
+    'Capítulo 2 · Cena 2 de 3',
+  );
+  await page.goto('/');
   await noOverflow(page);
   await capture(page, info.project.name + '-progresso');
 });
@@ -284,15 +277,15 @@ test('Home em 320px, tablet, texto 200%, teclado e arte ausente mantém ações'
   page,
 }, info) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.route('**/art/pilot/**', (route) => route.abort());
+  await page.route('**/art/approved/**', (route) => route.abort());
   await page.route('**/fonts/**', (route) => route.abort());
   await page.setViewportSize({ width: 320, height: 844 });
   await page.goto('/');
+  await expect(page.getByRole('button', { name: 'Nova missão' })).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Criar minha primeira missão' }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('img', { name: 'Seu ambiente no estágio Semente' }),
+    page.getByRole('img', {
+      name: 'Viajante contemplando Vèdria ao pôr do sol',
+    }),
   ).toBeVisible();
   await page.evaluate(() => {
     document.documentElement.style.fontSize = '200%';

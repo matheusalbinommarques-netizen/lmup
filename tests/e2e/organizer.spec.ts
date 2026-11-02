@@ -9,7 +9,8 @@ test.beforeEach(async ({ page }, info) => {
   await page.clock.setFixedTime(new Date('2026-11-02T10:00:00-03:00'));
 });
 async function capture(page: Page, prefix: string, state: string) {
-  const folder = 'docs/missoes-organizador-capturas';
+  if (!process.env.LMU_CAPTURE_DIR) return;
+  const folder = process.env.LMU_CAPTURE_DIR;
   await mkdir(folder, { recursive: true });
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({
@@ -80,6 +81,7 @@ test('áreas no cadastro, edição, exclusão com transferência e criação ape
   await page
     .getByRole('link', { name: 'Organizar a cozinha', exact: true })
     .click();
+  await expect(page).toHaveURL(/\/missao\/\d+$/);
   const url = page.url();
   await expect(
     page.getByRole('heading', { name: 'Organizar a cozinha', exact: true }),
@@ -106,6 +108,12 @@ test('áreas no cadastro, edição, exclusão com transferência e criação ape
     page.getByText('Pessoal · Sem repetição', { exact: false }),
   ).toBeVisible();
   await page.goto('/missoes');
+  if (
+    !(await page
+      .getByRole('button', { name: 'Gerenciar áreas', exact: true })
+      .isVisible())
+  )
+    await page.getByText('Mais filtros', { exact: true }).click();
   await page
     .getByRole('button', { name: 'Gerenciar áreas', exact: true })
     .click();
@@ -200,9 +208,7 @@ test('rotina persiste por data, impede duplicação entre abas, preserva histór
   ).toHaveLength(1);
   await page.clock.setFixedTime(new Date('2026-11-03T10:00:00-03:00'));
   await page.goto('/');
-  await expect(
-    page.getByRole('region', { name: 'Lista de missões', exact: true }),
-  ).toContainText('Lavar a louça');
+  await expect(page.locator('#next-title')).toContainText('Lavar a louça');
   await capture(page, info.project.name, 'home-novo-dia');
   await page.goto(url);
   await expect(
@@ -298,15 +304,13 @@ test('hoje, amanhã, outra data e dias da semana mostram agenda real em desktop 
     await form.getByRole('button', { name: 'Sem data', exact: true }).click();
   });
   await page.goto('/');
-  const home = page.getByRole('region', {
-    name: 'Suas missões',
-    exact: true,
-  });
-  await expect(home).toContainText('Estudar uma ideia');
-  await expect(home).not.toContainText('Treinar amanhã');
-  await expect(home).not.toContainText('Consulta futura');
-  await expect(home).not.toContainText('Ideia sem compromisso');
+  const home = page.locator('.today-plan');
+  await expect.poll(() => home.innerText()).toContain('Estudar uma ideia');
+  expect(await home.innerText()).not.toContain('Treinar amanhã');
+  expect(await home.innerText()).not.toContain('Consulta futura');
+  expect(await home.innerText()).not.toContain('Ideia sem compromisso');
   await page.goto('/missoes');
+  await page.getByRole('button', { name: 'Hoje', exact: true }).click();
   const list = page.getByRole('region', {
     name: 'Lista de missões',
     exact: true,

@@ -15,6 +15,12 @@ async function create(page: Page, title: string, steps = '', projectName = '') {
         .getByRole('combobox', { name: 'Projeto', exact: true })
         .selectOption({ label: projectName });
   }
+  if (steps) {
+    await dialog
+      .getByText('Horário, prioridade e acompanhamento', { exact: true })
+      .click();
+    await dialog.getByLabel('Acompanhar progresso por').selectOption('steps');
+  }
   await dialog
     .getByRole('button', { name: 'Criar missão', exact: true })
     .click();
@@ -70,9 +76,11 @@ test('primeira missão real persiste passos e notas, retoma, conclui e desfaz ap
     .click();
   await expect(page).toHaveURL(/\/missoes$/);
   await page.goto('/');
-  await expect(page.getByText('Pausada', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Continuar', exact: true }),
+  ).toBeVisible();
   const contrast = await page
-    .getByRole('link', { name: 'Continuar missão', exact: true })
+    .getByRole('button', { name: 'Continuar', exact: true })
     .evaluate((element) => {
       const style = getComputedStyle(element);
       const luminance = (color: string) => {
@@ -92,9 +100,7 @@ test('primeira missão real persiste passos e notas, retoma, conclui e desfaz ap
       return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
     });
   expect(contrast).toBeGreaterThanOrEqual(4.5);
-  await page
-    .getByRole('link', { name: 'Continuar missão', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Continuar', exact: true }).click();
   await expect(page).toHaveURL(url);
   await page.reload();
   await expect(

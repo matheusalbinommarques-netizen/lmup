@@ -176,12 +176,15 @@ test('rotina semanal vira sessão persistente e aceita pausa, retomada e conclus
   await page
     .getByLabel('Nome da rotina', { exact: true })
     .fill('Noite produtiva');
+  await page.getByText('Adicionar missão existente', { exact: true }).click();
   await page
-    .getByRole('checkbox', { name: 'Lavar louça', exact: true })
-    .check();
+    .locator('.mission-results')
+    .getByRole('button', { name: /^Lavar louça/ })
+    .click();
   await page
-    .getByRole('checkbox', { name: 'Ler um livro', exact: true })
-    .check();
+    .locator('.mission-results')
+    .getByRole('button', { name: /^Ler um livro/ })
+    .click();
   await page
     .getByLabel('Horário de Lavar louça', { exact: true })
     .fill('19:00');
@@ -191,9 +194,11 @@ test('rotina semanal vira sessão persistente e aceita pausa, retomada e conclus
   await page
     .getByRole('button', { name: 'Salvar rotina', exact: true })
     .click();
-  await expect(
-    page.getByRole('heading', { name: 'Noite produtiva', exact: true }),
-  ).toBeVisible();
+  await expect(page.locator('.routine-name')).toContainText('Noite produtiva');
+  await page
+    .locator('.routine-card')
+    .getByText('Mais ações', { exact: true })
+    .click();
   await page
     .getByRole('button', { name: 'Executar rotina', exact: true })
     .click();
@@ -254,10 +259,8 @@ test('recuperação reagendada convive com a ocorrência do dia sem duplicação
   await page
     .getByRole('button', { name: 'Recuperar ocorrências', exact: true })
     .click();
-  await page.getByLabel('Consultar ocorrências de').fill('2026-11-02');
-  await page
-    .getByRole('button', { name: 'Recuperar ocorrência', exact: true })
-    .click();
+  await page.getByLabel('De', { exact: true }).fill('2026-11-02');
+  await page.getByRole('button', { name: 'Recuperar', exact: true }).click();
   await page.getByText('Reagendar e organizar', { exact: true }).click();
   await page.getByLabel('Nova data', { exact: true }).fill('2026-11-03');
   await page
@@ -276,7 +279,7 @@ test('recuperação reagendada convive com a ocorrência do dia sem duplicação
   });
   await page.goto('/missoes?view=agenda');
   await page.getByRole('button', { name: 'Dia', exact: true }).click();
-  await expect(page.locator('.agenda-item')).toHaveCount(2);
+  await expect(page.locator('.timeline-entry .occurrence-row')).toHaveCount(2);
   await page
     .getByRole('button', { name: 'Executar agora', exact: true })
     .click();

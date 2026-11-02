@@ -38,6 +38,8 @@
   import AreasDialog from './AreasDialog.svelte';
   import Button from '$lib/ui/Button.svelte';
   import Icon from '$lib/ui/Icon.svelte';
+  import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
+  import { paintings } from '$lib/content/visualAssets';
   import RpgTrim from '$lib/ui/RpgTrim.svelte';
   import ProductivityWorkspace from './ProductivityWorkspace.svelte';
   import { ensureOccurrence } from '$services/occurrenceService';
@@ -46,11 +48,39 @@
   let workspaceView = $state<
     'list' | 'agenda' | 'routines' | 'recovery' | 'sessions'
   >('list');
-  onMount(() => {
+  $effect(() => {
     const value = page.url.searchParams.get('view');
-    if (value && ['agenda', 'routines', 'recovery', 'sessions'].includes(value))
-      workspaceView = value as typeof workspaceView;
+    workspaceView =
+      value && ['agenda', 'routines', 'recovery', 'sessions'].includes(value)
+        ? (value as typeof workspaceView)
+        : 'list';
   });
+  function changeView(view: string) {
+    const url = new URL(page.url);
+    url.searchParams.set('view', view);
+    void goto(url.pathname + url.search, { noScroll: true, keepFocus: true });
+  }
+  const workspaceTitle = $derived(
+    {
+      list: 'Lista de Missões',
+      agenda:
+        page.url.searchParams.get('mode') === 'week'
+          ? 'Agenda — Semana'
+          : 'Agenda',
+      routines: 'Rotinas',
+      recovery: 'Recuperar Ocorrências',
+      sessions: 'Sessões salvas',
+    }[workspaceView],
+  );
+  const workspaceSubtitle = $derived(
+    {
+      list: 'Veja, filtre e gerencie todas as suas missões.',
+      agenda: 'Organize seu tempo e mantenha o foco.',
+      routines: 'Organize suas sequências e mantenha a constância.',
+      recovery: 'Recupere, reorganize e mantenha o progresso.',
+      sessions: 'Retome suas atividades com o progresso preservado.',
+    }[workspaceView],
+  );
   let data = $state<JourneySnapshot>();
   let undoOpen = $state(false);
   let undoSelection = $state<{
@@ -92,7 +122,9 @@
   let search = $state(''),
     project = $state(''),
     area = $state('all');
-  let filter = $state<'today' | 'upcoming' | 'all' | 'completed'>('today');
+  let filter = $state<'today' | 'upcoming' | 'all' | 'undated' | 'completed'>(
+    'all',
+  );
   let groupAreas = $state(false),
     pinnedOnly = $state(false);
   let selecting = $state(false),
@@ -175,6 +207,16 @@
     (!project || task.projectId === Number(project)) &&
     (area === 'all' || (task.areaId ?? 0) === Number(area)) &&
     (!pinnedOnly || task.pinned);
+  const category = (task: Task) =>
+    task.completed && !task.recurrence && !task.reviewEnabled
+      ? 'Concluídas'
+      : scheduledToday(task)
+        ? 'Hoje'
+        : !task.plannedDate && !task.recurrence && !task.reviewEnabled
+          ? 'Sem data'
+          : 'Outros dias';
+  const categoryOrder = (task: Task) =>
+    ['Hoje', 'Outros dias', 'Sem data', 'Concluídas'].indexOf(category(task));
   const tasks = $derived(data?.tasks.filter(matches) ?? []);
   const counts = $derived({
     today: tasks.filter((task) => scheduledToday(task)).length,
@@ -184,6 +226,7 @@
         (task.recurrence || task.reviewEnabled || !task.completed),
     ).length,
     all: tasks.length,
+    undated: tasks.filter((task) => category(task) === 'Sem data').length,
     completed:
       data?.events.filter(
         (event) =>
@@ -198,6 +241,7 @@
       .filter(
         (task) =>
           filter === 'all' ||
+          (filter === 'undated' && category(task) === 'Sem data') ||
           (filter === 'today'
             ? scheduledToday(task)
             : filter === 'upcoming'
@@ -207,6 +251,9 @@
       )
       .sort(
         (a, b) =>
+          (!groupAreas && filter === 'all'
+            ? categoryOrder(a) - categoryOrder(b)
+            : 0) ||
           (groupAreas
             ? areaName(a.areaId).localeCompare(areaName(b.areaId), 'pt-BR')
             : 0) ||
@@ -337,11 +384,16 @@
 
 <svelte:head><title>Missões · Level Me Up</title></svelte:head>
 <section class="rpg-theme missions-organizer">
-  <header class="journey-heading">
+  <header
+    class="journey-heading missions-heading"
+    style:--heading-art={`url("${paintings.vedria}")`}
+  >
     <div>
-      <p class="lmu-eyebrow">Organize para agir</p>
-      <h1>Missões</h1>
-      <p>Seu dia, um próximo passo de cada vez.</p>
+      <p class="lmu-eyebrow">
+        Missões › {workspaceView === 'list' ? 'Lista' : workspaceTitle}
+      </p>
+      <h1>{workspaceTitle}</h1>
+      <p>{workspaceSubtitle}</p>
     </div>
     <Button onclick={create}><Icon name="plus" size={18} />Nova missão</Button>
   </header>
@@ -353,8 +405,19 @@
         <Button
           variant="secondary"
           aria-pressed={workspaceView === tab.id}
-          onclick={() => (workspaceView = tab.id as typeof workspaceView)}
-          >{tab.label}</Button
+          onclick={() => changeView(tab.id)}
+          ><ApprovedIcon
+            name={tab.id === 'agenda'
+              ? 'agenda'
+              : tab.id === 'routines'
+                ? 'rotina'
+                : tab.id === 'recovery'
+                  ? 'recover'
+                  : tab.id === 'sessions'
+                    ? 'em_andamento'
+                    : 'missions'}
+            size={24}
+          />{tab.label}</Button
         >
       {/each}
     </nav>
@@ -362,56 +425,58 @@
         view={workspaceView}
         snapshot={data}
       />{:else}
-      <div class="rpg-frame organizer-toolbar">
-        <RpgTrim />
-        <nav class="organizer-tabs" aria-label="Agenda de missões">
-          {#each [{ key: 'today', label: 'Hoje' }, { key: 'upcoming', label: 'Próximas' }, { key: 'all', label: 'Todas' }, { key: 'completed', label: 'Concluídas' }] as tab (tab.key)}<Button
-              variant="secondary"
-              aria-label={tab.label}
-              aria-pressed={filter === tab.key}
-              onclick={() => (filter = tab.key as typeof filter)}
-              >{tab.label}<small aria-hidden="true"
-                >{tab.key === 'completed'
-                  ? history.filter((event) => !event.reversedAt).length +
-                    legacy.length
-                  : counts[tab.key as keyof typeof counts]}</small
-              ></Button
-            >{/each}
-        </nav>
-        <div class="mission-session-tools">
-          {#if selecting}
-            <span
-              >{eligibleSelection.length}
-              {eligibleSelection.length === 1
-                ? 'missão selecionada'
-                : 'missões selecionadas'}</span
-            >
-            <Button disabled={!eligibleSelection.length} onclick={beginSession}
-              >Iniciar sessão</Button
-            >
-            <Button
-              variant="quiet"
-              onclick={() => {
-                selecting = false;
-                selected = [];
-              }}>Cancelar seleção</Button
-            >
-          {:else}
-            <Button
-              variant="secondary"
-              onclick={() => {
-                selecting = true;
-                filter = 'today';
-                selected = [];
-              }}
-            >
-              <Icon name="missions" size={18} />Montar sessão
-            </Button>
-            {#if storedSession}<a
-                class="lmu-button lmu-button--secondary"
-                href="/sessao">Retomar sessão do dia</a
-              >{/if}
-          {/if}
+      <div class="organizer-toolbar">
+        <div class="organizer-primary-controls">
+          <nav class="organizer-tabs" aria-label="Agenda de missões">
+            {#each [{ key: 'today', label: 'Hoje' }, { key: 'upcoming', label: 'Próximas' }, { key: 'all', label: 'Todas' }, { key: 'undated', label: 'Sem data' }, { key: 'completed', label: 'Concluídas' }] as tab (tab.key)}<Button
+                variant="secondary"
+                aria-label={tab.label}
+                aria-pressed={filter === tab.key}
+                onclick={() => (filter = tab.key as typeof filter)}
+                >{tab.label}<small aria-hidden="true"
+                  >{tab.key === 'completed'
+                    ? history.filter((event) => !event.reversedAt).length +
+                      legacy.length
+                    : counts[tab.key as keyof typeof counts]}</small
+                ></Button
+              >{/each}
+          </nav>
+          <div class="mission-session-tools">
+            {#if selecting}
+              <span
+                >{eligibleSelection.length}
+                {eligibleSelection.length === 1
+                  ? 'missão selecionada'
+                  : 'missões selecionadas'}</span
+              >
+              <Button
+                disabled={!eligibleSelection.length}
+                onclick={beginSession}>Iniciar sessão</Button
+              >
+              <Button
+                variant="quiet"
+                onclick={() => {
+                  selecting = false;
+                  selected = [];
+                }}>Cancelar seleção</Button
+              >
+            {:else}
+              <Button
+                variant="secondary"
+                onclick={() => {
+                  selecting = true;
+                  filter = 'today';
+                  selected = [];
+                }}
+              >
+                <Icon name="missions" size={18} />Montar sessão
+              </Button>
+              {#if storedSession}<a
+                  class="lmu-button lmu-button--secondary"
+                  href="/sessao">Retomar sessão do dia</a
+                >{/if}
+            {/if}
+          </div>
         </div>
         <div class="organizer-compact-filters">
           <label class="journey-label lmu-field search-field"
@@ -423,7 +488,9 @@
           >
           <div class="organizer-filters">
             <label class="journey-label"
-              >Área<select bind:value={area}
+              ><span class="sr-only">Área</span><select
+                aria-label="Área"
+                bind:value={area}
                 ><option value="all">Todas as áreas</option><option value="0"
                   >Geral</option
                 >{#each data.areas as item (item.id)}<option
@@ -431,32 +498,33 @@
                   >{/each}</select
               ></label
             >
-            <Button variant="secondary" onclick={() => (areasOpen = true)}
+          </div>
+          <details class="extra-filters">
+            <summary
+              >Mais filtros{project || pinnedOnly ? ' · ativos' : ''}</summary
+            >
+            <label class="journey-label"
+              >Projeto<select bind:value={project}
+                ><option value="">Todos os projetos</option
+                >{#each data.projects as item (item.id)}<option
+                    value={String(item.id)}>{item.name}</option
+                  >{/each}</select
+              ></label
+            >
+            <div class="organizer-options">
+              <label class="journey-check"
+                ><input type="checkbox" bind:checked={groupAreas} />Agrupar por
+                área</label
+              ><label class="journey-check"
+                ><input type="checkbox" bind:checked={pinnedOnly} />Apenas
+                fixadas</label
+              >
+            </div>
+            <Button variant="quiet" onclick={() => (areasOpen = true)}
               >Gerenciar áreas</Button
             >
-          </div>
+          </details>
         </div>
-        <details class="extra-filters">
-          <summary
-            >Mais filtros{project || pinnedOnly ? ' · ativos' : ''}</summary
-          >
-          <label class="journey-label"
-            >Projeto<select bind:value={project}
-              ><option value="">Todos os projetos</option
-              >{#each data.projects as item (item.id)}<option
-                  value={String(item.id)}>{item.name}</option
-                >{/each}</select
-            ></label
-          >
-          <div class="organizer-options">
-            <label class="journey-check"
-              ><input type="checkbox" bind:checked={groupAreas} />Agrupar por
-              área</label
-            ><label class="journey-check"
-              ><input type="checkbox" bind:checked={pinnedOnly} />Apenas fixadas</label
-            >
-          </div>
-        </details>
         {#if search || area !== 'all' || project || pinnedOnly}<Button
             variant="quiet"
             onclick={() => {
@@ -474,14 +542,16 @@
           : 'Lista de missões'}
       >
         <RpgTrim />
-        <h2>
+        <h2 class:sr-only={filter === 'all' && !groupAreas}>
           {filter === 'today'
             ? 'Hoje'
             : filter === 'upcoming'
               ? 'Próximas atividades'
-              : filter === 'completed'
-                ? 'Suas conclusões'
-                : 'Todas as missões'}
+              : filter === 'undated'
+                ? 'Sem data'
+                : filter === 'completed'
+                  ? 'Suas conclusões'
+                  : 'Todas as missões'}
         </h2>
         {#if filter === 'completed'}
           {#if history.length || legacy.length}<ul>
@@ -554,6 +624,15 @@
             </p>{/if}
         {:else if visible.length}<ul>
             {#each visible as task, index (task.id)}
+              {#if !groupAreas && filter === 'all' && (index === 0 || category(visible[index - 1]) !== category(task))}<li
+                  class="area-group"
+                >
+                  <h3>
+                    {category(task)} ({visible.filter(
+                      (item) => category(item) === category(task),
+                    ).length})
+                  </h3>
+                </li>{/if}
               {#if groupAreas && (index === 0 || areaName(visible[index - 1].areaId) !== areaName(task.areaId))}<li
                   class="area-group"
                 >
@@ -585,74 +664,66 @@
                       checked={selected.includes(task.id!)}
                       onchange={() => toggleSelection(task.id!)}
                     />
-                  </label>{:else if canComplete && !taskSteps(task).length && todayRows.length <= 1 && filter !== 'upcoming'}<button
+                  </label>{:else if canComplete && (!task.tracking || task.tracking.method === 'direct') && !taskSteps(task).length && todayRows.length <= 1 && filter !== 'upcoming'}<button
                     class="mission-check"
                     disabled={pending.includes(String(task.id))}
                     aria-label={`Concluir ${task.title}`}
                     onclick={() => complete(task)}
                     ><Icon name="check" size={18} /></button
                   >{:else}<span class="mission-check-static"
-                    ><Icon
-                      name={done ? 'check' : task.recurrence ? 'today' : 'book'}
-                      size={20}
-                    /></span
+                    >{#if done}<Icon name="check" size={18} />{:else}<span
+                        aria-hidden="true">·</span
+                      >{/if}</span
                   >{/if}
+                <ApprovedIcon name={task.iconKey} size={32} />
                 <div class="mission-copy">
-                  <a href={`/missao/${task.id}`}>{task.title}</a><small
-                    >{areaName(task.areaId)} · {recurrenceLabel(
-                      task,
-                    )}{task.pinned ? ' · Fixada' : ''}{canComplete &&
-                    ['active', 'paused'].includes(task.executionState ?? '')
-                      ? ' · Em andamento'
-                      : ''}</small
-                  ><small
-                    >{filter === 'upcoming'
-                      ? `Próxima: ${formatCalendar(nextPlannedDate(task, today))}`
-                      : done
-                        ? 'Concluída'
-                        : task.recurrence
-                          ? scheduledToday(task)
-                            ? `Ocorrência: ${formatCalendar(today)}`
-                            : `Próxima: ${formatCalendar(nextPlannedDate(task, today))}`
-                          : task.plannedDate
-                            ? `Planejada: ${formatCalendar(task.plannedDate)}`
-                            : 'Sem data'}</small
+                  <a href={`/missao/${task.id}`}>{task.title}</a>
+                  <small
+                    >{areaName(task.areaId)} · {task.plannedTime ??
+                      'Flexível'}{task.estimatedMinutes
+                      ? ` · ${task.estimatedMinutes} min`
+                      : ''} · {done
+                      ? 'Concluída'
+                      : task.plannedDate
+                        ? formatCalendar(task.plannedDate)
+                        : recurrenceLabel(task)}</small
                   >
-                  {#if task.plannedTime || task.estimatedMinutes || task.importance === 'high'}<small
-                      >{task.plannedTime ??
-                        'Horário flexível'}{task.estimatedMinutes
-                        ? ' · ' + task.estimatedMinutes + ' min estimados'
-                        : ''}{task.importance === 'high'
-                        ? ' · Alta importância'
-                        : ''}</small
-                    >{/if}
-                  {#if todayRows.length > 1 || todayRows.some((row) => row.value > 0 && row.status !== 'completed')}
-                    <div class="mission-occurrences">
-                      {#each todayRows as occurrence (occurrence.id)}<p>
-                          Origem {occurrence.originDate} · {Math.round(
+                  {#if todayRows.length > 1}<details
+                      class="mission-occurrences"
+                    >
+                      <summary>{todayRows.length} ocorrências hoje</summary
+                      >{#each todayRows as occurrence (occurrence.id)}<a
+                          href={'/ocorrencia/' +
+                            encodeURIComponent(occurrence.id)}
+                          onclick={async (event) => {
+                            event.preventDefault();
+                            await act('open:' + occurrence.id, async () => {
+                              await ensureOccurrence(
+                                occurrence.taskId,
+                                occurrence.originDate,
+                              );
+                              await goto(
+                                '/ocorrencia/' +
+                                  encodeURIComponent(occurrence.id),
+                              );
+                            });
+                          }}
+                          >Origem {occurrence.originDate} · {Math.round(
                             fraction(occurrence) * 100,
-                          )}% ·
-                          <a
-                            class="journey-link"
-                            href={'/ocorrencia/' +
-                              encodeURIComponent(occurrence.id)}
-                            onclick={async (event) => {
-                              event.preventDefault();
-                              await act('open:' + occurrence.id, async () => {
-                                await ensureOccurrence(
-                                  occurrence.taskId,
-                                  occurrence.originDate,
-                                );
-                                await goto(
-                                  '/ocorrencia/' +
-                                    encodeURIComponent(occurrence.id),
-                                );
-                              });
-                            }}>Executar ocorrência →</a
-                          >
-                        </p>{/each}
-                    </div>
-                  {/if}
+                          )}% · Executar ocorrência →</a
+                        >{/each}
+                    </details>
+                  {:else if todayRows[0]?.value > 0 && !done}<a
+                      class="inline-progress"
+                      href={'/ocorrencia/' +
+                        encodeURIComponent(todayRows[0].id)}
+                      ><progress
+                        max="100"
+                        value={fraction(todayRows[0]) * 100}
+                        aria-label={'Progresso de ' + task.title}
+                      ></progress>{Math.round(fraction(todayRows[0]) * 100)}% ·
+                      Continuar</a
+                    >{/if}
                 </div>
                 {#if reward}<div class="mission-reward">
                     <span>+{reward.xp} XP</span><small
@@ -755,156 +826,224 @@
 
 <style>
   .missions-organizer {
-    max-width: 1100px;
-    margin: auto;
-  }
-  .mission-session-tools {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.55rem;
-    margin: 0 0 0.85rem;
-    color: #dcc79c;
-    font-size: 0.85rem;
-  }
-  .mission-selection {
-    display: grid;
-    place-items: center;
-    width: 36px;
-    height: 38px;
-    flex: 0 0 36px;
-  }
-  .mission-selection input {
-    width: 22px;
-    height: 22px;
-    accent-color: #d5a457;
-    cursor: pointer;
-  }
-  .organizer-compact-filters {
-    display: grid;
-    grid-template-columns: minmax(220px, 1.4fr) minmax(330px, 1fr);
-    gap: 0.7rem;
-    align-items: end;
-  }
-  .organizer-compact-filters .search-field {
+    max-width: none;
     margin: 0;
   }
-  .organizer-compact-filters .organizer-filters {
-    margin-top: 0;
+  .missions-heading {
+    background:
+      linear-gradient(90deg, #061115 20%, #06111544 80%), var(--heading-art);
+    background-size: cover;
+    background-position:
+      center,
+      center 42%;
+    min-height: 124px;
+    padding: 16px;
+    margin: 0 0 10px;
+    border-radius: 6px;
+    align-items: center;
   }
-  @media (max-width: 900px) {
-    .organizer-compact-filters {
-      grid-template-columns: 1fr;
-    }
+  .missions-heading h1 {
+    font: 500 2.65rem/1.05 var(--lmu-display);
+    color: #f0ca76;
+    margin: 6px 0;
   }
-  .organizer-toolbar,
-  .organizer-list {
-    padding: 1.1rem;
-    margin-bottom: 1rem;
+  .missions-heading p {
+    font-size: 0.85rem;
+    color: #c5cfb9;
+    margin: 4px 0;
   }
-  .organizer-tabs {
+  .missions-heading .lmu-eyebrow {
+    font-size: 0.7rem;
+    color: #e4c481;
+    letter-spacing: 0.04em;
+  }
+  .missions-organizer > nav {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.5rem;
-    margin-bottom: 0.9rem;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0 0 12px;
+    padding: 0 0 10px;
+    border-bottom: 1px solid #69603b66;
   }
-  .organizer-tabs :global(button) {
+  .missions-organizer > nav :global(.lmu-button) {
     min-width: 0;
-    gap: 0.5rem;
+    min-height: 38px;
+    font-size: 0.82rem;
+    padding: 5px 8px;
+    white-space: nowrap;
   }
-  .organizer-tabs :global(button[aria-pressed='true']) {
-    border-color: #d0a451;
-    color: #ffe0a0;
-    background: linear-gradient(180deg, #644b28, #31291d);
-    box-shadow: inset 0 1px #ffe4a033;
-  }
-  .organizer-tabs small {
-    opacity: 0.75;
-    font-size: 0.75rem;
-  }
-  .organizer-filters {
-    display: flex;
-    gap: 0.75rem;
-    align-items: end;
-    margin-top: 0.8rem;
-    flex-wrap: wrap;
-  }
-  .organizer-filters label {
-    flex: 1 1 130px;
-    min-width: 0;
+  .missions-organizer > nav :global([aria-pressed='true']),
+  .organizer-tabs :global([aria-pressed='true']) {
+    border-color: #d8a94c;
+    color: #ffe5af;
+    background: linear-gradient(#956e2b, #392b18);
+    box-shadow: 0 0 9px #d7a04033;
   }
   .journey-save-status:empty {
     display: none;
   }
-  .extra-filters {
-    margin-top: 0.7rem;
+  .organizer-toolbar {
+    display: grid;
+    gap: 10px;
+    margin: 0 0 12px;
+  }
+  .organizer-primary-controls {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .organizer-tabs,
+  .mission-session-tools {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+  }
+  .organizer-tabs :global(.lmu-button),
+  .mission-session-tools :global(.lmu-button) {
+    min-height: 36px;
+    font-size: 0.8rem;
+    padding: 5px 9px;
+    gap: 5px;
+  }
+  .organizer-tabs small {
+    font-size: 0.75rem;
+    opacity: 0.8;
+  }
+  .mission-session-tools {
+    font-size: 0.8rem;
+    color: #dcc79c;
+  }
+  .organizer-compact-filters {
+    display: grid;
+    grid-template-columns: minmax(180px, 1.5fr) minmax(150px, 0.7fr) auto;
+    align-items: start;
+    gap: 10px;
+  }
+  .organizer-compact-filters label {
+    margin: 0;
+  }
+  .organizer-compact-filters input,
+  .organizer-compact-filters select {
+    min-height: 38px;
     font-size: 0.85rem;
+    padding: 7px 10px;
+    border-radius: 6px;
+  }
+  .organizer-filters label {
+    display: block;
+  }
+  .extra-filters {
+    position: relative;
+    font-size: 0.8rem;
+    margin: 0;
   }
   .extra-filters summary {
     cursor: pointer;
-    color: #cbb380;
+    color: #d7c497;
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    border: 1px solid #736845;
+    border-radius: 6px;
+  }
+  .extra-filters[open] {
+    grid-column: 1/-1;
+    border: 1px solid #736845;
+    border-radius: 6px;
+    padding: 10px;
+    background: #102022;
+  }
+  .extra-filters[open] summary {
+    border: 0;
+    padding: 0;
+    min-height: 30px;
   }
   .extra-filters > label {
-    margin-top: 0.7rem;
+    margin: 8px 0;
     max-width: 400px;
   }
   .organizer-options {
     display: flex;
-    gap: 1rem;
+    gap: 16px;
     align-items: center;
     flex-wrap: wrap;
-    margin-top: 0.7rem;
-    font-size: 0.8rem;
+    margin: 8px 0;
   }
-  .organizer-options label {
-    margin: 0;
+  .organizer-list {
+    padding: 10px 12px;
+    margin: 0 0 14px;
+    border-color: #615f3b80;
   }
-  h1,
-  h2,
-  h3 {
-    font-family: var(--lmu-display);
-  }
-  h1 {
-    color: var(--rpg-gold);
+  .organizer-list > :global(.rpg-trim) {
+    display: none;
   }
   .organizer-list h2 {
-    margin: 0 0 0.8rem;
-    font-size: 1.6rem;
-    color: #eadbbf;
+    font: 500 1.45rem var(--lmu-display);
+    color: #e9ce8c;
+    margin: 0 0 8px;
   }
   .organizer-list ul {
     list-style: none;
     margin: 0;
     padding: 0;
+    display: grid;
+    gap: 5px;
+  }
+  .area-group h3 {
+    font: 500 1.15rem var(--lmu-display);
+    color: #dfc891;
+    margin: 6px 0 3px;
   }
   .mission-row {
     display: flex;
     align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    min-height: 64px;
+    border: 1px solid #4b624344;
+    border-radius: 6px;
+    background: linear-gradient(100deg, #172c2a88, #071316);
     flex-wrap: wrap;
-    gap: 0.8rem;
-    padding: 0.85rem 0.3rem;
-    border-top: 1px solid #a27c433d;
   }
   .mission-copy {
-    flex: 1 1 180px;
+    flex: 1;
     min-width: 0;
+    line-height: 1.35;
   }
-  .mission-copy a,
-  .mission-copy strong {
-    color: #ece7d7;
-    overflow-wrap: anywhere;
-    font-weight: 500;
+  .mission-copy > a,
+  .mission-copy > strong {
+    font: 600 1.15rem var(--lmu-display);
+    color: #f1ead4;
     text-decoration: none;
+    overflow-wrap: anywhere;
   }
   .mission-copy a:hover {
     text-decoration: underline;
   }
-  .mission-copy small,
+  .mission-copy > small,
   .mission-reward small {
     display: block;
-    font-size: 0.76rem;
-    color: #afbeb5;
-    margin-top: 0.2rem;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: #b9c8bc;
+    margin-top: 3px;
+  }
+  .inline-progress {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    margin-top: 4px;
+    color: #e0c789;
+  }
+  .inline-progress progress {
+    width: 84px;
+    height: 6px;
   }
   .mission-reward {
     text-align: right;
@@ -913,32 +1052,31 @@
     font-variant-numeric: tabular-nums;
   }
   .mission-check,
-  .mission-check-static {
+  .mission-check-static,
+  .mission-selection {
     display: grid;
     place-items: center;
-    width: 36px;
-    height: 38px;
+    width: 32px;
+    height: 36px;
+    flex: 0 0 32px;
     border: 1px solid #ba9b645c;
-    border-radius: 0.3rem;
+    border-radius: 4px;
     background: #071418;
-    color: #bfa36a;
-    flex: 0 0 36px;
+    color: #c8ad77;
+  }
+  .mission-selection input {
+    width: 20px;
+    height: 20px;
+    accent-color: #e0b45b;
   }
   .mission-check {
     cursor: pointer;
   }
   .mission-check:hover {
-    color: #ffe4a4;
     background: #ad87332b;
+    color: #ffe4a4;
   }
-  .mission-check :global(svg) {
-    opacity: 0.5;
-  }
-  .mission-check:hover :global(svg),
-  .mission-check:focus-visible :global(svg) {
-    opacity: 1;
-  }
-  .mission-done .mission-copy a {
+  .mission-done .mission-copy > a {
     color: #b9c9bd;
   }
   .reversed {
@@ -949,8 +1087,10 @@
   }
   .mission-menu summary {
     cursor: pointer;
-    padding: 0.5rem;
+    padding: 6px;
     list-style: none;
+    min-width: 32px;
+    min-height: 36px;
     font-size: 1.3rem;
   }
   .mission-menu[open] {
@@ -962,114 +1102,128 @@
   .mission-menu > div {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.4rem;
-    padding: 0.5rem;
-    background: #0a1c20;
-    border-radius: 0.35rem;
+    gap: 6px;
+    padding: 8px;
+    background: #102326;
+    border: 1px solid #736845;
+    border-radius: 6px;
     align-items: center;
   }
-  .area-group h3 {
-    color: var(--rpg-gold);
-    margin: 0.9rem 0 0.3rem;
-    font-size: 1.3rem;
+  .mission-occurrences {
+    font-size: 0.78rem;
+    padding-top: 4px;
+  }
+  .mission-occurrences a {
+    display: block;
   }
   .organizer-empty {
-    padding: 1.6rem 0.8rem;
+    padding: 24px 12px;
     text-align: center;
     color: #b6c3ba;
   }
-  .organizer-empty :global(svg) {
-    margin: auto;
-    color: #d8b674;
+  .organizer-empty h3 {
+    font-family: var(--lmu-display);
   }
   .organizer-links {
     display: flex;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 1rem;
+    gap: 12px;
+    font-size: 0.8rem;
+  }
+  @media (max-width: 900px) {
+    .missions-heading {
+      min-height: 118px;
+      padding: 12px 10px;
+    }
+    .missions-heading h1 {
+      font-size: 2.1rem;
+    }
+    .missions-organizer > nav {
+      display: flex;
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      gap: 6px;
+    }
+    .missions-organizer > nav :global(.lmu-button) {
+      flex: 0 0 auto;
+      font-size: 0.78rem;
+    }
   }
   @media (max-width: 600px) {
-    .journey-heading {
+    .missions-heading {
       display: grid;
       grid-template-columns: 1fr auto;
-      align-items: center;
-      gap: 0.5rem;
-      margin-bottom: 0.8rem;
+      gap: 6px;
     }
-    .journey-heading > div {
+    .missions-heading > div {
       min-width: 0;
     }
-    .journey-heading h1 {
-      font-size: 2rem;
-      margin: 0.2rem 0;
+    .missions-heading h1 {
+      font-size: 1.9rem;
     }
-    .journey-heading p {
+    .missions-heading p {
+      font-size: 0.78rem;
+    }
+    .missions-heading :global(.lmu-button) {
       font-size: 0.8rem;
-      margin: 0.3rem 0;
+      padding: 6px;
     }
-    .journey-heading .lmu-eyebrow {
-      font-size: 0.6rem;
+    .organizer-primary-controls {
+      gap: 8px;
     }
-    .journey-heading :global(button) {
-      padding: 0.65rem 0.6rem;
-      font-size: 0.8rem;
+    .organizer-tabs {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      width: 100%;
+      padding-bottom: 2px;
+    }
+    .organizer-tabs :global(.lmu-button) {
+      flex: 0 0 auto;
+      padding: 5px 7px;
+      font-size: 0.78rem;
     }
     .organizer-tabs small {
       display: none;
     }
-    .organizer-filters :global(button) {
-      font-size: 0.8rem;
-      padding: 0.65rem 0.5rem;
+    .organizer-compact-filters {
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
     }
-    .organizer-toolbar,
+    .search-field {
+      grid-column: 1/-1;
+    }
     .organizer-list {
-      padding: 0.8rem;
-    }
-    .organizer-tabs {
-      gap: 0.3rem;
-    }
-    .organizer-tabs :global(button) {
-      padding: 0.65rem 0.2rem;
-      font-size: 0.8rem;
-      flex-wrap: wrap;
+      padding: 8px;
     }
     .mission-row {
-      gap: 0.5rem;
+      gap: 7px;
+      padding: 8px;
     }
     .mission-copy {
-      flex-basis: 140px;
+      flex-basis: calc(100% - 120px);
     }
     .mission-reward {
-      margin-left: 44px;
-      text-align: left;
+      margin-left: 78px;
+      display: flex;
+      gap: 8px;
+      font-size: 0.78rem;
+      align-items: center;
     }
     .mission-reward small {
-      display: inline;
-      margin-left: 0.4rem;
+      margin: 0;
     }
-    .organizer-filters {
-      gap: 0.5rem;
+    .mission-menu {
+      margin-left: auto;
     }
-    .journey-save-status:empty {
-      display: none;
+    .mission-copy > a {
+      font-size: 1.1rem;
     }
-    .extra-filters {
-      margin-top: 0.7rem;
-      font-size: 0.85rem;
-    }
-    .extra-filters summary {
-      cursor: pointer;
-      color: #cbb380;
-    }
-    .extra-filters > label {
-      margin-top: 0.7rem;
-      max-width: 400px;
-    }
-    .organizer-options {
-      gap: 0.7rem;
-    }
-    .organizer-list h2 {
-      font-size: 1.5rem;
+    .mission-check,
+    .mission-check-static,
+    .mission-selection {
+      width: 28px;
+      flex-basis: 28px;
     }
   }
 </style>

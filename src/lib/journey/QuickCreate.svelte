@@ -16,6 +16,7 @@
   import PlanningDetails from './PlanningDetails.svelte';
   import type { Planning } from '$services/productivityTypes';
   import { dateKey } from '$services/rewardService';
+  import IconPicker from '$lib/ui/IconPicker.svelte';
   let {
     open = $bindable(false),
     snapshot,
@@ -25,8 +26,10 @@
     defaultStageId,
     starter,
     defaultAreaId,
+    allowSaveAnother = true,
   }: {
     defaultAreaId?: number;
+    allowSaveAnother?: boolean;
     starter?: MissionStarter;
     open?: boolean;
     snapshot: JourneySnapshot;
@@ -44,6 +47,7 @@
     area = $state('0'),
     error = $state('');
   let plannedDate = $state('');
+  let iconKey = $state<string | null>(null);
   let planning = $state<Planning>({});
   let recurrenceKind = $state('none');
   let recurrenceDays = $state<number[]>([1]);
@@ -62,6 +66,7 @@
       untrack(() => {
         detailsOpen = !!starter && !editTask;
         title = editTask?.title ?? starter?.title ?? '';
+        iconKey = editTask?.iconKey ?? null;
         steps = (editTask?.subtasks ?? starter?.steps ?? []).join('\n');
         description = editTask?.description ?? '';
         error = '';
@@ -114,6 +119,7 @@
     error = '';
     try {
       const id = await createQuickTask({
+        iconKey,
         ...planning,
         title,
         requestId,
@@ -233,6 +239,7 @@
         <details bind:open={detailsOpen}>
           <summary>Passos e outros detalhes</summary>
           <div class="journey-form-details">
+            <IconPicker bind:value={iconKey} />
             {#if !editTask && snapshot.profile?.name === 'Herói sem nome'}<Field
                 label="Como quer ser chamado? (opcional)"
                 bind:value={name}
@@ -292,7 +299,7 @@
           loading={busy}
           onclick={() => (saveAnother = false)}
           >{editTask ? 'Salvar missão' : 'Criar missão'}</Button
-        >{#if !editTask}<Button
+        >{#if !editTask && allowSaveAnother}<Button
             type="submit"
             variant="secondary"
             loading={busy}

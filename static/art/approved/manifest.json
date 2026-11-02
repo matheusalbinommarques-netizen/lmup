@@ -1,0 +1,1436 @@
+{
+  "source_base": "425ec7f",
+  "icons": 53,
+  "files": [
+    {
+      "file": "art/approved/icons/agenda/64.png",
+      "sha256": "807210f4e3a78acfa675086189b2033d7fd8b184698c5ef10940e54b92f85621",
+      "bytes": 7194,
+      "source": "static/art/approved/icons/agenda/64.png",
+      "source_sha256": "807210f4e3a78acfa675086189b2033d7fd8b184698c5ef10940e54b92f85621",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/agenda/128.png",
+      "sha256": "27c832763f1f7f26adf0050119a6dac32fc25ac06e6cf9998da4de4153004f57",
+      "bytes": 23648,
+      "source": "static/art/approved/icons/agenda/128.png",
+      "source_sha256": "27c832763f1f7f26adf0050119a6dac32fc25ac06e6cf9998da4de4153004f57",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/alimentacao/64.png",
+      "sha256": "e805d86c39d9ac77d3495f5afdfe9e7b39c0110500bda917b639ab1eb62d3525",
+      "bytes": 6476,
+      "source": "static/art/approved/icons/alimentacao/64.png",
+      "source_sha256": "e805d86c39d9ac77d3495f5afdfe9e7b39c0110500bda917b639ab1eb62d3525",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/alimentacao/128.png",
+      "sha256": "1f90cf50b010f0ddda54152f857b68a4a977bc78005e1080440ae67434ea4323",
+      "bytes": 21761,
+      "source": "static/art/approved/icons/alimentacao/128.png",
+      "source_sha256": "1f90cf50b010f0ddda54152f857b68a4a977bc78005e1080440ae67434ea4323",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/atrasada/64.png",
+      "sha256": "268defbb748763f72f2f2460eee8cd329dbfa9da233fb15f71e5f028848ee9a7",
+      "bytes": 6321,
+      "source": "static/art/approved/icons/atrasada/64.png",
+      "source_sha256": "268defbb748763f72f2f2460eee8cd329dbfa9da233fb15f71e5f028848ee9a7",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/atrasada/128.png",
+      "sha256": "4499a443d6827f9c1bcb07b44ec5ffc091c814d4c559155199434ff25fe0fc46",
+      "bytes": 21067,
+      "source": "static/art/approved/icons/atrasada/128.png",
+      "source_sha256": "4499a443d6827f9c1bcb07b44ec5ffc091c814d4c559155199434ff25fe0fc46",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/aventura/64.png",
+      "sha256": "c632cb771e503e16f7343160d44ed305b42fbde98d3f090744efc841c1ff4a9c",
+      "bytes": 7427,
+      "source": "static/art/approved/icons/aventura/64.png",
+      "source_sha256": "c632cb771e503e16f7343160d44ed305b42fbde98d3f090744efc841c1ff4a9c",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/aventura/128.png",
+      "sha256": "4e92961dd5dc69e27619929b600afe9ce698c176597322fe81e6be8e79f09de6",
+      "bytes": 23825,
+      "source": "static/art/approved/icons/aventura/128.png",
+      "source_sha256": "4e92961dd5dc69e27619929b600afe9ce698c176597322fe81e6be8e79f09de6",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/bem_estar/64.png",
+      "sha256": "0cc9fcd88e9eb4097919c96159adc00b1f1007f812a74bf7cc88e7ccb4b05e41",
+      "bytes": 7277,
+      "source": "static/art/approved/icons/bem_estar/64.png",
+      "source_sha256": "0cc9fcd88e9eb4097919c96159adc00b1f1007f812a74bf7cc88e7ccb4b05e41",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/bem_estar/128.png",
+      "sha256": "a5454317d774b14a502599808578909c67949ebf60849cd9666db5a8c471417a",
+      "bytes": 24339,
+      "source": "static/art/approved/icons/bem_estar/128.png",
+      "source_sha256": "a5454317d774b14a502599808578909c67949ebf60849cd9666db5a8c471417a",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/buscar/64.png",
+      "sha256": "41d7fc2dcdf9b66d3fca96cbd57c9fe0b69fcfbb821525470667364c1d3fd548",
+      "bytes": 7177,
+      "source": "static/art/approved/icons/buscar/64.png",
+      "source_sha256": "41d7fc2dcdf9b66d3fca96cbd57c9fe0b69fcfbb821525470667364c1d3fd548",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/buscar/128.png",
+      "sha256": "f2529c719e95e3c160a725b9ac8f7b0202954995c95dedc8ec79efa4425ce102",
+      "bytes": 24117,
+      "source": "static/art/approved/icons/buscar/128.png",
+      "source_sha256": "f2529c719e95e3c160a725b9ac8f7b0202954995c95dedc8ec79efa4425ce102",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/bonus/64.png",
+      "sha256": "2e152036dddf4d1ec7ca0b4122243e16667460abf51957b1c6054dc09bff5890",
+      "bytes": 6141,
+      "source": "static/art/approved/icons/bonus/64.png",
+      "source_sha256": "2e152036dddf4d1ec7ca0b4122243e16667460abf51957b1c6054dc09bff5890",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/bonus/128.png",
+      "sha256": "237a157152f71c587bf7c324ce1e9d88dad1f90789e7d77f72bcbfc63c7ab36b",
+      "bytes": 20534,
+      "source": "static/art/approved/icons/bonus/128.png",
+      "source_sha256": "237a157152f71c587bf7c324ce1e9d88dad1f90789e7d77f72bcbfc63c7ab36b",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/comecar/64.png",
+      "sha256": "013dbf08e8aeffa1d0a187a6e7cc079c9741f1df7211f1f94888228cfe2b9c19",
+      "bytes": 6480,
+      "source": "static/art/approved/icons/comecar/64.png",
+      "source_sha256": "013dbf08e8aeffa1d0a187a6e7cc079c9741f1df7211f1f94888228cfe2b9c19",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/comecar/128.png",
+      "sha256": "b2cba55c4c85114e29abef685c84b297b6a909da6302809f5be71101dcde2859",
+      "bytes": 22715,
+      "source": "static/art/approved/icons/comecar/128.png",
+      "source_sha256": "b2cba55c4c85114e29abef685c84b297b6a909da6302809f5be71101dcde2859",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/companheiros/64.png",
+      "sha256": "aa1c0d989784958abcee15d58089540667b540c02eecc5b9967f6cfd27d1a497",
+      "bytes": 7097,
+      "source": "static/art/approved/icons/companheiros/64.png",
+      "source_sha256": "aa1c0d989784958abcee15d58089540667b540c02eecc5b9967f6cfd27d1a497",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/companheiros/128.png",
+      "sha256": "d54ffca613c25eddda5d443fb45d69261c4a1abd6623959ba02d015223538d3a",
+      "bytes": 24112,
+      "source": "static/art/approved/icons/companheiros/128.png",
+      "source_sha256": "d54ffca613c25eddda5d443fb45d69261c4a1abd6623959ba02d015223538d3a",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/concluida/64.png",
+      "sha256": "44f3d9576907fc4d1f20d12b95697e19bb6a7b99b1f98e1a8ed735a470a1d999",
+      "bytes": 7072,
+      "source": "static/art/approved/icons/concluida/64.png",
+      "source_sha256": "44f3d9576907fc4d1f20d12b95697e19bb6a7b99b1f98e1a8ed735a470a1d999",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/concluida/128.png",
+      "sha256": "b960073b445179f52e9e80a5e6b24f3ee35d894254bc9738ce5fdab731a35565",
+      "bytes": 23068,
+      "source": "static/art/approved/icons/concluida/128.png",
+      "source_sha256": "b960073b445179f52e9e80a5e6b24f3ee35d894254bc9738ce5fdab731a35565",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/conquista/64.png",
+      "sha256": "c5def905333ca9ee18ae560fa36e8d6f0ed8b4954eb272f6820668f9f2d77f73",
+      "bytes": 6214,
+      "source": "static/art/approved/icons/conquista/64.png",
+      "source_sha256": "c5def905333ca9ee18ae560fa36e8d6f0ed8b4954eb272f6820668f9f2d77f73",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/conquista/128.png",
+      "sha256": "0c2899d40b20dfffecc500eb077cbe26a8433a6c747dd23e8d881611b5032663",
+      "bytes": 20080,
+      "source": "static/art/approved/icons/conquista/128.png",
+      "source_sha256": "0c2899d40b20dfffecc500eb077cbe26a8433a6c747dd23e8d881611b5032663",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/cozinha/64.png",
+      "sha256": "7e02643520604662b07ab0a556ba39ebbdd88aa6a76e74b82f882482fa8acb9f",
+      "bytes": 6891,
+      "source": "static/art/approved/icons/cozinha/64.png",
+      "source_sha256": "7e02643520604662b07ab0a556ba39ebbdd88aa6a76e74b82f882482fa8acb9f",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/cozinha/128.png",
+      "sha256": "86ee02f48fccbc10d89d67ed1b357e8424e51386395df2cff7a7a3e0cb1641d6",
+      "bytes": 22824,
+      "source": "static/art/approved/icons/cozinha/128.png",
+      "source_sha256": "86ee02f48fccbc10d89d67ed1b357e8424e51386395df2cff7a7a3e0cb1641d6",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/criar/64.png",
+      "sha256": "f9fa3c4529a5fc2bc2c74f1b37feb64fa36deb37d1d701191c1d47dfdf5377e6",
+      "bytes": 6207,
+      "source": "static/art/approved/icons/criar/64.png",
+      "source_sha256": "f9fa3c4529a5fc2bc2c74f1b37feb64fa36deb37d1d701191c1d47dfdf5377e6",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/criar/128.png",
+      "sha256": "e6d1ce343aa6edba51edba7187b199dc1a2e17b37cfd3b130392bb3d8a2be29c",
+      "bytes": 21623,
+      "source": "static/art/approved/icons/criar/128.png",
+      "source_sha256": "e6d1ce343aa6edba51edba7187b199dc1a2e17b37cfd3b130392bb3d8a2be29c",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/dia/64.png",
+      "sha256": "3156124a903cdb56b776ad272f1e607f59fbc7b53268c41a4f41c0fb35d77d81",
+      "bytes": 6919,
+      "source": "static/art/approved/icons/dia/64.png",
+      "source_sha256": "3156124a903cdb56b776ad272f1e607f59fbc7b53268c41a4f41c0fb35d77d81",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/dia/128.png",
+      "sha256": "70c5bbb7e01a54ab2fea4a323562d45b221b8756f14e90328241c2da1b66bfda",
+      "bytes": 22935,
+      "source": "static/art/approved/icons/dia/128.png",
+      "source_sha256": "70c5bbb7e01a54ab2fea4a323562d45b221b8756f14e90328241c2da1b66bfda",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/duplicar/64.png",
+      "sha256": "828d2d60e6503b024a9393a593cb0aa2853383eede3596dca8412438a24fa2c8",
+      "bytes": 6703,
+      "source": "static/art/approved/icons/duplicar/64.png",
+      "source_sha256": "828d2d60e6503b024a9393a593cb0aa2853383eede3596dca8412438a24fa2c8",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/duplicar/128.png",
+      "sha256": "537a6746757df9fc2666acb0d9d1cc68a59b3444c6ec4ac2c8f013b0d01b191c",
+      "bytes": 21940,
+      "source": "static/art/approved/icons/duplicar/128.png",
+      "source_sha256": "537a6746757df9fc2666acb0d9d1cc68a59b3444c6ec4ac2c8f013b0d01b191c",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/editar/64.png",
+      "sha256": "4bd0815946ef4143fcc7d0c5352a258a5323e6ce6500aa8575a7b8f273c1bb6a",
+      "bytes": 7122,
+      "source": "static/art/approved/icons/editar/64.png",
+      "source_sha256": "4bd0815946ef4143fcc7d0c5352a258a5323e6ce6500aa8575a7b8f273c1bb6a",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/editar/128.png",
+      "sha256": "16d60bd8b6792b250bb29d17d288f17c1692919aa5249da8231e6a4a623a51cd",
+      "bytes": 24703,
+      "source": "static/art/approved/icons/editar/128.png",
+      "source_sha256": "16d60bd8b6792b250bb29d17d288f17c1692919aa5249da8231e6a4a623a51cd",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/em_andamento/64.png",
+      "sha256": "2a8df2ae22f88d85e5e2d914f19b9edb9f60a0805ea1f13b5993d1e2a4048a4f",
+      "bytes": 5749,
+      "source": "static/art/approved/icons/em_andamento/64.png",
+      "source_sha256": "2a8df2ae22f88d85e5e2d914f19b9edb9f60a0805ea1f13b5993d1e2a4048a4f",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/em_andamento/128.png",
+      "sha256": "f0ecfc0971959c3ba41f09aed52e226663f874a777124147cfd57c1445650a87",
+      "bytes": 18481,
+      "source": "static/art/approved/icons/em_andamento/128.png",
+      "source_sha256": "f0ecfc0971959c3ba41f09aed52e226663f874a777124147cfd57c1445650a87",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/estudo/64.png",
+      "sha256": "475ef86c80de768516d32bb58fdac07573bbde66c2b22c5954e31c5755598431",
+      "bytes": 7087,
+      "source": "static/art/approved/icons/estudo/64.png",
+      "source_sha256": "475ef86c80de768516d32bb58fdac07573bbde66c2b22c5954e31c5755598431",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/estudo/128.png",
+      "sha256": "1d88404907451a8fc9db88f8af5833f1997924c1e7fce5d66c271799efed7c46",
+      "bytes": 24482,
+      "source": "static/art/approved/icons/estudo/128.png",
+      "source_sha256": "1d88404907451a8fc9db88f8af5833f1997924c1e7fce5d66c271799efed7c46",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/evolucao/64.png",
+      "sha256": "7323e73e94f5b0a75f59ee64e2c954098ff68037d044d0e92c818baf9ae99270",
+      "bytes": 7073,
+      "source": "static/art/approved/icons/evolucao/64.png",
+      "source_sha256": "7323e73e94f5b0a75f59ee64e2c954098ff68037d044d0e92c818baf9ae99270",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/evolucao/128.png",
+      "sha256": "3dcee5c439f7b7ee3859f613b38198697af4368018b6237db221d14fc72e6d9a",
+      "bytes": 23131,
+      "source": "static/art/approved/icons/evolucao/128.png",
+      "source_sha256": "3dcee5c439f7b7ee3859f613b38198697af4368018b6237db221d14fc72e6d9a",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/excluir/64.png",
+      "sha256": "4a98f2818488c036ad34d3c979663eca2165b6fc10479b1b99a31a54b0efe263",
+      "bytes": 6782,
+      "source": "static/art/approved/icons/excluir/64.png",
+      "source_sha256": "4a98f2818488c036ad34d3c979663eca2165b6fc10479b1b99a31a54b0efe263",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/excluir/128.png",
+      "sha256": "7e6ae30cc85e66d486f4b937b0cebbbda02dc8eb32d06d966cedf097566f1f7b",
+      "bytes": 23408,
+      "source": "static/art/approved/icons/excluir/128.png",
+      "source_sha256": "7e6ae30cc85e66d486f4b937b0cebbbda02dc8eb32d06d966cedf097566f1f7b",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/exercicio/64.png",
+      "sha256": "9e8a661eb24b2dcdac9bf9316e30f6077020138d0289e5270b5d03d635a62dcc",
+      "bytes": 7520,
+      "source": "static/art/approved/icons/exercicio/64.png",
+      "source_sha256": "9e8a661eb24b2dcdac9bf9316e30f6077020138d0289e5270b5d03d635a62dcc",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/exercicio/128.png",
+      "sha256": "8d96a8158fda61bd24faa3b1a2a6f01b91b745e6ee5b75210d65fe6ff24e6f6c",
+      "bytes": 24788,
+      "source": "static/art/approved/icons/exercicio/128.png",
+      "source_sha256": "8d96a8158fda61bd24faa3b1a2a6f01b91b745e6ee5b75210d65fe6ff24e6f6c",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/filtrar/64.png",
+      "sha256": "433bb40eda19c013d404c0aa5a3b5b98ff105c75e52191dadc0f8d5c21321b7a",
+      "bytes": 6877,
+      "source": "static/art/approved/icons/filtrar/64.png",
+      "source_sha256": "433bb40eda19c013d404c0aa5a3b5b98ff105c75e52191dadc0f8d5c21321b7a",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/filtrar/128.png",
+      "sha256": "868c0600d527fcc0f5c3c8b8e4a65b0d92665c90ac44e4f068e36667d0b82747",
+      "bytes": 22957,
+      "source": "static/art/approved/icons/filtrar/128.png",
+      "source_sha256": "868c0600d527fcc0f5c3c8b8e4a65b0d92665c90ac44e4f068e36667d0b82747",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/heroi/64.png",
+      "sha256": "855a6f823d3a4f2d17b24791a04f4d7e5d54316fed973791adeb85f7375ac068",
+      "bytes": 6834,
+      "source": "static/art/approved/icons/heroi/64.png",
+      "source_sha256": "855a6f823d3a4f2d17b24791a04f4d7e5d54316fed973791adeb85f7375ac068",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/heroi/128.png",
+      "sha256": "d6173585a03713b622af246946c4a77397b76b4d26aaf2fea82d0b6f1980e93d",
+      "bytes": 22621,
+      "source": "static/art/approved/icons/heroi/128.png",
+      "source_sha256": "d6173585a03713b622af246946c4a77397b76b4d26aaf2fea82d0b6f1980e93d",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/horario/64.png",
+      "sha256": "8169ac14af4b9c8d52221e90480a2af9ab3733fc52413ab9f23a76aceff6eed5",
+      "bytes": 6742,
+      "source": "static/art/approved/icons/horario/64.png",
+      "source_sha256": "8169ac14af4b9c8d52221e90480a2af9ab3733fc52413ab9f23a76aceff6eed5",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/horario/128.png",
+      "sha256": "c5c6f9e7e0771d18f0c4c7ecf453f988bb705edbefa0762578e68b4781e94b7c",
+      "bytes": 22783,
+      "source": "static/art/approved/icons/horario/128.png",
+      "source_sha256": "c5c6f9e7e0771d18f0c4c7ecf453f988bb705edbefa0762578e68b4781e94b7c",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/habito/64.png",
+      "sha256": "63414732be019b402e16a822244f32f24b2dcb4f07e9ffbd3ae2192f97af22ae",
+      "bytes": 6894,
+      "source": "static/art/approved/icons/habito/64.png",
+      "source_sha256": "63414732be019b402e16a822244f32f24b2dcb4f07e9ffbd3ae2192f97af22ae",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/habito/128.png",
+      "sha256": "94169e9f0431ee603488d151dbb50c5f76f9d99123c94fbf46f5ac55e3ef8c91",
+      "bytes": 23082,
+      "source": "static/art/approved/icons/habito/128.png",
+      "source_sha256": "94169e9f0431ee603488d151dbb50c5f76f9d99123c94fbf46f5ac55e3ef8c91",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/lembrete/64.png",
+      "sha256": "f9c9a7e944ea08031d0ac343eb5f0af49588794910addd3676da7b7885019047",
+      "bytes": 6659,
+      "source": "static/art/approved/icons/lembrete/64.png",
+      "source_sha256": "f9c9a7e944ea08031d0ac343eb5f0af49588794910addd3676da7b7885019047",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/lembrete/128.png",
+      "sha256": "eb298bc9183313de2350a2f2afa0b76cabf02669292a439020b5a26d09fd6c7e",
+      "bytes": 21931,
+      "source": "static/art/approved/icons/lembrete/128.png",
+      "source_sha256": "eb298bc9183313de2350a2f2afa0b76cabf02669292a439020b5a26d09fd6c7e",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/limpeza/64.png",
+      "sha256": "b6b5e005e7c93909ca0997836839ad1c7d230f41c4a5960c4d414447d731bed3",
+      "bytes": 5714,
+      "source": "static/art/approved/icons/limpeza/64.png",
+      "source_sha256": "b6b5e005e7c93909ca0997836839ad1c7d230f41c4a5960c4d414447d731bed3",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/limpeza/128.png",
+      "sha256": "3c516218b40d39be32c5feec964a8f8c0945519023f9a92faadfb230a961f299",
+      "bytes": 19020,
+      "source": "static/art/approved/icons/limpeza/128.png",
+      "source_sha256": "3c516218b40d39be32c5feec964a8f8c0945519023f9a92faadfb230a961f299",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/manha/64.png",
+      "sha256": "936a147b1bfd5f14f2ee25628c3307ced19e5a4671dd9bc3eb8fa3e87e3ac16e",
+      "bytes": 6104,
+      "source": "static/art/approved/icons/manha/64.png",
+      "source_sha256": "936a147b1bfd5f14f2ee25628c3307ced19e5a4671dd9bc3eb8fa3e87e3ac16e",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/manha/128.png",
+      "sha256": "bbf5643e7480dabb2b36c7ece8818078e2b8e30909885e544c624a104af16deb",
+      "bytes": 20173,
+      "source": "static/art/approved/icons/manha/128.png",
+      "source_sha256": "bbf5643e7480dabb2b36c7ece8818078e2b8e30909885e544c624a104af16deb",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/mapa/64.png",
+      "sha256": "606e0cc0d55fb881b7a40a4abbbc7ebdf0de0a87c16542e88475386fb00b8e90",
+      "bytes": 7673,
+      "source": "static/art/approved/icons/mapa/64.png",
+      "source_sha256": "606e0cc0d55fb881b7a40a4abbbc7ebdf0de0a87c16542e88475386fb00b8e90",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/mapa/128.png",
+      "sha256": "4b9d0d91a71a0bc8fc53cc905a58a04e1e5561f720ddde5715b5fcffb1da0412",
+      "bytes": 26540,
+      "source": "static/art/approved/icons/mapa/128.png",
+      "source_sha256": "4b9d0d91a71a0bc8fc53cc905a58a04e1e5561f720ddde5715b5fcffb1da0412",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/meta/64.png",
+      "sha256": "ba728a69229abdebc532db5ad11752e8bc024bb4a19e0fc040b8a44feec23da1",
+      "bytes": 6628,
+      "source": "static/art/approved/icons/meta/64.png",
+      "source_sha256": "ba728a69229abdebc532db5ad11752e8bc024bb4a19e0fc040b8a44feec23da1",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/meta/128.png",
+      "sha256": "fec0219cca5d5ce548e5541ada1358c3cd6628c8fb63c21c6a510fb1170b1d5b",
+      "bytes": 21160,
+      "source": "static/art/approved/icons/meta/128.png",
+      "source_sha256": "fec0219cca5d5ce548e5541ada1358c3cd6628c8fb63c21c6a510fb1170b1d5b",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/mundo/64.png",
+      "sha256": "cbb5bf3f555e8e7bdb48ce1b8a184084323294837adccaef4f954121d42c7cc3",
+      "bytes": 6490,
+      "source": "static/art/approved/icons/mundo/64.png",
+      "source_sha256": "cbb5bf3f555e8e7bdb48ce1b8a184084323294837adccaef4f954121d42c7cc3",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/mundo/128.png",
+      "sha256": "35fe0ef498ca706c3e56edd5efd210fe23162640d526c63d4f7ee3387bc9256c",
+      "bytes": 22257,
+      "source": "static/art/approved/icons/mundo/128.png",
+      "source_sha256": "35fe0ef498ca706c3e56edd5efd210fe23162640d526c63d4f7ee3387bc9256c",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/nivel/64.png",
+      "sha256": "464fde4c78453829a62fa570a1bc51c5568a60b78c39bb12c908412313a9b158",
+      "bytes": 6342,
+      "source": "static/art/approved/icons/nivel/64.png",
+      "source_sha256": "464fde4c78453829a62fa570a1bc51c5568a60b78c39bb12c908412313a9b158",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/nivel/128.png",
+      "sha256": "394b4414d1e1dfa3c981a98b898d2418a1a821a3ff5cfb19c97b94c31b084e5b",
+      "bytes": 20338,
+      "source": "static/art/approved/icons/nivel/128.png",
+      "source_sha256": "394b4414d1e1dfa3c981a98b898d2418a1a821a3ff5cfb19c97b94c31b084e5b",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/noite/64.png",
+      "sha256": "3dd8d2120705f3836002f3b43ad5c315636a0b441185cb61e3c9bd8c75cff5fe",
+      "bytes": 7231,
+      "source": "static/art/approved/icons/noite/64.png",
+      "source_sha256": "3dd8d2120705f3836002f3b43ad5c315636a0b441185cb61e3c9bd8c75cff5fe",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/noite/128.png",
+      "sha256": "f123188d093584ec7803a028b2c71c2fabd4ad16da3caccbd0696df8496f1654",
+      "bytes": 23878,
+      "source": "static/art/approved/icons/noite/128.png",
+      "source_sha256": "f123188d093584ec7803a028b2c71c2fabd4ad16da3caccbd0696df8496f1654",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/opcoes/64.png",
+      "sha256": "49266cde8db4b13973cd7e75ab57c5b86e02231b70c95e498cf5b0f59e4e5968",
+      "bytes": 6708,
+      "source": "static/art/approved/icons/opcoes/64.png",
+      "source_sha256": "49266cde8db4b13973cd7e75ab57c5b86e02231b70c95e498cf5b0f59e4e5968",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/opcoes/128.png",
+      "sha256": "7e72a06eea8020427a2fb0db29953bdd7f6d9212dee3a356f3d782fcea10b07f",
+      "bytes": 22928,
+      "source": "static/art/approved/icons/opcoes/128.png",
+      "source_sha256": "7e72a06eea8020427a2fb0db29953bdd7f6d9212dee3a356f3d782fcea10b07f",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/ouro/64.png",
+      "sha256": "656aee2edd7bf5828a0525a07e86e0b77169b7aad8323684ad26f30a42b6fc2e",
+      "bytes": 6564,
+      "source": "static/art/approved/icons/ouro/64.png",
+      "source_sha256": "656aee2edd7bf5828a0525a07e86e0b77169b7aad8323684ad26f30a42b6fc2e",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/ouro/128.png",
+      "sha256": "7ce1b8af62ccc39d849605a215a89a9cd247151a672942737934846375214d7a",
+      "bytes": 21777,
+      "source": "static/art/approved/icons/ouro/128.png",
+      "source_sha256": "7ce1b8af62ccc39d849605a215a89a9cd247151a672942737934846375214d7a",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/pausada/64.png",
+      "sha256": "f207f16683180290a9a40b613ce5c0ee4a0f0c235dd163abc3336ca08e6d7cdc",
+      "bytes": 6821,
+      "source": "static/art/approved/icons/pausada/64.png",
+      "source_sha256": "f207f16683180290a9a40b613ce5c0ee4a0f0c235dd163abc3336ca08e6d7cdc",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/pausada/128.png",
+      "sha256": "11af64d1193052ff8b5c6137e53d58990df7418060f95c26fa19ea341b3d3679",
+      "bytes": 22223,
+      "source": "static/art/approved/icons/pausada/128.png",
+      "source_sha256": "11af64d1193052ff8b5c6137e53d58990df7418060f95c26fa19ea341b3d3679",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/pendente/64.png",
+      "sha256": "479055d672d3531f0b37988113ccded7d041953c1f7aa5a06da69dbc4617e4bc",
+      "bytes": 6097,
+      "source": "static/art/approved/icons/pendente/64.png",
+      "source_sha256": "479055d672d3531f0b37988113ccded7d041953c1f7aa5a06da69dbc4617e4bc",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/pendente/128.png",
+      "sha256": "2fb60679f95f81bbb551f4ff0a2c00a3064b4010d94463862df02dc81d8e4f60",
+      "bytes": 19855,
+      "source": "static/art/approved/icons/pendente/128.png",
+      "source_sha256": "2fb60679f95f81bbb551f4ff0a2c00a3064b4010d94463862df02dc81d8e4f60",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/perfil/64.png",
+      "sha256": "cd57f046d193be2225f1bc57537c8decaa9f26eef8f99f9e08e0363bb84dbf5f",
+      "bytes": 7727,
+      "source": "static/art/approved/icons/perfil/64.png",
+      "source_sha256": "cd57f046d193be2225f1bc57537c8decaa9f26eef8f99f9e08e0363bb84dbf5f",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/perfil/128.png",
+      "sha256": "10530e871bd46e25fc9693c199aee719bb310e6f8b046dff071a02742bac06e6",
+      "bytes": 25722,
+      "source": "static/art/approved/icons/perfil/128.png",
+      "source_sha256": "10530e871bd46e25fc9693c199aee719bb310e6f8b046dff071a02742bac06e6",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/pessoal/64.png",
+      "sha256": "5333fa5f3b8331e37f84375aa21260364d9e625c79e4fe3156ebcb406ff8b528",
+      "bytes": 7167,
+      "source": "static/art/approved/icons/pessoal/64.png",
+      "source_sha256": "5333fa5f3b8331e37f84375aa21260364d9e625c79e4fe3156ebcb406ff8b528",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/pessoal/128.png",
+      "sha256": "16f0ea5b3061cd999d34e4a5e338d929dc7c83df9784de17a4edbfaca294bc4a",
+      "bytes": 23751,
+      "source": "static/art/approved/icons/pessoal/128.png",
+      "source_sha256": "16f0ea5b3061cd999d34e4a5e338d929dc7c83df9784de17a4edbfaca294bc4a",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/planejada/64.png",
+      "sha256": "7916f77fdca3d8306af20c6040ec74662294b1418d2b1bc3909134a7580bf6c8",
+      "bytes": 7016,
+      "source": "static/art/approved/icons/planejada/64.png",
+      "source_sha256": "7916f77fdca3d8306af20c6040ec74662294b1418d2b1bc3909134a7580bf6c8",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/planejada/128.png",
+      "sha256": "6b00cbc397d40316a8107b0c2b8cf1710062378c49d6ea0dc3e33fac097193ab",
+      "bytes": 22568,
+      "source": "static/art/approved/icons/planejada/128.png",
+      "source_sha256": "6b00cbc397d40316a8107b0c2b8cf1710062378c49d6ea0dc3e33fac097193ab",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/progresso/64.png",
+      "sha256": "cee055b4b2fcf9fb54b73ca1db14968236360594427e7a2fa8fd3fed1276aa93",
+      "bytes": 7361,
+      "source": "static/art/approved/icons/progresso/64.png",
+      "source_sha256": "cee055b4b2fcf9fb54b73ca1db14968236360594427e7a2fa8fd3fed1276aa93",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/progresso/128.png",
+      "sha256": "95e38d18fe3a39b6825d58fd2e4886b0516897c79025a06ac8e15f7004fadd64",
+      "bytes": 24298,
+      "source": "static/art/approved/icons/progresso/128.png",
+      "source_sha256": "95e38d18fe3a39b6825d58fd2e4886b0516897c79025a06ac8e15f7004fadd64",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/projeto_atividade/64.png",
+      "sha256": "95a11922781fcf4145d2ad93f3b004bfc54fa325b1bba72252de62b02a49d159",
+      "bytes": 8182,
+      "source": "static/art/approved/icons/projeto_atividade/64.png",
+      "source_sha256": "95a11922781fcf4145d2ad93f3b004bfc54fa325b1bba72252de62b02a49d159",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/projeto_atividade/128.png",
+      "sha256": "05010f64620b82fa0a152e85cd84a6579bfb1af4198f0a21649f91a76d0d0708",
+      "bytes": 27235,
+      "source": "static/art/approved/icons/projeto_atividade/128.png",
+      "source_sha256": "05010f64620b82fa0a152e85cd84a6579bfb1af4198f0a21649f91a76d0d0708",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/projetos_navegacao/64.png",
+      "sha256": "690613fa3a13743b9eeef9a6753a729af71a2ef8293df1f95fcbe36db56e2ce2",
+      "bytes": 7953,
+      "source": "static/art/approved/icons/projetos_navegacao/64.png",
+      "source_sha256": "690613fa3a13743b9eeef9a6753a729af71a2ef8293df1f95fcbe36db56e2ce2",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/projetos_navegacao/128.png",
+      "sha256": "8f80b5366fac345bc030fc9878791814a0134f36e8631d801430e11884aecd3a",
+      "bytes": 27594,
+      "source": "static/art/approved/icons/projetos_navegacao/128.png",
+      "source_sha256": "8f80b5366fac345bc030fc9878791814a0134f36e8631d801430e11884aecd3a",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/recompensa/64.png",
+      "sha256": "b74567246f8ad868592c53b7c05282c99a22c19b690e8b97742d0194b5dbf36e",
+      "bytes": 7427,
+      "source": "static/art/approved/icons/recompensa/64.png",
+      "source_sha256": "b74567246f8ad868592c53b7c05282c99a22c19b690e8b97742d0194b5dbf36e",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/recompensa/128.png",
+      "sha256": "04d2a74c349587b1a0b6b5001eac0bcdb471f9a41ca3f78e587e96735b20996b",
+      "bytes": 24560,
+      "source": "static/art/approved/icons/recompensa/128.png",
+      "source_sha256": "04d2a74c349587b1a0b6b5001eac0bcdb471f9a41ca3f78e587e96735b20996b",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/recorrencia/64.png",
+      "sha256": "e7ffc07648f6bb4ca434fc9c3e9ca1b52d87358006ad7cec32f73ec3235c5556",
+      "bytes": 5928,
+      "source": "static/art/approved/icons/recorrencia/64.png",
+      "source_sha256": "e7ffc07648f6bb4ca434fc9c3e9ca1b52d87358006ad7cec32f73ec3235c5556",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/recorrencia/128.png",
+      "sha256": "5b6cc36579f0773055931065dfcb264799eef620f0348423bdad34e39e3a9cbc",
+      "bytes": 19221,
+      "source": "static/art/approved/icons/recorrencia/128.png",
+      "source_sha256": "5b6cc36579f0773055931065dfcb264799eef620f0348423bdad34e39e3a9cbc",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/refugio/64.png",
+      "sha256": "423421281bbe4b1d06e1844d66ae820038fc8b65e618c443b50a00a4ab54bb5e",
+      "bytes": 6948,
+      "source": "static/art/approved/icons/refugio/64.png",
+      "source_sha256": "423421281bbe4b1d06e1844d66ae820038fc8b65e618c443b50a00a4ab54bb5e",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/refugio/128.png",
+      "sha256": "9ab55875e95ddadba5ab6a939e7d28b54d120e940f2dc412103cd596246e3d74",
+      "bytes": 23315,
+      "source": "static/art/approved/icons/refugio/128.png",
+      "source_sha256": "9ab55875e95ddadba5ab6a939e7d28b54d120e940f2dc412103cd596246e3d74",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/repetir/64.png",
+      "sha256": "0e556f9a12643cdc1b7436cbc136e8d17ef9de3ff98c19b1845eee3a7080e7e3",
+      "bytes": 7125,
+      "source": "static/art/approved/icons/repetir/64.png",
+      "source_sha256": "0e556f9a12643cdc1b7436cbc136e8d17ef9de3ff98c19b1845eee3a7080e7e3",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/repetir/128.png",
+      "sha256": "5706115baaf2f46bdaf07f55d1df4ed2a200efce5e4cfaef95eb59a644dca668",
+      "bytes": 22958,
+      "source": "static/art/approved/icons/repetir/128.png",
+      "source_sha256": "5706115baaf2f46bdaf07f55d1df4ed2a200efce5e4cfaef95eb59a644dca668",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/reputacao/64.png",
+      "sha256": "9877043a75cbd5f484333b1b27f5b4285a778b262d9784957e5c0d0fde2f20a6",
+      "bytes": 6663,
+      "source": "static/art/approved/icons/reputacao/64.png",
+      "source_sha256": "9877043a75cbd5f484333b1b27f5b4285a778b262d9784957e5c0d0fde2f20a6",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/reputacao/128.png",
+      "sha256": "63a4b5fa1e905bf04bb2da5d0436c12ab31b3f13483b6d8f1d742d8a9e973ebd",
+      "bytes": 22027,
+      "source": "static/art/approved/icons/reputacao/128.png",
+      "source_sha256": "63a4b5fa1e905bf04bb2da5d0436c12ab31b3f13483b6d8f1d742d8a9e973ebd",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/rotina/64.png",
+      "sha256": "a7c1295845ac6ce12d53058c4a6e300cce67a84426cff9f71ca9ce36b9b7c2c8",
+      "bytes": 8039,
+      "source": "static/art/approved/icons/rotina/64.png",
+      "source_sha256": "a7c1295845ac6ce12d53058c4a6e300cce67a84426cff9f71ca9ce36b9b7c2c8",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/rotina/128.png",
+      "sha256": "56632d3f565c977e7cefab7f14d9dfd0c05ba86e81d7e3645f01528fa0c4ca78",
+      "bytes": 26843,
+      "source": "static/art/approved/icons/rotina/128.png",
+      "source_sha256": "56632d3f565c977e7cefab7f14d9dfd0c05ba86e81d7e3645f01528fa0c4ca78",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/semana/64.png",
+      "sha256": "e7dd7bb2b9e76fffecfe5f051fd38e21d6284c8820108644714c80e49715c085",
+      "bytes": 7194,
+      "source": "static/art/approved/icons/semana/64.png",
+      "source_sha256": "e7dd7bb2b9e76fffecfe5f051fd38e21d6284c8820108644714c80e49715c085",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/semana/128.png",
+      "sha256": "662e10c0d0165979773c8b9a6ec9ddb0ae8b055ef885b417dc421638a4b55df2",
+      "bytes": 24197,
+      "source": "static/art/approved/icons/semana/128.png",
+      "source_sha256": "662e10c0d0165979773c8b9a6ec9ddb0ae8b055ef885b417dc421638a4b55df2",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/social/64.png",
+      "sha256": "c1d81e06f54b16ca9b1fb0ad6f64c47845a3a0f75f207268ee23516438497728",
+      "bytes": 7014,
+      "source": "static/art/approved/icons/social/64.png",
+      "source_sha256": "c1d81e06f54b16ca9b1fb0ad6f64c47845a3a0f75f207268ee23516438497728",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/social/128.png",
+      "sha256": "a1d96360abe2d7b6678be18ba4b525e6d72d9cf0619e63b12e981001cca3b1ee",
+      "bytes": 22987,
+      "source": "static/art/approved/icons/social/128.png",
+      "source_sha256": "a1d96360abe2d7b6678be18ba4b525e6d72d9cf0619e63b12e981001cca3b1ee",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/sono/64.png",
+      "sha256": "2025ed647f210eb27ffe15b04cfa37eaa50f2ea59bba9ff4b159eb999937d9ce",
+      "bytes": 7239,
+      "source": "static/art/approved/icons/sono/64.png",
+      "source_sha256": "2025ed647f210eb27ffe15b04cfa37eaa50f2ea59bba9ff4b159eb999937d9ce",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/sono/128.png",
+      "sha256": "6cc5e27917df17241cb8acf72279bb90c3b36611e76b4d7c689503f2643517f5",
+      "bytes": 24112,
+      "source": "static/art/approved/icons/sono/128.png",
+      "source_sha256": "6cc5e27917df17241cb8acf72279bb90c3b36611e76b4d7c689503f2643517f5",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/tarde/64.png",
+      "sha256": "20334ea796442fab6c128179dfb8031bc13a6a929f92dbfa0c32cbe5a580dabc",
+      "bytes": 6330,
+      "source": "static/art/approved/icons/tarde/64.png",
+      "source_sha256": "20334ea796442fab6c128179dfb8031bc13a6a929f92dbfa0c32cbe5a580dabc",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/icons/tarde/128.png",
+      "sha256": "ac1aa219dad72a336b3d50ea30916759ef58c45e9309b538e9596f07d0a732fe",
+      "bytes": 20267,
+      "source": "static/art/approved/icons/tarde/128.png",
+      "source_sha256": "ac1aa219dad72a336b3d50ea30916759ef58c45e9309b538e9596f07d0a732fe",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/navigation/Hoje_64.png",
+      "sha256": "541f0f6fc73d34680ac70b425e795692cea2156c989c69640076b2ef02111556",
+      "bytes": 5571,
+      "source": "static/art/lab/icons-pilot/Hoje_64.png",
+      "source_sha256": "541f0f6fc73d34680ac70b425e795692cea2156c989c69640076b2ef02111556",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/navigation/Hoje_128.png",
+      "sha256": "f57c7f81f3f81d38c0d7a02c3626dd303dde3d6ebb7dfbf559a8657f324b26d0",
+      "bytes": 18198,
+      "source": "static/art/lab/icons-pilot/Hoje_128.png",
+      "source_sha256": "f57c7f81f3f81d38c0d7a02c3626dd303dde3d6ebb7dfbf559a8657f324b26d0",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/navigation/Missoes_64.png",
+      "sha256": "d24ea7af05c2bdf5b3a2d224a1b743a550b7abfa1c9e8a1119ad477659923534",
+      "bytes": 5706,
+      "source": "static/art/lab/icons-pilot/Missoes_64.png",
+      "source_sha256": "d24ea7af05c2bdf5b3a2d224a1b743a550b7abfa1c9e8a1119ad477659923534",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/navigation/Missoes_128.png",
+      "sha256": "5caafa6038544323b75d66fdef414a25b41f25517e45250fb9c342a3fe3c91c4",
+      "bytes": 19065,
+      "source": "static/art/lab/icons-pilot/Missoes_128.png",
+      "source_sha256": "5caafa6038544323b75d66fdef414a25b41f25517e45250fb9c342a3fe3c91c4",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/navigation/Recuperar_64.png",
+      "sha256": "38f7f7c2d30f30f0dcd07a53d0d44b9b60e4172ab4b51d51494685c14218bab0",
+      "bytes": 6539,
+      "source": "static/art/lab/icons-pilot/Recuperar_64.png",
+      "source_sha256": "38f7f7c2d30f30f0dcd07a53d0d44b9b60e4172ab4b51d51494685c14218bab0",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/navigation/Recuperar_128.png",
+      "sha256": "7035a61ee0e163b76a1fa863a204f075e1eff7595f0a478a1d73032bb7638460",
+      "bytes": 20538,
+      "source": "static/art/lab/icons-pilot/Recuperar_128.png",
+      "source_sha256": "7035a61ee0e163b76a1fa863a204f075e1eff7595f0a478a1d73032bb7638460",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/navigation/XP_64.png",
+      "sha256": "771110b36a2ea76c33902acc6df0b4a139a6c8c3a5cea5c5f2ec911767c6c7b5",
+      "bytes": 7230,
+      "source": "static/art/lab/icons-pilot/XP_64.png",
+      "source_sha256": "771110b36a2ea76c33902acc6df0b4a139a6c8c3a5cea5c5f2ec911767c6c7b5",
+      "dimensions": [
+        64,
+        64
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/navigation/XP_128.png",
+      "sha256": "a494d9bc9b0141e36daeaf333e71584366e0fbae7e6d802ff86e1f46578025fe",
+      "bytes": 24251,
+      "source": "static/art/lab/icons-pilot/XP_128.png",
+      "source_sha256": "a494d9bc9b0141e36daeaf333e71584366e0fbae7e6d802ff86e1f46578025fe",
+      "dimensions": [
+        128,
+        128
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/paintings/01_Hoje_Vedria_panorama.webp",
+      "sha256": "8e3d4104315f93f1fa963cc0d20afc2f3dff0c4e8bb5926ee72f49a373e7bbf0",
+      "bytes": 1879710,
+      "source": "static/art/approved/paintings/01_Hoje_Vedria_panorama.png",
+      "source_sha256": "3e265f7f415460dac80639b13abb670bb8f1f525a460d64e33917886f6aa8de5",
+      "dimensions": [
+        1916,
+        821
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/paintings/02_Cartao_Aventura.webp",
+      "sha256": "04bc7f04a077529b4ef3a70f31463cf134d4d791a7cf9392ce24f7031ea155f5",
+      "bytes": 2435414,
+      "source": "static/art/approved/paintings/02_Cartao_Aventura.png",
+      "source_sha256": "2f11eb04dc7833a05f01c81adb5f98f5102408d62b5115b968c602041c0b3df2",
+      "dimensions": [
+        1448,
+        1086
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/paintings/03_Cartao_Refugio.webp",
+      "sha256": "a39e4a49e1861eb1c4ad785b72b8ea03d61032a2f772ba9a05cf1dfa1d9afa98",
+      "bytes": 2445470,
+      "source": "static/art/approved/paintings/03_Cartao_Refugio.png",
+      "source_sha256": "37a3540603de7770feecbe45480313beffe115d3fe392c3f9e12fa91730590c3",
+      "dimensions": [
+        1448,
+        1086
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/paintings/04_Cartao_Projetos.webp",
+      "sha256": "8b0ef619844dba86cf01e22b6ec988dae1d9c7e03136f3379615f70b9cfbcdec",
+      "bytes": 2165610,
+      "source": "static/art/approved/paintings/04_Cartao_Projetos.png",
+      "source_sha256": "0e7911cfd08b862b4040ac42115a6b9036fc76c6c22d1f88020552feeec9dcd9",
+      "dimensions": [
+        1448,
+        1086
+      ],
+      "decoded_pixels_identical": true
+    },
+    {
+      "file": "art/approved/paintings/05_Cartao_Mapa.webp",
+      "sha256": "c2526d3ee7fda63df98fea33f18e73999936016f32d0e8f6432f5240624019e0",
+      "bytes": 2418834,
+      "source": "static/art/approved/paintings/05_Cartao_Mapa.png",
+      "source_sha256": "9e4ed290ab19a2150c7ec64d78d30ef00832612fd600532becd0994102c1d014",
+      "dimensions": [
+        1448,
+        1086
+      ],
+      "decoded_pixels_identical": true
+    }
+  ],
+  "total_bytes": 13029515,
+  "policy": "Somente variantes 64/128 necessárias à interface e pinturas WebP sem perda; pixels conferidos. Originais permanecem na fonte e no backup. Sem laboratórios."
+}
