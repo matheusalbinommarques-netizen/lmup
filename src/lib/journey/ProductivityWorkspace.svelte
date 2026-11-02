@@ -17,7 +17,7 @@
   } from '$services/occurrenceService';
   import { newSavedSession, saveSession } from '$services/savedSessionService';
   import { saveRoutine, setRoutineStatus } from '$services/routineService';
-  import { WEEKDAYS } from '$services/recurrence';
+  import { WEEKDAYS, routineRecurrenceLabel } from '$services/recurrence';
   import { freeSlot, recommendations } from '$services/productivityInsights';
   import type {
     Occurrence,
@@ -49,6 +49,7 @@
     routineName = $state(''),
     routineArea = $state('0'),
     description = $state('');
+  let frequency = $state('weekdays');
   let days = $state<number[]>([1, 2, 3, 4, 5]),
     start = $state(dateKey()),
     entries = $state<{ taskId: number; time: string | null }[]>([]);
@@ -239,6 +240,8 @@
     description = row?.description ?? '';
     routineArea = String(row?.defaultAreaId ?? 0);
     days = [...(row?.days ?? [1, 2, 3, 4, 5])];
+    frequency =
+      days.length === 7 ? 'daily' : days.length === 1 ? 'weekly' : 'weekdays';
     start = row?.startDate ?? dateKey();
     entries = row?.entries.map(({ taskId, time }) => ({ taskId, time })) ?? [];
     routineRevision = row?.revision;
@@ -669,20 +672,58 @@
             Novas missões começam nesta área. Você pode alterá-la em cada
             missão; as já cadastradas mantêm sua área.
           </p>
-          <fieldset class="weekday-picker">
-            <legend>Dias de execução</legend
-            >{#each WEEKDAYS as weekday (weekday.value)}<label
-                class:chosen={days.includes(weekday.value)}
-                ><input
-                  type="checkbox"
-                  checked={days.includes(weekday.value)}
-                  onchange={(event) =>
-                    (days = event.currentTarget.checked
-                      ? [...days, weekday.value]
-                      : days.filter((day) => day !== weekday.value))}
-                />{weekday.short}</label
-              >{/each}
-          </fieldset>
+          <div class="routine-fields routine-calendar">
+            <label
+              >Recorrência da rotina<select
+                bind:value={frequency}
+                onchange={() => {
+                  if (frequency === 'daily') days = [0, 1, 2, 3, 4, 5, 6];
+                  else if (frequency === 'weekly') days = [days[0] ?? 1];
+                  else if (days.length === 7) days = [1, 2, 3, 4, 5];
+                }}
+                ><option value="daily">Diariamente</option><option
+                  value="weekdays">Dias específicos da semana</option
+                ><option value="weekly">Semanalmente</option></select
+              ></label
+            >
+            <label
+              >Início da rotina<input
+                type="date"
+                bind:value={start}
+                required
+              /></label
+            >
+          </div>
+          {#if frequency === 'weekdays'}
+            <fieldset class="weekday-picker">
+              <legend>Dias de execução</legend
+              >{#each WEEKDAYS as weekday (weekday.value)}<label
+                  class:chosen={days.includes(weekday.value)}
+                  ><input
+                    type="checkbox"
+                    checked={days.includes(weekday.value)}
+                    onchange={(event) =>
+                      (days = event.currentTarget.checked
+                        ? [...days, weekday.value]
+                        : days.filter((day) => day !== weekday.value))}
+                  />{weekday.short}</label
+                >{/each}
+            </fieldset>
+          {:else if frequency === 'weekly'}<label
+              >Dia da rotina<select
+                value={days[0] ?? 1}
+                onchange={(event) =>
+                  (days = [Number(event.currentTarget.value)])}
+                >{#each WEEKDAYS as weekday (weekday.value)}<option
+                    value={weekday.value}>{weekday.label}</option
+                  >{/each}</select
+              ></label
+            >{/if}
+          <p class="lmu-hint">
+            {routineRecurrenceLabel(days)}. Todas as missões vinculadas herdam
+            esta recorrência ao salvar a rotina. Os horários podem ser ajustados
+            em cada atividade.
+          </p>
           <div class="sequence-heading">
             <h3>Sequência de missões ({entries.length})</h3>
             <Button
@@ -779,8 +820,6 @@
           </details>
           <details>
             <summary>Descrição e pausas justificadas</summary><label
-              >Início da rotina<input type="date" bind:value={start} /></label
-            ><label
               >Descrição<textarea bind:value={description}></textarea></label
             >
             <p class="lmu-hint">
@@ -867,6 +906,9 @@
     {snapshot}
     {editTask}
     defaultAreaId={creatingForRoutine ? Number(routineArea) : undefined}
+    routineContext={creatingForRoutine
+      ? { name: routineName, startDate: start, days: [...days] }
+      : undefined}
     allowSaveAnother={!creatingForRoutine}
     oncreated={(id) => {
       if (creatingForRoutine) addedMission(id);

@@ -18,7 +18,7 @@
 - Busca, cartões compactos, contagens por cadastro e atividades vinculadas, incluindo rotinas que usam a área como padrão ou por suas missões. As contagens distinguem ativas, concluídas e arquivadas; não somam ocorrências recorrentes.
 - Atalho para abrir a Lista filtrada pela área, incluindo Geral.
 - Criação/edição de nome, descrição opcional e ícone. A descrição usa o campo `Area.descricao` já existente. Nenhuma estrutura paralela, subárea ou hierarquia foi criada.
-- Na criação, **Editar ícone da área** fica imediatamente à esquerda de **Criar área**. A biblioteca abre por esse botão e mostra o símbolo selecionado. A herança visual continua centralizada na área.
+- Na criação, **Editar ícone da área** fica imediatamente à esquerda de **Criar área**. A biblioteca abre por esse botão. O desenho no botão foi removido no ajuste seguinte. A herança visual continua centralizada na área.
 - **Transferir várias missões**, na aba Áreas, permite buscar e selecionar cadastros ativos, concluídos e arquivados, escolher destino, revisar e confirmar. A transação valida se os cadastros ainda correspondem à seleção; uma alteração concorrente impede a transferência parcial.
 - A transferência altera somente `areaId` e a revisão da definição atual. Não reescreve ocorrências, registros de execução, notas, projetos, composição de rotinas/sessões, histórico ou recibos econômicos.
 - Excluir área ocupada exige escolher previamente o destino. A operação transfere seus cadastros e o padrão das rotinas relacionadas, preservando os demais dados. Geral permanece como destino válido e não pode ser excluída.
@@ -45,3 +45,12 @@ Interface: `QuickCreate.svelte`, `PlanningDetails.svelte`, `Execution.svelte`, `
 A transferência em lote fica na gestão completa da aba Áreas; o diálogo de área aberto durante a criação de missão mantém o fluxo compacto de cadastro/edição, preservando o rascunho da missão.
 
 A prévia continua local. Nenhum PR, push, merge ou publicação na main. O trabalho termina novamente na avaliação.
+
+## Ajustes seguintes — nome, recorrência e botão de ícone
+
+- Removido “Como quer ser chamado?” do formulário de missão; o cadastro de missão deixa de enviar nome de perfil.
+- “Editar ícone da área” fica somente em texto, sem o desenho do livro. A seleção e a herança do ícone continuam funcionando.
+- A rotina agora expõe sua recorrência: diariamente, semanalmente ou em dias específicos, junto à data inicial. Os dias persistem no modelo existente; não houve migração ou alteração econômica.
+- Ao criar uma missão dentro da rotina, o Planejamento mostra a configuração herdada e informa que o vínculo/recorrência se aplicam ao salvar a rotina. Não existe uma segunda escolha de recorrência para essa missão. Na edição de missão já vinculada, o calendário continua controlado pela rotina.
+- O rascunho da rotina, a área individual e as configurações das execuções iniciadas permanecem preservados. A aplicação da recorrência continua na transação existente de salvamento da rotina.
+- Validação desta atualização: 15 testes de serviço de rotina/organizador e nove execuções de navegador em desktop, 390 e 320 px aprovados, além de tipos, lint e build. A jornada nova verifica herança diária, mudança para semanal/dias específicos e persistência após recarga.

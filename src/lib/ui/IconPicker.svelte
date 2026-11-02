@@ -65,7 +65,7 @@
   <button
     type="button"
     class="lmu-button lmu-button--secondary icon-trigger"
-    popovertarget={uid}><ApprovedIcon name={value} size={24} />{label}</button
+    popovertarget={uid}>{label}</button
   >
   <div
     id={uid}

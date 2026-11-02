@@ -160,7 +160,12 @@ test('edição de missão vinculada preserva a configuração da sessão iniciad
   await edit.getByLabel('Esforço desta missão').selectOption('medium');
   await expect(edit.locator('.reward-preview')).toContainText('+50 Ouro');
   await edit.getByRole('tab', { name: 'Planejamento', exact: true }).click();
-  await expect(edit.getByLabel('Recorrência', { exact: false })).toBeDisabled();
+  await expect(
+    edit.getByRole('note', { name: 'Recorrência herdada da rotina' }),
+  ).toBeVisible();
+  await expect(
+    edit.getByRole('combobox', { name: 'Recorrência', exact: true }),
+  ).toHaveCount(0);
   await expect(
     edit.getByLabel('Início desejado', { exact: true }),
   ).toBeDisabled();
@@ -202,4 +207,127 @@ test('edição de missão vinculada preserva a configuração da sessão iniciad
       () => document.documentElement.scrollWidth > innerWidth,
     ),
   ).toBe(false);
+});
+
+test('a recorrência é definida na rotina e herdada por todas as missões', async ({
+  page,
+}) => {
+  const routine = await prepare(page);
+  await routine
+    .getByLabel('Nome da rotina', { exact: true })
+    .fill('Rotina com recorrência');
+  await routine
+    .getByRole('combobox', { name: 'Recorrência da rotina', exact: true })
+    .selectOption('daily');
+  await routine
+    .getByLabel('Início da rotina', { exact: true })
+    .fill('2026-11-03');
+  for (const title of ['Alongar', 'Respirar']) {
+    await routine
+      .getByRole('button', { name: 'Criar missão na rotina', exact: true })
+      .click();
+    const form = page.getByRole('dialog', {
+      name: 'Uma nova missão',
+      exact: true,
+    });
+    await form.getByLabel('O que você quer fazer?').fill(title);
+    await form.getByRole('tab', { name: 'Planejamento', exact: true }).click();
+    const inherited = form.getByRole('note', {
+      name: 'Recorrência herdada da rotina',
+    });
+    await expect(inherited).toContainText('Diariamente');
+    await expect(inherited).toContainText('03/11/2026');
+    await expect(
+      form.getByRole('combobox', { name: 'Recorrência', exact: true }),
+    ).toHaveCount(0);
+    await form
+      .getByRole('tab', { name: 'Passos e detalhes', exact: true })
+      .click();
+    await expect(
+      form.getByLabel('Como quer ser chamado?', { exact: false }),
+    ).toHaveCount(0);
+    await form
+      .getByRole('button', { name: 'Criar missão', exact: true })
+      .click();
+    await expect(form).not.toBeVisible();
+  }
+  const stored = () =>
+    page.evaluate(
+      () =>
+        new Promise<{ tasks: any[]; routines: any[] }>((resolve, reject) => {
+          const request = indexedDB.open('LevelMeUpDB');
+          request.onsuccess = () => {
+            const database = request.result,
+              tx = database.transaction(['tasks', 'routines']);
+            const tasks = tx.objectStore('tasks').getAll(),
+              routines = tx.objectStore('routines').getAll();
+            tx.oncomplete = () => {
+              database.close();
+              resolve({ tasks: tasks.result, routines: routines.result });
+            };
+            tx.onerror = () => reject(tx.error);
+          };
+        }),
+    );
+  await routine
+    .getByRole('button', { name: 'Salvar rotina', exact: true })
+    .click();
+  await expect(routine).not.toBeVisible();
+  let data = await stored();
+  expect(
+    data.tasks.every(
+      (task) =>
+        task.routineId === data.routines[0].id &&
+        task.recurrence.startDate === '2026-11-03' &&
+        task.recurrence.days.length === 7,
+    ),
+  ).toBe(true);
+  await page
+    .getByRole('button', { name: 'Editar rotina', exact: true })
+    .click();
+  await expect(
+    routine.getByRole('combobox', {
+      name: 'Recorrência da rotina',
+      exact: true,
+    }),
+  ).toHaveValue('daily');
+  await routine
+    .getByRole('combobox', { name: 'Recorrência da rotina', exact: true })
+    .selectOption('weekly');
+  await routine
+    .getByRole('combobox', { name: 'Dia da rotina', exact: true })
+    .selectOption('1');
+  await routine
+    .getByRole('button', { name: 'Salvar rotina', exact: true })
+    .click();
+  await expect(routine).not.toBeVisible();
+  data = await stored();
+  expect(
+    data.tasks.every((task) => JSON.stringify(task.recurrence.days) === '[1]'),
+  ).toBe(true);
+  await page
+    .getByRole('button', { name: 'Editar rotina', exact: true })
+    .click();
+  await expect(
+    routine.getByRole('combobox', {
+      name: 'Recorrência da rotina',
+      exact: true,
+    }),
+  ).toHaveValue('weekly');
+  await routine
+    .getByRole('combobox', { name: 'Recorrência da rotina', exact: true })
+    .selectOption('weekdays');
+  await routine.getByRole('checkbox', { name: 'Qua', exact: true }).check();
+  await routine
+    .getByRole('button', { name: 'Salvar rotina', exact: true })
+    .click();
+  await expect(routine).not.toBeVisible();
+  await page.reload();
+  data = await stored();
+  expect(data.routines[0].days).toEqual([1, 3]);
+  expect(
+    data.tasks.every(
+      (task) => JSON.stringify(task.recurrence.days) === '[1,3]',
+    ),
+  ).toBe(true);
 });

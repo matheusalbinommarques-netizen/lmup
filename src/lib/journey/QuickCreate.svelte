@@ -17,6 +17,8 @@
   import type { Planning } from '$services/productivityTypes';
   import { dateKey } from '$services/rewardService';
   import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
+  import { routineRecurrenceLabel } from '$services/recurrence';
+  import { formatCalendar } from '$services/calendar';
   import { areaIconKey } from '$services/areaIcons';
   let {
     open = $bindable(false),
@@ -27,9 +29,11 @@
     defaultStageId,
     starter,
     defaultAreaId,
+    routineContext,
     allowSaveAnother = true,
   }: {
     defaultAreaId?: number;
+    routineContext?: { name: string; startDate: string; days: number[] };
     allowSaveAnother?: boolean;
     starter?: MissionStarter;
     open?: boolean;
@@ -39,6 +43,10 @@
     defaultProjectId?: number;
     defaultStageId?: string | null;
   } = $props();
+  const inheritedRoutine = $derived(
+    routineContext ??
+      snapshot.routines.find((row) => row.id === editTask?.routineId),
+  );
   let steps = $state<{ id: string; label: string }[]>([]);
   let title = $state(''),
     description = $state(''),
@@ -369,24 +377,48 @@
             <p class="section-hint">
               Escolha quando esta missão cabe no seu dia.
             </p>
-            {#key requestId}<fieldset
-                disabled={!!editTask?.routineId}
-                class="calendar-fields"
+            {#if inheritedRoutine}<div
+                class="routine-inheritance"
+                role="note"
+                aria-label="Recorrência herdada da rotina"
               >
-                <legend class="sr-only">Calendário da missão</legend
-                ><ScheduleFields
-                  bind:plannedDate
-                  bind:kind={recurrenceKind}
-                  bind:days={recurrenceDays}
-                  review={!!editTask?.reviewEnabled}
-                />
-              </fieldset>{/key}
-            {#if editTask?.routineId}<p class="form-feedback">
-                Os dias e horários desta missão são controlados pela rotina.
-              </p>{/if}
+                <strong>Recorrência definida pela rotina</strong>
+                <span
+                  >{inheritedRoutine.name || 'Esta rotina'} · {routineRecurrenceLabel(
+                    inheritedRoutine.days,
+                  )}</span
+                >
+                <small
+                  >A partir de {formatCalendar(
+                    inheritedRoutine.startDate,
+                  )}</small
+                >
+                <p>
+                  Altere os dias na rotina. {routineContext
+                    ? 'A recorrência e o vínculo serão aplicados ao salvar a rotina.'
+                    : 'Esta missão acompanha o calendário da rotina.'}
+                </p>
+              </div>
+            {:else}
+              {#key requestId}<fieldset
+                  disabled={!!editTask?.routineId}
+                  class="calendar-fields"
+                >
+                  <legend class="sr-only">Calendário da missão</legend
+                  ><ScheduleFields
+                    bind:plannedDate
+                    bind:kind={recurrenceKind}
+                    bind:days={recurrenceDays}
+                    review={!!editTask?.reviewEnabled}
+                  />
+                </fieldset>{/key}
+              {#if editTask?.routineId}<p class="form-feedback">
+                  Os dias e horários desta missão são controlados pela rotina.
+                </p>{/if}
+            {/if}
             <PlanningDetails
               section="planning"
-              calendarLocked={!!editTask?.routineId}
+              calendarLocked={!!inheritedRoutine || !!editTask?.routineId}
               bind:value={planning}
               legacy={!!editTask && !editTask.productivityVersion}
             />
@@ -539,6 +571,27 @@
 </div>
 
 <style>
+  .routine-inheritance {
+    display: grid;
+    gap: 8px;
+    padding: 14px;
+    border: 1px solid #a8874555;
+    border-radius: 8px;
+    background: #a7873516;
+    color: #d8d3bd;
+  }
+  .routine-inheritance strong {
+    color: #edce85;
+  }
+  .routine-inheritance small,
+  .routine-inheritance p {
+    color: #aebfae;
+    font-size: 0.8rem;
+  }
+  .routine-inheritance p {
+    margin: 4px 0 0;
+  }
+
   .step-heading {
     display: flex;
     justify-content: space-between;
