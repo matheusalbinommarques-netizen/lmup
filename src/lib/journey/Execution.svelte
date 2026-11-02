@@ -1,4 +1,6 @@
 <script lang="ts">
+  import TaskRemovalDialog from './TaskRemovalDialog.svelte';
+  let removalOpen = $state(false);
   import { guardUpdates } from './guardUpdates';
   import RewardSummary from './rewards/RewardSummary.svelte';
   import { isUpdateLocked } from '$services/updateSafety';
@@ -95,9 +97,7 @@
         dirty || saves > 0 || busy || starting > 0 || !!noteError,
       );
   });
-  const task = $derived(
-    data?.tasks.find((item) => item.id === id && !item.archived),
-  );
+  const task = $derived(data?.tasks.find((item) => item.id === id));
   const steps = $derived(task ? taskSteps(task) : []);
   const event = $derived(
     requestedReceipt
@@ -369,6 +369,40 @@
         >
       </div></Card
     >
+  {:else if task.archived}
+    <Card
+      ><h1>{task.title}</h1>
+      <p class="journey-banner">
+        Missão arquivada. Execução desativada; histórico e recompensas
+        preservados.
+      </p>
+      {#if task.description}<p>{task.description}</p>{/if}
+      {#if task.executionNotes}<h2>Suas notas</h2>
+        <p style="white-space: pre-wrap">{task.executionNotes}</p>{/if}
+      {#if dirty}<p role="alert">
+          Esta missão foi arquivada em outra aba. Seu rascunho não salvo está
+          abaixo; copie o texto antes de sair.
+        </p>
+        <textarea aria-label="Rascunho preservado" readonly value={notes}
+        ></textarea><Button variant="quiet" onclick={leaveUnsaved}
+          >Descartar rascunho e voltar</Button
+        >{/if}
+      <h2>Registros preservados</h2>
+      <ul>
+        {#each data.events.filter((row) => row.taskId === task.id) as record (record.id)}<li
+          >
+            {record.date} · {record.reward.xp} XP · {record.reward.gold} Ouro{record.reversedAt
+              ? ' · Estornado'
+              : ''}
+          </li>{/each}
+      </ul>
+      {#each data.occurrences.filter((row) => row.taskId === task.id && row.value > 0) as occurrence (occurrence.id)}<a
+          class="journey-link"
+          href={'/ocorrencia/' + encodeURIComponent(occurrence.id)}
+          >Consultar execução de {occurrence.originDate} →</a
+        >{/each}
+      <a class="journey-link" href="/missoes">Voltar às missões →</a>
+    </Card>
   {:else if finished}
     {#key event?.id}
       <RewardSummary
@@ -396,7 +430,18 @@
           <p style="white-space: pre-wrap; text-align: left">{notes}</p></Card
         >{/if}
     </div>
-  {:else}<header class="journey-heading">
+  {:else}<TaskRemovalDialog
+      bind:open={removalOpen}
+      {task}
+      onremoved={() => {
+        void goto('/missoes');
+      }}
+    /><Button
+      variant="quiet"
+      disabled={busy || dirty || saves > 0 || starting > 0}
+      onclick={() => (removalOpen = true)}>Excluir missão</Button
+    >
+    <header class="journey-heading">
       <div>
         <p class="lmu-eyebrow">
           {data.projects.find((item) => item.id === task.projectId)?.name ??

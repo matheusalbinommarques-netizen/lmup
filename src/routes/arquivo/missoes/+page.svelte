@@ -1,5 +1,8 @@
 <!-- src/routes/missoes/+page.svelte -->
 <script lang="ts">
+  import TaskRemovalDialog from '$lib/journey/TaskRemovalDialog.svelte';
+  let removalOpen = $state(false),
+    removalTask = $state<Task>();
   import {
     db,
     type Task,
@@ -678,21 +681,9 @@
     }
   }
 
-  // Excluir missão (soft delete): NÃO tira XP nem gold, continua nas estatísticas
-  async function handleDeleteTask(task: Task) {
-    if (!task.id) return;
-    if (!confirm(`Tem certeza que deseja apagar a missão "${task.title}"?`)) {
-      return;
-    }
-
-    try {
-      await db.tasks.update(task.id, {
-        archived: true,
-      } as any);
-    } catch (error) {
-      console.error('Erro ao arquivar missão:', error);
-      alert('Falha ao excluir missão.');
-    }
+  function handleDeleteTask(task: Task) {
+    removalTask = task;
+    removalOpen = true;
   }
 
   // Dia da semana mais produtivo (baseado em todos os logs)
@@ -721,6 +712,7 @@
   );
 </script>
 
+<TaskRemovalDialog bind:open={removalOpen} task={removalTask} />
 <Dialog bind:open={undoOpen} title="Revisar correção">
   {#if undoTaskSelection && undoImpact}<p>
       Débito a compensar: {undoImpact.xp} XP · {undoImpact.gold} Ouro · {undoImpact.food}

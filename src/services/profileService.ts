@@ -1,3 +1,4 @@
+import { migrateAreaIcons } from './areaIcons';
 import { repairEquipmentSlots } from './shopService';
 import { companionContent } from '$lib/content/world';
 import { db, type Profile, type Companion } from './db';
@@ -81,7 +82,10 @@ export async function initializeJourney(): Promise<void> {
     db.profile,
     db.companions,
     db.ownedShopItems,
+    db.areas,
+    db.tasks,
     async () => {
+      await migrateAreaIcons();
       await repairEquipmentSlots();
       const profile = await ensureProfile();
       for (const base of companions) {

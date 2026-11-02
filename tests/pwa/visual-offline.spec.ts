@@ -37,9 +37,12 @@ test('seis telas e biblioteca visual estão disponíveis na primeira navegação
       .toEqual([]);
   }
   await page.getByRole('button', { name: 'Nova missão', exact: true }).click();
-  const form = page.getByRole('dialog', { name: 'Uma nova missão' });
-  await form.getByText('Passos e outros detalhes', { exact: true }).click();
-  await form.getByText('Ícone da missão (opcional)', { exact: true }).click();
+  const missionForm = page.getByRole('dialog', { name: 'Uma nova missão' });
+  await missionForm
+    .getByRole('button', { name: 'Gerenciar áreas', exact: true })
+    .click();
+  const form = page.getByRole('dialog', { name: 'Minhas áreas', exact: true });
+  await form.getByText('Ícone da área', { exact: true }).click();
   await form.getByLabel('Buscar ícone').fill('exercício');
   await expect(
     form.getByRole('button', { name: 'Exercício', exact: true }),

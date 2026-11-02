@@ -25,6 +25,7 @@
     id,
     onBusyChange,
   }: { id: string; onBusyChange?: (busy: boolean) => void } = $props();
+  let archived = $state(false);
   let row = $state<Occurrence>();
   let history = $state<ExecutionRecord[]>([]),
     changes = $state<ProductivityAudit[]>([]),
@@ -96,6 +97,7 @@
   onMount(() => {
     const sub = liveQuery(async () => ({
       occurrence: await db.occurrences.get(id),
+      tasks: await db.tasks.toArray(),
       records: await db.executionRecords
         .where('occurrenceId')
         .equals(id)
@@ -106,6 +108,8 @@
         history = data.records.sort((a, b) => b.revision - a.revision);
         changes = data.audit;
         const next = data.occurrence;
+        archived = !!data.tasks.find((task) => task.id === next?.taskId)
+          ?.archived;
         const dirty = draftDirty;
         row = next;
         if (next && loaded !== next.id + ':' + next.revision) {
@@ -222,7 +226,10 @@
               ? 'Fora do planejamento ativo'
               : 'Em planejamento'}
     </p>
-    {#if !['excused', 'discarded'].includes(row.status)}
+    {#if archived}<p class="journey-banner">
+        Missão arquivada. Os registros abaixo estão preservados para consulta.
+      </p>{/if}
+    {#if !archived && !['excused', 'discarded'].includes(row.status)}
       <fieldset disabled={saving || !!preview} class="progress-controls">
         <legend class="sr-only">Registrar execução</legend>
         <div class="execution-fields">
@@ -358,67 +365,68 @@
           >
         </div>{/if}
     {/if}
-    <details>
-      <summary>Reagendar e organizar</summary>
-      <div class="execution-fields">
-        <label>Nova data<input type="date" bind:value={date} /></label><label
-          >Novo início desejado<input type="time" bind:value={time} /></label
+    {#if !archived}<details>
+        <summary>Reagendar e organizar</summary>
+        <div class="execution-fields">
+          <label>Nova data<input type="date" bind:value={date} /></label><label
+            >Novo início desejado<input type="time" bind:value={time} /></label
+          >
+        </div>
+        <Button
+          variant="secondary"
+          onclick={() =>
+            run(
+              () =>
+                changeOccurrence(
+                  row!.id,
+                  row!.revision,
+                  { plannedDate: date, plannedTime: time || null },
+                  crypto.randomUUID(),
+                ),
+              'Ocorrência reagendada; origem preservada.',
+            )}>Reagendar esta ocorrência</Button
         >
-      </div>
-      <Button
-        variant="secondary"
-        onclick={() =>
-          run(
-            () =>
-              changeOccurrence(
-                row!.id,
-                row!.revision,
-                { plannedDate: date, plannedTime: time || null },
-                crypto.randomUUID(),
-              ),
-            'Ocorrência reagendada; origem preservada.',
-          )}>Reagendar esta ocorrência</Button
-      >
-      {#if row.status === 'discarded'}<Button
-          variant="quiet"
-          onclick={() =>
-            run(
-              () =>
-                changeOccurrence(
-                  row!.id,
-                  row!.revision,
-                  { status: 'planned' },
-                  crypto.randomUUID(),
-                ),
-              'Ocorrência restaurada.',
-            )}>Restaurar</Button
-        >{:else if row.value === 0 && row.status !== 'excused'}<Button
-          variant="quiet"
-          onclick={() =>
-            run(
-              () =>
-                changeOccurrence(
-                  row!.id,
-                  row!.revision,
-                  { status: 'discarded' },
-                  crypto.randomUUID(),
-                ),
-              'Removida do planejamento ativo; histórico preservado.',
-            )}>Descartar do planejamento ativo</Button
-        ><label
-          >Motivo da pausa justificada<input
-            maxlength="500"
-            bind:value={reason}
-          /></label
-        ><Button
-          variant="quiet"
-          onclick={() =>
-            run(
-              () => justifyPause([row!.id], reason, crypto.randomUUID()),
-              'Pausa registrada sem recompensa.',
-            )}>Justificar pausa</Button
-        >{/if}
-    </details>
+        {#if row.status === 'discarded'}<Button
+            variant="quiet"
+            onclick={() =>
+              run(
+                () =>
+                  changeOccurrence(
+                    row!.id,
+                    row!.revision,
+                    { status: 'planned' },
+                    crypto.randomUUID(),
+                  ),
+                'Ocorrência restaurada.',
+              )}>Restaurar</Button
+          >{:else if row.value === 0 && row.status !== 'excused'}<Button
+            variant="quiet"
+            onclick={() =>
+              run(
+                () =>
+                  changeOccurrence(
+                    row!.id,
+                    row!.revision,
+                    { status: 'discarded' },
+                    crypto.randomUUID(),
+                  ),
+                'Removida do planejamento ativo; histórico preservado.',
+              )}>Descartar do planejamento ativo</Button
+          ><label
+            >Motivo da pausa justificada<input
+              maxlength="500"
+              bind:value={reason}
+            /></label
+          ><Button
+            variant="quiet"
+            onclick={() =>
+              run(
+                () => justifyPause([row!.id], reason, crypto.randomUUID()),
+                'Pausa registrada sem recompensa.',
+              )}>Justificar pausa</Button
+          >{/if}
+      </details>
+    {/if}
     <details>
       <summary>Histórico desta ocorrência</summary>
       <p>
