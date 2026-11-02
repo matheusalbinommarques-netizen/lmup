@@ -253,7 +253,9 @@ test('Home mostra perfil, equipamento, ambiente e capítulo dos dados acumulados
   await expect(
     page.getByRole('link', { name: 'Equipado: Cota da Rotina' }),
   ).toBeVisible();
-  await expect(page.locator('.world-card[href="/aventura"]')).toBeVisible();
+  await expect(
+    page.locator('.world-card[href="/aventura?campanha=ermos"]'),
+  ).toBeVisible();
   await expect(
     page.getByRole('progressbar', { name: 'Experiência do personagem' }),
   ).toHaveAttribute('value', '1484');

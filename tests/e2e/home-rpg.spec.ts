@@ -85,7 +85,7 @@ test('Home aprovada mantém saudação, três sugestões, destinos e ações sem
       () => document.documentElement.scrollWidth <= innerWidth + 1,
     ),
   ).toBe(true);
-  await expect(page.locator('#home-map')).toHaveAttribute('href', '/refugio');
+  await expect(page.locator('#home-map')).toHaveAttribute('href', '/mundo');
   await expect(
     page.getByRole('link', { name: 'Ver todas as missões', exact: true }),
   ).toHaveAttribute('href', '/missoes');

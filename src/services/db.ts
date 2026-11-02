@@ -1,3 +1,4 @@
+import type { WorldState } from '$lib/world/worldState';
 import type { CampState } from '$lib/camp/campState';
 // src/services/db.ts
 import Dexie, { type Table } from 'dexie';
@@ -18,6 +19,8 @@ import type {
 // PROFILE (herói)
 // ---------------------------------------------
 export interface Profile {
+  /** Versioned narrative state, separate from the legacy pilot and all resources. */
+  world?: WorldState;
   /** Optional atomic settlement; no new table/index, compatible with schema 6. */
   camp?: CampState;
   rewardDebt?: Resources;

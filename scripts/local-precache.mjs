@@ -8,6 +8,16 @@ import { join, relative, sep } from 'node:path';
 
 const limit = 3 * 1024 * 1024;
 const exact = new Set([
+  ...[
+    'mapa-ermos-centrais.webp',
+    'cena-oasis-construcao.webp',
+    'cena-arredores-pistas.webp',
+    'eldrin-vane.webp',
+    'alaric-conall.webp',
+    'elowen-morrigan.webp',
+    'lucan-dorian.webp',
+    'lucan-dorian-horizontal.png',
+  ].map((name) => `art/world/${name}`),
   ...campAssets.files
     .filter(({ file }) => file.endsWith('.png'))
     .map(({ file }) => file),

@@ -1,3 +1,4 @@
+import { validateWorld } from '$lib/world/worldState';
 import { validateCampState } from '$lib/camp/campState';
 import { isTaskIconKey } from '$lib/content/visualAssets';
 import { validateRecurrence } from './recurrence';
@@ -116,6 +117,7 @@ export function validateBackup(input: unknown): JourneyBackup {
   }
   const profile = data.profile == null ? null : object(data.profile, 'profile');
   if (profile) {
+    if (profile.world != null) validateWorld(profile.world);
     if (profile.camp != null) {
       validateCampState(profile.camp);
       if (
@@ -686,6 +688,8 @@ export async function restoreJourneyBackup(input: unknown): Promise<void> {
       if (data.length) await db.table(name).bulkPut(data);
     }
     const restored = { ...(backup.data.profile ?? createDefaultProfile()) };
+    if (restored.world)
+      restored.world = { ...restored.world, epoch: crypto.randomUUID() };
     if (restored.camp)
       restored.camp = { ...restored.camp, epoch: crypto.randomUUID() };
     await db.profile.put(restored);

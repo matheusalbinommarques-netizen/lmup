@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { page } from '$app/state';
+  import WorldExperience from '$lib/world/WorldExperience.svelte';
   import { onMount } from 'svelte';
   import {
     CHAPTER_TWO_XP,
@@ -31,7 +33,7 @@
   let voiceAvailable = $state(false);
   let browserFullscreen = $state(false);
   let canFullscreen = $state(false);
-  let immersiveElement: HTMLElement;
+  let immersiveElement = $state<HTMLElement>();
 
   const chapterOneIndex = $derived(replay ? replayScene : pilot.scene);
   const playingTwo = $derived(!replay && pilot.chapterTwoUnlocked === true);
@@ -224,192 +226,197 @@
   <title>Aventura experimental · Level Me Up</title>
 </svelte:head>
 
-<section
-  class="rpg-theater"
-  bind:this={immersiveElement}
-  aria-label="Aventura interativa"
->
-  <div class="rpg-backdrop" aria-hidden="true">
-    {#if ready}
-      <Artwork
-        src={chapterOneFinished
-          ? '/art/pilot/scene-3.webp'
-          : chapterTwoFinished
-            ? '/art/pilot/scene-1.webp'
-            : scene.art}
-        alt=""
-        eager
-      />
-    {/if}
-  </div>
-  <div class="rpg-vignette" aria-hidden="true"></div>
-
-  <header class="rpg-theater-top">
-    <div class="rpg-heading">
-      <p class="rpg-kicker">
-        Level Me Up <span aria-hidden="true">/</span> Aventura experimental
-      </p>
-      <h1>O outro lado da ponte</h1>
-      <p class="rpg-chapter-state">
-        Capítulo 1: {pilot.scene === 6 ? 'concluído' : 'em andamento'}
-        <span aria-hidden="true">·</span>
-        Capítulo 2: {pilot.chapterTwoUnlocked ? 'liberado' : 'por XP'}
-      </p>
-    </div>
-    <nav class="rpg-top-actions" aria-label="Janela da aventura">
-      {#if canFullscreen}
-        <button
-          class="rpg-icon-button"
-          type="button"
-          onclick={toggleBrowserFullscreen}
-        >
-          {browserFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
-        </button>
+{#if page.url.searchParams.get('campanha') === 'ermos'}<WorldExperience
+    campaign
+  />{:else}
+  <section
+    class="rpg-theater"
+    bind:this={immersiveElement}
+    aria-label="Aventura interativa"
+  >
+    <div class="rpg-backdrop" aria-hidden="true">
+      {#if ready}
+        <Artwork
+          src={chapterOneFinished
+            ? '/art/pilot/scene-3.webp'
+            : chapterTwoFinished
+              ? '/art/pilot/scene-1.webp'
+              : scene.art}
+          alt=""
+          eager
+        />
       {/if}
-      <a class="rpg-leave" href="/">Voltar para Hoje</a>
-    </nav>
-  </header>
+    </div>
+    <div class="rpg-vignette" aria-hidden="true"></div>
 
-  <div class="rpg-story-area" role="region" aria-label="Cena atual">
-    {#if error}<p class="rpg-message" role="alert">{error}</p>{/if}
-    {#if !ready}
-      <p role="status" class="rpg-message">Preparando a aventura…</p>
-    {:else if chapterOneFinished}
-      <div class="rpg-story-card rpg-finale">
-        <p class="rpg-overline">Capítulo 1 · Encerramento</p>
-        <h2>{chapterOneEnding.title}</h2>
-        <p>{chapterOneEnding.text}</p>
-        <p class="rpg-caption">
-          Sua escolha foi registrada. A próxima aventura poderá ser iniciada
-          quando você desejar.
+    <header class="rpg-theater-top">
+      <div class="rpg-heading">
+        <p class="rpg-kicker">
+          Level Me Up <span aria-hidden="true">/</span> Aventura experimental
         </p>
-        <div class="rpg-chapter-unlock" aria-labelledby="next-chapter-title">
-          <p class="rpg-overline">Próxima aventura</p>
-          <h3 id="next-chapter-title">Capítulo 2 — Ecos da passagem</h3>
-          {#if replay}
-            <p>
-              Você está revendo o primeiro capítulo. Sua decisão original não
-              mudou.
-            </p>
-          {:else if pilot.chapterOneEndXp === undefined}
-            <p>
-              Você concluiu o piloto antigo. Para não contar XP passado como
-              conquista nova, defina agora o ponto de partida para o próximo
-              capítulo.
-            </p>
-            <Button disabled={busy} onclick={registerProgress}>
-              Começar a contar XP para o próximo capítulo
-            </Button>
-          {:else}
-            <p>
-              Continue suas atividades reais no seu ritmo. Ganhe {CHAPTER_TWO_XP}
-              XP novos para liberar esta aventura — sem gastar seu XP.
-            </p>
-            <label for="rpg-xp">XP conquistado depois do capítulo 1</label>
-            <progress
-              id="rpg-xp"
-              max={CHAPTER_TWO_XP}
-              value={Math.min(progress.earned, CHAPTER_TWO_XP)}
-            ></progress>
-            <p class="rpg-xp-numbers">
-              {Math.min(progress.earned, CHAPTER_TWO_XP)} / {CHAPTER_TWO_XP} XP
-              {#if !progress.available}
-                · Faltam {progress.remaining} XP{/if}
-            </p>
-            {#if progress.available}
-              <Button disabled={busy} onclick={startSecond}
-                >Iniciar capítulo 2</Button
-              >
+        <h1>O outro lado da ponte</h1>
+        <p class="rpg-chapter-state">
+          Capítulo 1: {pilot.scene === 6 ? 'concluído' : 'em andamento'}
+          <span aria-hidden="true">·</span>
+          Capítulo 2: {pilot.chapterTwoUnlocked ? 'liberado' : 'por XP'}
+        </p>
+      </div>
+      <nav class="rpg-top-actions" aria-label="Janela da aventura">
+        {#if canFullscreen}
+          <button
+            class="rpg-icon-button"
+            type="button"
+            onclick={toggleBrowserFullscreen}
+          >
+            {browserFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
+          </button>
+        {/if}
+        <a class="rpg-leave" href="/">Voltar para Hoje</a>
+      </nav>
+    </header>
+
+    <div class="rpg-story-area" role="region" aria-label="Cena atual">
+      {#if error}<p class="rpg-message" role="alert">{error}</p>{/if}
+      {#if !ready}
+        <p role="status" class="rpg-message">Preparando a aventura…</p>
+      {:else if chapterOneFinished}
+        <div class="rpg-story-card rpg-finale">
+          <p class="rpg-overline">Capítulo 1 · Encerramento</p>
+          <h2>{chapterOneEnding.title}</h2>
+          <p>{chapterOneEnding.text}</p>
+          <p class="rpg-caption">
+            Sua escolha foi registrada. A próxima aventura poderá ser iniciada
+            quando você desejar.
+          </p>
+          <div class="rpg-chapter-unlock" aria-labelledby="next-chapter-title">
+            <p class="rpg-overline">Próxima aventura</p>
+            <h3 id="next-chapter-title">Capítulo 2 — Ecos da passagem</h3>
+            {#if replay}
+              <p>
+                Você está revendo o primeiro capítulo. Sua decisão original não
+                mudou.
+              </p>
+            {:else if pilot.chapterOneEndXp === undefined}
+              <p>
+                Você concluiu o piloto antigo. Para não contar XP passado como
+                conquista nova, defina agora o ponto de partida para o próximo
+                capítulo.
+              </p>
+              <Button disabled={busy} onclick={registerProgress}>
+                Começar a contar XP para o próximo capítulo
+              </Button>
             {:else}
-              <a class="rpg-secondary-link" href="/missoes"
-                >Ver minhas missões reais</a
+              <p>
+                Continue suas atividades reais no seu ritmo. Ganhe {CHAPTER_TWO_XP}
+                XP novos para liberar esta aventura — sem gastar seu XP.
+              </p>
+              <label for="rpg-xp">XP conquistado depois do capítulo 1</label>
+              <progress
+                id="rpg-xp"
+                max={CHAPTER_TWO_XP}
+                value={Math.min(progress.earned, CHAPTER_TWO_XP)}
+              ></progress>
+              <p class="rpg-xp-numbers">
+                {Math.min(progress.earned, CHAPTER_TWO_XP)} / {CHAPTER_TWO_XP} XP
+                {#if !progress.available}
+                  · Faltam {progress.remaining} XP{/if}
+              </p>
+              {#if progress.available}
+                <Button disabled={busy} onclick={startSecond}
+                  >Iniciar capítulo 2</Button
+                >
+              {:else}
+                <a class="rpg-secondary-link" href="/missoes"
+                  >Ver minhas missões reais</a
+                >
+              {/if}
+            {/if}
+          </div>
+        </div>
+      {:else if chapterTwoFinished}
+        <div class="rpg-story-card rpg-finale">
+          <p class="rpg-overline">Capítulo 2 · Concluído</p>
+          <h2>O mundo continua</h2>
+          <p>
+            Esta pequena continuação serve para testar capítulos e progressão. A
+            história definitiva será criada depois de validarmos a experiência.
+          </p>
+        </div>
+      {:else}
+        <div class="rpg-story-card">
+          <p class="rpg-overline">
+            {playingTwo ? 'Capítulo 2' : 'Capítulo 1'} · Cena {(playingTwo
+              ? chapterTwoIndex
+              : chapterOneIndex) + 1}
+            de {playingTwo ? chapterTwoScenes.length : pilotScenes.length}
+          </p>
+          <h2>{scene.title}</h2>
+          <p class="rpg-narration">{scene.text}</p>
+          {#if scene.speaker && scene.dialogue}
+            <div class="rpg-dialogue">
+              <span class="rpg-speaker">{scene.speaker}</span>
+              <p>“{scene.dialogue}”</p>
+            </div>
+          {/if}
+          <p class="rpg-caption">{scene.caption}</p>
+        </div>
+      {/if}
+    </div>
+
+    <footer class="rpg-theater-bottom">
+      <div class="rpg-bottom-meta">
+        <span>{replay ? 'Revendo a história' : 'Seu ritmo, suas escolhas'}</span
+        >
+        {#if voiceAvailable}
+          <details class="rpg-options">
+            <summary>Opções de voz</summary>
+            <div>
+              <p>
+                Leitura sintética do navegador; nenhuma voz é reproduzida
+                automaticamente.
+              </p>
+              <Button variant="quiet" onclick={speakScene}>
+                {speaking ? 'Parar leitura' : 'Ouvir cena'}
+              </Button>
+            </div>
+          </details>
+        {/if}
+      </div>
+      <nav class="rpg-controls" aria-label="Controles da história">
+        {#if ready}
+          {#if !chapterOneFinished && !chapterTwoFinished}
+            {#if !playingTwo && chapterOneIndex === 5 && !replay}
+              <Button disabled={busy} onclick={() => next('help')}
+                >Ajudar o guarda</Button
               >
+              <Button
+                variant="secondary"
+                disabled={busy}
+                onclick={() => next('follow')}
+              >
+                Investigar os passos
+              </Button>
+            {:else}
+              <Button disabled={busy} onclick={() => next()}>
+                {replay && chapterOneIndex === 5
+                  ? 'Rever o desfecho'
+                  : 'Próxima cena'}
+              </Button>
             {/if}
           {/if}
-        </div>
-      </div>
-    {:else if chapterTwoFinished}
-      <div class="rpg-story-card rpg-finale">
-        <p class="rpg-overline">Capítulo 2 · Concluído</p>
-        <h2>O mundo continua</h2>
-        <p>
-          Esta pequena continuação serve para testar capítulos e progressão. A
-          história definitiva será criada depois de validarmos a experiência.
-        </p>
-      </div>
-    {:else}
-      <div class="rpg-story-card">
-        <p class="rpg-overline">
-          {playingTwo ? 'Capítulo 2' : 'Capítulo 1'} · Cena {(playingTwo
-            ? chapterTwoIndex
-            : chapterOneIndex) + 1}
-          de {playingTwo ? chapterTwoScenes.length : pilotScenes.length}
-        </p>
-        <h2>{scene.title}</h2>
-        <p class="rpg-narration">{scene.text}</p>
-        {#if scene.speaker && scene.dialogue}
-          <div class="rpg-dialogue">
-            <span class="rpg-speaker">{scene.speaker}</span>
-            <p>“{scene.dialogue}”</p>
-          </div>
-        {/if}
-        <p class="rpg-caption">{scene.caption}</p>
-      </div>
-    {/if}
-  </div>
-
-  <footer class="rpg-theater-bottom">
-    <div class="rpg-bottom-meta">
-      <span>{replay ? 'Revendo a história' : 'Seu ritmo, suas escolhas'}</span>
-      {#if voiceAvailable}
-        <details class="rpg-options">
-          <summary>Opções de voz</summary>
-          <div>
-            <p>
-              Leitura sintética do navegador; nenhuma voz é reproduzida
-              automaticamente.
-            </p>
-            <Button variant="quiet" onclick={speakScene}>
-              {speaking ? 'Parar leitura' : 'Ouvir cena'}
-            </Button>
-          </div>
-        </details>
-      {/if}
-    </div>
-    <nav class="rpg-controls" aria-label="Controles da história">
-      {#if ready}
-        {#if !chapterOneFinished && !chapterTwoFinished}
-          {#if !playingTwo && chapterOneIndex === 5 && !replay}
-            <Button disabled={busy} onclick={() => next('help')}
-              >Ajudar o guarda</Button
+          {#if pilot.scene === 6 && !replay}
+            <Button variant="quiet" onclick={review}>Rever capítulo 1</Button>
+          {/if}
+          {#if replay && chapterOneFinished}
+            <Button variant="secondary" onclick={closeReview}
+              >Voltar aos capítulos</Button
             >
-            <Button
-              variant="secondary"
-              disabled={busy}
-              onclick={() => next('follow')}
-            >
-              Investigar os passos
-            </Button>
-          {:else}
-            <Button disabled={busy} onclick={() => next()}>
-              {replay && chapterOneIndex === 5
-                ? 'Rever o desfecho'
-                : 'Próxima cena'}
-            </Button>
           {/if}
         {/if}
-        {#if pilot.scene === 6 && !replay}
-          <Button variant="quiet" onclick={review}>Rever capítulo 1</Button>
-        {/if}
-        {#if replay && chapterOneFinished}
-          <Button variant="secondary" onclick={closeReview}
-            >Voltar aos capítulos</Button
-          >
-        {/if}
-      {/if}
-    </nav>
-  </footer>
-</section>
+      </nav>
+    </footer>
+  </section>
+{/if}
 
 <style>
   .rpg-theater {

@@ -37,10 +37,10 @@ test('Home RPG mantém cena, personagem e atlas disponíveis sem conexão', asyn
   await expect
     .poll(() => atlas.evaluate((el) => (el as HTMLImageElement).naturalWidth))
     .toBeGreaterThan(0);
-  await expect(page.locator('#home-map')).toHaveAttribute('href', '/refugio');
+  await expect(page.locator('#home-map')).toHaveAttribute('href', '/mundo');
   await page.locator('#home-map').click();
   await expect(
-    page.getByRole('heading', { name: 'Refúgio', level: 1, exact: true }),
+    page.getByRole('heading', { name: 'Mundo', level: 1, exact: true }),
   ).toBeVisible();
 });
 test.beforeEach(async ({ request }) => {

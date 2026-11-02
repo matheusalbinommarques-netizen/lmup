@@ -421,9 +421,9 @@ test('plano e fixação são explícitos; navegação secundária preserva acess
     name: isMobile ? 'Navegação móvel' : 'Navegação principal',
     exact: true,
   });
-  await nav.getByRole('link', { name: 'Refúgio', exact: true }).click();
+  await nav.getByRole('link', { name: 'Mundo', exact: true }).click();
   await expect(
-    page.getByRole('heading', { name: 'Refúgio', level: 1, exact: true }),
+    page.getByRole('heading', { name: 'Mundo', level: 1, exact: true }),
   ).toBeVisible();
   await page
     .getByRole('button', { name: 'Perfil e mais', exact: true })

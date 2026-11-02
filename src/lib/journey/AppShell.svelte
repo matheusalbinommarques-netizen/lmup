@@ -16,11 +16,13 @@
     { href: '/', label: destinations.today, icon: 'today' },
     { href: '/missoes', label: destinations.missions, icon: 'missions' },
     { href: '/projetos', label: destinations.projects, icon: 'projects' },
-    { href: '/refugio', label: destinations.world, icon: 'world' },
+    { href: '/mundo', label: 'Mundo', icon: 'world' },
   ];
   const extras = [
+    { href: '/aventura?campanha=ermos', label: 'Aventura nos Ermos' },
+    { href: '/aposentos', label: 'Aposentos' },
     { href: '/aventura', label: 'Aventura (experimento)' },
-    { href: '/progresso', label: 'Meu progresso e histórico' },
+    { href: '/progresso', label: 'Meu progresso' },
     { href: '/perfil', label: 'Perfil e equipamentos' },
     { href: '/config', label: 'Configurações e backup' },
     { href: '/revisoes', label: 'Revisões e sessões' },
@@ -35,13 +37,13 @@
   const homeLinks = [
     { href: '/', label: 'Hoje', icon: 'today' },
     { href: '/missoes', label: 'Missões', icon: 'missions' },
-    { href: '/progresso', label: 'Mundo', icon: 'mundo' },
+    { href: '/mundo', label: 'Mundo', icon: 'mundo' },
     { href: '/perfil', label: 'Herói', icon: 'heroi' },
     { href: '/projetos', label: 'Projetos', icon: 'projetos_navegacao' },
-    { href: '/aventura', label: 'Aventura', icon: 'aventura' },
-    { href: '/refugio', label: 'Refúgio', icon: 'refugio' },
+    { href: '/aventura?campanha=ermos', label: 'Aventura', icon: 'aventura' },
+    { href: '/aposentos', label: 'Aposentos', icon: 'refugio' },
     { href: '/bestiario', label: 'Companheiros', icon: 'companheiros' },
-    { href: '/#home-map', label: 'Mapa', icon: 'mapa' },
+    { href: '/mundo#mapa', label: 'Mapa', icon: 'mapa' },
   ];
   function active(href: string) {
     const path = page.url.pathname;
@@ -52,8 +54,9 @@
         path.startsWith('/arquivo/missoes') ||
         path === '/revisoes'
       );
-    if (href === '/refugio')
+    if (href === '/aposentos')
       return [
+        '/aposentos',
         '/refugio',
         '/santuario',
         '/bestiario',
@@ -61,7 +64,7 @@
         '/inventario',
         '/trofeus',
       ].includes(path);
-    return path.startsWith(href);
+    return href !== '/mundo#mapa' && path.startsWith(href.split('?')[0]);
   }
   afterNavigate(() => {
     menu = false;
@@ -132,7 +135,7 @@
           name={link.icon === 'projects'
             ? 'projetos_navegacao'
             : link.icon === 'world'
-              ? 'refugio'
+              ? 'mundo'
               : link.icon}
           size={28}
         /><span>{link.label}</span></a

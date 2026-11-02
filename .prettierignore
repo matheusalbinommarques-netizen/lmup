@@ -1,0 +1,3 @@
+# Preserve reviewed source metadata without rewriting its bytes.
+static/art/camp/preservation-manifest.json
+static/art/camp/prototype-sprites.json
