@@ -221,7 +221,9 @@ test('câmera, seleção direta, reutilização de sprites e zoom continuam func
   });
   await c.activate(hall);
   await expect(hall).toHaveAttribute('aria-pressed', 'true');
+  const selectedCamera = await c.world.getAttribute('style');
   await c.visit('Forjas');
+  await expect(c.world).not.toHaveAttribute('style', selectedCamera!);
   for (const name of ['Forja', 'Forja 2', 'Forja']) {
     const target = page.getByRole('button', {
       name: `Selecionar ${name}`,

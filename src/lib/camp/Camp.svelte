@@ -1265,6 +1265,17 @@
                 : 'Produzindo'
               : 'Concluído'}</span
         >
+        <div class="context-actions mobile-building-actions">
+          {#if selection.status === 'building'}
+            <button type="button" onclick={finishSelected}
+              >Concluir construção</button
+            >
+          {/if}
+          <button type="button" onclick={beginMove}>Mover</button>
+          <button type="button" onclick={() => (removePending = true)}
+            >Remover</button
+          >
+        </div>
         <div class="building-panel-content">
           {#if selection.sprite === 'hall'}
             <p>Edifícios do acampamento</p>
@@ -1465,6 +1476,12 @@
       <div
         class="bottom"
         class:catalog-visible={catalogOpen}
+        class:utility-open={selection &&
+          !placing &&
+          !removePending &&
+          !reorganizing &&
+          !demolishing &&
+          !resourcePanel}
         class:contextual={placing ||
           reorganizing ||
           demolishing ||
@@ -1820,7 +1837,8 @@
     opacity: 0.45;
     cursor: default;
   }
-  .construction-controls {
+  .construction-controls,
+  .context-actions.mobile-building-actions {
     display: none;
   }
   @media (min-width: 701px) {
@@ -3454,8 +3472,16 @@
       z-index: 5;
       left: 8px;
       right: 8px;
+      bottom: 8px;
       width: auto;
-      max-height: calc(100% - 210px);
+      /* Leave the terrain above the panel available for touch panning. */
+      max-height: calc(100% - 280px);
+    }
+    .bottom.utility-open {
+      display: none;
+    }
+    .context-actions.mobile-building-actions {
+      display: flex;
     }
   }
 </style>
