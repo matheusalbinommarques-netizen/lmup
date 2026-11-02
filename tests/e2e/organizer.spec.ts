@@ -65,7 +65,7 @@ test('áreas no cadastro, edição, exclusão com transferência e criação ape
   await areas.getByLabel('Nome da nova área').fill('Casa');
   await areas.getByRole('button', { name: 'Criar área', exact: true }).click();
   await expect(
-    areas.getByRole('button', { name: 'Renomear Casa', exact: true }),
+    areas.getByRole('button', { name: 'Editar Casa', exact: true }),
   ).toBeVisible();
   await capture(page, info.project.name, 'areas');
   await areas
@@ -117,11 +117,9 @@ test('áreas no cadastro, edição, exclusão com transferência e criação ape
   await page
     .getByRole('button', { name: 'Gerenciar áreas', exact: true })
     .click();
-  await areas
-    .getByRole('button', { name: 'Renomear Casa', exact: true })
-    .click();
+  await areas.getByRole('button', { name: 'Editar Casa', exact: true }).click();
   await areas.getByLabel('Novo nome de Casa').fill('Meu lar');
-  await areas.getByRole('button', { name: 'Salvar nome', exact: true }).click();
+  await areas.getByRole('button', { name: 'Salvar área', exact: true }).click();
   await expect(
     areas.getByRole('button', { name: 'Excluir Meu lar', exact: true }),
   ).toBeVisible();

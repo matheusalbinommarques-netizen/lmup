@@ -16,7 +16,8 @@
   import PlanningDetails from './PlanningDetails.svelte';
   import type { Planning } from '$services/productivityTypes';
   import { dateKey } from '$services/rewardService';
-  import IconPicker from '$lib/ui/IconPicker.svelte';
+  import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
+  import { areaIconKey } from '$services/areaIcons';
   let {
     open = $bindable(false),
     snapshot,
@@ -47,7 +48,6 @@
     area = $state('0'),
     error = $state('');
   let plannedDate = $state('');
-  let iconKey = $state<string | null>(null);
   let planning = $state<Planning>({});
   let recurrenceKind = $state('none');
   let recurrenceDays = $state<number[]>([1]);
@@ -66,7 +66,6 @@
       untrack(() => {
         detailsOpen = !!starter && !editTask;
         title = editTask?.title ?? starter?.title ?? '';
-        iconKey = editTask?.iconKey ?? null;
         steps = (editTask?.subtasks ?? starter?.steps ?? []).join('\n');
         description = editTask?.description ?? '';
         error = '';
@@ -119,7 +118,6 @@
     error = '';
     try {
       const id = await createQuickTask({
-        iconKey,
         ...planning,
         title,
         requestId,
@@ -194,6 +192,13 @@
             >Gerenciar áreas</Button
           >
         </div>
+        <p class="lmu-hint area-icon-preview">
+          <ApprovedIcon
+            name={areaIconKey({ areaId: Number(area) }, snapshot.areas)}
+            size={28}
+          />
+          O ícone acompanha a área. Altere em Gerenciar áreas.
+        </p>
         <label class="journey-label"
           >Esforço desta missão<select bind:value={effort}
             >{#if editTask && !editTask.effort}<option value="legacy"
@@ -239,7 +244,6 @@
         <details bind:open={detailsOpen}>
           <summary>Passos e outros detalhes</summary>
           <div class="journey-form-details">
-            <IconPicker bind:value={iconKey} />
             {#if !editTask && snapshot.profile?.name === 'Herói sem nome'}<Field
                 label="Como quer ser chamado? (opcional)"
                 bind:value={name}
@@ -317,6 +321,11 @@
 </div>
 
 <style>
+  .area-icon-preview {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
   .area-field {
     display: flex;
     align-items: end;

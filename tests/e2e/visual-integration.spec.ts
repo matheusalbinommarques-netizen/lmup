@@ -47,7 +47,7 @@ async function readVisualData(page: Page) {
   );
 }
 
-test('criação dentro da rotina preserva rascunho, ícone, sequência e não inicia sessão nem premia', async ({
+test('criação dentro da rotina preserva rascunho, herança de ícone, sequência e não inicia sessão nem premia', async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -73,8 +73,9 @@ test('criação dentro da rotina preserva rascunho, ícone, sequência e não in
     .getByLabel('O que você quer fazer?')
     .fill('Missão criada sem sair');
   await form.getByText('Passos e outros detalhes', { exact: true }).click();
-  await form.getByText('Ícone da missão (opcional)', { exact: true }).click();
-  await form.getByRole('button', { name: 'Exercício', exact: true }).click();
+  await expect(
+    form.getByText('O ícone acompanha a área.', { exact: false }),
+  ).toBeVisible();
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
   await expect(form).not.toBeVisible();
   await expect(
@@ -94,7 +95,7 @@ test('criação dentro da rotina preserva rascunho, ícone, sequência e não in
   expect(
     saved.tasks.find((task) => task.title === 'Missão criada sem sair')
       ?.iconKey,
-  ).toBe('exercicio');
+  ).toBeUndefined();
   expect(saved.routines[0].entries).toHaveLength(1);
   expect(saved.sessions).toHaveLength(0);
   expect(saved.events).toBe(before.events);
@@ -131,8 +132,9 @@ test('edição mantém ícone e navegação por data/aba funciona com Voltar e m
     form.getByText('Ícone da missão (opcional)', { exact: true }),
   ).not.toBeVisible();
   await form.getByText('Passos e outros detalhes', { exact: true }).click();
-  await form.getByText('Ícone da missão (opcional)', { exact: true }).click();
-  await form.getByRole('button', { name: 'Cozinha', exact: true }).click();
+  await expect(
+    form.getByText('O ícone acompanha a área.', { exact: false }),
+  ).toBeVisible();
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
   await expect(form).not.toBeVisible();
   const row = page
@@ -152,7 +154,7 @@ test('edição mantém ícone e navegação por data/aba funciona com Voltar e m
     (await readVisualData(page)).tasks.find(
       (task) => task.title === 'Escolha visual editada',
     )?.iconKey,
-  ).toBe('cozinha');
+  ).toBeUndefined();
   await page.goto('/missoes?view=agenda&mode=week&date=2026-11-01');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
     'Agenda — Semana',
