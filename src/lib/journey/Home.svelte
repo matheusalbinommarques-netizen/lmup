@@ -234,8 +234,15 @@
     </header>
     <div class="today-main">
       <div class="today-plan">
-        <section class="next-mission rpg-frame" aria-labelledby="next-title">
-          <ApprovedIcon name={next ? taskIcon(next) : 'missions'} size={56} />
+        <section
+          class="next-mission rpg-frame"
+          class:next-empty={!next}
+          aria-labelledby="next-title"
+        >
+          <ApprovedIcon
+            name={next ? taskIcon(next) : 'missions'}
+            size={next ? 56 : 48}
+          />
           <div class="next-copy">
             <p class="gold-label">Próxima missão</p>
             <h2 id="next-title">
@@ -370,7 +377,7 @@
     <section class="rpg-frame horizons" aria-label="O caminho adiante">
       <RpgTrim />
       <div class="horizon-title">
-        <ApprovedIcon name="evolucao" size={48} />
+        <ApprovedIcon name="evolucao" size={40} />
         <h2>O caminho adiante</h2>
         <p>Seu progresso no mundo e na jornada pessoal.</p>
       </div>
@@ -471,6 +478,9 @@
     grid-template-columns: minmax(0, 1.85fr) minmax(285px, 1fr);
     gap: 16px;
   }
+  .today-plan {
+    grid-template-rows: auto 1fr;
+  }
   .today-plan,
   .today-aside {
     display: grid;
@@ -484,6 +494,19 @@
     background:
       linear-gradient(90deg, #2f2418f0, #111916df),
       url('/art/approved/paintings/04_Cartao_Projetos.webp') center/cover;
+  }
+  .next-mission.next-empty {
+    padding: 14px 18px;
+    gap: 12px;
+  }
+  .next-mission.next-empty > .next-copy h2 {
+    font-size: 1.55rem;
+    margin: 4px 0 6px;
+  }
+  .next-empty > .next-copy > p:last-child {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    margin-bottom: 0;
   }
   .next-copy {
     flex: 1;
@@ -706,24 +729,42 @@
     top: 18px;
     color: #f1ce82;
   }
+  .day-plan,
+  .daily-summary,
+  .upcoming-achievement,
+  .horizons {
+    --rpg-line: #a18a5b80;
+  }
+  .upcoming-achievement .gold-label,
+  .horizons .gold-label {
+    color: #d6c9a9;
+  }
   .horizons {
     display: grid;
-    grid-template-columns: 1.1fr 1fr 1fr 0.9fr;
-    padding: 22px;
-    gap: 24px;
+    grid-template-columns: 0.9fr 0.95fr 1.5fr 0.8fr;
+    padding: 18px;
+    gap: 16px;
   }
   .horizons > div,
   .horizons :global(.world-progress) {
     min-width: 0;
-    border-left: 1px solid #897b4a77;
-    padding-left: 20px;
+    border-left: 1px solid #897b4a55;
+    padding-left: 16px;
   }
   .horizons > .horizon-title {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    align-content: start;
+    align-items: center;
+    gap: 6px 10px;
     border: 0;
     padding: 0;
   }
+  .horizon-title > p {
+    grid-column: 1 / -1;
+  }
   .horizon-title h2 {
-    font: 500 1.9rem var(--lmu-display);
+    font: 500 1.6rem var(--lmu-display);
     color: #f4e4b9;
   }
   .horizons h3 {
@@ -825,8 +866,8 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .horizons {
-      gap: 18px;
-      padding: 18px;
+      gap: 14px;
+      padding: 16px;
     }
     .horizons > div,
     .horizons :global(.world-progress) {
@@ -885,6 +926,22 @@
     .mission-meta {
       font-size: 0.68rem;
     }
+  }
+  @media (max-width: 360px) {
+    .world-card h2 {
+      font-size: 1.15rem;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .card-arrow {
+      top: auto;
+      bottom: 10px;
+      right: 8px;
+    }
+  }
+  .horizons .horizon-hero :global(.hero-identity) {
+    gap: 12px;
+    align-items: flex-start;
   }
   .horizons .horizon-hero :global(.hero-details) {
     grid-template-columns: minmax(0, 1fr);

@@ -54,3 +54,21 @@ Veja [análise do orçamento offline](VISUAL-PRECACHE-REVIEW.md). Não houve alt
 A primeira matriz aprovou Node 22 e identificou oito falhas em Node 24, com 224 E2E aprovados: quatro expectativas obsoletas de títulos nas rotas de produção, duas expectativas de navegação em SVG (substituído pelos PNGs aprovados) e uma regressão real de espaçamento da aventura nos dois perfis. As expectativas mantêm recarga, ausência de erros e preferências entre abas; o teste dos ícones verifica agora também visibilidade e imagem carregada. O layout imersivo existente da aventura foi preservado contra os estilos compartilhados, sem mudar seu conteúdo. A verificação original de largura/altura foi mantida, acrescentando ausência das barras móveis.
 
 Após essas correções, lint direcionado, build e os oito cenários afetados passaram localmente. Não se repetiu a suíte local completa. O precache passou a 15.690.963 bytes, mantendo as mesmas 246 entradas.
+
+## Acabamento final da Home — avaliação visual de 02/11/2026
+
+Ajustes restritos à apresentação em `Home.svelte` e `visual.css`: logotipo e Companheiros sem quebra excessiva, estado vazio de Próxima missão compacto, proporções mais adequadas ao personagem em O caminho adiante e dourado secundário mais discreto. Imagens, ícones, navegação, recursos, equipamentos e indicadores foram preservados. Em 320 px, o título Aventura permanece inteiro e a seta ocupa o canto inferior do cartão, evitando colisão com o texto. Nenhuma regra de economia, produtividade, persistência ou schema foi alterada.
+
+O novo `tests/e2e/home-polish.spec.ts` cobre seis estados em contextos descartáveis: perfil novo, prioridade manual, cinco missões planejadas, duas conclusões com recompensas reais, rotina com horários e personagem com progresso/recursos/conquistas. Cada estado é avaliado em 1536, 1024, 390 e 320 px. Os testes verificam texto integral, indicadores, recompensas, horários, ausência de transbordamento/rolagem interna e as ações de criar/começar. As capturas e a galeria comparativa ficam fora do repositório: 24 antes e 24 depois, com dados sintéticos. A referência anterior é o commit e086862.
+
+Medidas do perfil novo, em pixels CSS:
+
+| Largura | Próxima missão antes → depois | O caminho adiante antes → depois |
+| ------- | ----------------------------- | -------------------------------- |
+| 1536    | 162 → 107                     | 208 → 174                        |
+| 390     | 246 → 230                     | 603 → 550                        |
+| 320     | 271 → 230                     | 629 → 576                        |
+
+Validação local: lint direcionado aprovado; tipos sem erros/avisos; build aprovado. Uma rodada direcionada de 52 E2E passou, incluindo os testes existentes de Home, notas, etapas, recompensas, desfazer, backup, duplicação entre abas, contraste mínimo 4,5:1, texto ampliado, preferências, aventura e compatibilidade das seis telas. Os dois testes de primeira visita offline passaram. Após o último ajuste de título em 320 px, somente os 12 novos casos foram repetidos, com as 24 capturas finais e verificação de títulos em uma linha. Nenhum teste existente foi alterado ou enfraquecido. O candidato final segue para uma única matriz obrigatória Node 22/24; resultados finais são registrados no PR.
+
+Prévia isolada em http://127.0.0.1:5199/. Instalação 5174, sincronizador, backup e acampamento preservados. A aprovação visual do usuário permanece necessária antes de merge/publicação.
