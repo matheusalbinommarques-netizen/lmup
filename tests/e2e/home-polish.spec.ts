@@ -182,7 +182,7 @@ for (const state of states)
         ).toBe(true);
       }
 
-      await expect(page.locator('.world-card')).toHaveCount(4);
+      await expect(page.locator('.world-card')).toHaveCount(3);
       for (const heading of await page.locator('.world-card h2').all())
         expect(
           await heading.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
@@ -238,14 +238,14 @@ for (const state of states)
           'Escolhida por você',
         );
       if (state === 'planejadas')
-        await expect(page.locator('.day-plan li')).toHaveCount(3);
+        await expect(page.locator('.day-plan li')).toHaveCount(4);
       if (state === 'rotina') {
         await expect(page.locator('.mission-meta')).toContainText('09:00');
         await expect(page.locator('.time-chip')).toHaveText(['11:00', '13:00']);
       }
       if (state === 'concluidas') {
         await expect(page.locator('.daily-summary')).toContainText(
-          '2 de 2 missões',
+          '2 de 2 ocorrências',
         );
         await expect(page.locator('.daily-rewards')).toContainText('+106 XP');
         await expect(page.locator('.daily-rewards')).toContainText('+50 Ouro');

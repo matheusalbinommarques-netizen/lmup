@@ -46,6 +46,7 @@
   let {
     id,
     sessionMode = false,
+    sessionId,
     compact = false,
     onOpenProgress,
     onSessionContinue,
@@ -54,6 +55,7 @@
   }: {
     id: number;
     sessionMode?: boolean;
+    sessionId?: string;
     compact?: boolean;
     onOpenProgress?: () => void;
     onSessionContinue?: () => void;
@@ -267,6 +269,7 @@
     error = '';
     try {
       const receipt = await completeTask(id, {
+        sessionId,
         reviewOutcome: reviewOutcome || undefined,
         occurrenceDate: task?.recurrence ? today : undefined,
       });

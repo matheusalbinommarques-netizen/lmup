@@ -81,6 +81,7 @@ export async function planTask(id: number, selected: boolean) {
     const task = await editable(id);
     await db.tasks.update(id, {
       plannedDate: selected ? dateKey() : null,
+      skippedDate: selected ? null : dateKey(),
       ...(selected && task.recurrence && task.recurrence.startDate > dateKey()
         ? { recurrence: { ...task.recurrence, startDate: dateKey() } }
         : {}),
@@ -92,6 +93,21 @@ export async function planTask(id: number, selected: boolean) {
         : {}),
     });
     await savePlanVersion((await db.tasks.get(id))!);
+    if (selected)
+      await db.occurrences
+        .where('taskId')
+        .equals(id)
+        .filter(
+          (row) =>
+            row.plannedDate === dateKey() &&
+            !!row.removedFromDays?.includes(dateKey()),
+        )
+        .modify((row) => {
+          row.removedFromDays = row.removedFromDays?.filter(
+            (day) => day !== dateKey(),
+          );
+          row.revision++;
+        });
   });
 }
 export async function pinTask(id: number, pinned: boolean) {

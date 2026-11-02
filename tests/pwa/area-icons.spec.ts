@@ -16,11 +16,16 @@ test('área configurada e seus ícones funcionam na primeira navegação offline
   await context.setOffline(true);
   await page.goto('/missoes');
   await page
+    .getByRole('button', { name: 'Ferramentas de missões', exact: true })
+    .click();
+  await page
     .getByRole('button', { name: 'Gerenciar áreas', exact: true })
     .click();
   const areas = page.getByRole('dialog', { name: 'Minhas áreas', exact: true });
   await areas.getByLabel('Nome da nova área').fill('Estudos offline');
-  await areas.getByText('Ícone da área', { exact: true }).click();
+  await areas
+    .getByRole('button', { name: 'Editar ícone da área', exact: true })
+    .click();
   await areas.getByRole('button', { name: 'Estudo', exact: true }).click();
   await areas.getByRole('button', { name: 'Criar área', exact: true }).click();
   await expect(

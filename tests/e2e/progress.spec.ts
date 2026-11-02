@@ -24,6 +24,9 @@ test('primeiro acesso cria perfil; duas abas não duplicam conclusão; estorno p
   await page.getByRole('button', { name: 'Nova Missão' }).click();
   await page.getByLabel('O que você quer fazer?').fill('Missão concorrente');
   await page.getByRole('button', { name: 'Criar missão', exact: true }).click();
+  await expect(
+    page.getByRole('dialog', { name: 'Uma nova missão', exact: true }),
+  ).not.toBeVisible();
   await expect(page).toHaveURL(/\/arquivo\/missoes$/);
   await page.goto('/arquivo/missoes');
   await expect(

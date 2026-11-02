@@ -24,7 +24,12 @@
   let {
     id,
     onBusyChange,
-  }: { id: string; onBusyChange?: (busy: boolean) => void } = $props();
+    sessionId,
+  }: {
+    id: string;
+    sessionId?: string;
+    onBusyChange?: (busy: boolean) => void;
+  } = $props();
   let archived = $state(false);
   let row = $state<Occurrence>();
   let history = $state<ExecutionRecord[]>([]),
@@ -128,6 +133,7 @@
     if (!row) throw new Error('Reabra a ocorrência.');
     return {
       requestId: crypto.randomUUID(),
+      sessionId,
       occurrenceId: row.id,
       expectedRevision: draftRevision,
       value,

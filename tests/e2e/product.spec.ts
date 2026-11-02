@@ -378,6 +378,7 @@ test('esforço define a recompensa e editar passos não fabrica XP', async ({
 test('datas de projeto novas e legadas não mudam entre fusos', async ({
   browser,
   page,
+  baseURL,
 }) => {
   for (const timezoneId of [
     'America/Sao_Paulo',
@@ -385,7 +386,7 @@ test('datas de projeto novas e legadas não mudam entre fusos', async ({
     'Pacific/Auckland',
   ]) {
     const context = await browser.newContext({
-      baseURL: 'http://127.0.0.1:4174',
+      baseURL,
       timezoneId,
       viewport: page.viewportSize() ?? { width: 1280, height: 900 },
       serviceWorkers: 'block',

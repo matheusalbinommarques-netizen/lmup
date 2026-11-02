@@ -39,6 +39,21 @@ export function validateProductivityBackup(
     if (task.productivityVersion) validatePlanning(task, task.subtasks ?? []);
   for (const row of lists.occurrences) {
     requireValue(tasks.has(row.taskId), 'ocorrência sem missão');
+    if (row.removedFromDays !== undefined)
+      requireValue(
+        Array.isArray(row.removedFromDays) &&
+          new Set(row.removedFromDays).size === row.removedFromDays.length &&
+          row.removedFromDays.every((day: unknown) =>
+            (() => {
+              try {
+                return typeof day === 'string' && calendarDate(day) === day;
+              } catch {
+                return false;
+              }
+            })(),
+          ),
+        'retiradas do dia inválidas',
+      );
     requireValue(
       calendarDate(row.originDate) && calendarDate(row.plannedDate),
       'data de ocorrência inválida',
@@ -187,6 +202,20 @@ export function validateProductivityBackup(
       'versão de planejamento inválida',
     );
   for (const row of lists.executionRecords) {
+    if (row.source !== undefined)
+      requireValue(
+        ['individual', 'session'].includes(row.source),
+        'origem de execução inválida',
+      );
+    if (row.sessionId !== undefined)
+      requireValue(
+        typeof row.sessionId === 'string' &&
+          row.source === 'session' &&
+          lists.savedMissionSessions.some(
+            (session) => session.id === row.sessionId,
+          ),
+        'sessão de execução inválida',
+      );
     requireValue(
       occurrences.has(row.occurrenceId) &&
         Number.isSafeInteger(row.revision) &&

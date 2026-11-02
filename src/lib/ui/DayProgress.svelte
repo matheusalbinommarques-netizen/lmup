@@ -3,7 +3,13 @@
     completed,
     total,
     compact = false,
-  }: { completed: number; total: number; compact?: boolean } = $props();
+    noun = 'missões',
+  }: {
+    completed: number;
+    total: number;
+    compact?: boolean;
+    noun?: string;
+  } = $props();
   const percentage = $derived(
     total ? Math.round((completed / total) * 100) : 0,
   );
@@ -13,12 +19,14 @@
   <span
     class="day-ring"
     role="progressbar"
-    aria-label="Missões concluídas"
+    aria-label={noun === 'ocorrências'
+      ? 'Ocorrências concluídas'
+      : 'Missões concluídas'}
     aria-valuemin="0"
     aria-valuemax="100"
     aria-valuenow={percentage}
     aria-valuetext={total
-      ? `${completed} de ${total} missões concluídas`
+      ? `${completed} de ${total} ${noun} concluídas`
       : 'Sem missões planejadas'}
     style:--progress={`${percentage}%`}
   >
@@ -26,7 +34,7 @@
   </span>
   <span
     >{total
-      ? `${completed} de ${total} missões`
+      ? `${completed} de ${total} ${noun}`
       : 'Sem missões planejadas'}</span
   >
 </span>

@@ -1,4 +1,7 @@
 <script lang="ts">
+  import SessionSummary from './SessionSummary.svelte';
+  import { summarizeSession } from '$services/sessionSummary';
+  import { formatCalendar } from '$services/calendar';
   import { onMount } from 'svelte';
   import { SvelteMap } from 'svelte/reactivity';
   import { liveQuery } from 'dexie';
@@ -79,6 +82,9 @@
       media.removeEventListener('change', resize);
     };
   });
+  const summary = $derived(
+    session && snapshot ? summarizeSession(session, snapshot) : undefined,
+  );
   const current = $derived(
     session
       ? rows.find((row) => row.id === session!.occurrenceIds[session!.cursor])
@@ -284,6 +290,13 @@
       >
     </div>
     {#if error}<p role="alert" class="journey-error">{error}</p>{/if}
+    {#if summary?.dates.some((day) => day !== dateKey())}<p
+        class="journey-banner"
+      >
+        Execução anterior: {summary.dates.map(formatCalendar).join(' · ')}. As
+        ocorrências originais foram preservadas.
+        <a href="/missoes?view=routines">Ver rotinas do dia atual</a>
+      </p>{/if}
     <div class="session-layout" class:overview={session.mode === 'overview'}>
       <aside aria-label="Fila de missões">
         <details class="queue-panel rpg-frame" bind:open={sequenceOpen}>
@@ -412,6 +425,10 @@
                 alterações do cadastro valem para as próximas ocorrências.
               </p>
             </details>{/if}
+          {#if summary?.outside.includes(current.id)}<p class="lmu-hint">
+              Concluída individualmente, fora desta sessão. A mesma ocorrência
+              conta no progresso, sem nova recompensa.
+            </p>{/if}
           <div
             class="execution-mode"
             role="group"
@@ -441,7 +458,7 @@
               {#if reward && current.status !== 'completed'}<div
                   class="expected-reward"
                 >
-                  <span>Recompensa bruta restante prevista</span><strong
+                  <span>Recompensa restante na meta</span><strong
                     ><ApprovedIcon name="xp" size={23} />+{reward.xp} XP</strong
                   ><strong
                     ><ApprovedIcon name="ouro" size={23} />+{reward.gold} Ouro</strong
@@ -489,6 +506,7 @@
               {#key current.id}{#if currentTask && canUseTaskExecution && !forceOccurrence}<Execution
                     id={currentTask.id!}
                     sessionMode
+                    sessionId={session.id}
                     compact
                     onOpenProgress={() => (forceOccurrence = true)}
                     onSessionContinue={() =>
@@ -497,6 +515,7 @@
                     onSessionSkip={skip}
                   />{:else}<OccurrenceExecution
                     id={current.id}
+                    sessionId={session.id}
                     onBusyChange={(value) => (executionBusy = value)}
                   />{/if}{/key}
             </div>
@@ -547,6 +566,7 @@
           </div>
         </section>{/if}
     </div>
+    {#if snapshot}<SessionSummary {session} data={snapshot} />{/if}
     {#if snapshot && currentTask}<QuickCreate
         bind:open={editOpen}
         {snapshot}

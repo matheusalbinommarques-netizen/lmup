@@ -166,6 +166,7 @@ export async function plannedOccurrences(
         .filter(
           (row) =>
             !row.planningSuspended &&
+            !row.removedFromDays?.includes(row.plannedDate) &&
             row.plannedDate >= from &&
             row.plannedDate <= to,
         )
@@ -214,12 +215,18 @@ export async function plannedOccurrences(
         result.set(id, makeOccurrence(task, day));
       }
     }
-    return [...result.values()].sort(
-      (a, b) =>
-        a.plannedDate.localeCompare(b.plannedDate) ||
-        (a.plannedTime ?? '99:99').localeCompare(b.plannedTime ?? '99:99') ||
-        a.id.localeCompare(b.id),
-    );
+    return [...result.values()]
+      .filter(
+        (row) =>
+          tasks.find((task) => task.id === row.taskId)?.skippedDate !==
+          row.plannedDate,
+      )
+      .sort(
+        (a, b) =>
+          a.plannedDate.localeCompare(b.plannedDate) ||
+          (a.plannedTime ?? '99:99').localeCompare(b.plannedTime ?? '99:99') ||
+          a.id.localeCompare(b.id),
+      );
   });
 }
 export async function ensureOccurrence(
@@ -275,6 +282,7 @@ export async function ensureOccurrence(
   });
 }
 export type ProgressInput = {
+  sessionId?: string;
   requestId: string;
   occurrenceId: string;
   expectedRevision: number;
@@ -402,6 +410,15 @@ export async function recordProgress(
     const current = await db.occurrences.get(input.occurrenceId);
     if (!current || current.revision !== input.expectedRevision)
       throw new Error('A ocorrência mudou em outra aba. Reabra para comparar.');
+    if (input.sessionId) {
+      const session = await db.savedMissionSessions.get(input.sessionId);
+      if (
+        !session ||
+        session.status !== 'active' ||
+        !session.occurrenceIds.includes(current.id)
+      )
+        throw new Error('A sessão mudou. Reabra antes de registrar progresso.');
+    }
     const definition = await db.tasks.get(current.taskId);
     if (!definition || (definition.archived && !input.correction))
       throw new Error('Esta missão não está disponível.');
@@ -561,6 +578,8 @@ export async function recordProgress(
     };
     await db.occurrences.put(updated);
     await db.executionRecords.add({
+      source: input.sessionId ? 'session' : 'individual',
+      ...(input.sessionId ? { sessionId: input.sessionId } : {}),
       id: input.requestId,
       occurrenceId: current.id,
       before: current.value,

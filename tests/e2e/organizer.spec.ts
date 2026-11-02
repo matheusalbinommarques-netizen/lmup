@@ -133,6 +133,9 @@ test('áreas no cadastro, edição, exclusão com transferência e criação ape
     .getByRole('button', { name: 'Excluir Pessoal', exact: true })
     .click();
   await areas
+    .getByRole('combobox', { name: 'Transferir missões para', exact: true })
+    .selectOption('0');
+  await areas
     .getByRole('button', { name: 'Confirmar exclusão da área', exact: true })
     .click();
   await areas

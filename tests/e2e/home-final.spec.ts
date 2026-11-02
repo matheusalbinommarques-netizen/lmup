@@ -4,10 +4,15 @@ import { join } from 'node:path';
 
 // All fixtures live only in the isolated browser context, never in runtime UI.
 async function setTasks(page: Page, completed: boolean | null) {
+  await expect(
+    page.getByRole('region', { name: 'Seu personagem', exact: true }),
+  ).toBeVisible();
   await page.evaluate(
     (done) =>
       new Promise<void>((resolve, reject) => {
         const request = indexedDB.open('LevelMeUpDB');
+        request.onblocked = () =>
+          reject(new Error('Banco de teste bloqueado durante a preparação.'));
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
           const db = request.result;
@@ -37,6 +42,10 @@ async function setTasks(page: Page, completed: boolean | null) {
           tx.onerror = () => {
             db.close();
             reject(tx.error);
+          };
+          tx.onabort = () => {
+            db.close();
+            reject(tx.error ?? new Error('Preparação interrompida.'));
           };
         };
       }),
@@ -122,7 +131,7 @@ test('Home final mantém navegação inteira e estados claros nas cinco resoluç
       'Seu plano está em dia',
     );
     await expect(page.locator('.daily-summary')).toContainText(
-      '2 de 2 missões',
+      '2 de 2 ocorrências',
     );
     await expect(page.locator('.day-plan li')).toHaveCount(0);
     await expect(

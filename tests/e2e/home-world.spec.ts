@@ -160,7 +160,9 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
   await expect(
     page.getByRole('heading', { name: 'Seu plano está em dia', exact: true }),
   ).toBeVisible();
-  await expect(page.locator('.daily-summary')).toContainText('2 de 2 missões');
+  await expect(page.locator('.daily-summary')).toContainText(
+    '2 de 2 ocorrências',
+  );
   await expect(
     page.getByRole('link', { name: 'Ver todas as missões', exact: true }),
   ).toHaveAttribute('href', '/missoes');
@@ -253,9 +255,7 @@ test('Home mostra perfil, equipamento, ambiente e capítulo dos dados acumulados
   await expect(
     page.getByRole('link', { name: 'Equipado: Cota da Rotina' }),
   ).toBeVisible();
-  await expect(
-    page.locator('.world-card[href="/aventura?campanha=ermos"]'),
-  ).toBeVisible();
+  await expect(page.locator('.world-card[href="/mundo"]')).toBeVisible();
   await expect(
     page.getByRole('progressbar', { name: 'Experiência do personagem' }),
   ).toHaveAttribute('value', '1484');

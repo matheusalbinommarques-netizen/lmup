@@ -1,4 +1,11 @@
 <script lang="ts">
+  import {
+    changeToday,
+    dayChangeNeedsConfirmation,
+  } from '$services/dailyPlanningService';
+  import { makeOccurrence } from '$services/occurrenceService';
+  import type { Occurrence } from '$services/productivityTypes';
+  import SessionSelection from './SessionSelection.svelte';
   import { areaIconKey } from '$services/areaIcons';
   import ContextMenu from '$lib/ui/ContextMenu.svelte';
   import TaskRemovalDialog from './TaskRemovalDialog.svelte';
@@ -48,8 +55,50 @@
   import RpgTrim from '$lib/ui/RpgTrim.svelte';
   import ProductivityWorkspace from './ProductivityWorkspace.svelte';
   import { ensureOccurrence } from '$services/occurrenceService';
-  import { newSavedSession, saveSession } from '$services/savedSessionService';
+  import { startOrResumeSession } from '$services/savedSessionService';
   import { fraction } from '$services/productivityRules';
+  let todayRemovalOpen = $state(false),
+    removalRows = $state<Occurrence[]>([]);
+  async function removeToday(task: Task) {
+    const rows =
+      data?.plannedToday.filter(
+        (row) => row.taskId === task.id && row.status !== 'completed',
+      ) ?? [];
+    const candidates = rows.length ? rows : [makeOccurrence(task, today)];
+    if (
+      candidates.length === 1 &&
+      !(await dayChangeNeedsConfirmation(candidates[0].id))
+    ) {
+      await changeToday({
+        row: candidates[0],
+        action: 'remove',
+        day: today,
+        requestId: crypto.randomUUID(),
+      });
+      notice = 'Removida de hoje; cadastro e progresso preservados.';
+      return;
+    }
+    removalRows = candidates;
+    todayRemovalOpen = true;
+  }
+  async function confirmTodayRemoval(row: Occurrence) {
+    try {
+      await changeToday({
+        row,
+        action: 'remove',
+        day: today,
+        acknowledged: true,
+        requestId: crypto.randomUUID(),
+      });
+      removalRows = removalRows.filter((item) => item.id !== row.id);
+      todayRemovalOpen = removalRows.length > 0;
+      notice = 'Removida de hoje; sessão, progresso e recompensas preservados.';
+    } catch (cause) {
+      error =
+        cause instanceof Error ? cause.message : 'Não foi possível retirar.';
+    }
+  }
+  let selectionOpen = $state(false);
   let workspaceView = $state<
     'list' | 'agenda' | 'routines' | 'areas' | 'recovery' | 'sessions'
   >('list');
@@ -406,7 +455,7 @@
           for (const row of planned)
             ids.push((await ensureOccurrence(id, row.originDate)).id);
         }
-        await saveSession(newSavedSession('Sessão de Missões', ids));
+        await startOrResumeSession('Sessão de Missões', ids);
         selecting = false;
         selected = [];
         error = '';
@@ -563,9 +612,7 @@
               <Button
                 variant="secondary"
                 onclick={() => {
-                  selecting = true;
-                  filter = 'today';
-                  selected = [];
+                  selectionOpen = true;
                 }}
               >
                 <Icon name="missions" size={18} />Selecionar para sessão
@@ -919,7 +966,10 @@
                       onclick={() =>
                         act(
                           String(task.id),
-                          () => planTask(task.id!, !scheduledToday(task)),
+                          () =>
+                            scheduledToday(task)
+                              ? removeToday(task)
+                              : planTask(task.id!, true),
                           'Plano atualizado.',
                         )}
                       >{scheduledToday(task)
@@ -986,6 +1036,21 @@
         >
       </div>
     {/if}
+    <Dialog bind:open={todayRemovalOpen} title="Remover de hoje"
+      ><p>
+        Escolha a ocorrência. O progresso, as recompensas e as sessões iniciadas
+        serão preservados. Esta ação não arquiva nem exclui a missão.
+      </p>
+      {#each removalRows as row (row.id)}<Button
+          variant="secondary"
+          onclick={() => confirmTodayRemoval(row)}
+          >Remover {row.title} · origem {formatCalendar(row.originDate)}</Button
+        >{/each}<Button
+        variant="quiet"
+        onclick={() => (todayRemovalOpen = false)}>Cancelar</Button
+      ></Dialog
+    >
+    <SessionSelection bind:open={selectionOpen} snapshot={data} />
     <QuickCreate
       bind:open
       snapshot={data}

@@ -15,7 +15,11 @@
     plannedOccurrences,
     ensureOccurrence,
   } from '$services/occurrenceService';
-  import { newSavedSession, saveSession } from '$services/savedSessionService';
+  import SessionSummary from './SessionSummary.svelte';
+  import {
+    startOrResumeSession,
+    saveSession,
+  } from '$services/savedSessionService';
   import { saveRoutine, setRoutineStatus } from '$services/routineService';
   import { WEEKDAYS, routineRecurrenceLabel } from '$services/recurrence';
   import { freeSlot, recommendations } from '$services/productivityInsights';
@@ -112,6 +116,19 @@
   );
   const completedDay = $derived(
     dayRows.filter((row) => row.status === 'completed').length,
+  );
+  const sessionIsToday = (session: SavedMissionSession) =>
+    session.occurrenceIds.every(
+      (id) =>
+        snapshot.occurrences.find((row) => row.id === id)?.originDate ===
+        dateKey(),
+    );
+  const orderedSessions = $derived(
+    [...sessions].sort(
+      (a, b) =>
+        Number(sessionIsToday(b)) - Number(sessionIsToday(a)) ||
+        b.createdAt.localeCompare(a.createdAt),
+    ),
   );
   const availableTasks = $derived(
     tasks.filter(
@@ -265,7 +282,7 @@
             )
           ).id,
         );
-      await saveSession(newSavedSession(name, ids));
+      await startOrResumeSession(name, ids, dateKey(), true);
       await goto('/sessoes');
     });
   }
@@ -613,6 +630,39 @@
                   : 'Ativar rotina'}</Button
               >
             </div>
+            {#if sessions.some((session) => session.status !== 'ended' && session.occurrenceIds.some((id) => snapshot.occurrences.find((row) => row.id === id)?.routineId === routine.id))}<details
+              >
+                <summary>Execuções preservadas</summary
+                >{#each sessions.filter((session) => session.status !== 'ended' && session.occurrenceIds.some((id) => snapshot.occurrences.find((row) => row.id === id)?.routineId === routine.id)) as saved (saved.id)}<p
+                    class="lmu-hint"
+                  >
+                    {[
+                      ...new Set(
+                        saved.occurrenceIds
+                          .map(
+                            (id) =>
+                              snapshot.occurrences.find((row) => row.id === id)
+                                ?.originDate,
+                          )
+                          .filter(Boolean),
+                      ),
+                    ].join(' · ')} · {saved.status === 'paused'
+                      ? 'Sessão pausada'
+                      : 'Sessão em andamento'}
+                  </p>
+                  <Button
+                    variant="secondary"
+                    disabled={busy}
+                    onclick={() =>
+                      run(async () => {
+                        await saveSession(
+                          { ...saved, status: 'active' },
+                          saved.revision,
+                        );
+                        await goto('/sessoes');
+                      })}>Retomar execução preservada</Button
+                  >{/each}
+              </details>{/if}
             <details>
               <summary>Mais ações</summary><Button
                 variant="quiet"
@@ -851,7 +901,13 @@
     <p class="lmu-hint">
       O progresso pertence à ocorrência e é compartilhado entre sessões.
     </p>
-    {#each sessions as session (session.id)}
+    {#each orderedSessions as session, index (session.id)}
+      {#if index === 0 || sessionIsToday(orderedSessions[index - 1]) !== sessionIsToday(session)}<h3
+        >
+          {sessionIsToday(session)
+            ? 'Execuções do dia atual'
+            : 'Execuções anteriores'}
+        </h3>{/if}
       {@const completed = session.occurrenceIds.filter(
         (id) =>
           snapshot.occurrences.find((row) => row.id === id)?.status ===
@@ -860,6 +916,28 @@
       {@const total = session.occurrenceIds.length}
       {@const percent = total ? Math.round((completed * 100) / total) : 0}
       <article class="rpg-frame saved-session-card">
+        <p class="lmu-hint">
+          {[
+            ...new Set(
+              session.occurrenceIds
+                .map(
+                  (id) =>
+                    snapshot.occurrences.find((row) => row.id === id)
+                      ?.originDate,
+                )
+                .filter(Boolean),
+            ),
+          ].join(' · ')} · {[
+            ...new Set(
+              session.occurrenceIds.map(
+                (id) =>
+                  snapshot.occurrences.find((row) => row.id === id)?.originDate,
+              ),
+            ),
+          ].some((day) => day !== dateKey())
+            ? 'Execução anterior'
+            : 'Execução do dia'}
+        </p>
         <div class="saved-session-heading">
           <div>
             <h3>{session.name}</h3>
@@ -895,6 +973,7 @@
             >{completed} de {total} <span>({percent}%)</span></strong
           >
         </div>
+        <SessionSummary {session} data={snapshot} compact />
       </article>
     {/each}
     {#if !sessions.length}<p class="workspace-empty">

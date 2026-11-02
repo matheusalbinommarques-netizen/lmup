@@ -1,7 +1,8 @@
 import { db } from './db';
 import { dateKey, progressTransaction } from './rewardService';
 import type { SavedMissionSession } from './productivityTypes';
-import { recordProgress } from './occurrenceService';
+import { ensureOccurrence, recordProgress } from './occurrenceService';
+import { occurrenceEligibility } from './dailyPlanningService';
 import { progressTarget } from './productivityRules';
 
 export async function completeSessionOccurrence(input: {
@@ -51,6 +52,7 @@ export async function completeSessionOccurrence(input: {
         'Registre o progresso desta atividade na execução detalhada.',
       );
     const event = await recordProgress({
+      sessionId: session.id,
       requestId: input.requestId,
       occurrenceId: row.id,
       expectedRevision: row.revision,
@@ -133,4 +135,100 @@ export function newSavedSession(
     revision: 0,
     createdAt: new Date().toISOString(),
   };
+}
+
+/** Atomic reuse prevents repeated starts (including concurrent tabs) from multiplying queues. */
+export async function startOrResumeSession(
+  name: string,
+  occurrenceIds: string[],
+  day = dateKey(),
+  includeCompleted = false,
+) {
+  if (
+    !occurrenceIds.length ||
+    new Set(occurrenceIds).size !== occurrenceIds.length ||
+    day !== dateKey()
+  )
+    throw new Error('Selecione ocorrências disponíveis hoje.');
+  return progressTransaction(async () => {
+    const rows = await db.occurrences.bulkGet(occurrenceIds);
+    if (rows.some((row) => !row))
+      throw new Error('Uma ocorrência não está mais disponível.');
+    for (const row of rows) {
+      if (row!.plannedDate !== day || row!.removedFromDays?.includes(day))
+        throw new Error(
+          'A seleção contém uma ocorrência indisponível para hoje.',
+        );
+    }
+    const sessions = await db.savedMissionSessions.toArray();
+    const existing = sessions.find(
+      (session) =>
+        session.occurrenceIds.length === occurrenceIds.length &&
+        session.occurrenceIds.every((id) => occurrenceIds.includes(id)),
+    );
+    if (existing)
+      return saveSession({ ...existing, status: 'active' }, existing.revision);
+    if (
+      sessions.some(
+        (session) =>
+          session.status !== 'ended' &&
+          session.occurrenceIds.some((id) => occurrenceIds.includes(id)),
+      )
+    )
+      throw new Error(
+        'Uma atividade já pertence a uma sessão em andamento. Retome essa sessão ou selecione atividades sem esse vínculo. A composição existente foi preservada.',
+      );
+    for (const row of rows) {
+      const reason = occurrenceEligibility(
+        row!,
+        await db.tasks.get(row!.taskId),
+        day,
+      );
+      if (
+        reason &&
+        !(
+          includeCompleted &&
+          row!.status === 'completed' &&
+          ['Ocorrência já concluída', 'Missão já concluída'].includes(reason)
+        )
+      )
+        throw new Error(reason);
+    }
+    const cursor = rows.findIndex((row) => row!.status !== 'completed');
+    if (cursor < 0)
+      throw new Error(
+        'Todas as atividades já foram concluídas. Nenhuma nova sequência foi criada.',
+      );
+    return saveSession({ ...newSavedSession(name, occurrenceIds), cursor });
+  });
+}
+
+export async function startSelectedSession(
+  rows: import('./productivityTypes').Occurrence[],
+  name = 'Sessão de Missões',
+) {
+  return progressTransaction(async () => {
+    const ids: string[] = [];
+    for (const selected of rows) {
+      const task = await db.tasks.get(selected.taskId);
+      const reason = occurrenceEligibility(selected, task, dateKey());
+      if (reason) throw new Error(reason);
+      const stored = await db.occurrences.get(selected.id);
+      if (
+        stored
+          ? stored.revision !== selected.revision
+          : selected.definitionRevision !== undefined &&
+            selected.definitionRevision !== (task?.definitionRevision ?? 0)
+      )
+        throw new Error('Uma atividade mudou. Atualize a seleção.');
+      const current = await ensureOccurrence(
+        selected.taskId,
+        selected.originDate,
+      );
+      const currentReason = occurrenceEligibility(current, task, dateKey());
+      if (currentReason) throw new Error(currentReason);
+      ids.push(current.id);
+    }
+    return startOrResumeSession(name, ids);
+  });
 }

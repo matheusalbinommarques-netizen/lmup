@@ -14,6 +14,7 @@ export type Planning = {
   tracking?: ProgressConfig;
 };
 export type Occurrence = Planning & {
+  removedFromDays?: string[];
   id: string;
   taskId: number;
   originDate: string;
@@ -81,6 +82,8 @@ export type PlanVersion = {
   definition: Record<string, unknown>;
 };
 export type ExecutionRecord = {
+  sessionId?: string;
+  source?: 'individual' | 'session';
   id: string;
   occurrenceId: string;
   before: number;

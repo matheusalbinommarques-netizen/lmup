@@ -41,7 +41,7 @@ async function populateTasks(page: Page) {
   await page.reload();
 }
 
-test('Home aprovada mantém saudação, três sugestões, destinos e ações sem rolagem interna', async ({
+test('Home mantém saudação, planejamento completo, destinos e ações sem rolagem interna', async ({
   page,
 }, info) => {
   const desktop = info.project.name === 'desktop';
@@ -54,8 +54,8 @@ test('Home aprovada mantém saudação, três sugestões, destinos e ações sem
     page.getByRole('heading', { name: 'Boa noite.', exact: true }),
   ).toBeVisible();
   await populateTasks(page);
-  await expect(page.locator('.day-plan li')).toHaveCount(3);
-  await expect(page.locator('.world-card')).toHaveCount(4);
+  await expect(page.locator('.day-plan li')).toHaveCount(23);
+  await expect(page.locator('.world-card')).toHaveCount(3);
   const boxes = await page
     .locator('.world-card')
     .evaluateAll((nodes) =>
@@ -116,7 +116,9 @@ test('prioridade manual persiste, não duplica e volta ao automático ao conclui
       'Escolhida por você',
     );
     await expect(
-      page.locator('.day-plan .text-action').filter({ hasText: title }),
+      page
+        .locator('.day-plan')
+        .getByRole('button', { name: title, exact: true }),
     ).toHaveCount(0);
     await page.reload();
     await expect(page.locator('#next-title')).toHaveText(title);
@@ -239,7 +241,9 @@ test('recorrências contam a ocorrência de hoje e não reutilizam etapas antiga
       }),
   );
   await page.reload();
-  await expect(page.locator('.daily-summary')).toContainText('1 de 2 missões');
+  await expect(page.locator('.daily-summary')).toContainText(
+    '1 de 2 ocorrências',
+  );
   await expect(page.locator('#next-title')).toHaveText('Rotina pausada');
   await expect(page.locator('.today-plan')).not.toContainText('Missão futura');
   await expect(page.locator('.day-plan li')).toHaveCount(0);
