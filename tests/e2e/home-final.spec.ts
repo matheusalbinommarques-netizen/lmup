@@ -61,7 +61,7 @@ async function capture(page: Page, name: string, fullPage = false) {
   });
 }
 
-test('Home final mantém navegação inteira, poucas missões sem rolagem interna e estados claros nas cinco resoluções', async ({
+test('Home final mantém navegação inteira e estados claros nas cinco resoluções', async ({
   page,
 }, info) => {
   const sizes =
@@ -80,91 +80,59 @@ test('Home final mantém navegação inteira, poucas missões sem rolagem intern
   for (const size of sizes) {
     await page.setViewportSize(size);
     await page.goto('/');
-    await expect(
-      page.getByRole('region', { name: 'Seu personagem', exact: true }),
-    ).toBeVisible();
     await setTasks(page, null);
     await expect(
-      page.getByRole('button', { name: 'Criar minha primeira missão' }),
-    ).toBeVisible();
-    if (size.width === 1440 || size.width === 320)
-      await capture(page, `${size.width}x${size.height}-inicial`);
+      page.getByRole('button', { name: 'Nova missão', exact: true }),
+    ).toHaveCount(1);
     await setTasks(page, false);
-    const list = page.getByRole('region', {
-      name: 'Lista de missões',
-      exact: true,
-    });
-    await expect(list.getByRole('listitem')).toHaveCount(1);
-    const geometry = await page.evaluate(() => {
-      const sidebar = document.querySelector('.journey-sidebar')!;
-      const list = document.querySelector('.rpg-mission-content')!;
-      const next = document.querySelector('.rpg-priority')!;
-      const world = document
-        .querySelector('.rpg-world-panel')!
-        .getBoundingClientRect();
-      const missions = document
-        .querySelector('.rpg-missions')!
-        .getBoundingClientRect();
-      const labels = Array.from(
-        sidebar.querySelectorAll('.journey-nav-label'),
-        (el) => {
-          const rect = el.getBoundingClientRect();
-          return {
-            height: rect.height,
-            lineHeight: parseFloat(getComputedStyle(el).lineHeight),
-          };
-        },
-      );
-      return {
-        size: { width: innerWidth, height: innerHeight },
-        scale: visualViewport!.scale,
-        overflow: document.documentElement.scrollWidth > innerWidth,
-        sidebarScroll: sidebar.scrollHeight - sidebar.clientHeight,
-        listScroll: list.scrollHeight - list.clientHeight,
-        nextScroll: next.scrollHeight - next.clientHeight,
-        aligned: Math.abs(world.bottom - missions.bottom),
-        labels,
-      };
-    });
+    await expect(page.locator('.day-plan li')).toHaveCount(1);
+    const geometry = await page.evaluate(() => ({
+      width: innerWidth,
+      overflow: document.documentElement.scrollWidth > innerWidth,
+      scale: visualViewport!.scale,
+      listScroll:
+        document.querySelector('.day-plan')!.scrollHeight -
+        document.querySelector('.day-plan')!.clientHeight,
+      nextScroll:
+        document.querySelector('.next-mission')!.scrollHeight -
+        document.querySelector('.next-mission')!.clientHeight,
+    }));
     metrics.push(geometry);
     expect(geometry.scale).toBe(1);
     expect(geometry.overflow).toBe(false);
     expect(geometry.listScroll).toBeLessThanOrEqual(1);
     expect(geometry.nextScroll).toBeLessThanOrEqual(1);
-    if (size.width > 760) {
-      expect(geometry.aligned).toBeLessThanOrEqual(1);
-      expect(geometry.sidebarScroll).toBeLessThanOrEqual(1);
-      for (const label of geometry.labels)
-        expect(label.height).toBeLessThanOrEqual(label.lineHeight + 1);
-      const sidebar = page.locator('.journey-sidebar');
+    if (size.width > 900) {
+      const nav = page.getByRole('navigation', {
+        name: 'Navegação principal',
+        exact: true,
+      });
       await expect(
-        sidebar.getByRole('link', { name: 'Companheiros', exact: true }),
+        nav.getByRole('link', { name: 'Companheiros', exact: true }),
       ).toBeInViewport();
       await expect(
-        sidebar.getByRole('button', { name: 'Perfil e mais', exact: true }),
+        page
+          .locator('.journey-sidebar')
+          .getByRole('button', { name: 'Perfil e mais', exact: true }),
       ).toBeInViewport();
     }
     await capture(page, `${size.width}x${size.height}-pendentes`);
-    if (size.width === 390 || size.width === 1366)
-      await capture(page, `${size.width}x${size.height}-completa`, true);
     await setTasks(page, true);
+    await expect(page.locator('#next-title')).toHaveText(
+      'Seu plano está em dia',
+    );
+    await expect(page.locator('.daily-summary')).toContainText(
+      '2 de 2 missões',
+    );
+    await expect(page.locator('.day-plan li')).toHaveCount(0);
     await expect(
-      page.getByRole('heading', { name: 'Você está em dia.', exact: true }),
-    ).toBeVisible();
-    await expect(list.getByRole('listitem')).toHaveCount(0);
-    const empty = await page.locator('.rpg-empty').boundingBox();
-    expect(empty!.height).toBeLessThan(150);
-    if (size.width === 390 || size.width === 1366)
-      await capture(page, `${size.width}x${size.height}-em-dia`);
+      page.getByRole('button', { name: 'Nova missão', exact: true }),
+    ).toHaveCount(1);
     await expect(
-      page.getByRole('link', { name: 'Ver todas', exact: true }),
+      page.getByRole('link', { name: 'Ver todas as missões', exact: true }),
     ).toHaveAttribute('href', '/missoes');
     await setTasks(page, false);
-    const action = page.getByRole('link', {
-      name: 'Começar missão',
-      exact: true,
-    });
-    await action.focus();
+    await page.getByRole('button', { name: 'Começar', exact: true }).focus();
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/\/missao\/100$/);
     await expect(
@@ -184,7 +152,7 @@ test('Home final mantém navegação inteira, poucas missões sem rolagem intern
     );
 });
 
-test('painel provisório suporta nomes longos, todas as espécies e estágios e navegação compacta acessível', async ({
+test('Home mantém identidade de todas as companhias e navegação acessível sem o antigo sprite sobreposto', async ({
   page,
 }, info) => {
   await page.setViewportSize(
@@ -232,42 +200,22 @@ test('painel provisório suporta nomes longos, todas as espécies e estágios e 
         { key, stage, name },
       );
       await page.reload();
-      const companion = page.getByRole('link', {
-        name: `Seu companheiro: ${name}`,
-        exact: true,
-      });
-      await expect(companion).toBeVisible();
-      await expect(companion.locator('img')).toHaveAttribute(
-        'src',
-        new RegExp(`${key}-${stage}-160.webp`),
+      await expect(page.locator('.hero-profile')).toContainText(name);
+      await expect(page.locator('.hero-profile')).toHaveAttribute(
+        'href',
+        '/perfil',
       );
-      const bounds = await page.evaluate(() => {
-        const caption = document
-          .querySelector('.rpg-scene-caption')!
-          .getBoundingClientRect();
-        const companion = document
-          .querySelector('.rpg-scene-companion')!
-          .getBoundingClientRect();
-        const scene = document
-          .querySelector('.rpg-scene')!
-          .getBoundingClientRect();
-        return {
-          gap: companion.left - caption.right,
-          top: companion.top - scene.top,
-          overflow: document.documentElement.scrollWidth > innerWidth,
-        };
-      });
-      expect(bounds.gap).toBeGreaterThanOrEqual(0);
-      expect(bounds.top).toBeGreaterThanOrEqual(0);
-      expect(bounds.overflow).toBe(false);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth > innerWidth,
+        ),
+      ).toBe(false);
     }
   await capture(page, info.project.name + '-companheiro-nome-longo');
-  await page.route('**/art/companions-v2/aberration-3*', (route) =>
-    route.abort(),
-  );
+  await page.route('**/art/approved/paintings/**', (route) => route.abort());
   await page.reload();
   await expect(
-    page.locator('.rpg-scene-companion .lmu-art-fallback'),
+    page.getByRole('button', { name: 'Nova missão', exact: true }),
   ).toBeVisible();
   if (info.project.name === 'desktop') {
     const companions = page

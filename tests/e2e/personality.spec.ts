@@ -88,22 +88,22 @@ async function fixture(page: Page, id: number, patch: Record<string, unknown>) {
   await page.reload();
 }
 
-test('exemplo é rascunho editável: cancelar não cria missão e salvar permite pausar, concluir e desfazer', async ({
+test('rascunho editável: cancelar não cria missão e salvar permite pausar, concluir e desfazer', async ({
   page,
 }, info) => {
   await page.goto('/');
   await expect(
     page.getByRole('button', {
-      name: 'Criar minha primeira missão',
+      name: 'Nova missão',
       exact: true,
     }),
   ).toBeVisible();
   await capture(page, 'primeiro-uso', info.project.name);
-  await page.getByText('Precisa de uma ideia?', { exact: true }).click();
-  await page
-    .getByRole('button', { name: 'Estudar uma ideia', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Nova missão', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Uma nova missão' });
+  await dialog
+    .getByLabel('O que você quer fazer?')
+    .fill('Ler duas páginas e anotar uma ideia');
   await expect(dialog.getByLabel('O que você quer fazer?')).toHaveValue(
     'Ler duas páginas e anotar uma ideia',
   );
@@ -114,12 +114,11 @@ test('exemplo é rascunho editável: cancelar não cria missão e salvar permite
   await dialog.getByText('Passos e outros detalhes', { exact: true }).click();
   await expect(dialog.getByLabel('Passos, um por linha')).toHaveValue('');
   await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click();
-  await page
-    .getByRole('button', { name: 'Destravar um projeto', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Nova missão', exact: true }).click();
   await dialog
     .getByLabel('O que você quer fazer?')
     .fill('Meu rascunho de verdade');
+  await dialog.getByText('Passos e outros detalhes', { exact: true }).click();
   await expect(dialog.getByLabel('Passos, um por linha')).toBeVisible();
   await dialog
     .getByLabel('Passos, um por linha')
@@ -153,13 +152,9 @@ test('exemplo é rascunho editável: cancelar não cria missão e salvar permite
     .getByRole('button', { name: 'Pausar e voltar', exact: true })
     .click();
   await page.goto('/');
-  await expect(
-    page.getByText('Você já começou. Continue de onde parou.', { exact: true }),
-  ).toBeVisible();
+  await expect(page.locator('.next-mission')).toContainText('Em andamento');
   await capture(page, 'retomada', info.project.name);
-  await page
-    .getByRole('link', { name: 'Continuar missão', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Continuar', exact: true }).click();
   await page
     .getByRole('checkbox', { name: 'Fazer um rascunho', exact: true })
     .check();
@@ -181,11 +176,11 @@ test('exemplo é rascunho editável: cancelar não cria missão e salvar permite
     .click();
   await page.goto('/');
   await expect(
-    page.getByRole('heading', { name: 'Você está em dia.', exact: true }),
+    page.getByRole('heading', { name: 'Seu plano está em dia', exact: true }),
   ).toBeVisible();
   await expect(
     page.getByText(
-      'O que você fez continua registrado. O próximo passo pode ficar para outra hora.',
+      'Nenhuma outra missão pendente. Seu progresso está registrado.',
       { exact: true },
     ),
   ).toBeVisible();
@@ -225,14 +220,17 @@ test('missões arquivadas e revisão futura não prometem uma próxima missão d
   const id = await task(page, 'Uma missão guardada');
   await fixture(page, id, { archived: true });
   await expect(
-    page.getByRole('heading', { name: 'Sem missões ativas.', exact: true }),
+    page.getByRole('heading', {
+      name: 'Qual será seu primeiro passo?',
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(
     page.getByRole('button', {
-      name: 'Criar minha primeira missão',
+      name: 'Nova missão',
       exact: true,
     }),
-  ).not.toBeVisible();
+  ).toBeVisible();
   await capture(page, 'arquivadas', info.project.name);
   await fixture(page, id, {
     archived: false,
@@ -241,20 +239,20 @@ test('missões arquivadas e revisão futura não prometem uma próxima missão d
   });
   await expect(
     page.getByRole('heading', {
-      name: 'Suas revisões têm seu tempo.',
+      name: 'Qual será seu primeiro passo?',
       exact: true,
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole('link', { name: 'Começar missão', exact: true }),
+    page.getByRole('button', { name: 'Começar', exact: true }),
   ).not.toBeVisible();
   await expect(
     page
-      .getByRole('region', { name: 'Suas missões', exact: true })
+      .locator('.day-plan')
       .getByRole('link', { name: /Uma missão guardada/ }),
   ).toHaveCount(0);
   await expect(
-    page.getByRole('link', { name: 'Ver todas', exact: true }),
+    page.getByRole('link', { name: 'Ver todas as missões', exact: true }),
   ).toHaveAttribute('href', '/missoes');
   await expect(
     page.getByText('Revisão realizada hoje', { exact: true }),
@@ -262,7 +260,7 @@ test('missões arquivadas e revisão futura não prometem uma próxima missão d
   await capture(page, 'revisao-futura', info.project.name);
 });
 
-test('ideias e rascunho permanecem acessíveis em 320px e texto 200%', async ({
+test('criação e rascunho permanecem acessíveis em 320px e texto 200%', async ({
   page,
 }, info) => {
   await page.setViewportSize({ width: 320, height: 740 });
@@ -270,10 +268,7 @@ test('ideias e rascunho permanecem acessíveis em 320px e texto 200%', async ({
   await page.evaluate(() => {
     document.documentElement.style.fontSize = '200%';
   });
-  await page.getByText('Precisa de uma ideia?', { exact: true }).click();
-  await page
-    .getByRole('button', { name: 'Preparar meu espaço', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Nova missão', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Uma nova missão' });
   await expect(dialog.getByLabel('O que você quer fazer?')).toBeFocused();
   expect(
@@ -287,6 +282,6 @@ test('ideias e rascunho permanecem acessíveis em 320px e texto 200%', async ({
   await capture(page, '320-texto-ampliado', info.project.name);
   await page.keyboard.press('Escape');
   await expect(
-    page.getByRole('button', { name: 'Preparar meu espaço', exact: true }),
+    page.getByRole('button', { name: 'Nova missão', exact: true }),
   ).toBeFocused();
 });

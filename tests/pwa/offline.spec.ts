@@ -25,24 +25,20 @@ test('Home RPG mantém cena, personagem e atlas disponíveis sem conexão', asyn
   expect(offlineFonts.length).toBeGreaterThan(0);
   expect(offlineFonts.every((status) => status === 'loaded')).toBe(true);
   const scene = page.getByRole('img', {
-    name: 'Viajante diante de Védria, representação visual provisória',
+    name: 'Viajante contemplando Vèdria ao pôr do sol',
     exact: true,
   });
   await expect(scene).toBeVisible();
   await expect
     .poll(() => scene.evaluate((el) => (el as HTMLImageElement).naturalWidth))
     .toBeGreaterThan(0);
-  const atlas = page.locator('#home-map img');
+  const atlas = page.locator('#home-map > img');
   await atlas.scrollIntoViewIfNeeded();
   await expect
     .poll(() => atlas.evaluate((el) => (el as HTMLImageElement).naturalWidth))
     .toBeGreaterThan(0);
-  await expect(
-    page.getByRole('link', { name: 'Ver lugares do refúgio', exact: true }),
-  ).toHaveAttribute('href', '/refugio');
-  await page
-    .getByRole('link', { name: 'Ver lugares do refúgio', exact: true })
-    .click();
+  await expect(page.locator('#home-map')).toHaveAttribute('href', '/refugio');
+  await page.locator('#home-map').click();
   await expect(
     page.getByRole('heading', { name: 'Refúgio', level: 1, exact: true }),
   ).toBeVisible();
@@ -271,9 +267,9 @@ test('organizador cria área e rotina offline, vira o dia e preserva ocorrência
   ).toBeVisible();
   await page.clock.setFixedTime(new Date('2026-11-03T10:00:00-03:00'));
   await page.goto('/');
-  await expect(
-    page.getByRole('region', { name: 'Lista de missões', exact: true }),
-  ).toContainText('Cuidar da casa sem conexão');
+  await expect(page.locator('#next-title')).toContainText(
+    'Cuidar da casa sem conexão',
+  );
   await page.goto(url);
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
