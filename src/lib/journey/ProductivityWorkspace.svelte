@@ -172,8 +172,11 @@
       sessions: await db.savedMissionSessions.toArray(),
     })).subscribe({
       next: (data) => {
-        contextRows = data.rows;
-        rows = data.rows.filter(
+        const activeRows = data.rows.filter((row) =>
+          data.tasks.some((task) => task.id === row.taskId && !task.archived),
+        );
+        contextRows = activeRows;
+        rows = activeRows.filter(
           (row) =>
             row.plannedDate >= from &&
             (row.value > 0 ||
