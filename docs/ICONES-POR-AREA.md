@@ -32,3 +32,7 @@ Os testes existentes de seleção individual de ícones foram adaptados ao compo
 Branch `feat/area-icons`, baseada em `origin/main` no commit `bbcaf277c0b65938b36b38e081d91f9d99250147`, após atualizar as referências. A branch anterior `codex/beta-redesign` foi preservada; as outras cópias com alterações locais, incluindo o acampamento, não foram modificadas. Nenhuma mudança em Mundo, exclusão de missões, economia ou publicação. Porta 5174 e dados pessoais não foram acessados nos testes.
 
 Aguardar avaliação do usuário antes de integrar e antes de iniciar a próxima frente. PR e verificações obrigatórias de integração permanecem pendentes; não houve push, CI ou publicação nesta prototipagem.
+
+## Verificação de integração iniciada e suspensa
+
+O PR #47 permanece em rascunho, sem merge, por decisão do usuário de avaliar as três frentes juntas. A primeira CI aprovou Node 22 e os testes funcionais de Node 24, mas identificou dois seletores antigos de Renomear no teste offline de áreas. O seletor foi atualizado para Editar, preservando todas as verificações; os dois cenários desktop/mobile passaram localmente contra a prévia preservada. A correção fica local até a aprovação conjunta, sem nova execução de CI durante a prototipagem.
