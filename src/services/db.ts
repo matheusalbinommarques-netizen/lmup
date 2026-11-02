@@ -1,4 +1,5 @@
 import type { WorldState } from '$lib/world/worldState';
+import type { CampState } from '$lib/camp/campState';
 // src/services/db.ts
 import Dexie, { type Table } from 'dexie';
 import { trackWrite } from './updateSafety';
@@ -20,6 +21,8 @@ import type {
 export interface Profile {
   /** Versioned narrative state, separate from the legacy pilot and all resources. */
   world?: WorldState;
+  /** Optional atomic settlement; no new table/index, compatible with schema 6. */
+  camp?: CampState;
   rewardDebt?: Resources;
   id?: number;
   name: string;
@@ -63,6 +66,9 @@ export interface Profile {
 // AREAS
 // ---------------------------------------------
 export interface Area {
+  /** Optional presentation fields; no index/schema change. Legacy task icons remain intact. */
+  iconKey?: string | null;
+  iconConflict?: boolean;
   id?: number;
   nome: string;
   descricao?: string;

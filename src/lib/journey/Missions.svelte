@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { areaIconKey } from '$services/areaIcons';
+  import TaskRemovalDialog from './TaskRemovalDialog.svelte';
   import '$lib/rpg-theme.css';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
@@ -119,12 +121,14 @@
   let open = $state(false),
     areasOpen = $state(false);
   let editTask = $state<Task>();
+  let removalTask = $state<Task>(),
+    removalOpen = $state(false);
   let search = $state(''),
     project = $state(''),
     area = $state('all');
-  let filter = $state<'today' | 'upcoming' | 'all' | 'undated' | 'completed'>(
-    'all',
-  );
+  let filter = $state<
+    'today' | 'upcoming' | 'all' | 'undated' | 'completed' | 'archived'
+  >('all');
   let groupAreas = $state(false),
     pinnedOnly = $state(false);
   let selecting = $state(false),
@@ -177,13 +181,14 @@
       area = 'all';
   });
   const available = (task: Task) =>
-    task.productivityVersion && !task.reviewEnabled
+    !task.archived &&
+    (task.productivityVersion && !task.reviewEnabled
       ? !!data?.plannedToday.some(
           (row) =>
             row.taskId === task.id &&
             !['completed', 'discarded', 'excused'].includes(row.status),
         )
-      : isAvailable(task, new Date(`${today}T12:00:00`));
+      : isAvailable(task, new Date(`${today}T12:00:00`)));
   const scheduledToday = (task: Task) =>
     task.productivityVersion && !task.reviewEnabled
       ? !!data?.plannedToday.some(
@@ -199,8 +204,7 @@
     event.executionComplete !== false;
   const areaName = (id?: number) =>
     data?.areas.find((item) => item.id === id)?.nome ?? 'Geral';
-  const matches = (task: Task) =>
-    !task.archived &&
+  const matchesFilters = (task: Task) =>
     task.title
       .toLocaleLowerCase('pt-BR')
       .includes(search.trim().toLocaleLowerCase('pt-BR')) &&
@@ -217,7 +221,12 @@
           : 'Outros dias';
   const categoryOrder = (task: Task) =>
     ['Hoje', 'Outros dias', 'Sem data', 'Concluídas'].indexOf(category(task));
-  const tasks = $derived(data?.tasks.filter(matches) ?? []);
+  const tasks = $derived(
+    data?.tasks.filter((task) => !task.archived && matchesFilters(task)) ?? [],
+  );
+  const archivedTasks = $derived(
+    data?.tasks.filter((task) => task.archived && matchesFilters(task)) ?? [],
+  );
   const counts = $derived({
     today: tasks.filter((task) => scheduledToday(task)).length,
     upcoming: tasks.filter(
@@ -226,6 +235,7 @@
         (task.recurrence || task.reviewEnabled || !task.completed),
     ).length,
     all: tasks.length,
+    archived: archivedTasks.length,
     undated: tasks.filter((task) => category(task) === 'Sem data').length,
     completed:
       data?.events.filter(
@@ -237,9 +247,10 @@
       ).length ?? 0,
   });
   const visible = $derived(
-    tasks
+    (filter === 'archived' ? archivedTasks : tasks)
       .filter(
         (task) =>
+          filter === 'archived' ||
           filter === 'all' ||
           (filter === 'undated' && category(task) === 'Sem data') ||
           (filter === 'today'
@@ -428,7 +439,7 @@
       <div class="organizer-toolbar">
         <div class="organizer-primary-controls">
           <nav class="organizer-tabs" aria-label="Agenda de missões">
-            {#each [{ key: 'today', label: 'Hoje' }, { key: 'upcoming', label: 'Próximas' }, { key: 'all', label: 'Todas' }, { key: 'undated', label: 'Sem data' }, { key: 'completed', label: 'Concluídas' }] as tab (tab.key)}<Button
+            {#each [{ key: 'today', label: 'Hoje' }, { key: 'upcoming', label: 'Próximas' }, { key: 'all', label: 'Todas' }, { key: 'undated', label: 'Sem data' }, { key: 'completed', label: 'Concluídas' }, { key: 'archived', label: 'Arquivadas' }] as tab (tab.key)}<Button
                 variant="secondary"
                 aria-label={tab.label}
                 aria-pressed={filter === tab.key}
@@ -498,6 +509,9 @@
                   >{/each}</select
               ></label
             >
+            <Button variant="quiet" onclick={() => (areasOpen = true)}
+              >Gerenciar áreas</Button
+            >
           </div>
           <details class="extra-filters">
             <summary
@@ -520,9 +534,6 @@
                 fixadas</label
               >
             </div>
-            <Button variant="quiet" onclick={() => (areasOpen = true)}
-              >Gerenciar áreas</Button
-            >
           </details>
         </div>
         {#if search || area !== 'all' || project || pinnedOnly}<Button
@@ -675,7 +686,10 @@
                         aria-hidden="true">·</span
                       >{/if}</span
                   >{/if}
-                <ApprovedIcon name={task.iconKey} size={32} />
+                <ApprovedIcon
+                  name={areaIconKey(task, data?.areas ?? [])}
+                  size={32}
+                />
                 <div class="mission-copy">
                   <a href={`/missao/${task.id}`}>{task.title}</a>
                   <small
@@ -733,45 +747,58 @@
                 <details class="mission-menu">
                   <summary aria-label={`Ações para ${task.title}`}>⋯</summary>
                   <div>
-                    <Button
-                      variant="quiet"
-                      onclick={() => {
-                        editTask = task;
-                        open = true;
-                      }}>Editar missão</Button
-                    ><a class="journey-link" href={`/missao/${task.id}`}
-                      >Abrir missão</a
-                    ><Button
-                      variant="quiet"
-                      disabled={pending.includes(String(task.id))}
-                      onclick={() =>
-                        act(
-                          String(task.id),
-                          () => planTask(task.id!, !scheduledToday(task)),
-                          'Plano atualizado.',
-                        )}
-                      >{scheduledToday(task)
-                        ? 'Tirar de hoje'
-                        : 'Planejar para hoje'}</Button
-                    ><Button
-                      variant="quiet"
-                      aria-pressed={!!task.pinned}
-                      disabled={pending.includes(String(task.id))}
-                      onclick={() =>
-                        act(
-                          String(task.id),
-                          () => pinTask(task.id!, !task.pinned),
-                          'Destaque atualizado.',
-                        )}>{task.pinned ? 'Desafixar' : 'Fixar'}</Button
-                    >{#if canComplete && !taskSteps(task).length && filter !== 'upcoming'}<Button
-                        disabled={pending.includes(String(task.id))}
-                        onclick={() => complete(task)}>Completar missão</Button
-                      >{/if}{#if done && task.completionEventId}<Button
+                    {#if task.archived}<a
+                        class="journey-link"
+                        href={`/missao/${task.id}`}>Ver registros</a
+                      >{:else}
+                      <Button
+                        variant="danger"
+                        onclick={() => {
+                          removalTask = task;
+                          removalOpen = true;
+                        }}>Excluir missão</Button
+                      >
+                      <Button
+                        variant="quiet"
+                        onclick={() => {
+                          editTask = task;
+                          open = true;
+                        }}>Editar missão</Button
+                      ><a class="journey-link" href={`/missao/${task.id}`}
+                        >Abrir missão</a
+                      ><Button
                         variant="quiet"
                         disabled={pending.includes(String(task.id))}
-                        onclick={() => requestUndo(task.id!)}
-                        >Desfazer conclusão</Button
-                      >{/if}
+                        onclick={() =>
+                          act(
+                            String(task.id),
+                            () => planTask(task.id!, !scheduledToday(task)),
+                            'Plano atualizado.',
+                          )}
+                        >{scheduledToday(task)
+                          ? 'Tirar de hoje'
+                          : 'Planejar para hoje'}</Button
+                      ><Button
+                        variant="quiet"
+                        aria-pressed={!!task.pinned}
+                        disabled={pending.includes(String(task.id))}
+                        onclick={() =>
+                          act(
+                            String(task.id),
+                            () => pinTask(task.id!, !task.pinned),
+                            'Destaque atualizado.',
+                          )}>{task.pinned ? 'Desafixar' : 'Fixar'}</Button
+                      >{#if canComplete && !taskSteps(task).length && filter !== 'upcoming'}<Button
+                          disabled={pending.includes(String(task.id))}
+                          onclick={() => complete(task)}
+                          >Completar missão</Button
+                        >{/if}{#if done && task.completionEventId}<Button
+                          variant="quiet"
+                          disabled={pending.includes(String(task.id))}
+                          onclick={() => requestUndo(task.id!)}
+                          >Desfazer conclusão</Button
+                        >{/if}
+                    {/if}
                   </div>
                 </details>
               </li>
@@ -810,6 +837,17 @@
     /><AreasDialog bind:open={areasOpen} snapshot={data} />
   {/if}
 </section>
+<TaskRemovalDialog
+  bind:open={removalOpen}
+  task={removalTask}
+  onremoved={(mode) => {
+    selected = selected.filter((id) => id !== removalTask?.id);
+    notice =
+      mode === 'delete'
+        ? 'Missão excluída definitivamente.'
+        : 'Missão arquivada. Histórico e recompensas preservados.';
+  }}
+/>
 <Dialog bind:open={undoOpen} title="Revisar correção">
   {#if undoSelection}<p>
       Débito a compensar: {undoSelection.impact.xp} XP · {undoSelection.impact
@@ -933,7 +971,15 @@
     padding: 7px 10px;
     border-radius: 6px;
   }
+  .organizer-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
   .organizer-filters label {
+    flex: 1;
+    min-width: 100px;
     display: block;
   }
   .extra-filters {

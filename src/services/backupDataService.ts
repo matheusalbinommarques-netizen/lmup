@@ -1,4 +1,5 @@
 import { validateWorld } from '$lib/world/worldState';
+import { validateCampState } from '$lib/camp/campState';
 import { isTaskIconKey } from '$lib/content/visualAssets';
 import { validateRecurrence } from './recurrence';
 import {
@@ -117,6 +118,15 @@ export function validateBackup(input: unknown): JourneyBackup {
   const profile = data.profile == null ? null : object(data.profile, 'profile');
   if (profile) {
     if (profile.world != null) validateWorld(profile.world);
+    if (profile.camp != null) {
+      validateCampState(profile.camp);
+      if (
+        !lists.productivityAudit.some(
+          (row) => row.id === `camp:${profile.camp.worldId}:init`,
+        )
+      )
+        fail('acampamento sem registro de provisão.');
+    }
     if (profile.id !== 1) fail('o perfil deve ter ID 1.');
     text(profile.name, 'profile.name');
     for (const field of [
@@ -174,7 +184,13 @@ export function validateBackup(input: unknown): JourneyBackup {
     )
       fail('companheiro ativo não encontrado.');
   }
-  for (const area of lists.areas) text(area.nome, 'areas.nome');
+  for (const area of lists.areas) {
+    text(area.nome, 'areas.nome');
+    if (area.iconKey != null && !isTaskIconKey(area.iconKey))
+      fail('ícone de área inválido.');
+    if (area.iconConflict != null && typeof area.iconConflict !== 'boolean')
+      fail('indicação de ícones conflitantes inválida.');
+  }
   const areaIds = new Set([0, ...lists.areas.map((row) => row.id)]);
   const projectIds = new Set(lists.projects.map((row) => row.id));
   for (const task of lists.tasks) {
@@ -674,6 +690,8 @@ export async function restoreJourneyBackup(input: unknown): Promise<void> {
     const restored = { ...(backup.data.profile ?? createDefaultProfile()) };
     if (restored.world)
       restored.world = { ...restored.world, epoch: crypto.randomUUID() };
+    if (restored.camp)
+      restored.camp = { ...restored.camp, epoch: crypto.randomUUID() };
     await db.profile.put(restored);
     await initializeJourney();
   });

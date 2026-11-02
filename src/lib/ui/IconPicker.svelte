@@ -3,6 +3,7 @@
   import ApprovedIcon from './ApprovedIcon.svelte';
   let { value = $bindable<string | null>(null) } = $props();
   let search = $state('');
+  let expanded = $state(false);
   const choices = $derived(
     approvedIcons.filter(
       (item) =>
@@ -14,30 +15,37 @@
   );
 </script>
 
-<details class="icon-picker">
+<details class="icon-picker" bind:open={expanded}>
   <summary
-    ><ApprovedIcon name={value} size={32} /><span
-      >Ícone da missão (opcional)</span
-    ></summary
+    ><ApprovedIcon name={value} size={32} /><span>Ícone da área</span></summary
   >
   <p class="lmu-hint">
-    Escolha um símbolo. Sem escolha, usamos o livro de Missões.
+    Todas as missões desta área usam este símbolo. Sem escolha, usamos o ícone
+    padrão de Missões.
   </p>
-  <label class="journey-label"
+  <label class="journey-label lmu-field"
     >Buscar ícone<input
       type="search"
       bind:value={search}
       placeholder="Ex.: estudo, exercício"
     /></label
   >
-  <div class="icon-choices" role="group" aria-label="Ícone da missão">
-    <button type="button" aria-pressed={!value} onclick={() => (value = null)}
-      ><ApprovedIcon size={32} /><span>Padrão</span></button
+  <div class="icon-choices" role="group" aria-label="Ícone da área">
+    <button
+      type="button"
+      aria-pressed={!value}
+      onclick={() => {
+        value = null;
+        expanded = false;
+      }}><ApprovedIcon size={32} /><span>Padrão</span></button
     >
     {#each choices as item (item.key)}<button
         type="button"
         aria-pressed={value === item.key}
-        onclick={() => (value = item.key)}
+        onclick={() => {
+          value = item.key;
+          expanded = false;
+        }}
         ><ApprovedIcon name={item.key} size={32} /><span>{item.label}</span
         ></button
       >{/each}

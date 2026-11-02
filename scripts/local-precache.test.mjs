@@ -97,3 +97,25 @@ test('approved visual assets are available on the first offline visit without or
   ])
     assert.equal(isPrecacheAsset(path), false, path);
 });
+
+test('integrated camp precaches only preserved sprites while laboratory stays excluded', () => {
+  for (const name of [
+    'forge-feudalwars.png',
+    'hall-feudalwars.png',
+    'store-feudalwars.png',
+    'sawmill-prototype-ai.png',
+    'quarry-prototype-ai.png',
+    'mine-prototype-ai.png',
+    'ui-icons-prototype-ai.png',
+    'region/grass_medium_128x64.png',
+    'region/dirt_128x64.png',
+    'region/forest_ground_128x64.png',
+    'region/sand_128x64.png',
+    'region/tree-30.png',
+    'region/tree-36.png',
+  ])
+    assert.equal(isPrecacheAsset('art/camp/' + name), true);
+  assert.equal(isPrecacheAsset('art/camp/not-reviewed.png'), false);
+  assert.equal(isPrecacheAsset('art/lab/camp/forge-feudalwars.png'), false);
+  assert.equal(isPrecacheAsset('art/camp/preservation-manifest.json'), false);
+});

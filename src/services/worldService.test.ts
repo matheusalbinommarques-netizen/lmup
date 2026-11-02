@@ -8,6 +8,8 @@ import {
   returnNotice,
   personalTasks,
 } from '$lib/world/content';
+import { ensureCamp, executeCamp } from './campService';
+import { campVersion } from '$lib/camp/campState';
 import { validateWorld } from '$lib/world/worldState';
 
 beforeEach(async () => {
@@ -213,4 +215,43 @@ it('mantém conclusões e registros antigos sem migração nem reescrever o diá
   const restored = await ensureWorld();
   expect(restored.resolution).toBe('route');
   expect(restored.journal).toEqual(w.journal);
+});
+
+it('restauração conjunta preserva Mundo, acampamento e recibos e invalida intenções antigas dos dois', async () => {
+  await ensureCamp();
+  await start();
+  await evidence();
+  const world = await act({ type: 'choose', choice: 'rescue' });
+  const profile = (await db.profile.get(1))!,
+    camp = profile.camp!;
+  const backup = await createJourneyBackup();
+  await restoreJourneyBackup(backup);
+  const restored = (await db.profile.get(1))!;
+  expect(restored.world!.epoch).not.toBe(world.epoch);
+  expect(restored.camp!.epoch).not.toBe(camp.epoch);
+  expect(restored).toEqual({
+    ...profile,
+    world: { ...world, epoch: restored.world!.epoch },
+    camp: { ...camp, epoch: restored.camp!.epoch },
+  });
+  const after = await createJourneyBackup();
+  for (const key of [
+    'tasks',
+    'areas',
+    'activityEvents',
+    'xpLogs',
+    'executionRecords',
+    'productivityAudit',
+  ])
+    expect(after.data[key]).toEqual(backup.data[key]);
+  await expect(
+    actInWorld({ type: 'talk' }, world, 'before:restore'),
+  ).rejects.toThrow('restaurado');
+  await expect(
+    executeCamp(
+      { type: 'complete', id: camp.buildings[0].id },
+      'before:restore',
+      campVersion(camp),
+    ),
+  ).rejects.toThrow('restaurado');
 });

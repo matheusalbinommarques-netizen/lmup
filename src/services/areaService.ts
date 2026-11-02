@@ -1,4 +1,5 @@
 import { db } from './db';
+import { isTaskIconKey } from '$lib/content/visualAssets';
 
 function areaName(value: string) {
   const name = value.trim();
@@ -6,7 +7,13 @@ function areaName(value: string) {
     throw new Error('Escreva um nome de até 80 caracteres.');
   return name;
 }
-export async function saveArea(name: string, id?: number) {
+export async function saveArea(
+  name: string,
+  id?: number,
+  iconKey?: string | null,
+) {
+  if (iconKey != null && !isTaskIconKey(iconKey))
+    throw new Error('Escolha um ícone da biblioteca disponível.');
   const nome = areaName(name);
   return db.transaction('rw', db.areas, async () => {
     if (id !== undefined && !(await db.areas.get(id)))
@@ -24,10 +31,13 @@ export async function saveArea(name: string, id?: number) {
     )
       throw new Error('Já existe uma área com esse nome.');
     if (id !== undefined) {
-      await db.areas.update(id, { nome });
+      await db.areas.update(id, {
+        nome,
+        ...(iconKey !== undefined ? { iconKey, iconConflict: false } : {}),
+      });
       return id;
     }
-    return db.areas.add({ nome });
+    return db.areas.add({ nome, iconKey: iconKey ?? null });
   });
 }
 export async function deleteArea(id: number, destination = 0) {

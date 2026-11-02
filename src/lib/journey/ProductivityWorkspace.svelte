@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { areaIconKey } from '$services/areaIcons';
   import { onMount } from 'svelte';
   import { page } from '$app/state';
   import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
@@ -139,7 +140,10 @@
   const areaName = (row: Occurrence) =>
     snapshot.areas.find((area) => area.id === row.areaId)?.nome ?? 'Geral';
   const iconKey = (row: Occurrence) =>
-    tasks.find((task) => task.id === row.taskId)?.iconKey;
+    areaIconKey(
+      tasks.find((task) => task.id === row.taskId),
+      snapshot.areas,
+    );
   function editFuture(row: Occurrence) {
     creatingForRoutine = false;
     editTask = tasks.find((task) => task.id === row.taskId);
@@ -168,8 +172,11 @@
       sessions: await db.savedMissionSessions.toArray(),
     })).subscribe({
       next: (data) => {
-        contextRows = data.rows;
-        rows = data.rows.filter(
+        const activeRows = data.rows.filter((row) =>
+          data.tasks.some((task) => task.id === row.taskId && !task.archived),
+        );
+        contextRows = activeRows;
+        rows = activeRows.filter(
           (row) =>
             row.plannedDate >= from &&
             (row.value > 0 ||
@@ -678,7 +685,7 @@
                 tasks.find((task) => task.id === entry.taskId)}
               <li>
                 <span class="sequence-number">{index + 1}</span><ApprovedIcon
-                  name={task?.iconKey}
+                  name={areaIconKey(task, snapshot.areas)}
                   size={32}
                 /><span class="sequence-title"
                   >{task?.title ?? 'Missão criada'}</span
@@ -733,7 +740,7 @@
                       { taskId: task.id!, time: task.plannedTime ?? null },
                     ])}
                   ><ApprovedIcon
-                    name={task.iconKey}
+                    name={areaIconKey(task, snapshot.areas)}
                     size={28}
                   />{task.title}<span>Adicionar +</span></button
                 >{/each}{#if !availableTasks.length}<p class="lmu-hint">

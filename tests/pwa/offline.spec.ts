@@ -244,7 +244,7 @@ test('organizador cria área e rotina offline, vira o dia e preserva ocorrência
   await areas.getByLabel('Nome da nova área').fill('Minha casa');
   await areas.getByRole('button', { name: 'Criar área', exact: true }).click();
   await expect(
-    areas.getByRole('button', { name: 'Renomear Minha casa', exact: true }),
+    areas.getByRole('button', { name: 'Editar Minha casa', exact: true }),
   ).toBeVisible();
   await areas
     .getByRole('button', { name: 'Fechar diálogo', exact: true })
