@@ -24,6 +24,7 @@ export type Occurrence = Planning & {
   projectId?: number | null;
   routineId?: string;
   baseXp: number;
+  definitionRevision?: number;
   legacyCompletionOnly?: boolean;
   steps: string[];
   checkedSteps: number[];
@@ -54,6 +55,7 @@ export type Occurrence = Planning & {
   createdAt: string;
 };
 export type Routine = {
+  defaultAreaId?: number;
   id: string;
   name: string;
   description: string;

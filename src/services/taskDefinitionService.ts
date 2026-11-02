@@ -53,6 +53,11 @@ export async function saveTaskDefinition(
         'A missão mudou em outra aba. Reabra a edição para comparar suas alterações.',
       );
     if (!current) {
+      const deleted = (await db.profile.get(1))?.personalTaskDeletions ?? [];
+      if (deleted.some((entry) => entry.key === `creation:${input.requestId}`))
+        throw new Error(
+          'Esta missão foi excluída definitivamente. Inicie um novo cadastro.',
+        );
       const prior = await db.tasks
         .filter((task) => task.creationKey === input.requestId)
         .first();
@@ -181,6 +186,7 @@ export async function saveTaskDefinition(
       id = current.id!;
     } else
       id = await db.tasks.add({
+        source: 'personal',
         ...content,
         title,
         xp: definition.xp,

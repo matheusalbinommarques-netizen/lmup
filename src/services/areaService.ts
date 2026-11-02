@@ -41,7 +41,7 @@ export async function saveArea(
   });
 }
 export async function deleteArea(id: number, destination = 0) {
-  await db.transaction('rw', db.areas, db.tasks, async () => {
+  await db.transaction('rw', db.areas, db.tasks, db.routines, async () => {
     if (!id || id === destination)
       throw new Error('Escolha outra área de destino.');
     if (!(await db.areas.get(id)))
@@ -54,6 +54,12 @@ export async function deleteArea(id: number, destination = 0) {
       .modify((task) => {
         task.areaId = destination;
         task.definitionRevision = (task.definitionRevision ?? 0) + 1;
+      });
+    await db.routines
+      .filter((routine) => routine.defaultAreaId === id)
+      .modify((routine) => {
+        routine.defaultAreaId = destination;
+        routine.revision++;
       });
     // XP logs and event receipts are immutable historical records.
     await db.areas.delete(id);

@@ -1,3 +1,10 @@
+import {
+  MISSION_SESSION_KEY,
+  normalizeMissionSession,
+  removeMissionFromSession,
+  saveMissionSession,
+} from './missionSession';
+import { erasePersonalTask, isPersonalTask } from './personalTaskDeletion';
 import { db } from './db';
 import { dateKey } from './rewardService';
 import { savePlanVersion } from './occurrenceService';
@@ -7,6 +14,9 @@ export type RemovalPreview = {
   taskId: number;
   title: string;
   mode: RemovalMode;
+  canDelete: boolean;
+  occurrences: number;
+  receipts: number;
   token: string;
   reasons: string[];
   routines: number;
@@ -87,6 +97,9 @@ async function inspect(taskId: number) {
   const preview: RemovalPreview = {
     taskId,
     title: task.title,
+    canDelete: isPersonalTask(task),
+    occurrences: occurrences.length,
+    receipts: events.length,
     mode: reasons.length || task.archived ? 'archive' : 'delete',
     token: JSON.stringify({
       task,
@@ -117,10 +130,11 @@ export async function removeTask(
   taskId: number,
   token: string,
   requestId: string,
+  requestedMode?: RemovalMode,
 ): Promise<RemovalMode> {
   if (!/^[\w:-]{1,120}$/.test(requestId))
     throw Error('Reabra a confirmação para tentar novamente.');
-  return db.transaction('rw', db.tables, async () => {
+  const result = await db.transaction('rw', db.tables, async () => {
     const prior = await db.productivityAudit.get(requestId);
     if (prior) {
       if (
@@ -128,19 +142,26 @@ export async function removeTask(
         !['task-delete', 'task-archive'].includes(prior.action)
       )
         throw Error('Identificador de operação já utilizado.');
-      return prior.action === 'task-delete' ? 'delete' : 'archive';
+      const previousMode =
+        prior.action === 'task-delete' ? 'delete' : 'archive';
+      if (requestedMode && requestedMode !== previousMode)
+        throw Error('Identificador de operação já utilizado.');
+      return previousMode;
     }
     const state = await inspect(taskId),
       { preview, task } = state;
-    if (task.archived) return 'archive';
+    const mode = requestedMode ?? preview.mode;
+    if (mode === 'delete' && !preview.canDelete)
+      throw Error(
+        'Missões de história não podem ser excluídas definitivamente.',
+      );
+    if (task.archived && mode === 'archive') return 'archive';
     if (preview.token !== token)
       throw Error(
         'A missão mudou em outra aba. Feche e reabra a confirmação para revisar a operação.',
       );
-    if (preview.mode === 'delete') {
-      await db.occurrences.bulkDelete(state.occurrences.map((row) => row.id));
-      await db.planVersions.bulkDelete(state.versions.map((row) => row.id));
-      await db.tasks.delete(taskId);
+    if (mode === 'delete') {
+      await erasePersonalTask(task);
     } else {
       for (const routine of state.routines) {
         const entries = routine.entries.filter(
@@ -189,14 +210,27 @@ export async function removeTask(
     await db.productivityAudit.add({
       id: requestId,
       entityId: `task:${taskId}`,
-      action: preview.mode === 'delete' ? 'task-delete' : 'task-archive',
+      action: mode === 'delete' ? 'task-delete' : 'task-archive',
       recordedAt: new Date().toISOString(),
       before:
-        preview.mode === 'archive'
+        mode === 'archive'
           ? { task, routines: state.routines, sessions: state.sessions }
-          : { taskId, title: task.title },
-      after: { taskId, mode: preview.mode },
+          : { taskId },
+      after: { taskId, mode },
     });
-    return preview.mode;
+    return mode;
   });
+  if (result === 'delete' && typeof window !== 'undefined') {
+    try {
+      const raw = JSON.parse(
+        window.localStorage.getItem(MISSION_SESSION_KEY) ?? 'null',
+      );
+      const session = raw && normalizeMissionSession(raw, raw.date);
+      if (session)
+        saveMissionSession(removeMissionFromSession(session, taskId));
+    } catch {
+      /* UI-only legacy queues may be unavailable; durable records are already consistent. */
+    }
+  }
+  return result;
 }

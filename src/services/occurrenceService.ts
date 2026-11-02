@@ -53,6 +53,7 @@ export function makeOccurrence(
     projectId: task.projectId,
     routineId: task.routineId ?? undefined,
     baseXp: task.xp,
+    definitionRevision: task.definitionRevision ?? 0,
     steps,
     checkedSteps: [],
     value: 0,
@@ -79,11 +80,18 @@ export async function savePlanVersion(task: Task, effectiveFrom = dateKey()) {
     definition: structuredClone(task) as unknown as Record<string, unknown>,
   });
   const audit = await db.productivityAudit.toArray();
+  // Session membership freezes even pending activities, without another execution store.
+  const frozen = new Set(
+    (await db.savedMissionSessions.toArray()).flatMap(
+      (session) => session.occurrenceIds,
+    ),
+  );
   for (const row of await db.occurrences
     .where('taskId')
     .equals(task.id!)
     .toArray()) {
     if (
+      frozen.has(row.id) ||
       row.value > 0 ||
       row.modifiers ||
       row.originDate < dateKey() ||
@@ -100,6 +108,7 @@ export async function savePlanVersion(task: Task, effectiveFrom = dateKey()) {
       ...planning,
       title: task.title,
       baseXp: task.xp,
+      definitionRevision: task.definitionRevision ?? 0,
       areaId: task.areaId ?? 0,
       projectId: task.projectId,
       routineId: task.routineId ?? undefined,
@@ -322,7 +331,7 @@ export async function previewProgress(input: ProgressInput) {
         baseXp !== current.baseXp &&
         !EFFORTS.some((effort) => effort.xp === baseXp)
       )
-        throw new Error('Escolha um dos quatro níveis de dificuldade.');
+        throw new Error('Escolha um dos níveis de dificuldade disponíveis.');
       Object.assign(candidate, validatePlanning(input.configuration, steps), {
         steps,
         baseXp,

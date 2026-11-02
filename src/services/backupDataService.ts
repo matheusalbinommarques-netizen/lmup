@@ -1,3 +1,8 @@
+import {
+  mergePersonalDeletions,
+  redactPersonalTasks,
+  validPersonalDeletions,
+} from './personalTaskDeletion';
 import { validateWorld } from '$lib/world/worldState';
 import { validateCampState } from '$lib/camp/campState';
 import { isTaskIconKey } from '$lib/content/visualAssets';
@@ -117,6 +122,11 @@ export function validateBackup(input: unknown): JourneyBackup {
   }
   const profile = data.profile == null ? null : object(data.profile, 'profile');
   if (profile) {
+    if (
+      profile.personalTaskDeletions !== undefined &&
+      !validPersonalDeletions(profile.personalTaskDeletions)
+    )
+      fail('registro de exclusões pessoais inválido.');
     if (profile.world != null) validateWorld(profile.world);
     if (profile.camp != null) {
       validateCampState(profile.camp);
@@ -214,6 +224,11 @@ export function validateBackup(input: unknown): JourneyBackup {
       calendar(task[key], `tasks.${key}`);
     integer(task.xp, 'tasks.xp', 1);
     date(task.createdAt, 'tasks.createdAt');
+    if (
+      task.source !== undefined &&
+      !['personal', 'story'].includes(task.source)
+    )
+      fail('origem de missão inválida.');
     if (!['common', 'rare', 'epic', 'legendary'].includes(task.rarity))
       fail('raridade de missão inválida.');
     if (
@@ -245,7 +260,7 @@ export function validateBackup(input: unknown): JourneyBackup {
     for (const key of ['reviewDueDate', 'lastReviewDate'])
       calendar(task[key], `tasks.${key}`);
     if (task.effort != null) {
-      if (!['small', 'medium', 'large', 'deep'].includes(task.effort))
+      if (!['micro', 'small', 'medium', 'large', 'deep'].includes(task.effort))
         fail('esforço inválido.');
       const definition = effortDefinition(task.effort as Effort);
       if (task.xp !== definition.xp || task.rarity !== definition.rarity)
@@ -466,6 +481,24 @@ export function validateBackup(input: unknown): JourneyBackup {
     }
     if (!Number.isSafeInteger(event.baseXp))
       fail('XP base de evento inválido.');
+    if (event.deletedPersonalTask !== undefined) {
+      if (
+        !profile?.personalTaskDeletions?.some(
+          (entry: Row) => entry.key === event.deletedPersonalTask,
+        ) ||
+        [
+          'taskId',
+          'occurrenceId',
+          'occurrenceDate',
+          'taskTitle',
+          'areaName',
+          'areaId',
+          'reviewStateBefore',
+          'reviewOutcome',
+        ].some((field) => event[field] !== undefined)
+      )
+        fail('recibo desvinculado inválido.');
+    }
     if (event.occurrenceDate !== undefined) {
       calendar(event.occurrenceDate, 'activityEvents.occurrenceDate');
       if (
@@ -679,8 +712,17 @@ async function saveRecovery(reason: RecoverySnapshot['reason']) {
 }
 
 export async function restoreJourneyBackup(input: unknown): Promise<void> {
-  const backup = validateBackup(input);
+  let backup = validateBackup(input);
   await db.transaction('rw', db.tables, async () => {
+    const deletions = mergePersonalDeletions(
+      (await db.profile.get(1))?.personalTaskDeletions,
+      backup.data.profile?.personalTaskDeletions,
+    );
+    if (deletions.length)
+      backup = validateBackup({
+        ...backup,
+        data: redactPersonalTasks(backup.data, deletions),
+      });
     await saveRecovery('before-import');
     for (const name of tableNames) await db.table(name).clear();
     for (const name of tableNames.filter((name) => name !== 'profile')) {
@@ -688,6 +730,7 @@ export async function restoreJourneyBackup(input: unknown): Promise<void> {
       if (data.length) await db.table(name).bulkPut(data);
     }
     const restored = { ...(backup.data.profile ?? createDefaultProfile()) };
+    if (deletions.length) restored.personalTaskDeletions = deletions;
     if (restored.world)
       restored.world = { ...restored.world, epoch: crypto.randomUUID() };
     if (restored.camp)
@@ -707,6 +750,7 @@ export async function resetJourney(): Promise<void> {
     if (old) {
       profile.name = old.name;
       profile.avatarUrl = old.avatarUrl;
+      profile.personalTaskDeletions = old.personalTaskDeletions;
     }
     await db.profile.put(profile);
     await initializeJourney();

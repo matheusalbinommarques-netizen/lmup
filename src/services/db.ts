@@ -1,3 +1,4 @@
+import type { PersonalTaskDeletion } from './personalTaskDeletion';
 import type { WorldState } from '$lib/world/worldState';
 import type { CampState } from '$lib/camp/campState';
 // src/services/db.ts
@@ -19,6 +20,7 @@ import type {
 // PROFILE (herói)
 // ---------------------------------------------
 export interface Profile {
+  personalTaskDeletions?: PersonalTaskDeletion[];
   /** Versioned narrative state, separate from the legacy pilot and all resources. */
   world?: WorldState;
   /** Optional atomic settlement; no new table/index, compatible with schema 6. */
@@ -88,6 +90,7 @@ export type TaskRecurrence = {
 };
 
 export interface Task extends Planning {
+  source?: 'personal' | 'story';
   /** Presentation only; optional and not indexed, so schema v6 is unchanged. */
   iconKey?: string | null;
   productivityVersion?: 1;
@@ -113,7 +116,7 @@ export interface Task extends Planning {
   executionNotes?: string;
   notesRevision?: number;
   reviewSession?: string;
-  effort?: 'small' | 'medium' | 'large' | 'deep';
+  effort?: 'micro' | 'small' | 'medium' | 'large' | 'deep';
   definitionRevision?: number;
   projectStageId?: string | null;
   reviewDueDate?: string | null;
@@ -327,6 +330,7 @@ export type ActivityKind =
   'task' | 'review' | 'project' | 'adjustment' | 'reversal';
 
 export interface ActivityEvent {
+  deletedPersonalTask?: string;
   occurrenceId?: string;
   executionComplete?: boolean;
   grossReward?: Resources;
