@@ -19,35 +19,47 @@ test('primeiro acesso cria perfil; duas abas não duplicam conclusão; estorno p
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/arquivo/missoes');
   await expect(
-    page.getByRole('heading', { name: 'Quadro de Missões', exact: true }),
+    page.getByRole('heading', { name: 'Lista de Missões', exact: true }),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Nova Missão' }).click();
+  await page.getByRole('button', { name: 'Nova missão' }).click();
   await page.getByLabel('O que você quer fazer?').fill('Missão concorrente');
-  await page.getByRole('button', { name: 'Criar missão', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: 'Uma nova missão', exact: true })
+    .getByRole('button', { name: 'Criar missão', exact: true })
+    .click();
   await expect(
     page.getByRole('dialog', { name: 'Uma nova missão', exact: true }),
   ).not.toBeVisible();
-  await expect(page).toHaveURL(/\/arquivo\/missoes$/);
+  await expect(page).toHaveURL(/\/missoes$/);
   await page.goto('/arquivo/missoes');
   await expect(
-    page.getByRole('button', { name: 'Completar missão', exact: true }),
+    page.getByRole('button', {
+      name: 'Concluir Missão concorrente',
+      exact: true,
+    }),
   ).toBeVisible();
-  await expect(page.getByText('+53 XP', { exact: true })).toHaveCount(2);
+  await expect(page.locator('.mission-task-row')).toContainText('+53 XP');
   const other = await context.newPage();
   await other.goto('/arquivo/missoes');
   await expect(
-    other.getByRole('button', { name: 'Completar missão', exact: true }),
+    other.getByRole('button', {
+      name: 'Concluir Missão concorrente',
+      exact: true,
+    }),
   ).toBeVisible();
   await Promise.all(
     [page, other].map((tab) =>
       tab
-        .getByRole('button', { name: 'Completar missão', exact: true })
+        .getByRole('button', {
+          name: 'Concluir Missão concorrente',
+          exact: true,
+        })
         .evaluate((button: HTMLButtonElement) => button.click()),
     ),
   );
   await page.getByRole('button', { name: 'Concluídas', exact: true }).click();
   await expect(
-    page.getByRole('button', { name: 'Voltar para disponível', exact: true }),
+    page.getByRole('button', { name: /^Desfazer Missão concorrente de/ }),
   ).toBeVisible();
   const completed = await backup(page);
   expect(completed.data.activityEvents).toHaveLength(1);
@@ -59,13 +71,13 @@ test('primeiro acesso cria perfil; duas abas não duplicam conclusão; estorno p
   await page.goto('/arquivo/missoes');
   await page.getByRole('button', { name: 'Concluídas', exact: true }).click();
   await page
-    .getByRole('button', { name: 'Voltar para disponível', exact: true })
+    .getByRole('button', { name: /^Desfazer Missão concorrente de/ })
     .click();
   await page
     .getByRole('button', { name: 'Confirmar correção', exact: true })
     .click();
   await expect(
-    page.getByRole('button', { name: 'Voltar para disponível', exact: true }),
+    page.getByRole('button', { name: /^Desfazer Missão concorrente de/ }),
   ).not.toBeVisible();
   await page.reload();
   const reversed = await backup(page);

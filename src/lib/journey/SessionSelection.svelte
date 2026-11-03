@@ -2,7 +2,12 @@
   import type { JourneySnapshot } from '$services/journeyQuery';
   import { makeOccurrence } from '$services/occurrenceService';
   import { occurrenceEligibility } from '$services/dailyPlanningService';
-  import { startSelectedSession } from '$services/savedSessionService';
+  import {
+    startSelectedSession,
+    appendSessionOccurrences,
+  } from '$services/savedSessionService';
+  import { isOpenSession } from '$services/sessionLifecycle';
+  import type { SavedMissionSession } from '$services/productivityTypes';
   import { dateKey } from '$services/rewardService';
   import { scheduledOn, nextPlannedDate } from '$services/recurrence';
   import { formatCalendar } from '$services/calendar';
@@ -13,16 +18,25 @@
   let {
     open = $bindable(false),
     snapshot,
-  }: { open?: boolean; snapshot: JourneySnapshot } = $props();
+    targetSession,
+    onadded,
+  }: {
+    open?: boolean;
+    snapshot: JourneySnapshot;
+    targetSession?: SavedMissionSession;
+    onadded?: () => void;
+  } = $props();
   let selected = $state<string[]>([]),
     search = $state(''),
     busy = $state(false),
     error = $state('');
+  let area = $state('all');
   $effect(() => {
     if (!open) {
       selected = [];
       search = '';
       error = '';
+      area = 'all';
     }
   });
   guardUpdates(() => open || busy);
@@ -58,11 +72,17 @@
     busy = true;
     error = '';
     try {
-      await startSelectedSession(
-        candidates.filter((row) => selected.includes(row.id)),
-      );
+      const selection = candidates.filter((row) => selected.includes(row.id));
+      if (targetSession)
+        await appendSessionOccurrences(
+          targetSession.id,
+          targetSession.revision,
+          selection,
+        );
+      else await startSelectedSession(selection);
       open = false;
-      await goto('/sessoes');
+      if (targetSession) onadded?.();
+      else await goto('/sessoes');
     } catch (cause) {
       error =
         cause instanceof Error ? cause.message : 'Não foi possível iniciar.';
@@ -74,19 +94,34 @@
 
 <Dialog
   bind:open
-  title="Montar sessão"
-  description="Selecione ocorrências disponíveis hoje. Nenhuma data será alterada automaticamente."
+  title={targetSession ? 'Adicionar missões à sessão' : 'Montar sessão'}
+  description={targetSession
+    ? 'As atividades entram no fim da fila. A atividade atual e seu progresso continuam preservados.'
+    : 'Selecione ocorrências disponíveis hoje. Nenhuma data será alterada automaticamente.'}
   dismissible={!busy}
 >
   <label class="journey-label lmu-field"
     >Buscar atividade<input type="search" bind:value={search} /></label
   >
+  <label class="journey-label lmu-field"
+    >Área<select bind:value={area}
+      ><option value="all">Todas as áreas</option
+      >{#each snapshot.areas as item (item.id)}<option value={String(item.id)}
+          >{item.nome}</option
+        >{/each}</select
+    ></label
+  >
   <div class="selection-list">
-    {#each candidates.filter((row) => row.title
-        .toLocaleLowerCase('pt-BR')
-        .includes(search.toLocaleLowerCase('pt-BR'))) as row (row.id)}{@const task =
+    {#each candidates.filter((row) => !targetSession?.occurrenceIds.includes(row.id) && (area === 'all' || row.areaId === Number(area)) && row.title
+          .toLocaleLowerCase('pt-BR')
+          .includes(search.toLocaleLowerCase('pt-BR'))) as row (row.id)}{@const task =
         snapshot.tasks.find((task) => task.id === row.taskId)}{@const reason =
-        occurrenceEligibility(row, task, dateKey())}<label
+        snapshot.sessions.some(
+          (session) =>
+            isOpenSession(session) && session.occurrenceIds.includes(row.id),
+        )
+          ? 'Já pertence a uma sessão aberta'
+          : occurrenceEligibility(row, task, dateKey())}<label
         class:unavailable={!!reason}
         ><input
           type="checkbox"
@@ -109,11 +144,13 @@
   <p class="lmu-hint">
     {selected.length} ocorrências selecionadas ·
     <a href="/revisoes">Sessões de revisão</a>
-    · <a href="/missoes?view=sessions">Ver sessões salvas</a>
+    · <a href="/missoes?view=sessions">Ver sessões ativas</a>
   </p>
   <div class="journey-actions">
     <Button disabled={busy || !selected.length} onclick={start}
-      >Iniciar sessão</Button
+      >{targetSession
+        ? `Adicionar ${selected.length} ${selected.length === 1 ? 'missão' : 'missões'}`
+        : 'Iniciar sessão'}</Button
     ><Button variant="quiet" disabled={busy} onclick={() => (open = false)}
       >Cancelar seleção</Button
     >

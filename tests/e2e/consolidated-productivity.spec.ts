@@ -239,16 +239,18 @@ test('rotina reutiliza sessão, identifica conclusão externa e mantém datas ao
   const initial = (await state(page)).savedMissionSessions[0];
   await run();
   expect((await state(page)).savedMissionSessions).toHaveLength(1);
-  await page.getByRole('link', { name: 'Pausar sessão', exact: true }).click();
-  await expect(page).toHaveURL(/\/missoes$/);
+  await page
+    .getByRole('button', { name: 'Pausar sessão', exact: true })
+    .click();
+  await expect(page).toHaveURL(/view=sessions/);
+  await page.goto('/missoes');
+  await page.getByRole('button', { name: 'Todas', exact: true }).click();
   await page
     .getByRole('button', { name: 'Concluir Água', exact: true })
     .click();
   await page.getByRole('status', { name: 'Recompensa da conclusão' }).waitFor();
   await page.goto('/missoes?view=sessions');
-  await page
-    .getByRole('button', { name: 'Retomar sessão', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Retomar', exact: true }).click();
   await expect(
     page.getByText('Concluída individualmente, fora desta sessão.', {
       exact: false,
@@ -272,12 +274,13 @@ test('rotina reutiliza sessão, identifica conclusão externa e mantém datas ao
   expect((await state(page)).savedMissionSessions).toHaveLength(2);
   expect((await state(page)).profile).toEqual(before.profile);
   await page.goto('/missoes?view=sessions');
+  await expect(page.locator('.saved-session-card')).toHaveCount(2);
   await expect(
-    page.getByRole('heading', { name: 'Execuções do dia atual', exact: true }),
-  ).toBeVisible();
+    page.locator('.saved-session-card').filter({ hasText: 'Em andamento' }),
+  ).toHaveCount(1);
   await expect(
-    page.getByRole('heading', { name: 'Execuções anteriores', exact: true }),
-  ).toBeVisible();
+    page.locator('.saved-session-card').filter({ hasText: 'Pausada' }),
+  ).toHaveCount(1);
 });
 test('navegação principal concentra exploração em Mundo e mantém destinos acessíveis por Mais', async ({
   page,

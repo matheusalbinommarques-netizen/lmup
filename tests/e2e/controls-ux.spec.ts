@@ -62,15 +62,38 @@ async function clickTime(page: Page, input: Locator, value: string) {
     await page.evaluate(() => (window as any).timePickerCalls.length),
   ).toBeGreaterThan(before);
   await page.keyboard.press('Escape');
-  await input.press('Enter');
-  expect(
-    await page.evaluate(() => (window as any).timePickerCalls.length),
-  ).toBeGreaterThan(before + 1);
-  await page.keyboard.press('Escape');
   await input.fill(value);
   await input.press('Tab');
   await expect(input).toHaveValue(value);
 }
+
+test('horário abre pelo teclado e preserva o valor escolhido ao salvar', async ({
+  page,
+}) => {
+  await instrumentPicker(page);
+  await page.goto('/missoes');
+  const form = await newMission(page, 'Horário pelo teclado');
+  await form.getByRole('tab', { name: 'Planejamento', exact: true }).click();
+  const input = form.getByLabel('Início desejado', { exact: true });
+  const before = await page.evaluate(
+    () => (window as any).timePickerCalls.length,
+  );
+  await input.focus();
+  await input.press('Enter');
+  await expect
+    .poll(() => page.evaluate(() => (window as any).timePickerCalls.length))
+    .toBeGreaterThan(before);
+  await page.keyboard.press('Escape');
+  await input.fill('14:45');
+  await input.press('Tab');
+  await expect(input).toHaveValue('14:45');
+  await save(form);
+  await expect(
+    page
+      .locator('.mission-task-row')
+      .filter({ hasText: 'Horário pelo teclado' }),
+  ).toContainText('14:45');
+});
 
 test('formulário alinha áreas e passos, abre horário pela superfície e organiza grupos da Agenda', async ({
   page,
@@ -269,6 +292,10 @@ test('editor aproveita o espaço e altera o horário da rotina pela Lista sem pe
     .click();
   await expect(page).toHaveURL(/\/sessoes$/);
   await page.goto('/missoes');
+  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await expect(
+    page.getByRole('link', { name: 'Em sessão · Rotina diária', exact: true }),
+  ).toBeVisible();
   await page
     .getByRole('button', { name: 'Ações para Alongar', exact: true })
     .click();

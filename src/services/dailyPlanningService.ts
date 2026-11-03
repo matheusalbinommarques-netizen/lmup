@@ -1,4 +1,5 @@
 import type { Occurrence } from './productivityTypes';
+import { isOpenSession } from './sessionLifecycle';
 import type { Task } from './db';
 import { db } from './db';
 import { dateKey, progressTransaction } from './rewardService';
@@ -41,7 +42,10 @@ export async function dayChangeNeedsConfirmation(id: string) {
     !!row &&
     (row.value > 0 ||
       !!(await db.savedMissionSessions
-        .filter((session) => session.occurrenceIds.includes(id))
+        .filter(
+          (session) =>
+            isOpenSession(session) && session.occurrenceIds.includes(id),
+        )
         .count()))
   );
 }
@@ -147,7 +151,10 @@ export async function changeToday(input: {
     )
       throw new Error('Esta ocorrência não pode ser alterada por esta ação.');
     const sessions = await db.savedMissionSessions
-      .filter((session) => session.occurrenceIds.includes(row.id))
+      .filter(
+        (session) =>
+          isOpenSession(session) && session.occurrenceIds.includes(row.id),
+      )
       .toArray();
     if (input.action === 'reschedule' && sessions.length)
       throw new Error(

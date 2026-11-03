@@ -251,6 +251,17 @@ export function validateProductivityBackup(
   }
   let active = 0;
   for (const row of lists.savedMissionSessions) {
+    if (row.closedAt !== undefined || row.closedReason !== undefined)
+      requireValue(
+        row.status === 'ended' &&
+          typeof row.closedAt === 'string' &&
+          Number.isFinite(Date.parse(row.closedAt)) &&
+          ['completed', 'ended'].includes(row.closedReason) &&
+          Array.isArray(row.occurrenceIds) &&
+          !row.occurrenceIds.length &&
+          row.cursor === 0,
+        'encerramento de sessão inválido',
+      );
     requireValue(
       Array.isArray(row.occurrenceIds) &&
         (row.occurrenceIds.length || row.status === 'ended') &&

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { isOpenSession } from '$services/sessionLifecycle';
+  import { reconcileSessions } from '$services/savedSessionService';
   import {
     changeToday,
     dayChangeNeedsConfirmation,
@@ -125,7 +127,7 @@
           : 'Agenda',
       routines: 'Rotinas',
       recovery: 'Recuperar Ocorrências',
-      sessions: 'Sessões salvas',
+      sessions: 'Lista de Missões',
       areas: 'Áreas',
     }[workspaceView],
   );
@@ -204,6 +206,11 @@
     today = $state(dateKey());
   guardUpdates(() => !data || pending.length > 0);
   onMount(() => {
+    void reconcileSessions().catch(
+      () =>
+        (error =
+          'Não foi possível atualizar as sessões. Recarregue para tentar novamente.'),
+    );
     storedSession = readMissionSession(today);
     const sync = (event: StorageEvent) => {
       if (event.key === MISSION_SESSION_KEY || event.key === null)
@@ -300,12 +307,24 @@
       ) ?? [];
     if (current.length)
       return current.some(
-        (row) => !['completed', 'discarded', 'excused'].includes(row.status),
+        (row) =>
+          !['completed', 'discarded', 'excused'].includes(row.status) &&
+          !reservedOccurrences.has(row.id),
       );
+    if (
+      data?.occurrences.some(
+        (row) => row.taskId === task.id && reservedOccurrences.has(row.id),
+      )
+    )
+      return false;
     if (task.reviewEnabled) return task.lastReviewDate !== today;
     if (task.recurrence) return task.lastOccurrenceDate !== today;
     return !task.completed;
   };
+  const openSessions = $derived(data?.sessions.filter(isOpenSession) ?? []);
+  const reservedOccurrences = $derived(
+    new Set(openSessions.flatMap((session) => session.occurrenceIds)),
+  );
   const counts = $derived({
     pending: tasks.filter(hasPendingWork).length,
     today: tasks.filter((task) => scheduledToday(task)).length,
@@ -489,6 +508,39 @@
   }
 </script>
 
+{#snippet statusTabs()}<nav
+    class="organizer-tabs"
+    aria-label="Agenda de missões"
+  >
+    {#each [{ key: 'pending', label: 'Pendentes' }, { key: 'completed', label: 'Concluídas' }, { key: 'all', label: 'Todas' }] as tab (tab.key)}<Button
+        variant="secondary"
+        aria-label={tab.label}
+        aria-pressed={workspaceView === 'list' &&
+          (filter === tab.key ||
+            (tab.key === 'pending' &&
+              ['today', 'upcoming', 'undated'].includes(filter)))}
+        onclick={() => {
+          filter = tab.key as typeof filter;
+          if (workspaceView !== 'list') changeView('list');
+        }}
+        >{tab.label}<small aria-hidden="true"
+          >{tab.key === 'completed'
+            ? history.filter((event) => !event.reversedAt).length +
+              legacy.length
+            : counts[tab.key as 'pending' | 'all']}</small
+        ></Button
+      >
+    {/each}
+    <Button
+      variant="secondary"
+      aria-label="Sessões ativas"
+      aria-pressed={workspaceView === 'sessions'}
+      onclick={() => changeView('sessions')}
+      >Sessões ativas<small aria-hidden="true">{openSessions.length}</small
+      ></Button
+    >
+  </nav>{/snippet}
+
 <svelte:head><title>Missões · Level Me Up</title></svelte:head>
 <section class="rpg-theme missions-organizer">
   <header
@@ -547,9 +599,6 @@
         <Button variant="quiet" onclick={() => changeView('recovery')}
           >Recuperar ocorrências</Button
         >
-        <Button variant="quiet" onclick={() => changeView('sessions')}
-          >Sessões salvas</Button
-        >
         <Button
           variant="quiet"
           onclick={() => {
@@ -561,7 +610,6 @@
           >Gerenciar áreas</Button
         >
         <a href="/revisoes">Revisões e suas sessões</a>
-        <a href="/arquivo/missoes">Organização avançada</a>
       </ContextMenu>
     </div>
     {#if workspaceView === 'areas'}
@@ -577,29 +625,16 @@
           changeView('list');
         }}
       />
+    {:else if workspaceView === 'sessions'}
+      <div class="organizer-toolbar">{@render statusTabs()}</div>
+      <ProductivityWorkspace view="sessions" snapshot={data} />
     {:else if workspaceView !== 'list'}<ProductivityWorkspace
         view={workspaceView}
         snapshot={data}
       />{:else}
       <div class="organizer-toolbar">
         <div class="organizer-primary-controls">
-          <nav class="organizer-tabs" aria-label="Agenda de missões">
-            {#each [{ key: 'pending', label: 'Pendentes' }, { key: 'completed', label: 'Concluídas' }, { key: 'all', label: 'Todas' }] as tab (tab.key)}<Button
-                variant="secondary"
-                aria-label={tab.label}
-                aria-pressed={filter === tab.key ||
-                  (tab.key === 'pending' &&
-                    ['today', 'upcoming', 'undated'].includes(filter))}
-                onclick={() => (filter = tab.key as typeof filter)}
-                >{tab.label}<small aria-hidden="true"
-                  >{tab.key === 'completed'
-                    ? history.filter((event) => !event.reversedAt).length +
-                      legacy.length
-                    : counts[tab.key as 'pending' | 'all']}</small
-                ></Button
-              >
-            {/each}
-          </nav>
+          {@render statusTabs()}
           <div class="mission-session-tools">
             {#if selecting}
               <span
@@ -860,6 +895,13 @@
                 (row) => row.taskId === task.id && !row.planningSuspended,
               )}
               {@const canComplete = available(task)}
+              {@const linkedSession = openSessions.find((session) =>
+                session.occurrenceIds.some(
+                  (id) =>
+                    data?.occurrences.find((row) => row.id === id)?.taskId ===
+                    task.id,
+                ),
+              )}
               {@const done = todayRows.length
                 ? todayRows.every((row) => row.status === 'completed')
                 : task.reviewEnabled
@@ -906,6 +948,11 @@
                 />
                 <div class="mission-copy">
                   <a href={`/missao/${task.id}`}>{task.title}</a>
+                  {#if linkedSession}<a
+                      class="session-membership"
+                      href="/missoes?view=sessions"
+                      >Em sessão · {linkedSession.name}</a
+                    >{/if}
                   <small
                     >{areaName(task.areaId)} · {task.plannedTime ??
                       'Flexível'}{task.estimatedMinutes
@@ -1045,10 +1092,7 @@
           </div>{/if}
       </section>
       <div class="organizer-links">
-        <a class="journey-link" href="/revisoes">Revisões e suas sessões</a><a
-          class="journey-link"
-          href="/arquivo/missoes">Organização avançada</a
-        >
+        <a class="journey-link" href="/revisoes">Revisões e suas sessões</a>
       </div>
     {/if}
     <Dialog bind:open={todayRemovalOpen} title="Remover de hoje"
@@ -1536,6 +1580,15 @@
     font-size: 0.77rem;
     color: #a9bcae;
     margin: 0 0 8px;
+  }
+  .mission-copy > .session-membership {
+    display: inline-block;
+    font: 500 0.76rem/1.4 var(--lmu-font);
+    color: #e4c681;
+    border: 1px solid #9b7c4655;
+    border-radius: 5px;
+    padding: 2px 6px;
+    margin: 4px 0;
   }
   @media (max-width: 600px) {
     .workspace-navigation {

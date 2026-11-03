@@ -3,6 +3,10 @@ import {
   redactPersonalTasks,
   validPersonalDeletions,
 } from './personalTaskDeletion';
+import {
+  closeSessionRecord,
+  settleCompletedSessions,
+} from './sessionLifecycle';
 import { validateWorld } from '$lib/world/worldState';
 import { validateCampState } from '$lib/camp/campState';
 import { isTaskIconKey } from '$lib/content/visualAssets';
@@ -716,6 +720,9 @@ async function saveRecovery(reason: RecoverySnapshot['reason']) {
 export async function restoreJourneyBackup(input: unknown): Promise<void> {
   let backup = validateBackup(input);
   await db.transaction('rw', db.tables, async () => {
+    const closedSessions = (await db.savedMissionSessions.toArray()).filter(
+      (session) => session.status === 'ended' || session.closedAt,
+    );
     const deletions = mergePersonalDeletions(
       (await db.profile.get(1))?.personalTaskDeletions,
       backup.data.profile?.personalTaskDeletions,
@@ -738,6 +745,17 @@ export async function restoreJourneyBackup(input: unknown): Promise<void> {
     if (restored.camp)
       restored.camp = { ...restored.camp, epoch: crypto.randomUUID() };
     await db.profile.put(restored);
+    for (const closed of closedSessions) {
+      const imported = await db.savedMissionSessions.get(closed.id);
+      await closeSessionRecord(
+        {
+          ...closed,
+          revision: Math.max(closed.revision, imported?.revision ?? 0),
+        },
+        closed.closedReason ?? 'ended',
+      );
+    }
+    await settleCompletedSessions();
     await initializeJourney();
   });
   invalidateHeroModifiersCache();

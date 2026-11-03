@@ -247,17 +247,17 @@ test('rotina semanal vira sessão persistente e aceita pausa, retomada e conclus
       (row) => row.status === 'completed',
     ),
   ).toHaveLength(1);
-  await page.getByRole('link', { name: 'Pausar sessão', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Pausar sessão', exact: true })
+    .click();
+  await expect(page).toHaveURL(/view=sessions/);
   await page.clock.setFixedTime(new Date('2026-11-03T15:00:00-03:00'));
+  await page.goto('/missoes');
   await page
-    .getByRole('button', { name: 'Ferramentas de missões', exact: true })
+    .getByRole('button', { name: 'Sessões ativas', exact: true })
     .click();
-  await page
-    .getByRole('button', { name: 'Sessões salvas', exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: 'Retomar sessão', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Retomar', exact: true }).click();
+  await expect(page).toHaveURL(/\/sessoes$/);
   const data = await stored(page);
   expect(data.savedMissionSessions).toHaveLength(1);
   expect(data.savedMissionSessions[0].occurrenceIds).toHaveLength(2);
@@ -271,9 +271,11 @@ test('rotina semanal vira sessão persistente e aceita pausa, retomada e conclus
   await page
     .getByRole('button', { name: 'Encerrar sessão', exact: true })
     .click();
-  await expect(
-    page.getByRole('heading', { name: 'Nenhuma sessão em foco.' }),
-  ).toBeVisible();
+  await page
+    .getByRole('dialog', { name: 'Encerrar sessão?', exact: true })
+    .getByRole('button', { name: 'Encerrar e liberar pendências', exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/missoes$/);
   expect((await stored(page)).tasks).toHaveLength(2);
 });
 test('recuperação reagendada convive com a ocorrência do dia sem duplicação', async ({

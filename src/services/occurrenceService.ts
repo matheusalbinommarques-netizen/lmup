@@ -1,4 +1,5 @@
 import { db, type ActivityEvent, type Task } from './db';
+import { isOpenSession, settleCompletedSessions } from './sessionLifecycle';
 import { addCalendarDays, calendarDate } from './calendar';
 import {
   calculateReward,
@@ -82,8 +83,8 @@ export async function savePlanVersion(task: Task, effectiveFrom = dateKey()) {
   const audit = await db.productivityAudit.toArray();
   // Session membership freezes even pending activities, without another execution store.
   const frozen = new Set(
-    (await db.savedMissionSessions.toArray()).flatMap(
-      (session) => session.occurrenceIds,
+    (await db.savedMissionSessions.toArray()).flatMap((session) =>
+      isOpenSession(session) ? session.occurrenceIds : [],
     ),
   );
   for (const row of await db.occurrences
@@ -668,6 +669,7 @@ export async function recordProgress(
       } else await completeProjectIfReady(candidate.projectId);
     }
     await refreshAchievementReceipts();
+    await settleCompletedSessions(current.id);
     return event;
   });
 }
