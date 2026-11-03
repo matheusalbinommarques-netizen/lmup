@@ -309,9 +309,17 @@ test('execução detalhada prioriza conclusão e recompensa, mantendo notas e a 
   ).toBeVisible();
   await complete.click();
   await expect(
-    page.getByRole('region', { name: 'Resumo da recompensa' }),
+    page.getByRole('heading', { name: 'Sessão concluída', exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: 'Resumo da sessão', exact: true }),
+  ).toContainText('Ouro');
   await expect(page).toHaveURL(/\/sessoes$/);
+  const completed = await stored(page);
+  expect(completed.savedMissionSessions[0]).toMatchObject({
+    status: 'ended',
+    occurrenceIds: [],
+  });
   await page.reload();
   expect((await stored(page)).tasks[0].executionNotes).toBe(
     'Retomar pelo capítulo dois',
