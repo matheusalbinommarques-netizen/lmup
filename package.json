@@ -30,7 +30,11 @@
     "test:publication": "node --test scripts/local-publication.test.mjs scripts/local-sync.test.mjs scripts/local-sync-config.test.mjs scripts/local-security-policy.test.mjs scripts/local-precache.test.mjs",
     "app:sincronizar": "node scripts/sync-local.mjs",
     "app:sync-status": "node scripts/sync-local.mjs --status",
-    "app:migrar": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/migrate-local-sync.ps1"
+    "app:migrar": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/migrate-local-sync.ps1",
+    "dev:camp": "node scripts/camp-preview.mjs dev",
+    "build:camp": "node scripts/camp-preview.mjs build",
+    "preview:camp": "node scripts/camp-preview.mjs serve",
+    "test:camp": "playwright test --config playwright.camp-modular.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",

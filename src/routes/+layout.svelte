@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { CAMP_PREVIEW } from '$lib/camp/cinematic/previewMode';
   import { initializePwa } from '$services/pwaService';
   import { updateLocked } from '$services/updateSafety';
   import { guardUpdates } from '$lib/journey/guardUpdates';
@@ -57,7 +58,9 @@
   {#if page.url.pathname.startsWith('/laboratorio')}<div class="lmu-design">
       {@render children()}
     </div>{:else}<AppShell
-      ><PwaNotice />{#if ready}{@render children()}{:else if failed}<section
+      ><PwaNotice />{#if CAMP_PREVIEW}<div class="camp-preview-banner">
+          Demonstração isolada do Acampamento · progresso e recursos sintéticos
+        </div>{/if}{#if ready}{@render children()}{:else if failed}<section
           role="alert"
         >
           <h1>Não foi possível abrir seus dados</h1>
@@ -77,3 +80,16 @@
       aplicativo reabrir.
     </p>
   </div>{/if}
+
+<style>
+  .camp-preview-banner {
+    padding: 5px 10px;
+    background: #132019;
+    color: #ddc897;
+    text-align: center;
+    font:
+      12px/1.5 Georgia,
+      serif;
+    min-height: 28px;
+  }
+</style>

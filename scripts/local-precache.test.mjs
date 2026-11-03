@@ -119,3 +119,30 @@ test('integrated camp precaches only preserved sprites while laboratory stays ex
   assert.equal(isPrecacheAsset('art/lab/camp/forge-feudalwars.png'), false);
   assert.equal(isPrecacheAsset('art/camp/preservation-manifest.json'), false);
 });
+
+test('cinematic assets are reviewed and cached in the main application and preview', () => {
+  assert.equal(
+    isPrecacheAsset('art/camp-modular/center-built.webp', {
+      campPreview: false,
+    }),
+    true,
+  );
+  assert.equal(
+    isPrecacheAsset('art/camp-modular/center-built.webp', {
+      campPreview: true,
+    }),
+    true,
+  );
+  assert.equal(
+    isPrecacheAsset('art/camp-modular/tree-ancient.png', { campPreview: true }),
+    true,
+  );
+  assert.equal(
+    isPrecacheAsset('art/camp-modular/unknown.png', { campPreview: true }),
+    false,
+  );
+  assert.equal(
+    isPrecacheAsset('art/camp-modular/backup.json', { campPreview: true }),
+    false,
+  );
+});

@@ -227,3 +227,20 @@
 .visual-shell.journey-adventure .journey-bottom-nav {
   display: none;
 }
+
+.visual-shell.journey-camp #journey-main {
+  padding: 0;
+  max-width: none;
+  margin: 0;
+}
+.visual-shell.journey-camp .journey-content {
+  min-width: 0;
+}
+.visual-shell.journey-camp .journey-bottom-nav {
+  display: none;
+}
+@media (max-width: 900px) {
+  .visual-shell.journey-camp #journey-main {
+    padding: 0;
+  }
+}

@@ -1,5 +1,9 @@
 <script lang="ts">
   export type IconName =
+    | 'house'
+    | 'tree'
+    | 'chest'
+    | 'trophy'
     | 'today'
     | 'missions'
     | 'projects'
@@ -20,6 +24,11 @@
     | 'food';
   let { name, size = 22 }: { name: IconName; size?: number } = $props();
   const paths: Record<IconName, string> = {
+    house: 'm3 11 9-8 9 8M5 9v12h14V9M10 21v-7h4v7',
+    tree: 'M12 21v-8M8 13c-5 1-6-5-3-7-1-5 5-7 7-4 3-3 8 0 7 4 4 2 2 8-3 7H8',
+    chest: 'M3 10h18v11H3V10Zm0 0V7c0-5 18-5 18 0v3M10 13h4v4h-4v-4',
+    trophy:
+      'M7 3h10v7c0 7-10 7-10 0V3Zm0 2H3v3c0 4 4 5 5 4m9-7h4v3c0 4-4 5-5 4M12 15v5m-5 1h10',
     coin: 'M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-3 0a5 5 0 1 1-10 0 5 5 0 0 1 10 0Zm-5-3v6m-2-4 2-2 2 2',
     food: 'M4 17c2-6 5-12 11-12 5 0 7 5 4 9-2 3-8 3-12 6l-3-3Zm3 0 9-9m-7 6 1-4m2 1 4 1',
     today:

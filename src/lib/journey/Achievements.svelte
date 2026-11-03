@@ -1,4 +1,5 @@
 <script lang="ts">
+  let { embedded = false }: { embedded?: boolean } = $props();
   import { onMount } from 'svelte';
   import { invalidateAchievement } from '$services/productivityAchievements';
   import { journeyQuery, type JourneySnapshot } from '$services/journeyQuery';
@@ -74,7 +75,7 @@
     atuais
   </p>
 </header>
-<CollectionNav />
+{#if !embedded}<CollectionNav />{/if}
 <details>
   <summary>Corrigir reconhecimento indevido</summary>
   <p>A correção preserva o histórico e não altera recursos.</p>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  let { embedded = false }: { embedded?: boolean } = $props();
   import { onMount } from 'svelte';
   import { journeyQuery, type JourneySnapshot } from '$services/journeyQuery';
   import { reportFor, ledgerLabels } from '$services/progressReport';
@@ -61,7 +62,9 @@
     <h1>Meu progresso</h1>
     <p>Missões, práticas e recompensas com os registros à vista.</p>
   </div>
-  <a class="journey-link" href="/config">Configurações e backup →</a>
+  {#if !embedded}<a class="journey-link" href="/config"
+      >Configurações e backup →</a
+    >{/if}
 </header>
 {#if error}<p role="alert">{error}</p>{:else if !data?.profile || !report}<p
     role="status"

@@ -12,7 +12,7 @@ export default [
     ignores: [
       '.svelte-kit/**',
       'node_modules/**',
-      'dist/**',
+      '**/dist/**',
       'build/**',
       '.local-app/**',
       '.vite/**',

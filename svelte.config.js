@@ -12,7 +12,16 @@ const config = {
 
   kit: {
     // IDs de projetos são locais: o host deve servir este fallback nas URLs internas.
-    adapter: adapter({ fallback: '200.html' }),
+    adapter: adapter({
+      fallback: '200.html',
+      ...(process.env.VITE_CAMP_PREVIEW === 'true' &&
+      process.env.LMU_CAMP_OUTPUT
+        ? {
+            pages: process.env.LMU_CAMP_OUTPUT,
+            assets: process.env.LMU_CAMP_OUTPUT,
+          }
+        : {}),
+    }),
     prerender: {
       entries: ['*'],
     },
