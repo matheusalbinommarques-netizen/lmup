@@ -24,6 +24,13 @@
   position: sticky;
   top: 0;
   height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  align-self: start;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
   background:
     linear-gradient(#061115 58%, #06111588),
     url('/art/approved/paintings/05_Cartao_Mapa.webp') center bottom/auto 45%
@@ -31,6 +38,9 @@
   border-right: 1px solid #9e7b4366;
   margin: 0;
   border-radius: 0;
+}
+.visual-shell .journey-sidebar > * {
+  flex-shrink: 0;
 }
 .visual-shell .journey-sidebar > .rpg-trim {
   display: none;

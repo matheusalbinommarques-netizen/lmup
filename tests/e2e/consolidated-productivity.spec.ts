@@ -86,9 +86,9 @@ test('Hoje separa atividades antigas, conclusões realizadas e retirada persiste
       exact: true,
     }),
   ).toHaveAttribute('aria-valuenow', '0');
-  await page
-    .getByText('Atividades de outros dias (1)', { exact: true })
-    .click();
+  await expect(
+    page.getByText('Atividades de outros dias (1)', { exact: true }),
+  ).toBeVisible();
   await page
     .getByRole('button', {
       name: 'Organizar atividade antiga Atividade antiga',

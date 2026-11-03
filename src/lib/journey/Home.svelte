@@ -97,6 +97,7 @@
   async function chooseAction(
     row: Occurrence,
     action: 'remove' | 'reschedule',
+    targetDate?: string,
   ) {
     actionError = '';
     const confirm = await dayChangeNeedsConfirmation(row.id);
@@ -104,7 +105,13 @@
       await applyAction(row, action, false);
       return;
     }
-    rescheduleDate = addCalendarDays(today, 1);
+    rescheduleDate =
+      targetDate ??
+      (row.plannedDate < today ? today : addCalendarDays(today, 1));
+    if (targetDate && !confirm) {
+      await applyAction(row, action, false);
+      return;
+    }
     actionOpen = true;
     dayAction = { row, action, requiresConfirmation: confirm };
   }
@@ -270,14 +277,14 @@
   {#if notice}<p class="journey-banner" role="status">{notice}</p>{/if}
   {#if actionError}<p class="journey-error" role="alert">{actionError}</p>{/if}
   {#if !data}<p role="status">Abrindo sua jornada…</p>{:else}
-    <header class="today-hero">
+    <header class="journey-heading today-hero">
       <img
         src={paintings.vedria}
         alt="Viajante contemplando Vèdria ao pôr do sol"
         fetchpriority="high"
       />
       <div class="hero-copy">
-        <p class="lmu-eyebrow">Level Me Up · Seu mundo, sua jornada</p>
+        <p class="lmu-eyebrow">Hoje · Level Me Up</p>
         <h1>{greeting}{name ? `, ${name}` : ''}.</h1>
         <p>Seu plano de hoje, em um só lugar.</p>
       </div>
@@ -337,8 +344,11 @@
                 : 'Começar'}</Button
             >{:else}<Button onclick={() => (open = true)}>Nova missão</Button
             >{/if}
-          {#if next}<ContextMenu label={`Ações de hoje para ${next.title}`}
-              ><Button
+          <ContextMenu
+            label={next
+              ? `Ações de hoje para ${next.title}`
+              : 'Escolher próxima missão'}
+            >{#if next}<Button
                 variant="quiet"
                 disabled={busy}
                 onclick={() => chooseAction(next!, 'remove')}
@@ -348,10 +358,7 @@
                 disabled={busy}
                 onclick={() => chooseAction(next!, 'reschedule')}
                 >Reagendar</Button
-              ></ContextMenu
-            >{/if}
-          <details class="next-options">
-            <summary aria-label="Escolher próxima missão">⋯</summary><label
+              >{/if}<label class="priority-option"
               >Manter em destaque<select
                 value={pinned ?? ''}
                 onchange={(event) => setPriority(event.currentTarget.value)}
@@ -362,7 +369,7 @@
                   >{/each}</select
               ></label
             >
-          </details>
+          </ContextMenu>
         </section>
         <section class="day-plan rpg-frame" aria-labelledby="plan-title">
           <header>
@@ -440,7 +447,8 @@
                   ? '+'
                   : ''}{received.gold} Ouro</span
               ><span
-                ><ApprovedIcon name="comida" size={26} />{received.food >= 0
+                ><ApprovedIcon name="alimentacao" size={26} />{received.food >=
+                0
                   ? '+'
                   : ''}{received.food} Comida</span
               ><small>Recebidos hoje · ganhos líquidos</small>
@@ -494,20 +502,33 @@
           Suas conclusões aparecerão aqui conforme você realizar as atividades.
         </p>{/if}
     </section>
-    {#if view?.old.length}<details class="rpg-frame today-secondary">
+    {#if view?.old.length}<details class="rpg-frame today-secondary" open>
         <summary>Atividades de outros dias ({view.old.length})</summary>
         <p class="lmu-hint">
-          Não entram no progresso do planejamento atual. Retome conscientemente
-          ou escolha outra data.
+          Ficaram pendentes. Traga para hoje ou escolha outra data, mantendo o
+          progresso já registrado.
         </p>
         <ul>
-          {#each view.old as row (row.id)}<li>
+          {#each view.old as row (row.id)}<li class="overdue-row">
               <div>
                 <strong>{row.title}</strong><small
                   >Planejada para {formatCalendar(row.plannedDate)}{row.value >
                   0
                     ? ' · Progresso parcial preservado'
                     : ''}</small
+                >
+              </div>
+              <div class="old-actions">
+                <Button
+                  disabled={busy}
+                  onclick={() => chooseAction(row, 'reschedule', today)}
+                  >Trazer para hoje</Button
+                >
+                <Button
+                  variant="secondary"
+                  disabled={busy}
+                  onclick={() => chooseAction(row, 'reschedule')}
+                  >Escolher data</Button
                 >
               </div>
               <ContextMenu label={`Organizar atividade antiga ${row.title}`}
@@ -669,6 +690,49 @@
     cursor: pointer;
     color: #e4c78d;
   }
+  .today-secondary li .old-actions {
+    display: flex;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    gap: 8px;
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .today-secondary li.overdue-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .overdue-row :global(.context-trigger) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .priority-option {
+    display: grid;
+    gap: 8px;
+    padding: 10px 8px;
+    color: #dfd5b5;
+    font-size: 0.85rem;
+  }
+  .priority-option select {
+    max-width: 100%;
+    min-width: 0;
+    background: #071416;
+    color: #f1e5c9;
+    border: 1px solid #8f7847;
+    border-radius: 6px;
+    padding: 8px;
+  }
+  @media (max-width: 700px) {
+    .today-secondary li {
+      flex-wrap: wrap;
+    }
+    .today-secondary li > div:first-child {
+      flex-basis: calc(100% - 60px);
+    }
+    .today-secondary li .old-actions {
+      flex: 1 1 100%;
+    }
+  }
 
   .today-view {
     display: grid;
@@ -677,50 +741,65 @@
   }
   .today-hero {
     position: relative;
-    height: 240px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'copy date' 'profile date';
+    align-content: center;
+    gap: 8px 16px;
+    min-height: 144px;
+    padding: 16px 20px;
+    margin: 0;
     overflow: hidden;
     border-radius: 10px;
     border: 1px solid #927143;
   }
   .today-hero > img {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: 55% 45%;
+    object-position: center 42%;
   }
   .today-hero::after {
     content: '';
     position: absolute;
     inset: 0;
     background:
-      linear-gradient(90deg, #02090bb8, transparent 65%),
-      linear-gradient(0deg, #02090b80, transparent 40%);
+      linear-gradient(90deg, #061115f5 20%, #06111580 65%, #06111522),
+      linear-gradient(0deg, #02090b80, transparent 55%);
     pointer-events: none;
   }
   .hero-copy {
-    position: absolute;
+    position: relative;
+    grid-area: copy;
+    display: grid;
+    gap: 6px;
     z-index: 1;
-    top: 28px;
-    left: 28px;
-    max-width: 65%;
+    max-width: 700px;
+    min-width: 0;
   }
   .hero-copy .lmu-eyebrow {
     color: #ffe19a;
     font-size: 0.66rem;
+    margin: 0;
+    letter-spacing: 0.04em;
   }
   .hero-copy h1 {
-    font: 500 clamp(2.1rem, 3.6vw, 3.5rem)/1.08 var(--lmu-display);
+    font: 500 clamp(1.8rem, 2.8vw, 2.65rem)/1.1 var(--lmu-display);
     color: #fff1d6;
-    margin: 10px 0;
+    margin: 0;
   }
   .hero-copy > p:last-child {
-    font: 500 1.2rem var(--lmu-display);
+    font: 500 0.85rem/1.4 var(--lmu-font);
     color: #fff3da;
+    margin: 0;
   }
   .today-date {
-    position: absolute;
-    right: 18px;
-    top: 16px;
+    position: relative;
+    grid-area: date;
+    align-self: start;
+    justify-self: end;
     z-index: 1;
     display: flex;
     align-items: center;
@@ -732,9 +811,8 @@
     font-size: 0.8rem;
   }
   .hero-profile {
-    position: absolute;
-    left: 28px;
-    bottom: 14px;
+    position: relative;
+    grid-area: profile;
     z-index: 1;
     font-size: 0.7rem;
     color: #d7dfcf;
@@ -796,29 +874,6 @@
     flex-wrap: wrap;
     font-size: 0.75rem;
     color: #d5d8c9;
-  }
-  .next-options {
-    position: relative;
-  }
-  .next-options summary {
-    cursor: pointer;
-    font-size: 1.7rem;
-    list-style: none;
-  }
-  .next-options label {
-    position: absolute;
-    right: 0;
-    top: 40px;
-    z-index: 8;
-    width: 240px;
-    padding: 14px;
-    background: #102328;
-    border: 1px solid #a28548;
-    display: grid;
-    font-size: 0.8rem;
-  }
-  .next-options select {
-    width: 100%;
   }
   .day-plan {
     padding: 0 18px 8px;
@@ -1085,22 +1140,33 @@
   }
   @media (max-width: 760px) {
     .today-hero {
-      height: 280px;
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas: 'copy' 'profile';
+      padding: 16px;
+      min-height: 156px;
     }
     .hero-copy {
-      max-width: 90%;
-      left: 18px;
-      top: 54px;
+      max-width: 100%;
     }
     .hero-copy h1 {
-      font-size: 2.3rem;
+      font-size: 1.9rem;
+    }
+    .hero-copy .lmu-eyebrow {
+      max-width: calc(100% - 125px);
     }
     .today-hero > img {
       object-position: 76% center;
     }
     .today-date {
-      font-size: 0.7rem;
-      padding: 0.25rem 0.4rem;
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      font-size: 0.65rem;
+      padding: 0.2rem 0.35rem;
+    }
+    .today-date :global(img) {
+      width: 20px;
+      height: 20px;
     }
     .today-main {
       grid-template-columns: 1fr;
@@ -1184,7 +1250,7 @@
       grid-column: 2;
       justify-self: start;
     }
-    .next-options {
+    .next-mission :global(.context-trigger) {
       grid-column: 3;
     }
     .next-copy .gold-label {

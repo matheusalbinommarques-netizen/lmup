@@ -1,0 +1,191 @@
+import { test, expect, type Page } from '@playwright/test';
+
+async function seed(page: Page) {
+  await page.clock.setFixedTime(new Date('2026-11-02T15:00:00-03:00'));
+  await page.goto('/missoes');
+  await expect(
+    page.getByRole('button', { name: 'Nova missão', exact: true }),
+  ).toBeVisible();
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open('LevelMeUpDB');
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const database = request.result;
+          const tx = database.transaction('tasks', 'readwrite');
+          for (const task of [
+            {
+              id: 9000,
+              title: 'Fruta diária',
+              recurrence: { kind: 'daily', startDate: '2026-11-02' },
+              plannedDate: '2026-11-02',
+              plannedTime: '08:00',
+            },
+            {
+              id: 9001,
+              title: 'Água diária',
+              recurrence: { kind: 'daily', startDate: '2026-11-02' },
+              plannedDate: '2026-11-02',
+              plannedTime: '09:00',
+            },
+            { id: 9002, title: 'Organizar ontem', plannedDate: '2026-11-01' },
+            { id: 9003, title: 'Revisar ontem', plannedDate: '2026-11-01' },
+          ])
+            tx.objectStore('tasks').put({
+              source: 'personal',
+              xp: 10,
+              effort: 'micro',
+              rarity: 'common',
+              completed: false,
+              status: 'available',
+              createdAt: '2026-11-01T12:00:00.000Z',
+              productivityVersion: 1,
+              tracking: { method: 'direct' },
+              ...task,
+            });
+          tx.oncomplete = () => {
+            database.close();
+            resolve();
+          };
+          tx.onerror = () => {
+            database.close();
+            reject(tx.error);
+          };
+        };
+      }),
+  );
+  await page.reload();
+  await expect(
+    page.locator('.mission-task-row').filter({ hasText: 'Fruta diária' }),
+  ).toBeVisible();
+}
+
+test('conclusão recorrente sai de Pendentes, mantém histórico e aparece marcada na Agenda', async ({
+  page,
+}) => {
+  await seed(page);
+  const row = page
+    .locator('.mission-task-row')
+    .filter({ hasText: 'Fruta diária' });
+  await row.getByLabel('Ações para Fruta diária', { exact: true }).click();
+  const menu = page.getByRole('dialog', {
+    name: 'Menu: Ações para Fruta diária',
+    exact: true,
+  });
+  const fonts = await menu
+    .locator('button, a')
+    .evaluateAll((controls) =>
+      controls.map((control) => getComputedStyle(control).fontFamily),
+    );
+  expect(new Set(fonts).size).toBe(1);
+  await page.keyboard.press('Escape');
+  await row
+    .getByRole('button', { name: 'Concluir Fruta diária', exact: true })
+    .click();
+  await expect(row).toHaveCount(0);
+  await expect(page).toHaveURL(/\/missoes/);
+  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await expect(row).toBeVisible();
+  await page.getByRole('button', { name: 'Concluídas', exact: true }).click();
+  await expect(page.locator('.history-period')).toContainText(
+    'Histórico de execuções',
+  );
+  for (const label of ['De', 'Até']) {
+    const input = page
+      .locator('.history-period')
+      .getByLabel(label, { exact: true });
+    await expect(input).toBeVisible();
+    expect(await input.evaluate((el) => getComputedStyle(el).minHeight)).toBe(
+      '42px',
+    );
+    expect((await input.boundingBox())!.width).toBeGreaterThanOrEqual(140);
+  }
+  await page
+    .locator('.history-period')
+    .getByLabel('De', { exact: true })
+    .fill('2026-11-02');
+  await page
+    .locator('.history-period')
+    .getByLabel('Até', { exact: true })
+    .fill('2026-11-02');
+  await expect(
+    page.locator('.history-row').filter({ hasText: 'Fruta diária' }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Agenda', exact: true }).click();
+  const agenda = page
+    .locator('.occurrence-row')
+    .filter({ hasText: 'Fruta diária' });
+  await expect(
+    agenda.getByLabel('Concluída: Fruta diária', { exact: true }),
+  ).toBeVisible();
+  await expect(agenda.getByRole('checkbox')).toHaveCount(0);
+  await expect(
+    page
+      .locator('.occurrence-row')
+      .filter({ hasText: 'Água diária' })
+      .getByRole('checkbox'),
+  ).not.toBeChecked();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBe(true);
+  await page.clock.setFixedTime(new Date('2026-11-03T15:00:00-03:00'));
+  await page.goto('/missoes');
+  await expect(
+    page.locator('.mission-task-row').filter({ hasText: 'Fruta diária' }),
+  ).toBeVisible();
+});
+
+test('pendências de ontem podem ir para hoje ou outra data, e próxima missão tem um único menu', async ({
+  page,
+}) => {
+  await seed(page);
+  await page.goto('/');
+  await expect(page.locator('.next-mission .context-trigger')).toHaveCount(1);
+  await expect(page.locator('.next-mission summary')).toHaveCount(0);
+  await page.locator('.next-mission .context-trigger').click();
+  await expect(page.getByLabel('Manter em destaque')).toBeVisible();
+  await page.getByLabel('Manter em destaque').selectOption('9001');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.next-mission')).toContainText('Água diária');
+  const old = page
+    .locator('.today-secondary li')
+    .filter({ hasText: 'Organizar ontem' });
+  await expect(old).toBeVisible();
+  await old
+    .getByRole('button', { name: 'Trazer para hoje', exact: true })
+    .click();
+  await expect(old).toHaveCount(0);
+  await expect(page.locator('.day-plan')).toContainText('Organizar ontem');
+  const other = page
+    .locator('.today-secondary li')
+    .filter({ hasText: 'Revisar ontem' });
+  await other
+    .getByRole('button', { name: 'Escolher data', exact: true })
+    .click();
+  const dialog = page.getByRole('dialog', {
+    name: 'Reagendar ocorrência',
+    exact: true,
+  });
+  await dialog.getByLabel('Nova data').fill('2026-11-04');
+  await dialog
+    .getByRole('button', { name: 'Confirmar reagendamento', exact: true })
+    .click();
+  await expect(dialog).not.toBeVisible();
+  await page.reload();
+  await expect(page.locator('.day-plan')).toContainText('Organizar ontem');
+  await expect(
+    page.locator('.today-secondary li').filter({ hasText: 'Revisar ontem' }),
+  ).toHaveCount(0);
+  await page.goto('/missoes?view=agenda&date=2026-11-04');
+  await expect(
+    page.locator('.occurrence-row').filter({ hasText: 'Revisar ontem' }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBe(true);
+});

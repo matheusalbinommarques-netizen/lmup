@@ -100,7 +100,7 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
   await page.goto('/');
   await createMission(page, 'Revisar minhas anotações');
   await page.goto('/');
-  await page.getByLabel('Escolher próxima missão').click();
+  await page.locator('.next-mission .context-trigger').click();
   await page
     .getByLabel('Manter em destaque')
     .selectOption({ label: 'Revisar minhas anotações · Flexível' });

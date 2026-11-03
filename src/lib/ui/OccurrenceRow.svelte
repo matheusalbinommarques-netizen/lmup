@@ -44,7 +44,10 @@
   class:selectable={!!onselect}
   class:completed={row.status === 'completed'}
 >
-  {#if onselect}<input
+  {#if row.status === 'completed'}<span
+      class="completion-mark"
+      aria-label={`Concluída: ${row.title}`}>✓</span
+    >{:else if onselect}<input
       type="checkbox"
       aria-label={`Selecionar ${row.title}`}
       {checked}
@@ -123,6 +126,18 @@
   }
   .occurrence-row.completed {
     background: #17332644;
+  }
+  .completion-mark {
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 24px;
+    color: #eac26e;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+  .occurrence-row.completed:not(.selectable) {
+    grid-template-columns: 20px 46px 32px minmax(0, 1fr) auto 32px;
   }
   .occurrence-time {
     font-size: 0.82rem;
@@ -229,7 +244,8 @@
   }
   @media (max-width: 700px) {
     .occurrence-row,
-    .occurrence-row.selectable {
+    .occurrence-row.selectable,
+    .occurrence-row.completed:not(.selectable) {
       grid-template-columns: 40px 28px minmax(0, 1fr) 30px;
       gap: 8px;
       padding: 10px 8px;
@@ -254,7 +270,8 @@
       grid-row: 1;
       align-self: start;
     }
-    input {
+    input,
+    .completion-mark {
       grid-column: 1;
       grid-row: 2;
       justify-self: center;

@@ -36,6 +36,8 @@
     }
   }
   function keys(event: KeyboardEvent) {
+    if ((event.target as HTMLElement).matches('select, input, textarea'))
+      return;
     const items = [
       ...panel.querySelectorAll<HTMLElement>('button:not(:disabled), a[href]'),
     ];
@@ -151,6 +153,7 @@
     overflow-y: auto;
   }
   .ux-menu :global(.lmu-button),
+  .ux-menu :global(.lmu-button.lmu-button--primary),
   .ux-menu :global(a) {
     display: flex;
     justify-content: flex-start;
@@ -159,7 +162,8 @@
     padding: 9px 12px;
     margin: 0;
     text-align: left;
-    font-size: 0.84rem;
+    font: 600 0.84rem/1.4 var(--lmu-font);
+    text-shadow: none;
     text-decoration: none;
     border: 1px solid #8d744a66;
     background: #0b1b1c;

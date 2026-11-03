@@ -62,7 +62,7 @@ export async function changeToday(input: {
     input.action === 'reschedule' &&
     (!input.targetDate ||
       calendarDate(input.targetDate) !== input.targetDate ||
-      input.targetDate === input.day)
+      input.targetDate === input.row.plannedDate)
   )
     throw new Error('Escolha outra data válida.');
   return progressTransaction(async () => {

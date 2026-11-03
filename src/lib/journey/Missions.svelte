@@ -293,8 +293,19 @@
   const archivedTasks = $derived(
     data?.tasks.filter((task) => task.archived && matchesFilters(task)) ?? [],
   );
-  const hasPendingWork = (task: Task) =>
-    !task.completed || !!task.recurrence || !!task.reviewEnabled;
+  const hasPendingWork = (task: Task) => {
+    const current =
+      data?.plannedToday.filter(
+        (row) => row.taskId === task.id && !row.planningSuspended,
+      ) ?? [];
+    if (current.length)
+      return current.some(
+        (row) => !['completed', 'discarded', 'excused'].includes(row.status),
+      );
+    if (task.reviewEnabled) return task.lastReviewDate !== today;
+    if (task.recurrence) return task.lastOccurrenceDate !== today;
+    return !task.completed;
+  };
   const counts = $derived({
     pending: tasks.filter(hasPendingWork).length,
     today: tasks.filter((task) => scheduledToday(task)).length,
@@ -849,9 +860,13 @@
                 (row) => row.taskId === task.id && !row.planningSuspended,
               )}
               {@const canComplete = available(task)}
-              {@const done = task.recurrence
-                ? task.lastOccurrenceDate === today
-                : !!task.completed && !canComplete}
+              {@const done = todayRows.length
+                ? todayRows.every((row) => row.status === 'completed')
+                : task.reviewEnabled
+                  ? task.lastReviewDate === today
+                  : task.recurrence
+                    ? task.lastOccurrenceDate === today
+                    : !!task.completed && !canComplete}
               {@const reward =
                 done && task.completionEventId
                   ? data.events.find(
@@ -1499,6 +1514,24 @@
     flex: 0 1 155px;
     margin: 0;
   }
+  .history-period input {
+    width: 100%;
+    min-width: 0;
+    min-height: 42px;
+    margin-top: 6px;
+    padding: 8px 10px;
+    border: 1px solid #8f7847;
+    border-radius: 6px;
+    background: #071416;
+    color: #f1e5c9;
+    color-scheme: dark;
+    font: inherit;
+    cursor: pointer;
+  }
+  .history-period input:focus-visible {
+    outline: 2px solid #e9c16d;
+    outline-offset: 2px;
+  }
   .result-context {
     font-size: 0.77rem;
     color: #a9bcae;
@@ -1527,8 +1560,11 @@
       padding: 12px;
       gap: 8px;
     }
+    .history-period > div {
+      flex-basis: 100%;
+    }
     .history-period label {
-      flex: 1;
+      flex: 1 1 140px;
       min-width: 0;
     }
     .mission-row {
