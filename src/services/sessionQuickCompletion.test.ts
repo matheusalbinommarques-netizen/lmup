@@ -6,6 +6,7 @@ import { saveTaskDefinition } from './taskDefinitionService';
 import { ensureOccurrence, recordProgress } from './occurrenceService';
 import {
   completeSessionOccurrence,
+  endSession,
   newSavedSession,
   saveSession,
 } from './savedSessionService';
@@ -75,11 +76,22 @@ it('retoma a pendente anterior, chega ao fim e encerrar não concede bônus', as
   expect(session.cursor).toBe(0);
   session = (await completeSessionOccurrence(await input(session))).session;
   expect(session.cursor).toBe(1);
-  session = (await completeSessionOccurrence(await input(session))).session;
-  expect(session.cursor).toBe(3);
+  const finalCommand = await input(session);
+  session = (await completeSessionOccurrence(finalCommand)).session;
+  expect(session).toMatchObject({
+    status: 'ended',
+    closedReason: 'completed',
+    occurrenceIds: [],
+    cursor: 0,
+  });
   const before = await db.profile.get(1);
-  await saveSession({ ...session, status: 'ended' }, session.revision);
+  expect(before).toMatchObject({ totalXpEarned: 33, gold: 15, food: 3 });
+  const receipts = await db.activityEvents.toArray();
+  expect(receipts).toHaveLength(3);
+  await endSession(session.id, session.revision);
+  await completeSessionOccurrence(finalCommand);
   expect(await db.profile.get(1)).toEqual(before);
+  expect(await db.activityEvents.toArray()).toEqual(receipts);
 });
 it('recusa acompanhamento específico e comandos antigos de outra aba sem alterar saldos', async () => {
   const session = await setup(true),
