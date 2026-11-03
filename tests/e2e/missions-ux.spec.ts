@@ -43,11 +43,7 @@ test('navegação principal e ferramentas preservam todos os destinos', async ({
     ).toHaveAttribute('aria-pressed', 'true');
     await noOverflow(page);
   }
-  for (const name of [
-    'Recuperar ocorrências',
-    'Sessões salvas',
-    'Arquivadas',
-  ]) {
+  for (const name of ['Recuperar ocorrências', 'Arquivadas']) {
     await page
       .getByRole('button', { name: 'Ferramentas de missões', exact: true })
       .click();
@@ -66,6 +62,12 @@ test('navegação principal e ferramentas preservam todos os destinos', async ({
     ).not.toBeVisible();
     await noOverflow(page);
   }
+  await page
+    .getByRole('button', { name: 'Sessões ativas', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Sessões ativas', exact: true }),
+  ).toBeVisible();
   await nav.getByRole('button', { name: 'Lista', exact: true }).click();
   await page.getByRole('button', { name: 'Pendentes', exact: true }).click();
   await page.getByText('Mais filtros', { exact: false }).click();

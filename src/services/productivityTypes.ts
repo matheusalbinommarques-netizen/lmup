@@ -108,6 +108,8 @@ export type ProductivityAudit = {
   after: unknown;
 };
 export type SavedMissionSession = {
+  closedAt?: string;
+  closedReason?: 'completed' | 'ended';
   id: string;
   name: string;
   occurrenceIds: string[];

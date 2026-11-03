@@ -90,15 +90,15 @@ test('conclusão rápida avança na sessão, pausa e retoma com progresso real e
     .getByRole('button', { name: 'Conclusão rápida', exact: true })
     .click();
   expect((await data(page)).profile[0]).toEqual(balance);
-  await page.getByRole('link', { name: 'Pausar sessão', exact: true }).click();
-  await expect(page).toHaveURL(/\/missoes$/);
+  await page
+    .getByRole('button', { name: 'Pausar sessão', exact: true })
+    .click();
+  await expect(page).toHaveURL(/view=sessions/);
   await page.goto('/missoes?view=sessions');
   const card = page.locator('.saved-session-card');
-  await expect(card).toContainText('1 de 2 (50%)');
+  await expect(card).toContainText('1 de 2 concluídas');
   await expect(card).toContainText('Pausada');
-  await card
-    .getByRole('button', { name: 'Retomar sessão', exact: true })
-    .click();
+  await card.getByRole('button', { name: 'Retomar', exact: true }).click();
   await page
     .getByRole('button', { name: 'Próxima atividade', exact: true })
     .click();
@@ -106,12 +106,10 @@ test('conclusão rápida avança na sessão, pausa e retoma com progresso real e
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
   await expect(
-    page.getByRole('heading', { name: 'Fim da sequência', exact: true }),
+    page.getByRole('heading', { name: 'Sessão concluída', exact: true }),
   ).toBeVisible();
   const before = (await data(page)).profile[0];
-  await page
-    .getByRole('button', { name: 'Finalizar sessão', exact: true })
-    .click();
+  await page.reload();
   await expect(
     page.getByRole('heading', { name: 'Nenhuma sessão em foco.', exact: true }),
   ).toBeVisible();

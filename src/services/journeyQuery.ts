@@ -23,6 +23,7 @@ export async function readJourneySnapshot() {
     const logs = await db.xpLogs.toArray();
     const occurrences = await db.occurrences.toArray();
     const executionRecords = await db.executionRecords.toArray();
+    const sessions = await db.savedMissionSessions.toArray();
     const plannedToday = await plannedOccurrences(dateKey(), dateKey());
     const achievementReceipts = await db.achievementReceipts.toArray();
     const achievementStats = await readAchievementStats();
@@ -62,6 +63,7 @@ export async function readJourneySnapshot() {
       logs,
       occurrences,
       executionRecords,
+      sessions,
       plannedToday,
       achievementReceipts,
       achievementStats,

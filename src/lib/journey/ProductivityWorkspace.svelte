@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { isOpenSession } from '$services/sessionLifecycle';
+  import SessionSelection from './SessionSelection.svelte';
+  import EndSessionDialog from './EndSessionDialog.svelte';
   import { timePicker } from '$lib/ui/timePicker';
   import { areaIconKey } from '$services/areaIcons';
   import { onMount } from 'svelte';
@@ -68,6 +71,9 @@
   let reconstructTask = $state(''),
     reconstructDate = $state(addCalendarDays(dateKey(), -1));
   let sessions = $state<SavedMissionSession[]>([]);
+  let managedSession = $state<SavedMissionSession>(),
+    addOpen = $state(false),
+    endOpen = $state(false);
   let routineSearch = $state(''),
     recoverySearch = $state(''),
     recoveryStatus = $state('pending');
@@ -118,18 +124,10 @@
   const completedDay = $derived(
     dayRows.filter((row) => row.status === 'completed').length,
   );
-  const sessionIsToday = (session: SavedMissionSession) =>
-    session.occurrenceIds.every(
-      (id) =>
-        snapshot.occurrences.find((row) => row.id === id)?.originDate ===
-        dateKey(),
-    );
   const orderedSessions = $derived(
-    [...sessions].sort(
-      (a, b) =>
-        Number(sessionIsToday(b)) - Number(sessionIsToday(a)) ||
-        b.createdAt.localeCompare(a.createdAt),
-    ),
+    sessions
+      .filter(isOpenSession)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
   );
   const availableTasks = $derived(
     tasks.filter(
@@ -906,47 +904,19 @@
         </form>{/if}
     </div>
   {:else}
-    <h2>Sessões salvas</h2>
+    <h2>Sessões ativas</h2>
     <p class="lmu-hint">
-      O progresso pertence à ocorrência e é compartilhado entre sessões.
+      Continue uma sessão em andamento ou pausada. Ao encerrar, suas pendências
+      ficam livres para outra sessão.
     </p>
-    {#each orderedSessions as session, index (session.id)}
-      {#if index === 0 || sessionIsToday(orderedSessions[index - 1]) !== sessionIsToday(session)}<h3
-        >
-          {sessionIsToday(session)
-            ? 'Execuções do dia atual'
-            : 'Execuções anteriores'}
-        </h3>{/if}
+    {#each orderedSessions as session (session.id)}
       {@const completed = session.occurrenceIds.filter(
         (id) =>
           snapshot.occurrences.find((row) => row.id === id)?.status ===
           'completed',
       ).length}
       {@const total = session.occurrenceIds.length}
-      {@const percent = total ? Math.round((completed * 100) / total) : 0}
-      <article class="rpg-frame saved-session-card">
-        <p class="lmu-hint">
-          {[
-            ...new Set(
-              session.occurrenceIds
-                .map(
-                  (id) =>
-                    snapshot.occurrences.find((row) => row.id === id)
-                      ?.originDate,
-                )
-                .filter(Boolean),
-            ),
-          ].join(' · ')} · {[
-            ...new Set(
-              session.occurrenceIds.map(
-                (id) =>
-                  snapshot.occurrences.find((row) => row.id === id)?.originDate,
-              ),
-            ),
-          ].some((day) => day !== dateKey())
-            ? 'Execução anterior'
-            : 'Execução do dia'}
-        </p>
+      <article class="rpg-frame saved-session-card" aria-label={session.name}>
         <div class="saved-session-heading">
           <div>
             <h3>{session.name}</h3>
@@ -955,14 +925,21 @@
               <span
                 >{session.status === 'active'
                   ? 'Em andamento'
-                  : session.status === 'paused'
-                    ? 'Pausada'
-                    : 'Encerrada'}</span
+                  : 'Pausada'}</span
               >
             </p>
           </div>
+        </div>
+        <div class="saved-session-progress">
+          <progress
+            value={completed}
+            max={Math.max(1, total)}
+            aria-label={`Progresso de ${session.name}`}
+          ></progress><strong>{completed} de {total} concluídas</strong>
+        </div>
+        <div class="journey-actions">
           <Button
-            disabled={!total}
+            disabled={busy}
             onclick={() =>
               run(async () => {
                 await saveSession(
@@ -970,24 +947,63 @@
                   session.revision,
                 );
                 await goto('/sessoes');
-              })}>Retomar sessão</Button
+              })}
+            >{session.status === 'active' ? 'Continuar' : 'Retomar'}</Button
+          >
+          <Button
+            variant="secondary"
+            disabled={busy}
+            onclick={() => {
+              managedSession = session;
+              addOpen = true;
+            }}>+ Adicionar missões</Button
+          >
+          <Button
+            variant="secondary"
+            disabled={busy}
+            onclick={() => {
+              managedSession = session;
+              endOpen = true;
+            }}>Encerrar</Button
           >
         </div>
-        <div class="saved-session-progress">
-          <progress
-            value={completed}
-            max={Math.max(1, total)}
-            aria-label={`Progresso de ${session.name}`}
-          ></progress><strong
-            >{completed} de {total} <span>({percent}%)</span></strong
-          >
-        </div>
-        <SessionSummary {session} data={snapshot} compact />
+        <details>
+          <summary>Recompensas registradas</summary><SessionSummary
+            {session}
+            data={snapshot}
+            compact
+          />
+        </details>
       </article>
     {/each}
-    {#if !sessions.length}<p class="workspace-empty">
-        Selecione atividades na agenda para montar sua primeira sessão.
-      </p>{/if}
+    {#if !orderedSessions.length}<div class="workspace-empty">
+        <h3>Nenhuma sessão ativa</h3>
+        <p>
+          Monte uma sessão com suas missões pendentes. Sessões concluídas e
+          encerradas não ficam nesta lista.
+        </p>
+        <a class="lmu-button lmu-button--secondary" href="/missoes"
+          >Ver missões pendentes</a
+        >
+      </div>{/if}
+    {#if managedSession}
+      <SessionSelection
+        bind:open={addOpen}
+        {snapshot}
+        targetSession={managedSession}
+        onadded={() =>
+          (notice =
+            'Missões adicionadas ao fim da fila. O progresso foi preservado.')}
+      />
+      <EndSessionDialog
+        bind:open={endOpen}
+        session={managedSession}
+        {snapshot}
+        onended={() =>
+          (notice =
+            'Sessão encerrada. As atividades incompletas estão disponíveis em Pendentes.')}
+      />
+    {/if}
   {/if}
   <QuickCreate
     bind:open={editOpen}
@@ -1633,9 +1649,7 @@
     font-weight: 500;
     white-space: nowrap;
   }
-  .saved-session-progress strong span {
-    color: #a8bda9;
-  }
+
   @media (max-width: 600px) {
     .saved-session-card {
       padding: 12px;

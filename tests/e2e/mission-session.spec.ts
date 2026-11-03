@@ -118,7 +118,7 @@ for (const removed of ['Primeira', 'Intermediária', 'Última']) {
     ).not.toContainText(removed);
     expect(await storedData(page)).toEqual(before);
     await page
-      .getByRole('link', { name: 'Pausar sessão', exact: true })
+      .getByRole('button', { name: 'Pausar sessão', exact: true })
       .click();
     await page.getByRole('button', { name: 'Todas', exact: true }).click();
     await expect(
@@ -147,7 +147,7 @@ test('remover todas as pendentes limpa a sessão e mantém as missões', async (
   ).toBeNull();
   expect(await storedData(page)).toEqual(before);
   await page
-    .getByRole('link', { name: 'Ver sessões salvas', exact: true })
+    .getByRole('link', { name: 'Ver sessões ativas', exact: true })
     .click();
   await page.getByRole('button', { name: 'Lista', exact: true }).click();
   await page.getByRole('button', { name: 'Todas', exact: true }).click();
@@ -403,11 +403,11 @@ test('sessão executa missões em sequência, persiste e não gera XP ao pular',
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
-  await page.getByRole('button', { name: 'Próxima missão' }).click();
-  await expect(page.getByText('2 de 2 concluídas')).toBeVisible();
-  await page.getByRole('button', { name: 'Finalizar sessão' }).click();
   await expect(
-    page.getByRole('heading', { name: 'Nenhuma sessão em foco.' }),
+    page.getByRole('heading', { name: 'Sessão concluída', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('2 de 2 atividades concluídas.', { exact: true }),
   ).toBeVisible();
   await page.goto('/missoes');
   await page.getByRole('button', { name: 'Concluídas', exact: true }).click();

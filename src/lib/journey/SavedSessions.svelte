@@ -1,5 +1,9 @@
 <script lang="ts">
   import SessionSummary from './SessionSummary.svelte';
+  import { isOpenSession } from '$services/sessionLifecycle';
+  import { reconcileSessions } from '$services/savedSessionService';
+  import SessionSelection from './SessionSelection.svelte';
+  import EndSessionDialog from './EndSessionDialog.svelte';
   import { summarizeSession } from '$services/sessionSummary';
   import { formatCalendar } from '$services/calendar';
   import { onMount } from 'svelte';
@@ -51,18 +55,44 @@
     removalOpen = $state(false);
   let removalMode = $state<RemovalMode>('archive');
   let feedback = $state('');
+  let addOpen = $state(false),
+    endOpen = $state(false);
+  let finishedSession = $state<SavedMissionSession>();
   guardUpdates(
-    () => busy || executionBusy || editOpen || reviewOpen || removalOpen,
+    () =>
+      busy ||
+      executionBusy ||
+      editOpen ||
+      reviewOpen ||
+      removalOpen ||
+      addOpen ||
+      endOpen,
   );
+  $effect(() => {
+    if (!session) executionBusy = false;
+  });
   const observedRevisions = new SvelteMap<string, number>();
   onMount(() => {
+    void reconcileSessions().catch(
+      () => (error = 'Não foi possível atualizar as sessões.'),
+    );
     const sub = liveQuery(async () => ({
       sessions: await db.savedMissionSessions.toArray(),
       journey: await readJourneySnapshot(),
     })).subscribe({
       next: (data) => {
+        if (
+          session &&
+          data.sessions.some(
+            (row) => row.id === session!.id && !isOpenSession(row),
+          )
+        ) {
+          const closed = data.sessions.find((row) => row.id === session!.id)!;
+          if (closed.closedReason === 'completed') finishedSession = session;
+          session = undefined;
+        }
         const active = data.sessions.find((row) => row.status === 'active');
-        if (!active) session = undefined;
+        if (!active || finishedSession) session = undefined;
         else if (active.revision >= (observedRevisions.get(active.id) ?? 0)) {
           session = active;
           observedRevisions.set(active.id, active.revision);
@@ -221,6 +251,7 @@
   async function quickComplete() {
     if (!session || !current || !quickEligible || busy || executionBusy) return;
     const title = current.title;
+    const running = session;
     busy = true;
     error = '';
     try {
@@ -232,7 +263,10 @@
         requestId: `quick:${session.id}:${current.id}:${current.revision}`,
       });
       observedRevisions.set(result.session.id, result.session.revision);
-      session = result.session;
+      if (result.session.status === 'ended') {
+        finishedSession = running;
+        session = undefined;
+      } else session = result.session;
       feedback = result.event
         ? `${title} concluída · +${result.event.reward.xp} XP · +${result.event.reward.gold} Ouro${result.event.reward.food ? ` · +${result.event.reward.food} Comida` : ''}`
         : 'Esta conclusão já estava registrada. Nenhuma recompensa foi duplicada.';
@@ -260,23 +294,27 @@
         <Button
           variant="secondary"
           disabled={busy || executionBusy}
+          onclick={() => (addOpen = true)}>+ Adicionar missões</Button
+        >
+        <Button
+          variant="secondary"
+          disabled={busy || executionBusy}
           onclick={() =>
             update({ mode: session!.mode === 'focus' ? 'overview' : 'focus' })}
           >{session.mode === 'focus' ? 'Visão geral' : 'Modo foco'}</Button
         >
-        <a
-          class="lmu-button lmu-button--secondary"
-          href="/missoes"
-          onclick={async (event) => {
-            event.preventDefault();
-            if (busy || executionBusy) return;
-            if (await update({ status: 'paused' })) await goto('/missoes');
-          }}>Pausar sessão</a
+        <Button
+          variant="secondary"
+          disabled={busy || executionBusy}
+          onclick={async () => {
+            if (await update({ status: 'paused' }))
+              await goto('/missoes?view=sessions');
+          }}>Pausar sessão</Button
         >
         <Button
           variant="quiet"
           disabled={busy || executionBusy}
-          onclick={() => update({ status: 'ended' })}>Encerrar sessão</Button
+          onclick={() => (endOpen = true)}>Encerrar sessão</Button
         >
       </div>
     </header>
@@ -560,13 +598,27 @@
                     ),
                   ),
                 )}>Revisar pendentes</Button
-            ><Button onclick={() => update({ status: 'ended' })}
-              >Finalizar sessão</Button
-            >
+            ><Button onclick={() => (endOpen = true)}>Finalizar sessão</Button>
           </div>
         </section>{/if}
     </div>
     {#if snapshot}<SessionSummary {session} data={snapshot} />{/if}
+    {#if snapshot}
+      <SessionSelection
+        bind:open={addOpen}
+        {snapshot}
+        targetSession={session}
+        onadded={() =>
+          (feedback =
+            'Missões adicionadas ao fim da fila. Seu progresso foi preservado.')}
+      />
+      <EndSessionDialog
+        bind:open={endOpen}
+        {session}
+        {snapshot}
+        onended={() => goto('/missoes')}
+      />
+    {/if}
     {#if snapshot && currentTask}<QuickCreate
         bind:open={editOpen}
         {snapshot}
@@ -587,14 +639,33 @@
               ? 'Missão excluída definitivamente. Seus saldos foram preservados.'
               : 'Missão arquivada. As demais atividades foram preservadas.')}
       />{/if}
+  {:else if finishedSession && snapshot}<div
+      class="rpg-frame session-empty"
+      role="status"
+    >
+      <ApprovedIcon name="concluida" size={64} />
+      <h1>Sessão concluída</h1>
+      <p>
+        {finishedSession.occurrenceIds.length} de {finishedSession.occurrenceIds
+          .length} atividades concluídas.
+      </p>
+      <p>
+        As recompensas já foram registradas nas missões. Esta sessão não aparece
+        mais em Sessões ativas.
+      </p>
+      <SessionSummary session={finishedSession} data={snapshot} />
+      <a class="lmu-button lmu-button--primary" href="/missoes"
+        >Voltar às missões</a
+      >
+    </div>
   {:else}<div class="rpg-frame session-empty">
       <h1>Nenhuma sessão em foco.</h1>
       <p>
-        Retome uma sessão salva ou monte outra nas missões. Seu progresso
+        Retome uma sessão pausada ou monte outra nas missões. Seu progresso
         continua preservado.
       </p>
       <a class="lmu-button lmu-button--primary" href="/missoes?view=sessions"
-        >Ver sessões salvas</a
+        >Ver sessões ativas</a
       >
     </div>{/if}
 </section>
@@ -927,7 +998,7 @@
       gap: 8px;
     }
     .activity-identity {
-      margin: 8px 0;
+      margin: 4px 0;
     }
     .session-heading h1 {
       font-size: 1.7rem;

@@ -25,7 +25,6 @@
     { href: '/perfil', label: 'Herói e equipamentos' },
     { href: '/config', label: 'Configurações e backup' },
     { href: '/revisoes', label: 'Revisões e sessões' },
-    { href: '/arquivo/missoes', label: 'Organização avançada de missões' },
     { href: '/santuario', label: 'Santuário' },
     { href: '/bestiario', label: destinations.companions },
     { href: '/loja', label: 'Loja' },

@@ -399,14 +399,18 @@ describe('rotinas, sessões e backup', () => {
       recurrence: { kind: 'daily' },
     });
   });
-  it('várias sessões compartilham progresso e apenas uma permanece em foco', async () => {
+  it('sessões independentes mantêm apenas uma em foco e impedem reservar a mesma ocorrência', async () => {
     const row = await mission();
     const a = await saveSession(newSavedSession('Primeira', [row.id]));
-    const b = await saveSession(newSavedSession('Segunda', [row.id]));
+    await expect(
+      saveSession(newSavedSession('Duplicada', [row.id])),
+    ).rejects.toThrow('outra sessão');
+    const independent = await mission();
+    const b = await saveSession(newSavedSession('Segunda', [independent.id]));
     expect((await db.savedMissionSessions.get(a.id))!.status).toBe('paused');
     expect((await db.savedMissionSessions.get(b.id))!.status).toBe('active');
     await progress(row.id, 20);
-    expect(await db.occurrences.count()).toBe(1);
+    expect(await db.occurrences.count()).toBe(2);
     expect((await db.occurrences.get(row.id))!.value).toBe(20);
     await expect(saveSession({ ...a, cursor: 1 }, a.revision)).rejects.toThrow(
       'outra aba',
