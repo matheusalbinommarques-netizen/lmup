@@ -333,7 +333,11 @@
             </div>
             <p class="lmu-hint area-icon-preview">
               <ApprovedIcon
-                name={areaIconKey({ areaId: Number(area) }, snapshot.areas)}
+                name={areaIconKey(
+                  { areaId: Number(area) },
+                  snapshot.areas,
+                  snapshot.profile?.generalAreaIconKey,
+                )}
                 size={26}
               />Ícone herdado da área.
             </p>

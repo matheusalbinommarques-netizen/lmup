@@ -20,6 +20,8 @@ import type {
 // PROFILE (herói)
 // ---------------------------------------------
 export interface Profile {
+  /** Presentation preference for the implicit area (ID 0); schema 6 stays unchanged. */
+  generalAreaIconKey?: string | null;
   personalTaskDeletions?: PersonalTaskDeletion[];
   /** Versioned narrative state, separate from the legacy pilot and all resources. */
   world?: WorldState;

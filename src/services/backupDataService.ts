@@ -127,6 +127,11 @@ export function validateBackup(input: unknown): JourneyBackup {
   const profile = data.profile == null ? null : object(data.profile, 'profile');
   if (profile) {
     if (
+      profile.generalAreaIconKey != null &&
+      !isTaskIconKey(profile.generalAreaIconKey)
+    )
+      fail('ícone de Geral inválido.');
+    if (
       profile.personalTaskDeletions !== undefined &&
       !validPersonalDeletions(profile.personalTaskDeletions)
     )

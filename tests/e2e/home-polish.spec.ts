@@ -227,7 +227,7 @@ for (const state of states)
         await expect(page.locator('.day-plan li')).toHaveCount(0);
       } else {
         await expect(
-          page.getByRole('button', { name: 'Começar', exact: true }),
+          page.getByRole('button', { name: 'Começar missão', exact: true }),
         ).toBeVisible();
         await expect(page.locator('#next-title')).toHaveText(
           'Preparar uma proposta para o próximo projeto',
@@ -245,7 +245,7 @@ for (const state of states)
       }
       if (state === 'concluidas') {
         await expect(page.locator('.daily-summary')).toContainText(
-          '2 de 2 ocorrências',
+          '2 de 2 missões',
         );
         await expect(page.locator('.daily-rewards')).toContainText('+106 XP');
         await expect(page.locator('.daily-rewards')).toContainText('+50 Ouro');
@@ -325,7 +325,9 @@ for (const state of states)
       ).toBeFocused();
     }
     if (state === 'prioridade') {
-      await page.getByRole('button', { name: 'Começar', exact: true }).click();
+      await page
+        .getByRole('button', { name: 'Começar missão', exact: true })
+        .click();
       await expect(page).toHaveURL(/\/missao\/501$/);
     }
     expect(errors).toEqual([]);

@@ -2,7 +2,7 @@ import { beforeEach, expect, it } from 'vitest';
 import { db } from './db';
 import { initializeJourney } from './profileService';
 import { areaIconKey, migrateAreaIcons } from './areaIcons';
-import { saveArea, deleteArea } from './areaService';
+import { saveArea, deleteArea, saveGeneralAreaIcon } from './areaService';
 import { saveTaskDefinition } from './taskDefinitionService';
 import { completeTask } from './taskService';
 import { createJourneyBackup, restoreJourneyBackup } from './backupDataService';
@@ -140,3 +140,57 @@ it.each(['../../outside', 'toString', '', 42, { key: 'estudo' }])(
     expect((await createJourneyBackup()).data).toEqual(before.data);
   },
 );
+
+it('personaliza Geral sem criar área, alterar missões ou economia, e preserva no backup', async () => {
+  const area = await saveArea('Outra', undefined, 'exercicio');
+  const task = await legacy(0);
+  await completeTask(task);
+  const before = await createJourneyBackup();
+  await saveGeneralAreaIcon('estudo', undefined);
+  const profile = (await db.profile.get(1))!;
+  expect(areaIconKey({ areaId: 0 }, [], profile.generalAreaIconKey)).toBe(
+    'estudo',
+  );
+  expect(areaIconKey({}, [], profile.generalAreaIconKey)).toBe('estudo');
+  expect(
+    areaIconKey(
+      { areaId: area },
+      await db.areas.toArray(),
+      profile.generalAreaIconKey,
+    ),
+  ).toBe('exercicio');
+  expect(
+    areaIconKey({ areaId: 999 }, [], profile.generalAreaIconKey),
+  ).toBeNull();
+  const saved = await createJourneyBackup();
+  expect(saved.data.areas).toEqual(before.data.areas);
+  expect(saved.data.tasks).toEqual(before.data.tasks);
+  expect(saved.data.activityEvents).toEqual(before.data.activityEvents);
+  expect(saved.data.profile).toEqual({
+    ...before.data.profile,
+    generalAreaIconKey: 'estudo',
+  });
+  expect(db.verno).toBe(6);
+  await saveGeneralAreaIcon('exercicio', 'estudo');
+  await restoreJourneyBackup(saved);
+  expect((await db.profile.get(1))?.generalAreaIconKey).toBe('estudo');
+  await restoreJourneyBackup(before);
+  expect((await db.profile.get(1))?.generalAreaIconKey).toBeUndefined();
+});
+
+it('recusa edição concorrente e backup inválido de Geral sem gravações parciais', async () => {
+  await saveGeneralAreaIcon('estudo', undefined);
+  const saved = await createJourneyBackup();
+  await expect(saveGeneralAreaIcon('exercicio', undefined)).rejects.toThrow(
+    'outra aba',
+  );
+  await expect(saveGeneralAreaIcon('toString', 'estudo')).rejects.toThrow(
+    'ícone',
+  );
+  const invalid = structuredClone(saved);
+  invalid.data.profile!.generalAreaIconKey = 'toString';
+  await expect(restoreJourneyBackup(invalid)).rejects.toThrow('ícone');
+  expect((await createJourneyBackup()).data).toEqual(saved.data);
+  await saveGeneralAreaIcon(null, 'estudo');
+  expect((await db.profile.get(1))?.generalAreaIconKey).toBeNull();
+});

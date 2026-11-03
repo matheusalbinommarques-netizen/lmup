@@ -240,6 +240,7 @@
     areaIconKey(
       data?.tasks.find((task) => task.id === row.taskId),
       data?.areas ?? [],
+      data?.profile?.generalAreaIconKey,
     );
   async function execute(row: Occurrence) {
     if (busy) return;
@@ -284,9 +285,8 @@
         fetchpriority="high"
       />
       <div class="hero-copy">
-        <p class="lmu-eyebrow">Hoje · Level Me Up</p>
         <h1>{greeting}{name ? `, ${name}` : ''}.</h1>
-        <p>Seu plano de hoje, em um só lugar.</p>
+        <p>Suas missões te aguardam, e seu futuro depende apenas de você!</p>
       </div>
       <span class="today-date"
         ><ApprovedIcon name="agenda" size={26} />{now.toLocaleDateString(
@@ -335,13 +335,7 @@
               </p>{/if}
           </div>
           {#if next}<Button disabled={busy} onclick={() => execute(next)}
-              ><ApprovedIcon name="comecar" size={28} />{[
-                'active',
-                'paused',
-                'partial',
-              ].includes(next.status)
-                ? 'Continuar'
-                : 'Começar'}</Button
+              >Começar missão</Button
             >{:else}<Button onclick={() => (open = true)}>Nova missão</Button
             >{/if}
           <ContextMenu
@@ -431,27 +425,17 @@
         <section class="rpg-frame daily-summary">
           <h2>Progresso do dia</h2>
           <div>
-            <DayProgress
-              {completed}
-              total={planned.length}
-              noun="ocorrências"
-            />
-            <small>Somente o planejamento atual</small>
+            <DayProgress {completed} total={planned.length} noun="missões" />
             <div class="daily-rewards">
-              <span
-                ><ApprovedIcon name="xp" size={32} />{received.xp >= 0
-                  ? '+'
-                  : ''}{received.xp} XP</span
-              ><span
-                ><ApprovedIcon name="ouro" size={32} />{received.gold >= 0
-                  ? '+'
-                  : ''}{received.gold} Ouro</span
-              ><span
-                ><ApprovedIcon name="alimentacao" size={26} />{received.food >=
-                0
-                  ? '+'
-                  : ''}{received.food} Comida</span
-              ><small>Recebidos hoje · ganhos líquidos</small>
+              {#each [{ icon: 'xp', label: 'XP', amount: received.xp }, { icon: 'ouro', label: 'Ouro', amount: received.gold }, { icon: 'alimentacao', label: 'Comida', amount: received.food }] as resource (resource.label)}
+                <span>
+                  <ApprovedIcon name={resource.icon} size={32} />
+                  <strong
+                    >{resource.amount >= 0 ? '+' : ''}{resource.amount}</strong
+                  >
+                  <small>{resource.label}</small>
+                </span>
+              {/each}
             </div>
           </div>
         </section>
@@ -779,12 +763,6 @@
     max-width: 700px;
     min-width: 0;
   }
-  .hero-copy .lmu-eyebrow {
-    color: #ffe19a;
-    font-size: 0.66rem;
-    margin: 0;
-    letter-spacing: 0.04em;
-  }
   .hero-copy h1 {
     font: 500 clamp(1.8rem, 2.8vw, 2.65rem)/1.1 var(--lmu-display);
     color: #fff1d6;
@@ -820,11 +798,12 @@
   }
   .today-main {
     display: grid;
+    align-items: start;
     grid-template-columns: minmax(0, 1.85fr) minmax(285px, 1fr);
     gap: 16px;
   }
   .today-plan {
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto auto;
   }
   .today-plan,
   .today-aside {
@@ -964,27 +943,43 @@
     padding: 14px 18px;
   }
   .daily-summary > div {
-    display: flex;
-    gap: 22px;
-    justify-content: space-evenly;
-    align-items: center;
+    display: grid;
+    justify-items: center;
+    gap: 14px;
     margin-top: 12px;
+  }
+  .daily-summary h2 {
+    text-align: center;
+    margin: 0;
   }
   .daily-rewards {
     display: grid;
-    gap: 6px;
-    border-left: 1px solid #8d7d4b77;
-    padding-left: 20px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    gap: 8px;
+    border-top: 1px solid #8d7d4b55;
+    padding-top: 12px;
   }
   .daily-rewards > span {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 8px;
-    font-size: 0.95rem;
+    justify-content: center;
+    gap: 5px;
+    font-size: 0.85rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    text-align: center;
+  }
+  .daily-rewards strong {
+    font-weight: 600;
   }
   .daily-rewards small {
-    color: #98ae9f;
-    font-size: 0.65rem;
+    color: #bdc9b7;
+    font-size: 0.75rem;
+  }
+  .today-aside {
+    align-content: start;
   }
   .upcoming-achievement {
     display: flex;
@@ -1147,12 +1142,10 @@
     }
     .hero-copy {
       max-width: 100%;
+      padding-top: 24px;
     }
     .hero-copy h1 {
       font-size: 1.9rem;
-    }
-    .hero-copy .lmu-eyebrow {
-      max-width: calc(100% - 125px);
     }
     .today-hero > img {
       object-position: 76% center;
@@ -1176,11 +1169,6 @@
     }
     .daily-summary > div {
       gap: 8px;
-      flex-wrap: wrap;
-    }
-    .daily-rewards {
-      border: 0;
-      padding: 0;
     }
     .daily-summary {
       padding: 14px;

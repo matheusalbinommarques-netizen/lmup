@@ -1,6 +1,34 @@
 import { db } from './db';
 import { isTaskIconKey } from '$lib/content/visualAssets';
 
+/** Customize the implicit area without creating a second Geral or touching missions. */
+export async function saveGeneralAreaIcon(
+  iconKey: string | null,
+  expectedIconKey: string | null | undefined,
+) {
+  if (iconKey !== null && !isTaskIconKey(iconKey))
+    throw new Error('Escolha um ícone da biblioteca disponível.');
+  return db.transaction('rw', db.profile, db.productivityAudit, async () => {
+    const profile = await db.profile.get(1);
+    if (!profile)
+      throw new Error('Seu perfil não está disponível. Reabra a edição.');
+    if (profile.generalAreaIconKey !== expectedIconKey)
+      throw new Error(
+        'O ícone de Geral mudou em outra aba. Reabra para conferir.',
+      );
+    if (profile.generalAreaIconKey === iconKey) return;
+    await db.profile.update(1, { generalAreaIconKey: iconKey });
+    await db.productivityAudit.add({
+      id: crypto.randomUUID(),
+      entityId: 'area:0',
+      action: 'area-icon-edit',
+      recordedAt: new Date().toISOString(),
+      before: { iconKey: profile.generalAreaIconKey ?? null },
+      after: { iconKey },
+    });
+  });
+}
+
 function areaName(value: string) {
   const name = value.trim();
   if (!name || name.length > 80)

@@ -2,6 +2,7 @@
   import type { JourneySnapshot } from '$services/journeyQuery';
   import {
     saveArea,
+    saveGeneralAreaIcon,
     deleteArea,
     transferAreaTasks,
   } from '$services/areaService';
@@ -76,6 +77,7 @@
     notice = $state('');
   let newIcon = $state<string | null>(null);
   let editIcon = $state<string | null>(null);
+  let generalExpected = $state<string | null | undefined>();
   let editing = $state<number | null>(null),
     rename = $state(''),
     removing = $state<number | null>(null),
@@ -217,11 +219,50 @@
   <ul class="area-list">
     {#if !search || 'geral'.includes(search.toLocaleLowerCase('pt-BR'))}<li>
         <div>
-          <strong><ApprovedIcon size={28} /> Geral</strong><small
+          <strong
+            ><ApprovedIcon
+              name={snapshot.profile?.generalAreaIconKey}
+              size={28}
+            /> Geral</strong
+          ><small
             >{snapshot.tasks.filter((task) => !task.archived && !task.areaId)
               .length} missões · Área padrão</small
           >
         </div>
+        {#if editing === 0}
+          <form
+            onsubmit={(event) => {
+              event.preventDefault();
+              void act(async () => {
+                await saveGeneralAreaIcon(editIcon, generalExpected);
+                editing = null;
+              }, 'Ícone de Geral atualizado.');
+            }}
+          >
+            <fieldset disabled={busy} class="area-icon-field">
+              <IconPicker bind:value={editIcon} />
+            </fieldset>
+            <div class="journey-actions">
+              <Button type="submit" loading={busy}>Salvar ícone</Button>
+              <Button
+                variant="quiet"
+                disabled={busy}
+                onclick={() => (editing = null)}>Cancelar</Button
+              >
+            </div>
+          </form>
+        {:else}
+          <Button
+            variant="secondary"
+            disabled={busy}
+            onclick={() => {
+              editing = 0;
+              editIcon = snapshot.profile?.generalAreaIconKey ?? null;
+              generalExpected = snapshot.profile?.generalAreaIconKey;
+              removing = null;
+            }}>Editar ícone de Geral</Button
+          >
+        {/if}
         {@render overview(0, 'Geral')}
       </li>{/if}
     {#each matchingAreas as area (area.id)}
@@ -452,6 +493,22 @@
 {/if}
 
 <style>
+  .area-create input,
+  .area-create textarea,
+  .area-list form input,
+  .area-list form textarea {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .area-create textarea,
+  .area-list form textarea {
+    height: 72px;
+    min-height: 72px;
+    max-height: 72px;
+    resize: none;
+    overflow-y: auto;
+  }
+
   .area-browser-tools {
     display: flex;
     gap: 16px;
@@ -616,7 +673,7 @@
     gap: 0.4rem;
   }
   .area-create label {
-    flex: 1;
+    flex: 1 1 100%;
     min-width: 0;
   }
   .area-browser-tools input,

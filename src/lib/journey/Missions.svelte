@@ -943,7 +943,11 @@
                       >{/if}</span
                   >{/if}
                 <ApprovedIcon
-                  name={areaIconKey(task, data?.areas ?? [])}
+                  name={areaIconKey(
+                    task,
+                    data?.areas ?? [],
+                    data?.profile?.generalAreaIconKey,
+                  )}
                   size={32}
                 />
                 <div class="mission-copy">

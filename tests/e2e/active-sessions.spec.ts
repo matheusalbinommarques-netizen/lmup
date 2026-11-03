@@ -161,22 +161,9 @@ test('aba direta, inclusão no fim, pausa e encerramento liberam pendências sem
   await page
     .getByRole('button', { name: 'Encerrar sessão', exact: true })
     .click();
-  const end = page.getByRole('dialog', {
-    name: 'Encerrar sessão?',
-    exact: true,
-  });
-  await expect(end).toContainText('2 pendentes voltam para Pendentes');
-  await capture(page, 'encerrar', info.project.name);
-  await end
-    .getByRole('button', { name: 'Continuar sessão', exact: true })
-    .click();
-  await expect(page).toHaveURL(/\/sessoes$/);
-  await page
-    .getByRole('button', { name: 'Encerrar sessão', exact: true })
-    .click();
-  await end
-    .getByRole('button', { name: 'Encerrar e liberar pendências', exact: true })
-    .click();
+  await expect(
+    page.getByRole('dialog', { name: 'Encerrar sessão?', exact: true }),
+  ).toHaveCount(0);
   await expect(page).toHaveURL(/\/missoes$/);
   await expect(
     page.locator('.mission-task-row').filter({ hasText: 'Segunda' }),
@@ -260,11 +247,7 @@ test('sessão encerrada em outra aba não pode receber missões e organização 
     .check();
   await other
     .locator('.saved-session-card')
-    .getByRole('button', { name: 'Encerrar', exact: true })
-    .click();
-  await other
-    .getByRole('dialog', { name: 'Encerrar sessão?', exact: true })
-    .getByRole('button', { name: 'Encerrar e liberar pendências', exact: true })
+    .getByRole('button', { name: 'Encerrar sessão', exact: true })
     .click();
   await expect(add).not.toBeVisible();
   await expect(

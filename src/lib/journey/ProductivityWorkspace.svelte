@@ -1,8 +1,7 @@
 <script lang="ts">
   import { isOpenSession } from '$services/sessionLifecycle';
   import SessionSelection from './SessionSelection.svelte';
-  import EndSessionDialog from './EndSessionDialog.svelte';
-  import { timePicker } from '$lib/ui/timePicker';
+  import EndSessionButton from './EndSessionButton.svelte';
   import { areaIconKey } from '$services/areaIcons';
   import { onMount } from 'svelte';
   import { page } from '$app/state';
@@ -72,8 +71,7 @@
     reconstructDate = $state(addCalendarDays(dateKey(), -1));
   let sessions = $state<SavedMissionSession[]>([]);
   let managedSession = $state<SavedMissionSession>(),
-    addOpen = $state(false),
-    endOpen = $state(false);
+    addOpen = $state(false);
   let routineSearch = $state(''),
     recoverySearch = $state(''),
     recoveryStatus = $state('pending');
@@ -161,6 +159,7 @@
     areaIconKey(
       tasks.find((task) => task.id === row.taskId),
       snapshot.areas,
+      snapshot.profile?.generalAreaIconKey,
     );
   function editFuture(row: Occurrence) {
     creatingForRoutine = false;
@@ -797,7 +796,11 @@
                 tasks.find((task) => task.id === entry.taskId)}
               <li>
                 <span class="sequence-number">{index + 1}</span><ApprovedIcon
-                  name={areaIconKey(task, snapshot.areas)}
+                  name={areaIconKey(
+                    task,
+                    snapshot.areas,
+                    snapshot.profile?.generalAreaIconKey,
+                  )}
                   size={32}
                 /><span class="sequence-title"
                   >{task?.title ?? 'Missão criada'}<small
@@ -805,8 +808,11 @@
                       ?.nome ?? 'Geral'}</small
                   ></span
                 ><input
-                  type="time"
-                  use:timePicker
+                  type="text"
+                  inputmode="text"
+                  maxlength="5"
+                  pattern="([01][0-9]|2[0-3]):[0-5][0-9]"
+                  placeholder="HH:mm"
                   aria-label={`Horário de ${task?.title ?? 'missão'}`}
                   value={entry.time ?? ''}
                   onchange={(event) =>
@@ -866,7 +872,11 @@
                       { taskId: task.id!, time: task.plannedTime ?? null },
                     ])}
                   ><ApprovedIcon
-                    name={areaIconKey(task, snapshot.areas)}
+                    name={areaIconKey(
+                      task,
+                      snapshot.areas,
+                      snapshot.profile?.generalAreaIconKey,
+                    )}
                     size={28}
                   />{task.title}<span>Adicionar +</span></button
                 >{/each}{#if !availableTasks.length}<p class="lmu-hint">
@@ -958,14 +968,14 @@
               addOpen = true;
             }}>+ Adicionar missões</Button
           >
-          <Button
-            variant="secondary"
+          <EndSessionButton
+            {session}
             disabled={busy}
-            onclick={() => {
-              managedSession = session;
-              endOpen = true;
-            }}>Encerrar</Button
-          >
+            onbusy={(value) => (busy = value)}
+            onended={() =>
+              (notice =
+                'Sessão encerrada. Progresso preservado e pendências liberadas.')}
+          />
         </div>
         <details>
           <summary>Recompensas registradas</summary><SessionSummary
@@ -994,14 +1004,6 @@
         onadded={() =>
           (notice =
             'Missões adicionadas ao fim da fila. O progresso foi preservado.')}
-      />
-      <EndSessionDialog
-        bind:open={endOpen}
-        session={managedSession}
-        {snapshot}
-        onended={() =>
-          (notice =
-            'Sessão encerrada. As atividades incompletas estão disponíveis em Pendentes.')}
       />
     {/if}
   {/if}

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { timePicker } from '$lib/ui/timePicker';
   import type { Planning, ProgressMethod } from '$services/productivityTypes';
   let {
     value = $bindable<Planning>({}),
@@ -44,8 +43,11 @@
   <div class="planning-details">
     {#if section !== 'tracking'}<label
         >Início desejado<input
-          type="time"
-          use:timePicker
+          type="text"
+          inputmode="text"
+          maxlength="5"
+          pattern="([01][0-9]|2[0-3]):[0-5][0-9]"
+          placeholder="HH:mm"
           disabled={calendarLocked}
           value={value.plannedTime ?? ''}
           onchange={(e) =>
