@@ -207,7 +207,16 @@ test('horário de rotina aceita correção pelo teclado e valida HH:mm', async (
     exact: true,
   });
   await expect(time).toHaveAttribute('type', 'text');
-  await time.fill('19:30');
+  await time.fill('');
+  await time.pressSequentially('13');
+  await expect(time).toHaveValue('13:');
+  expect(await time.evaluate((el: HTMLInputElement) => el.selectionStart)).toBe(
+    3,
+  );
+  await time.pressSequentially('00');
+  await expect(time).toHaveValue('13:00');
+  await time.fill('1930');
+  await expect(time).toHaveValue('19:30');
   await time.press('End');
   await time.press('Backspace');
   await time.press('5');
@@ -228,4 +237,104 @@ test('horário de rotina aceita correção pelo teclado e valida HH:mm', async (
     .click();
   await expect(time).toHaveValue('19:30');
   await capture(page, `horario-${info.project.name}`);
+});
+
+test('editor formata horário sem separador e alinha passos com os outros campos', async ({
+  page,
+}, info) => {
+  await seed(page);
+  await page.goto('/missoes');
+  await page.getByRole('button', { name: 'Nova missão', exact: true }).click();
+  const form = page.getByRole('dialog', {
+    name: 'Uma nova missão',
+    exact: true,
+  });
+  await form
+    .getByLabel('O que você quer fazer?', { exact: true })
+    .fill('Missão com passos alinhados');
+  await form.getByRole('tab', { name: 'Planejamento', exact: true }).click();
+  const time = form.getByRole('textbox', {
+    name: 'Início desejado',
+    exact: true,
+  });
+  await time.pressSequentially('1300');
+  await expect(time).toHaveValue('13:00');
+  await time.press('Home');
+  await time.press('Shift+ArrowRight');
+  await time.press('Shift+ArrowRight');
+  await time.pressSequentially('09');
+  await expect(time).toHaveValue('09:00');
+  await time.press('End');
+  await time.press('Backspace');
+  await time.press('Backspace');
+  await time.pressSequentially('45');
+  await expect(time).toHaveValue('09:45');
+  await time.press('Home');
+  await time.press('ArrowRight');
+  await time.press('ArrowRight');
+  await time.press('ArrowRight');
+  await time.press('Backspace');
+  expect(await time.evaluate((el: HTMLInputElement) => el.selectionStart)).toBe(
+    2,
+  );
+  await time.press('Backspace');
+  await time.press('3');
+  await expect(time).toHaveValue('03:45');
+  await time.fill('');
+  await time.pressSequentially('1300');
+  await form
+    .getByRole('tab', { name: 'Passos e detalhes', exact: true })
+    .click();
+  const add = form.getByRole('button', {
+    name: '+ Adicionar passo',
+    exact: true,
+  });
+  const project = form.getByRole('combobox', { name: 'Projeto', exact: true });
+  const x = (await project.boundingBox())!.x;
+  expect(Math.abs((await add.boundingBox())!.x - x)).toBeLessThan(2);
+  await add.click();
+  const first = form.getByRole('textbox', { name: 'Passo 1', exact: true });
+  await first.fill('Preparar o material');
+  expect(Math.abs((await first.boundingBox())!.x - x)).toBeLessThan(2);
+  expect(Math.abs((await add.boundingBox())!.x - x)).toBeLessThan(2);
+  await add.click();
+  await form
+    .getByRole('textbox', { name: 'Passo 2', exact: true })
+    .fill('Executar a atividade');
+  await form
+    .getByRole('button', { name: 'Mover passo 2 para cima', exact: true })
+    .click();
+  await expect(first).toHaveValue('Executar a atividade');
+  await form
+    .getByRole('button', { name: 'Remover passo 2', exact: true })
+    .click();
+  await expect(
+    form.getByRole('textbox', { name: 'Passo 2', exact: true }),
+  ).toHaveCount(0);
+  await capture(page, `passos-alinhados-${info.project.name}`);
+  await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
+  await expect(form).not.toBeVisible();
+  const stored = await page.evaluate(
+    () =>
+      new Promise<{ plannedTime: string; subtasks: string[] }>(
+        (resolve, reject) => {
+          const request = indexedDB.open('LevelMeUpDB');
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => {
+            const db = request.result;
+            const tx = db.transaction('tasks');
+            const read = tx.objectStore('tasks').getAll();
+            read.onsuccess = () =>
+              resolve(
+                read.result.find(
+                  (task) => task.title === 'Missão com passos alinhados',
+                ),
+              );
+            tx.oncomplete = () => db.close();
+          };
+        },
+      ),
+  );
+  expect(stored.plannedTime).toBe('13:00');
+  expect(stored.subtasks).toEqual(['Executar a atividade']);
 });

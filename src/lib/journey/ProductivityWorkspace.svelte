@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { timeEntry } from '$lib/ui/timeEntry';
   import { isOpenSession } from '$services/sessionLifecycle';
   import SessionSelection from './SessionSelection.svelte';
   import EndSessionButton from './EndSessionButton.svelte';
@@ -809,7 +810,8 @@
                   ></span
                 ><input
                   type="text"
-                  inputmode="text"
+                  inputmode="numeric"
+                  use:timeEntry
                   maxlength="5"
                   pattern="([01][0-9]|2[0-3]):[0-5][0-9]"
                   placeholder="HH:mm"

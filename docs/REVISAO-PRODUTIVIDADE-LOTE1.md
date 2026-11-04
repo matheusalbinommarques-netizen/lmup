@@ -100,3 +100,21 @@ node scripts/serve-static.mjs
 ```
 
 Uma prévia aberta antes de um novo build deve ser recarregada.
+
+## Ajustes após revisão das capturas
+
+- Horário: ao digitar os dois dígitos da hora, o campo insere `:` e posiciona
+  imediatamente o cursor nos minutos (`13` → `13:` → `13:00`). Não é necessário
+  digitar o separador. O mesmo comportamento atende o editor de missão e as
+  entradas de rotina, com teclado numérico em dispositivos móveis.
+- A formatação preserva substituição de horas/minutos, Backspace, colagem de
+  `1930` como `19:30`, limpeza e validação de horários inválidos. Não normaliza
+  silenciosamente valores fora de 00:00 a 23:59.
+- Passos: removido o recuo de 28px do botão e a coluna visual de numeração.
+  Campos dos passos e botão agora se alinham à margem dos demais campos.
+  Ordem, nomes acessíveis, mover e remover continuam funcionando.
+- Verificação: oito cenários de navegador desktop/mobile aprovados na seleção
+  do Lote 1 (o caso novo do editor foi repetido após corrigir seu seletor de
+  Projeto). Conferidas posição do cursor, edição dos segmentos, alinhamento,
+  ordenação/exclusão e persistência do horário e dos passos. Tipos sem erros ou
+  avisos, lint e build aprovados. Capturas adicionais `passos-alinhados-*`.
