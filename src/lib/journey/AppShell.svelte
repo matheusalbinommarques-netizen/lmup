@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { CAMP_PREVIEW } from '$lib/camp/cinematic/previewMode';
   import { page } from '$app/state';
   import { identity, destinations } from '$lib/content/experience';
   import type { Snippet } from 'svelte';
@@ -25,7 +26,7 @@
     { href: '/perfil', label: 'Herói e equipamentos' },
     { href: '/config', label: 'Configurações e backup' },
     { href: '/revisoes', label: 'Revisões e sessões' },
-    { href: '/santuario', label: 'Santuário' },
+    { href: '/santuario', label: 'Registros do ambiente' },
     { href: '/bestiario', label: destinations.companions },
     { href: '/loja', label: 'Loja' },
     { href: '/inventario', label: 'Inventário' },
@@ -36,10 +37,9 @@
     { href: '/', label: 'Hoje', icon: 'today' },
     { href: '/missoes', label: 'Missões', icon: 'missions' },
     { href: '/mundo', label: 'Mundo', icon: 'mundo' },
+    { href: '/refugio/acampamento', label: 'Acampamento', icon: 'refugio' },
     { href: '/perfil', label: 'Herói', icon: 'heroi' },
     { href: '/projetos', label: 'Projetos', icon: 'projetos_navegacao' },
-    { href: '/aposentos', label: 'Aposentos', icon: 'refugio' },
-    { href: '/bestiario', label: 'Companheiros', icon: 'companheiros' },
   ];
   function active(href: string) {
     const path = page.url.pathname;
@@ -56,6 +56,14 @@
         path.startsWith('/missao/') ||
         path.startsWith('/ocorrencia/')
       );
+    if (href === '/refugio/acampamento')
+      return [
+        '/refugio/acampamento',
+        '/aposentos',
+        '/refugio',
+        '/santuario',
+        '/bestiario',
+      ].includes(path);
     if (href === '/aposentos')
       return [
         '/aposentos',
@@ -77,6 +85,11 @@
   class="lmu-design journey-shell rpg-theme visual-shell"
   class:journey-adventure={page.url.pathname === '/aventura'}
   class:journey-home={page.url.pathname === '/'}
+  class:journey-camp={['/refugio/acampamento', '/aposentos'].includes(
+    page.url.pathname,
+  ) ||
+    (CAMP_PREVIEW &&
+      ['/refugio', '/santuario', '/bestiario'].includes(page.url.pathname))}
 >
   <a class="lmu-skip" href="#journey-main">Pular para o conteúdo</a>
   <aside class="journey-sidebar" aria-label="Navegação lateral">

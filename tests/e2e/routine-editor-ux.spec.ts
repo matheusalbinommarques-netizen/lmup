@@ -145,7 +145,9 @@ test('edição de missão vinculada preserva a configuração da sessão iniciad
     .getByRole('button', { name: 'Executar rotina', exact: true })
     .click();
   await expect(page).toHaveURL(/\/sessoes$/);
-  await page.getByRole('button', { name: 'Pausar sessão', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Pausar sessão', exact: true })
+    .click();
   await page.getByRole('button', { name: 'Rotinas', exact: true }).click();
   await page
     .getByRole('button', { name: 'Editar rotina', exact: true })

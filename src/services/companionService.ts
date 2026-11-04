@@ -1,3 +1,5 @@
+import { CAMP_PREVIEW } from '$lib/camp/cinematic/previewMode';
+import { isCampCompanionDiscovered } from '$lib/camp/cinematic/state';
 import { companionContent } from '$lib/content/world';
 // src/services/companionService.ts
 import { db, type Companion, type Profile } from '$services/db';
@@ -203,11 +205,7 @@ export type EvolveResult =
   | {
       ok: false;
       reason:
-        | 'not_found'
-        | 'max_stage'
-        | 'not_enough_food'
-        | 'no_config'
-        | 'locked';
+        'not_found' | 'max_stage' | 'not_enough_food' | 'no_config' | 'locked';
     };
 
 /**
@@ -249,7 +247,12 @@ export async function selectCompanion(companionId: number) {
   await db.transaction('rw', db.profile, db.companions, async () => {
     const profile = await db.profile.get(1),
       companion = await db.companions.get(companionId);
-    if (!profile || !companion || !companionAvailable(companion, profile.level))
+    if (
+      !profile ||
+      !companion ||
+      !companionAvailable(companion, profile.level) ||
+      (CAMP_PREVIEW && !isCampCompanionDiscovered(companion, profile))
+    )
       throw new Error('Este companheiro ainda não está disponível.');
     await db.profile.update(1, { activeCompanionId: companionId });
   });
@@ -272,7 +275,12 @@ export async function feedCompanion(
   return db.transaction('rw', db.profile, db.companions, async () => {
     const profile = await db.profile.get(1),
       companion = await db.companions.get(companionId);
-    if (!profile || !companion || !companionAvailable(companion, profile.level))
+    if (
+      !profile ||
+      !companion ||
+      !companionAvailable(companion, profile.level) ||
+      (CAMP_PREVIEW && !isCampCompanionDiscovered(companion, profile))
+    )
       throw new Error('Este companheiro ainda não está disponível.');
     if (
       options &&
@@ -322,7 +330,11 @@ export async function evolveCompanion(
       companion.requiredLevel ??
       { 1: 1, 2: 5, 3: 15, 4: 20 }[companionId] ??
       Infinity;
-    if (profile.level < required) return { ok: false, reason: 'locked' };
+    if (
+      profile.level < required ||
+      (CAMP_PREVIEW && !isCampCompanionDiscovered(companion, profile))
+    )
+      return { ok: false, reason: 'locked' };
     const state = getCompanionEvolutionState(companion);
     if (!state) return { ok: false, reason: 'no_config' };
     if (!state.nextStage) return { ok: false, reason: 'max_stage' };
@@ -418,7 +430,12 @@ export async function getActiveCompanionBuffs(): Promise<CompanionBuffs | null> 
   }
 
   const companion = await db.companions.get(profile.activeCompanionId);
-  if (!companion || !companionAvailable(companion, profile.level)) return null;
+  if (
+    !companion ||
+    !companionAvailable(companion, profile.level) ||
+    (CAMP_PREVIEW && !isCampCompanionDiscovered(companion, profile))
+  )
+    return null;
   const evo = getCompanionEvolutionState(companion);
   return getCompanionBuffsForState(evo);
 }

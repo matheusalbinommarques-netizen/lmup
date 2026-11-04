@@ -1,3 +1,6 @@
+import type { CampSettlementState } from '$lib/camp/cinematic/settlementState';
+import type { CampPreviewState } from '$lib/camp/cinematic/state';
+import { CAMP_PREVIEW, CAMP_PREVIEW_DB } from '$lib/camp/cinematic/previewMode';
 import type { PersonalTaskDeletion } from './personalTaskDeletion';
 import type { WorldState } from '$lib/world/worldState';
 import type { CampState } from '$lib/camp/campState';
@@ -20,6 +23,9 @@ import type {
 // PROFILE (herói)
 // ---------------------------------------------
 export interface Profile {
+  /** Synthetic cinematic state; only enabled in the isolated preview build. */
+  campPreview?: CampPreviewState;
+  campSettlement?: CampSettlementState;
   personalTaskDeletions?: PersonalTaskDeletion[];
   /** Versioned narrative state, separate from the legacy pilot and all resources. */
   world?: WorldState;
@@ -527,4 +533,6 @@ export class LevelMeUpDB extends Dexie {
   }
 }
 
-export const db = new LevelMeUpDB();
+export const db = new LevelMeUpDB(
+  CAMP_PREVIEW ? CAMP_PREVIEW_DB : 'LevelMeUpDB',
+);

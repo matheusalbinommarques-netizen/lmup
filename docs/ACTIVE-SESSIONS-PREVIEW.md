@@ -38,4 +38,3 @@ Não houve mudança de XP, ouro, comida, modificadores, progressão, inventário
 O ambiente de desenvolvimento e os artefatos volumosos ficam em D:\Codex-artifacts\lmup-active-sessions-20261102 devido à falta de espaço no C. O acesso pela pasta sessoes-ativas-20261102 do workspace foi preservado. A frente de Acampamento em outra branch não foi alterada.
 
 Conferência final: seis cenários de última conclusão rápida/detalhada repetidos nas três larguras e aprovados; o estado de gravação é liberado quando a sessão termina. Build da prévia: 1c4be774c02c5104. Demonstração e todas as capturas da galeria foram abertas e conferidas.
-

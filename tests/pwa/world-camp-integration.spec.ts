@@ -31,17 +31,14 @@ test('Mundo, Aposentos e acampamento coexistem na primeira navegação offline s
   const saved = (await worldData(page)).profile.world;
   await page.goto('/aposentos');
   await expect(
-    page.getByRole('heading', { name: 'Aposentos', exact: true }),
+    page.getByRole('heading', { name: 'Acampamento — Centro', exact: true }),
   ).toBeVisible();
-  await page
-    .getByRole('link', { name: 'Entrar no acampamento →', exact: true })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Acampamento', exact: true }),
-  ).toBeVisible();
-  await expect(page.locator('canvas.terrain-region')).toHaveAttribute(
-    'data-ready',
-    'true',
+  await expect(page.getByTestId('point-caretaker')).toBeAttached();
+  await expect(page.getByTestId('point-interior')).toHaveCount(0);
+  await page.goto('/refugio/acampamento');
+  await expect(page.getByTestId('layered-scene')).toHaveAttribute(
+    'data-scene',
+    'center-empty',
   );
   expect((await worldData(page)).profile.world).toEqual(saved);
   await page.goto('/mundo');

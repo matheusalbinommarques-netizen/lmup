@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Camp from '$lib/camp/Camp.svelte';
+  import CampCinematic from '$lib/camp/cinematic/CampCinematic.svelte';
 </script>
 
-<Camp />
+<CampCinematic initialScene="center" />

@@ -141,7 +141,11 @@ test('mapa sem controles ou lista redundante permite selecionar os pontos com te
   ).toBe(false);
   await page.goto('/aposentos');
   await expect(
-    page.getByRole('heading', { name: 'Aposentos', level: 1, exact: true }),
+    page.getByRole('heading', {
+      name: 'Acampamento — Centro',
+      level: 1,
+      exact: true,
+    }),
   ).toBeVisible();
   await page.goto('/refugio');
   await expect(

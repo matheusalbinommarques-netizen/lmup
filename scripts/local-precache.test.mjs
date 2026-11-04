@@ -119,3 +119,42 @@ test('integrated camp precaches only preserved sprites while laboratory stays ex
   assert.equal(isPrecacheAsset('art/lab/camp/forge-feudalwars.png'), false);
   assert.equal(isPrecacheAsset('art/camp/preservation-manifest.json'), false);
 });
+
+test('cinematic assets are reviewed and cached in the main application and preview', () => {
+  assert.equal(
+    isPrecacheAsset('art/camp-modular/center-built.webp', {
+      campPreview: false,
+    }),
+    true,
+  );
+  assert.equal(
+    isPrecacheAsset('art/camp-modular/center-built.webp', {
+      campPreview: true,
+    }),
+    true,
+  );
+  assert.equal(
+    isPrecacheAsset('art/camp-modular/tree-ancient.png', { campPreview: true }),
+    true,
+  );
+  assert.equal(
+    isPrecacheAsset('art/camp-modular/unknown.png', { campPreview: true }),
+    false,
+  );
+  assert.equal(
+    isPrecacheAsset('art/camp-modular/backup.json', { campPreview: true }),
+    false,
+  );
+});
+
+test('companion compact fallbacks stay essential while larger art and item cards remain optional', () => {
+  assert.equal(isPrecacheAsset('art/companions-v2/wolf-1-160.webp'), true);
+  assert.equal(isPrecacheAsset('art/companions-v2/dragon-3-160.webp'), true);
+  assert.equal(isPrecacheAsset('art/companions-v2/wolf-1-320.webp'), false);
+  assert.equal(isPrecacheAsset('art/companions-v2/dragon-3-320.webp'), false);
+  assert.equal(
+    isPrecacheAsset('art/optimized/items-amuleto-do-cambista-160.webp'),
+    false,
+  );
+  assert.equal(isPrecacheAsset('art/camp-modular/center-built.webp'), true);
+});

@@ -1,3 +1,5 @@
+import { validateCampSettlement } from '$lib/camp/cinematic/settlementState';
+import { validateCampPreview } from '$lib/camp/cinematic/state';
 import {
   mergePersonalDeletions,
   redactPersonalTasks,
@@ -126,6 +128,37 @@ export function validateBackup(input: unknown): JourneyBackup {
   }
   const profile = data.profile == null ? null : object(data.profile, 'profile');
   if (profile) {
+    if (profile.campSettlement != null) {
+      validateCampSettlement(profile.campSettlement);
+      const init = lists.productivityAudit.find(
+        (row) => row.id === 'camp-settlement:init',
+      );
+      const built = lists.productivityAudit.find(
+        (row) => row.id === 'camp-settlement:built',
+      );
+      if (!init || profile.campSettlement.residenceBuilt !== !!built)
+        fail('acampamento cinematográfico sem recibos compatíveis.');
+      if (
+        built &&
+        (!built.after ||
+          !['legacy', 'purchase'].includes(built.after.source) ||
+          built.after.cost !== (built.after.source === 'purchase' ? 50 : 0))
+      )
+        fail('recibo de construção inválido.');
+    }
+    if (profile.campPreview != null) {
+      validateCampPreview(profile.campPreview);
+      if (
+        !lists.productivityAudit.some(
+          (row) => row.id === 'camp-preview:provision',
+        ) ||
+        (profile.campPreview.residenceBuilt &&
+          !lists.productivityAudit.some(
+            (row) => row.id === 'camp-preview:residence:built',
+          ))
+      )
+        fail('demonstração sem recibos de provisão ou construção.');
+    }
     if (
       profile.personalTaskDeletions !== undefined &&
       !validPersonalDeletions(profile.personalTaskDeletions)
@@ -744,6 +777,16 @@ export async function restoreJourneyBackup(input: unknown): Promise<void> {
       restored.world = { ...restored.world, epoch: crypto.randomUUID() };
     if (restored.camp)
       restored.camp = { ...restored.camp, epoch: crypto.randomUUID() };
+    if (restored.campSettlement)
+      restored.campSettlement = {
+        ...restored.campSettlement,
+        epoch: crypto.randomUUID(),
+      };
+    if (restored.campPreview)
+      restored.campPreview = {
+        ...restored.campPreview,
+        epoch: crypto.randomUUID(),
+      };
     await db.profile.put(restored);
     for (const closed of closedSessions) {
       const imported = await db.savedMissionSessions.get(closed.id);

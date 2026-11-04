@@ -160,7 +160,7 @@ for (const state of states)
         for (const label of [
           sidebar.locator('.journey-brand > span'),
           sidebar
-            .getByRole('link', { name: 'Companheiros', exact: true })
+            .getByRole('link', { name: 'Acampamento', exact: true })
             .locator('.journey-nav-label'),
         ]) {
           expect(
@@ -177,7 +177,7 @@ for (const state of states)
         }
         expect(
           await sidebar
-            .getByRole('link', { name: 'Companheiros', exact: true })
+            .getByRole('link', { name: 'Acampamento', exact: true })
             .evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
         ).toBe(true);
       }

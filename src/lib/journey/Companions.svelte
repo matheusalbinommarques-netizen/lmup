@@ -1,4 +1,10 @@
 <script lang="ts">
+  import { CAMP_PREVIEW } from '$lib/camp/cinematic/previewMode';
+  import { isCampCompanionDiscovered } from '$lib/camp/cinematic/state';
+  let {
+    embedded = false,
+    discoveredOnly = false,
+  }: { embedded?: boolean; discoveredOnly?: boolean } = $props();
   import { companionArtwork } from './companionArtwork';
   import { protectMutation } from './protectMutation';
   import { onMount } from 'svelte';
@@ -57,6 +63,13 @@
     });
     return () => sub.unsubscribe();
   });
+  const visibleCompanions = $derived(
+    data?.companions.filter(
+      (pet) =>
+        !discoveredOnly ||
+        isCampCompanionDiscovered(pet, data!.profile, CAMP_PREVIEW),
+    ) ?? [],
+  );
   const currentPet = $derived(
     data?.companions.find((pet) => pet.id === draft?.id),
   );
@@ -154,7 +167,7 @@
   </div>
   <p class="collection-balance">{data?.profile?.food ?? 0} Comida disponível</p>
 </header>
-<CollectionNav />
+{#if !embedded}<CollectionNav />{/if}
 <p class="journey-banner">
   O bônus vale enquanto o companheiro está ativo e disponível no seu nível. Não
   há fome nem perda de evolução por ficar longe.
@@ -162,7 +175,7 @@
 <p role="status">{notice}</p>
 {#if error && !open}<p role="alert" class="journey-error">{error}</p>{/if}
 {#if data?.profile}
-  {@const selected = data.companions.find(
+  {@const selected = visibleCompanions.find(
     (pet) => pet.id === data?.profile.activeCompanionId,
   )}
   <section class="companion-summary lmu-card" aria-label="Sua companhia atual">
@@ -170,12 +183,21 @@
       <p class="lmu-eyebrow">Com você agora</p>
       <h2>{selected.name}</h2>
       <p>{companionBonusLabel(selected)} enquanto estiver ativo.</p>
-    {:else}<h2>Escolha uma companhia disponível</h2>
-      <p>A seleção atual não concede bônus no seu nível.</p>{/if}
-    <a href="/perfil">Conferir todos os bônus no perfil →</a>
+    {:else}<h2>
+        {discoveredOnly && visibleCompanions.length === 0
+          ? 'Nenhum companheiro descoberto'
+          : 'Escolha uma companhia disponível'}
+      </h2>
+      <p>
+        {discoveredOnly && visibleCompanions.length === 0
+          ? 'Novas companhias aparecerão aqui quando forem descobertas na sua jornada.'
+          : 'A seleção atual não concede bônus no seu nível.'}
+      </p>{/if}
+    {#if !embedded}<a href="/perfil">Conferir todos os bônus no perfil →</a
+      >{/if}
   </section>
   <div class="collection-grid companion-grid">
-    {#each data.companions as pet (pet.id)}{@const state =
+    {#each visibleCompanions as pet (pet.id)}{@const state =
         getCompanionEvolutionState(pet)}{@const available = companionAvailable(
         pet,
         data.profile.level,

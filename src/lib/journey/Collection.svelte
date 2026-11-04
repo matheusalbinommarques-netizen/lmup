@@ -13,7 +13,10 @@
   import Field from '$lib/ui/Field.svelte';
   import Button from '$lib/ui/Button.svelte';
   import Dialog from '$lib/ui/Dialog.svelte';
-  let { inventoryOnly = false }: { inventoryOnly?: boolean } = $props();
+  let {
+    inventoryOnly = false,
+    embedded = false,
+  }: { inventoryOnly?: boolean; embedded?: boolean } = $props();
   const slotId = $props.id();
   let data = $state<JourneySnapshot>();
   let error = $state(''),
@@ -134,7 +137,7 @@
   </div>
   <p class="collection-balance">{data?.profile?.gold ?? 0} Gold disponível</p>
 </header>
-<CollectionNav />
+{#if !embedded}<CollectionNav />{/if}
 <p role="status">{notice}</p>
 {#if error && !open}<p role="alert" class="journey-error">{error}</p>{/if}
 {#if data?.profile}<div class="collection-summary">
@@ -227,7 +230,7 @@
             ? 'O Gold das missões pode virar equipamentos. Nenhuma compra é necessária para continuar.'
             : 'Experimente outro nome ou espaço.'}
         </p>
-        {#if inventoryOnly}<a
+        {#if inventoryOnly && !embedded}<a
             class="lmu-button lmu-button--primary"
             href="/loja">Conhecer a loja</a
           >{/if}

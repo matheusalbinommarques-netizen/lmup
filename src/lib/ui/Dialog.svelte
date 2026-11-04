@@ -9,6 +9,7 @@
     children,
     dismissible = true,
     wide = false,
+    scenePanel = false,
   }: {
     open?: boolean;
     title: string;
@@ -16,6 +17,7 @@
     children: Snippet;
     dismissible?: boolean;
     wide?: boolean;
+    scenePanel?: boolean;
   } = $props();
   let element: HTMLDialogElement;
   function containFocus(event: KeyboardEvent) {
@@ -62,6 +64,7 @@
   bind:this={element}
   class="lmu-dialog"
   class:wide
+  class:scene-panel={scenePanel}
   aria-labelledby={`${uid}-title`}
   aria-describedby={description ? `${uid}-description` : undefined}
   oncancel={(event) => {
@@ -92,5 +95,10 @@
 <style>
   .wide {
     width: min(840px, calc(100% - 24px));
+  }
+  .scene-panel.wide {
+    width: min(1000px, 94vw);
+    max-width: 1000px;
+    max-height: 90dvh;
   }
 </style>
