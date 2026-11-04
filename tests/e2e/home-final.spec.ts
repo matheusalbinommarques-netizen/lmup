@@ -117,7 +117,7 @@ test('Home final mantém navegação inteira e estados claros nas cinco resoluç
         exact: true,
       });
       await expect(
-        nav.getByRole('link', { name: 'Companheiros', exact: true }),
+        nav.getByRole('link', { name: 'Acampamento', exact: true }),
       ).toBeInViewport();
       await expect(
         page
@@ -227,8 +227,22 @@ test('Home mantém identidade de todas as companhias e navegação acessível se
     page.getByRole('button', { name: 'Nova missão', exact: true }),
   ).toBeVisible();
   if (info.project.name === 'desktop') {
-    const companions = page
+    const camp = page
       .getByRole('navigation', { name: 'Navegação principal', exact: true })
+      .getByRole('link', { name: 'Acampamento', exact: true });
+    await camp.focus();
+    await expect(camp).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/refugio\/acampamento$/);
+    await expect(page.getByTestId('point-caretaker')).toBeAttached();
+    const more = page.getByRole('button', {
+      name: 'Perfil e mais',
+      exact: true,
+    });
+    await more.focus();
+    await page.keyboard.press('Enter');
+    const companions = page
+      .getByRole('dialog', { name: 'Seu espaço', exact: true })
       .getByRole('link', { name: 'Companheiros', exact: true });
     await companions.focus();
     await expect(companions).toBeFocused();
