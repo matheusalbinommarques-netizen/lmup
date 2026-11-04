@@ -134,6 +134,9 @@ test('áreas no cadastro, edição, exclusão com transferência e criação ape
   await areas
     .getByRole('button', { name: 'Confirmar exclusão da área', exact: true })
     .click();
+  await expect(
+    areas.getByRole('button', { name: 'Excluir Pessoal', exact: true }),
+  ).toHaveCount(0);
   await page.goto(url);
   await expect(
     page.getByText('Geral · Sem repetição', { exact: false }),
