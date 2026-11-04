@@ -172,10 +172,10 @@ test('edição mantém ícone e navegação por data/aba funciona com Voltar e m
     .getByRole('button', { name: 'Ferramentas de missões', exact: true })
     .click();
   await page
-    .getByRole('button', { name: 'Recuperar ocorrências', exact: true })
+    .getByRole('button', { name: 'Histórico de missões', exact: true })
     .click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    'Recuperar Ocorrências',
+    'Lista de Missões',
   );
   expect(
     await page.evaluate(

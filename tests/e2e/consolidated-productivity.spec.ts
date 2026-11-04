@@ -82,21 +82,16 @@ test('Hoje separa atividades antigas, conclusões realizadas e retirada persiste
   await page.goto('/');
   await expect(
     page.getByRole('progressbar', {
-      name: 'Ocorrências concluídas',
+      name: 'Missões concluídas',
       exact: true,
     }),
   ).toHaveAttribute('aria-valuenow', '0');
   await expect(
     page.getByText('Atividades de outros dias (1)', { exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(0);
+  await page.goto('/missoes');
   await page
-    .getByRole('button', {
-      name: 'Organizar atividade antiga Atividade antiga',
-      exact: true,
-    })
-    .click();
-  await page
-    .getByRole('button', { name: 'Retomar atividade', exact: true })
+    .getByRole('link', { name: 'Atividade antiga', exact: true })
     .click();
   await expect(page).toHaveURL(/\/ocorrencia\//);
   await page
@@ -117,10 +112,10 @@ test('Hoje separa atividades antigas, conclusões realizadas e retirada persiste
   ).toContainText('Atividade antiga');
   await expect(
     page.getByRole('progressbar', {
-      name: 'Ocorrências concluídas',
+      name: 'Missões concluídas',
       exact: true,
     }),
-  ).toHaveAttribute('aria-valuenow', '0');
+  ).toHaveAttribute('aria-valuenow', '50');
   const other = await context.newPage();
   await other.clock.setFixedTime(new Date(today + 'T15:00:00-03:00'));
   await other.goto('/');
@@ -199,7 +194,7 @@ test('reagendar atividade parcial preserva recursos e a seleção explica indisp
   await expect(selection).toContainText('Planejada para outra data');
   expect((await state(page)).occurrences).toEqual(after.occurrences);
 });
-test('rotina reutiliza sessão, identifica conclusão externa e mantém datas ao retomar no dia seguinte', async ({
+test('rotina reutiliza sessão, impede execução duplicada e substitui o ciclo no dia seguinte', async ({
   page,
 }) => {
   await page.clock.setFixedTime(new Date(today + 'T15:00:00-03:00'));
@@ -236,7 +231,6 @@ test('rotina reutiliza sessão, identifica conclusão externa e mantém datas ao
     await expect(page).toHaveURL(/\/sessoes$/);
   };
   await run();
-  const initial = (await state(page)).savedMissionSessions[0];
   await run();
   expect((await state(page)).savedMissionSessions).toHaveLength(1);
   await page
@@ -245,41 +239,34 @@ test('rotina reutiliza sessão, identifica conclusão externa e mantém datas ao
   await expect(page).toHaveURL(/view=sessions/);
   await page.goto('/missoes');
   await page.getByRole('button', { name: 'Todas', exact: true }).click();
-  await page
-    .getByRole('button', { name: 'Concluir Água', exact: true })
-    .click();
-  await page.getByRole('status', { name: 'Recompensa da conclusão' }).waitFor();
-  await page.goto('/missoes?view=sessions');
-  await page.getByRole('button', { name: 'Retomar', exact: true }).click();
+  const water = page.locator('.mission-task-row').filter({ hasText: 'Água' });
   await expect(
-    page.getByText('Concluída individualmente, fora desta sessão.', {
-      exact: false,
-    }),
-  ).toBeVisible();
+    water.getByRole('button', { name: 'Concluir Água', exact: true }),
+  ).toHaveCount(0);
+  await water.getByRole('link', { name: /^Em sessão ·/ }).click();
+  await expect(page).toHaveURL(/\/sessoes$/);
+  await page
+    .getByRole('button', { name: 'Concluir missão', exact: true })
+    .click();
   await expect(
     page.getByRole('region', { name: 'Resumo da sessão', exact: true }),
   ).toContainText('1 concluídas');
   const before = await state(page);
   await page.clock.setFixedTime(new Date('2026-11-03T15:00:00-03:00'));
   await page.reload();
-  await expect(
-    page.getByText('Execução anterior:', { exact: false }),
-  ).toBeVisible();
-  expect((await state(page)).savedMissionSessions[0].occurrenceIds).toEqual(
-    initial.occurrenceIds,
-  );
+  await expect
+    .poll(async () => (await state(page)).savedMissionSessions[0].status)
+    .toBe('ended');
+  expect((await state(page)).savedMissionSessions[0].occurrenceIds).toEqual([]);
   await run();
   expect((await state(page)).savedMissionSessions).toHaveLength(2);
   await run();
   expect((await state(page)).savedMissionSessions).toHaveLength(2);
   expect((await state(page)).profile).toEqual(before.profile);
   await page.goto('/missoes?view=sessions');
-  await expect(page.locator('.saved-session-card')).toHaveCount(2);
+  await expect(page.locator('.saved-session-card')).toHaveCount(1);
   await expect(
     page.locator('.saved-session-card').filter({ hasText: 'Em andamento' }),
-  ).toHaveCount(1);
-  await expect(
-    page.locator('.saved-session-card').filter({ hasText: 'Pausada' }),
   ).toHaveCount(1);
 });
 test('navegação principal concentra exploração em Mundo e mantém destinos acessíveis por Mais', async ({

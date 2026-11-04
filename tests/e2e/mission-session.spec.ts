@@ -164,14 +164,14 @@ test('pular fica junto de editar e revisão e preserva os dados da missão', asy
   await createSession(page);
   await page
     .locator('.detailed-execution')
-    .getByText('Ações e revisão', { exact: true })
+    .getByText('Ações da missão', { exact: true })
     .click();
   const actions = page.locator('.journey-actions').filter({
     has: page.getByRole('button', { name: 'Editar missão', exact: true }),
   });
   await expect(
     actions.getByRole('button', { name: 'Configurar revisão', exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(0);
   const skip = actions.getByRole('button', {
     name: 'Pular por agora',
     exact: true,

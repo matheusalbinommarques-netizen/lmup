@@ -1,4 +1,7 @@
 <script lang="ts">
+  import MergeDialog from './MergeDialog.svelte';
+  let mergeOpen = $state(false),
+    mergeSource = $state('');
   import type { JourneySnapshot } from '$services/journeyQuery';
   import {
     saveArea,
@@ -331,6 +334,13 @@
                 removing = null;
               }}>Editar</Button
             ><Button
+              variant="secondary"
+              disabled={busy}
+              onclick={() => {
+                mergeSource = String(area.id);
+                mergeOpen = true;
+              }}>Mesclar área</Button
+            ><Button
               variant="quiet"
               disabled={busy}
               aria-label={`Excluir ${area.nome}`}
@@ -491,6 +501,14 @@
     {@render contents()}
   </Dialog>
 {/if}
+
+<MergeDialog
+  bind:open={mergeOpen}
+  kind="areas"
+  {snapshot}
+  sourceId={mergeSource}
+  onmerged={() => (notice = 'Áreas mescladas. Histórico preservado.')}
+/>
 
 <style>
   .area-create input,

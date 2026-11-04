@@ -10,7 +10,6 @@
   import type { SavedMissionSession } from '$services/productivityTypes';
   import { dateKey } from '$services/rewardService';
   import { scheduledOn, nextPlannedDate } from '$services/recurrence';
-  import { formatCalendar } from '$services/calendar';
   import { goto } from '$app/navigation';
   import Dialog from '$lib/ui/Dialog.svelte';
   import Button from '$lib/ui/Button.svelte';
@@ -134,8 +133,7 @@
               : selected.filter((id) => id !== row.id))}
         /><span
           ><strong>{row.title}</strong><small
-            >{reason ??
-              `Disponível hoje · origem ${formatCalendar(row.originDate)}`}</small
+            >{reason ?? 'Disponível hoje'}</small
           ></span
         ></label
       >{/each}
@@ -143,8 +141,7 @@
   {#if error}<p role="alert" class="journey-error">{error}</p>{/if}
   <p class="lmu-hint">
     {selected.length} ocorrências selecionadas ·
-    <a href="/revisoes">Sessões de revisão</a>
-    · <a href="/missoes?view=sessions">Ver sessões ativas</a>
+    <a href="/missoes?view=sessions">Ver sessões ativas</a>
   </p>
   <div class="journey-actions">
     <Button disabled={busy || !selected.length} onclick={start}

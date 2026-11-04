@@ -1,3 +1,4 @@
+import { cycleDate, isSuperseded } from './operationalPlanning';
 import { db, type ActivityEvent, type Task } from './db';
 import { isOpenSession, settleCompletedSessions } from './sessionLifecycle';
 import { addCalendarDays, calendarDate } from './calendar';
@@ -230,6 +231,73 @@ export async function plannedOccurrences(
       );
   });
 }
+/** One operational execution per mission; historical rows keep their original dates. */
+export async function currentOccurrences(
+  day = dateKey(),
+): Promise<Occurrence[]> {
+  return db.transaction('r', db.tables, async () => {
+    const tasks = await db.tasks.toArray(),
+      rows = await db.occurrences.toArray();
+    const versions = await db.planVersions.toArray(),
+      events = await db.activityEvents.toArray();
+    const result: Occurrence[] = [];
+    for (const task of tasks) {
+      if (task.archived || task.planningPaused || task.reviewEnabled) continue;
+      const origin = task.recurrence
+        ? cycleDate(task, day, versions)
+        : (task.plannedDate ?? day);
+      if (!origin || origin > day) continue;
+      const id = occurrenceId(task, origin);
+      let row = rows.find((row) => row.id === id);
+      if (!row) {
+        const plan = versions
+          .filter(
+            (plan) => plan.taskId === task.id && plan.effectiveFrom <= origin,
+          )
+          .sort(
+            (a, b) =>
+              a.effectiveFrom.localeCompare(b.effectiveFrom) ||
+              a.sequence - b.sequence,
+          )
+          .at(-1);
+        row = makeOccurrence(
+          (task.recurrence
+            ? (plan?.definition ?? task)
+            : task) as unknown as Task,
+          origin,
+        );
+        const event = events.find(
+          (event) =>
+            event.taskId === task.id &&
+            !event.occurrenceId &&
+            !event.reversedAt &&
+            ['task', 'review'].includes(event.kind) &&
+            (!task.recurrence ||
+              (event.occurrenceDate ?? event.date) === origin),
+        );
+        const done =
+          !!event ||
+          (task.completed &&
+            (!task.recurrence || task.lastOccurrenceDate === origin));
+        if (done)
+          row = {
+            ...row,
+            status: 'completed',
+            value: progressTarget(row),
+            completedLocalDate:
+              event?.date ??
+              (task.completedAt
+                ? dateKey(new Date(task.completedAt))
+                : undefined),
+            completionEventId: event?.id,
+          };
+      }
+      if (!isSuperseded(row, task, day, versions)) result.push(row);
+    }
+    return result;
+  });
+}
+
 export async function ensureOccurrence(
   taskId: number,
   origin = dateKey(),
@@ -268,9 +336,10 @@ export async function ensureOccurrence(
       throw new Error(
         'Esta atividade já possui conclusão legada. O registro anterior foi preservado sem nova recompensa.',
       );
-    const planned = (await plannedOccurrences(origin, origin)).find(
-      (row) => row.taskId === taskId && row.originDate === origin,
-    );
+    const planned = [
+      ...(await plannedOccurrences(origin, origin)),
+      ...(await currentOccurrences()),
+    ].find((row) => row.taskId === taskId && row.originDate === origin);
     if (!planned && !reconstructed)
       throw new Error(
         'Não há planejamento confiável nesta data. Use reconstrução explícita para atividade antiga.',
@@ -328,6 +397,20 @@ export async function previewProgress(input: ProgressInput) {
       throw new Error(
         'A ocorrência mudou em outra aba. Seu rascunho foi preservado; reabra para comparar.',
       );
+    const definition = await db.tasks.get(current.taskId);
+    if (
+      definition &&
+      isSuperseded(
+        current,
+        definition,
+        dateKey(),
+        await db.planVersions.toArray(),
+      ) &&
+      (!input.correction || input.value > current.value)
+    )
+      throw new Error(
+        'Esta execução foi substituída. Abra a missão vigente; o histórico foi preservado.',
+      );
     const candidate = { ...current };
     if (input.configuration) {
       if (!input.correction)
@@ -358,6 +441,22 @@ export async function previewProgress(input: ProgressInput) {
       ).modifiers;
     }
     const due = occurrenceDue(candidate, input.value);
+    if (
+      definition &&
+      isSuperseded(
+        current,
+        definition,
+        dateKey(),
+        await db.planVersions.toArray(),
+      ) &&
+      ['xp', 'gold', 'food'].some(
+        (key) =>
+          due[key as keyof Resources] > current.due[key as keyof Resources],
+      )
+    )
+      throw new Error(
+        'Uma execução substituída não pode conceder novas recompensas.',
+      );
     const delta = {
       xp: due.xp - current.due.xp,
       gold: due.gold - current.due.gold,
@@ -423,6 +522,10 @@ export async function recordProgress(
     const definition = await db.tasks.get(current.taskId);
     if (!definition || (definition.archived && !input.correction))
       throw new Error('Esta missão não está disponível.');
+    if (current.plannedDate > dateKey() && !input.correction)
+      throw new Error('Esta missão está planejada para uma data futura.');
+    if (current.skipped && !input.correction)
+      throw new Error('Desfaça o pulo antes de registrar progresso.');
     if (['discarded', 'excused'].includes(current.status))
       throw new Error('Restaure esta ocorrência antes de registrar progresso.');
     if (input.value < current.value && !input.correction)

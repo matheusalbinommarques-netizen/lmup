@@ -110,7 +110,11 @@ describe('área padrão e edição de rotina', () => {
     });
     const backup = JSON.parse(JSON.stringify(await createJourneyBackup()));
     await restoreJourneyBackup(backup);
-    expect(await db.occurrences.get(row.id)).toEqual(row);
+    expect(await db.occurrences.get(row.id)).toMatchObject({
+      ...row,
+      revision: row.revision + 1,
+      supersededBy: '2026-11-03',
+    });
   });
   it('edição da rotina preserva composição e horários da sessão existente', async () => {
     const first = await create(),

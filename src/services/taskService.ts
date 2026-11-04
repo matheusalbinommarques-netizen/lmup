@@ -21,6 +21,7 @@ import { reviewDueDate as dueDateForReview } from './reviewRules';
 import {
   ensureOccurrence,
   recordProgress,
+  currentOccurrences,
   previewProgress,
   occurrenceId,
 } from './occurrenceService';
@@ -151,6 +152,13 @@ export async function completeTask(
     const task = await db.tasks.get(taskId);
     if (!task || task.archived)
       throw new Error('Esta missão não está disponível.');
+    if (options.reviewOutcome)
+      throw new Error(
+        'Revisões espaçadas foram desativadas. O histórico foi preservado.',
+      );
+    const operational = (await currentOccurrences()).find(
+      (row) => row.taskId === taskId,
+    );
     const linkedOccurrence = !task.reviewEnabled
       ? await db.occurrences.get(occurrenceId(task, dateKey()))
       : undefined;
@@ -164,19 +172,20 @@ export async function completeTask(
           'O dia mudou. Abra a ocorrência específica para recuperar uma atividade antiga.',
         );
       if (task.recurrence && task.lastReviewDate === dateKey()) return null;
-      if (task.recurrence && !scheduledOn(task, dateKey()))
+      if (task.recurrence && !operational)
         throw new Error('Esta rotina não está prevista para hoje.');
       if (!task.recurrence && task.plannedDate && task.plannedDate > dateKey())
         throw new Error('Esta missão está planejada para uma data futura.');
       const occurrence = await ensureOccurrence(
         taskId,
-        task.recurrence ? dateKey() : (task.plannedDate ?? dateKey()),
+        operational?.originDate ?? task.plannedDate ?? dateKey(),
       );
       if (occurrence.status === 'completed') return null;
       const target = progressTarget(occurrence);
       if (
         occurrence.tracking?.method === 'steps' &&
-        ((task.recurrence && task.occurrenceSession !== dateKey()) ||
+        ((task.recurrence &&
+          task.occurrenceSession !== (operational?.originDate ?? dateKey())) ||
           taskSteps(task).some(
             (step) => !task.completedSubtasks?.includes(step.index),
           ))

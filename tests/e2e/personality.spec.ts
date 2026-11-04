@@ -251,7 +251,7 @@ test('missões arquivadas e revisão futura não prometem uma próxima missão d
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Começar', exact: true }),
+    page.getByRole('button', { name: 'Começar missão', exact: true }),
   ).not.toBeVisible();
   await expect(
     page

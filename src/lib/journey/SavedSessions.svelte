@@ -1,4 +1,5 @@
 <script lang="ts">
+  import MissionActions from './MissionActions.svelte';
   import SessionSummary from './SessionSummary.svelte';
   import { isOpenSession } from '$services/sessionLifecycle';
   import { reconcileSessions } from '$services/savedSessionService';
@@ -25,7 +26,6 @@
   import ContextMenu from '$lib/ui/ContextMenu.svelte';
   import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
   import QuickCreate from './QuickCreate.svelte';
-  import ReviewForm from './ReviewForm.svelte';
   import TaskRemovalDialog from './TaskRemovalDialog.svelte';
   import type { RemovalMode } from '$services/taskRemoval';
   import { guardUpdates } from './guardUpdates';
@@ -51,15 +51,13 @@
   let detailed = $state(false),
     sequenceOpen = $state(false);
   let editOpen = $state(false),
-    reviewOpen = $state(false),
     removalOpen = $state(false);
   let removalMode = $state<RemovalMode>('archive');
   let feedback = $state('');
   let addOpen = $state(false);
   let finishedSession = $state<SavedMissionSession>();
   guardUpdates(
-    () =>
-      busy || executionBusy || editOpen || reviewOpen || removalOpen || addOpen,
+    () => busy || executionBusy || editOpen || removalOpen || addOpen,
   );
   $effect(() => {
     if (!session) executionBusy = false;
@@ -392,6 +390,11 @@
           class="activity-panel rpg-frame"
           aria-label="Atividade selecionada"
         >
+          {#if currentTask}<MissionActions
+              row={current}
+              recurring={!!currentTask.recurrence}
+              disabled={busy || executionBusy}
+            />{/if}
           <div class="activity-top">
             <p class="lmu-eyebrow">Atividade {session.cursor + 1} de {total}</p>
             <ContextMenu label="Ações da atividade selecionada"
@@ -402,13 +405,6 @@
                   !currentTask ||
                   currentTask.archived}
                 onclick={() => (editOpen = true)}>Editar missão</Button
-              ><Button
-                variant="quiet"
-                disabled={busy ||
-                  executionBusy ||
-                  !currentTask ||
-                  currentTask.archived}
-                onclick={() => (reviewOpen = true)}>Configurar revisão</Button
               ><Button
                 variant="quiet"
                 disabled={busy || executionBusy}
@@ -623,9 +619,6 @@
         oncreated={() =>
           (feedback =
             'Missão atualizada. A configuração desta execução foi preservada.')}
-      /><ReviewForm
-        bind:open={reviewOpen}
-        task={currentTask}
       /><TaskRemovalDialog
         bind:open={removalOpen}
         task={currentTask}

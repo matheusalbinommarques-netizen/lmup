@@ -18,6 +18,11 @@
   let trigger: HTMLButtonElement;
   let panel: HTMLDivElement;
   let expanded = $state(false);
+  function controls() {
+    return [
+      ...panel.querySelectorAll<HTMLElement>('button:not(:disabled), a[href]'),
+    ].filter((item) => item.getClientRects().length > 0);
+  }
   function position() {
     const rect = trigger.getBoundingClientRect();
     panel.style.maxHeight = `${Math.max(120, window.innerHeight - 24)}px`;
@@ -30,17 +35,13 @@
     else {
       panel.showPopover();
       position();
-      panel
-        .querySelector<HTMLElement>('button:not(:disabled), a[href]')
-        ?.focus({ preventScroll: true });
+      controls()[0]?.focus({ preventScroll: true });
     }
   }
   function keys(event: KeyboardEvent) {
     if ((event.target as HTMLElement).matches('select, input, textarea'))
       return;
-    const items = [
-      ...panel.querySelectorAll<HTMLElement>('button:not(:disabled), a[href]'),
-    ];
+    const items = controls();
     const index = items.indexOf(document.activeElement as HTMLElement);
     if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
       event.preventDefault();

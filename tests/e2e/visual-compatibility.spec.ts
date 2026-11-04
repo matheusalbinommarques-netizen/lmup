@@ -86,7 +86,9 @@ test('Hoje conserva criação e escolha manual com duas missões sem data', asyn
   await expect(
     page.getByRole('button', { name: 'Nova missão', exact: true }),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Começar', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Começar missão', exact: true })
+    .click();
   await expect(page).toHaveURL(/\/missao\/\d+$/);
 });
 

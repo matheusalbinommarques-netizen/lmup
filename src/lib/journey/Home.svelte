@@ -6,13 +6,14 @@
   } from '$services/dailyPlanningService';
   import ContextMenu from '$lib/ui/ContextMenu.svelte';
   import Dialog from '$lib/ui/Dialog.svelte';
-  import { addCalendarDays, formatCalendar } from '$services/calendar';
+  import { addCalendarDays } from '$services/calendar';
   import { areaIconKey } from '$services/areaIcons';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { journeyQuery, type JourneySnapshot } from '$services/journeyQuery';
   import { dateKey } from '$services/rewardService';
   import { ensureOccurrence } from '$services/occurrenceService';
+  import { saveSession } from '$services/savedSessionService';
   import { fraction } from '$services/productivityRules';
   import { getEcoStageForTotalXp } from '$services/ecoConfig';
   import { ALL_ACHIEVEMENTS } from '$services/achievementsCatalog';
@@ -45,6 +46,7 @@
     pinned = readPriority();
     const sub = journeyQuery().subscribe({
       next: (value) => {
+        now = new Date();
         data = value;
         error = '';
       },
@@ -246,6 +248,15 @@
     if (busy) return;
     busy = true;
     try {
+      const session = data?.sessions.find(
+        (session) =>
+          session.status !== 'ended' && session.occurrenceIds.includes(row.id),
+      );
+      if (session) {
+        await saveSession({ ...session, status: 'active' }, session.revision);
+        await goto('/sessoes');
+        return;
+      }
       const task = data?.tasks.find((task) => task.id === row.taskId);
       if (task && usesTaskExecution(task, row, today)) {
         await goto('/missao/' + row.taskId);
@@ -368,7 +379,7 @@
         <section class="day-plan rpg-frame" aria-labelledby="plan-title">
           <header>
             <h2 id="plan-title">
-              Plano do dia <small>({planned.length} ocorrências)</small>
+              Plano do dia <small>({planned.length} missões)</small>
             </h2>
             <a href="/missoes?view=agenda&mode=day"
               ><ApprovedIcon name="agenda" size={24} />Ver agenda →</a
@@ -471,10 +482,7 @@
                       ?.title ??
                     'Atividade concluída'}</strong
                 ><small
-                  >{event.occurrenceDate && event.occurrenceDate !== today
-                    ? `Ocorrência original: ${formatCalendar(event.occurrenceDate)}`
-                    : 'Realizada hoje'} · +{event.reward.xp} XP · +{event.reward
-                    .gold} Ouro</small
+                  >Realizada hoje · +{event.reward.xp} XP · +{event.reward.gold} Ouro</small
                 >
               </div>
             </li>{/each}{#each view?.legacy ?? [] as task (task.id)}<li>
@@ -486,51 +494,6 @@
           Suas conclusões aparecerão aqui conforme você realizar as atividades.
         </p>{/if}
     </section>
-    {#if view?.old.length}<details class="rpg-frame today-secondary" open>
-        <summary>Atividades de outros dias ({view.old.length})</summary>
-        <p class="lmu-hint">
-          Ficaram pendentes. Traga para hoje ou escolha outra data, mantendo o
-          progresso já registrado.
-        </p>
-        <ul>
-          {#each view.old as row (row.id)}<li class="overdue-row">
-              <div>
-                <strong>{row.title}</strong><small
-                  >Planejada para {formatCalendar(row.plannedDate)}{row.value >
-                  0
-                    ? ' · Progresso parcial preservado'
-                    : ''}</small
-                >
-              </div>
-              <div class="old-actions">
-                <Button
-                  disabled={busy}
-                  onclick={() => chooseAction(row, 'reschedule', today)}
-                  >Trazer para hoje</Button
-                >
-                <Button
-                  variant="secondary"
-                  disabled={busy}
-                  onclick={() => chooseAction(row, 'reschedule')}
-                  >Escolher data</Button
-                >
-              </div>
-              <ContextMenu label={`Organizar atividade antiga ${row.title}`}
-                ><Button variant="quiet" onclick={() => execute(row)}
-                  >Retomar atividade</Button
-                ><Button
-                  variant="quiet"
-                  onclick={() => chooseAction(row, 'reschedule')}
-                  >Reagendar</Button
-                ><a
-                  class="lmu-button lmu-button--quiet"
-                  href="/missoes?view=recovery"
-                  >Ver recuperação de ocorrências</a
-                ></ContextMenu
-              >
-            </li>{/each}
-        </ul>
-      </details>{/if}
     {#if view?.removed.length}<details class="rpg-frame today-secondary">
         <summary>Removidas de hoje ({view.removed.length})</summary>
         <p class="lmu-hint">
@@ -659,13 +622,11 @@
     border: 1px solid #8d744a44;
     border-radius: 7px;
   }
-  .today-completions li div,
-  .today-secondary li div {
+  .today-completions li div {
     flex: 1;
     min-width: 0;
   }
-  .today-completions small,
-  .today-secondary small {
+  .today-completions small {
     display: block;
     color: #afbfaa;
     font-size: 0.77rem;
@@ -673,22 +634,6 @@
   .today-secondary summary {
     cursor: pointer;
     color: #e4c78d;
-  }
-  .today-secondary li .old-actions {
-    display: flex;
-    flex: 0 1 auto;
-    flex-wrap: wrap;
-    gap: 8px;
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
-  .today-secondary li.overdue-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-  .overdue-row :global(.context-trigger) {
-    grid-column: 2;
-    grid-row: 1;
   }
   .priority-option {
     display: grid;
@@ -709,12 +654,6 @@
   @media (max-width: 700px) {
     .today-secondary li {
       flex-wrap: wrap;
-    }
-    .today-secondary li > div:first-child {
-      flex-basis: calc(100% - 60px);
-    }
-    .today-secondary li .old-actions {
-      flex: 1 1 100%;
     }
   }
 

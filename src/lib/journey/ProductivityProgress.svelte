@@ -94,8 +94,9 @@
       </div>
     </div>
     <p>
-      {report.recovered} recuperadas · {report.excused} pausas justificadas. Pausas
-      não contam como execução. Tempo sem registro não é estimado como realizado.
+      {report.recovered} realizadas após a data original · {report.excused} pausas
+      justificadas · {report.skipped} puladas · {report.superseded} substituídas.
+      Pausas não contam como execução. Tempo sem registro não é estimado como realizado.
     </p>
     <details>
       <summary>Distribuição por área e atividades negligenciadas</summary

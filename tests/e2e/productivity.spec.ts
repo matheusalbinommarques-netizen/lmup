@@ -252,73 +252,33 @@ test('rotina semanal vira sessão persistente e aceita pausa, retomada e conclus
     .click();
   await expect(page).toHaveURL(/view=sessions/);
   await page.clock.setFixedTime(new Date('2026-11-03T15:00:00-03:00'));
-  await page.goto('/missoes');
-  await page
-    .getByRole('button', { name: 'Sessões ativas', exact: true })
-    .click();
-  await page.getByRole('button', { name: 'Retomar', exact: true }).click();
-  await expect(page).toHaveURL(/\/sessoes$/);
-  const data = await stored(page);
-  expect(data.savedMissionSessions).toHaveLength(1);
-  expect(data.savedMissionSessions[0].occurrenceIds).toHaveLength(2);
-  expect(data.occurrences.every((row) => row.originDate === '2026-11-02')).toBe(
-    true,
-  );
-  await page.reload();
+  await page.goto('/missoes?view=sessions');
   await expect(
-    page.getByRole('heading', { name: 'Noite produtiva', exact: true }),
+    page.getByRole('heading', { name: 'Nenhuma sessão ativa', exact: true }),
   ).toBeVisible();
-  await page
-    .getByRole('button', { name: 'Encerrar sessão', exact: true })
-    .click();
-  await page
-    .getByRole('dialog', { name: 'Encerrar sessão?', exact: true })
-    .getByRole('button', { name: 'Encerrar e liberar pendências', exact: true })
-    .click();
-  await expect(page).toHaveURL(/\/missoes$/);
-  expect((await stored(page)).tasks).toHaveLength(2);
+  const data = await stored(page);
+  expect(data.savedMissionSessions[0].status).toBe('ended');
+  expect(
+    data.occurrences.some((row) => row.supersededBy === '2026-11-03'),
+  ).toBe(true);
+  expect(data.tasks).toHaveLength(2);
 });
-test('recuperação reagendada convive com a ocorrência do dia sem duplicação', async ({
+test('nova recorrência substitui a pendência anterior e concede somente a recompensa vigente', async ({
   page,
 }) => {
   await create(page, 'Praticar inglês', advanced);
   await page.clock.setFixedTime(new Date('2026-11-03T15:00:00-03:00'));
+  await page.goto('/');
   await page
-    .getByRole('button', { name: 'Ferramentas de missões', exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: 'Recuperar ocorrências', exact: true })
-    .click();
-  await page.getByLabel('De', { exact: true }).fill('2026-11-02');
-  await page.getByRole('button', { name: 'Recuperar', exact: true }).click();
-  await page.getByText('Reagendar e organizar', { exact: true }).click();
-  await page.getByLabel('Nova data', { exact: true }).fill('2026-11-03');
-  await page
-    .getByRole('button', { name: 'Reagendar esta ocorrência', exact: true })
-    .click();
-  await expect(
-    page.getByRole('status').filter({ hasText: 'Ocorrência reagendada' }),
-  ).toBeVisible();
-  await saveTime(page, 40);
-  const first = await stored(page);
-  expect(first.occurrences[0]).toMatchObject({
-    originDate: '2026-11-02',
-    plannedDate: '2026-11-03',
-    recovered: true,
-    status: 'completed',
-  });
-  await page.goto('/missoes?view=agenda');
-  await page.getByRole('button', { name: 'Dia', exact: true }).click();
-  await expect(page.locator('.timeline-entry .occurrence-row')).toHaveCount(2);
-  await page
-    .getByRole('button', { name: 'Executar agora', exact: true })
+    .getByRole('button', { name: 'Começar missão', exact: true })
     .click();
   await saveTime(page, 40);
-  const final = await stored(page);
+  const result = await stored(page);
   expect(
-    final.occurrences.filter((row) => row.status === 'completed'),
-  ).toHaveLength(2);
-  expect(final.profile[0].totalXpEarned).toBe(210);
+    result.occurrences.filter((row) => row.status === 'completed'),
+  ).toHaveLength(1);
+  expect(result.occurrences[0].originDate).toBe('2026-11-03');
+  expect(result.profile[0].totalXpEarned).toBe(105);
 });
 test('upgrade real do navegador preserva banco v5 e cria recuperação antes de usar v6', async ({
   page,
@@ -381,7 +341,12 @@ test('upgrade real do navegador preserva banco v5 e cria recuperação antes de 
     open.onerror = () => {};
   });
   await page.goto('/missoes');
-  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Ferramentas de missões', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Histórico de missões', exact: true })
+    .click();
   await expect(
     page.getByRole('link', { name: 'Missão legada preservada', exact: true }),
   ).toBeVisible();

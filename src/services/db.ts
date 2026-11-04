@@ -70,6 +70,8 @@ export interface Profile {
 // AREAS
 // ---------------------------------------------
 export interface Area {
+  archived?: boolean;
+  mergedInto?: number;
   /** Optional presentation fields; no index/schema change. Legacy task icons remain intact. */
   iconKey?: string | null;
   iconConflict?: boolean;
@@ -92,6 +94,7 @@ export type TaskRecurrence = {
 };
 
 export interface Task extends Planning {
+  reviewRetiredAt?: string;
   source?: 'personal' | 'story';
   /** Presentation only; optional and not indexed, so schema v6 is unchanged. */
   iconKey?: string | null;

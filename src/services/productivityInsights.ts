@@ -63,21 +63,19 @@ export function recommendations(rows: Occurrence[], now = new Date()) {
       const state = occurrenceSituation(row, now);
       const score =
         (row.importance === 'high' ? 60 : row.importance === 'low' ? 0 : 20) +
-        (state === 'expired' ? 100 : state === 'late' ? 40 : 0) +
+        (state === 'expired' ? 100 : 0) +
         (row.value > 0 ? 15 : 0) +
         (row.estimatedMinutes && row.estimatedMinutes <= 20 ? 10 : 0);
       const reason =
         state === 'expired'
           ? 'O prazo final passou; execute ou revise seu plano.'
-          : state === 'late'
-            ? 'O início planejado passou; você pode executar agora ou reagendar.'
-            : row.importance === 'high'
-              ? 'É uma missão de alta importância.'
-              : row.value > 0
-                ? 'Você já avançou; retomar evita perder o fio.'
-                : row.estimatedMinutes && row.estimatedMinutes <= 20
-                  ? 'Cabe em um pequeno intervalo do dia.'
-                  : 'Está prevista para hoje; você pode escolher começar por ela.';
+          : row.importance === 'high'
+            ? 'É uma missão de alta importância.'
+            : row.value > 0
+              ? 'Você já avançou; retomar evita perder o fio.'
+              : row.estimatedMinutes && row.estimatedMinutes <= 20
+                ? 'Cabe em um pequeno intervalo do dia.'
+                : 'Está prevista para hoje; você pode escolher começar por ela.';
       return { id: row.id, title: row.title, reason, score };
     })
     .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))
@@ -94,10 +92,14 @@ export function consistency(rows: Occurrence[], today: string) {
   for (const [day, planned] of [...days].sort(([a], [b]) =>
     a.localeCompare(b),
   )) {
-    const excused = planned.every((row) => row.status === 'excused');
+    const excused = planned.every(
+      (row) => row.status === 'excused' || row.skipped || row.supersededBy,
+    );
     const completed = planned.every(
       (row) =>
         row.status === 'excused' ||
+        row.skipped ||
+        !!row.supersededBy ||
         (row.status === 'completed' && !row.recovered),
     );
     if (excused) continue;
@@ -123,7 +125,9 @@ export function productivityReport(
       row.originDate <= to &&
       row.status !== 'discarded',
   );
-  const expected = planned.filter((row) => row.status !== 'excused');
+  const expected = planned.filter(
+    (row) => row.status !== 'excused' && !row.skipped && !row.supersededBy,
+  );
   const complete = expected.filter((row) => row.status === 'completed');
   // Actual minutes are cumulative deltas for time goals; corrections can remove time.
   const events = records.filter(
@@ -173,7 +177,7 @@ export function productivityReport(
       );
   }
   const routineProgress = routines.map((routine) => {
-    const own = planned.filter((row) => row.routineId === routine.id);
+    const own = expected.filter((row) => row.routineId === routine.id);
     return {
       id: routine.id,
       name: routine.name,
@@ -187,10 +191,12 @@ export function productivityReport(
     };
   });
   return {
+    skipped: planned.filter((row) => row.skipped).length,
+    superseded: planned.filter((row) => row.supersededBy).length,
     expected: expected.length,
     completed: complete.length,
     recovered: complete.filter((row) => row.recovered).length,
-    excused: planned.length - expected.length,
+    excused: planned.filter((row) => row.status === 'excused').length,
     completionRate: expected.length
       ? Math.round((100 * complete.length) / expected.length)
       : null,

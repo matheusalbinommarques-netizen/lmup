@@ -15,13 +15,11 @@ test('área configurada e seus ícones funcionam na primeira navegação offline
   await request.post('/__network', { data: 'offline' });
   await context.setOffline(true);
   await page.goto('/missoes');
-  await page
-    .getByRole('button', { name: 'Ferramentas de missões', exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: 'Gerenciar áreas', exact: true })
-    .click();
-  const areas = page.getByRole('dialog', { name: 'Minhas áreas', exact: true });
+  await page.getByRole('button', { name: 'Áreas', exact: true }).click();
+  const areas = page.getByRole('region', {
+    name: 'Gerenciar áreas',
+    exact: true,
+  });
   await areas.getByLabel('Nome da nova área').fill('Estudos offline');
   await areas
     .getByRole('button', { name: 'Editar ícone da área', exact: true })
@@ -29,11 +27,9 @@ test('área configurada e seus ícones funcionam na primeira navegação offline
   await areas.getByRole('button', { name: 'Estudo', exact: true }).click();
   await areas.getByRole('button', { name: 'Criar área', exact: true }).click();
   await expect(
-    areas.getByText('Estudos offline', { exact: true }),
+    areas.getByRole('button', { name: 'Editar Estudos offline', exact: true }),
   ).toBeVisible();
-  await areas
-    .getByRole('button', { name: 'Fechar diálogo', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Lista', exact: true }).click();
   await page.getByRole('button', { name: 'Nova missão', exact: true }).click();
   const form = page.getByRole('dialog', {
     name: 'Uma nova missão',

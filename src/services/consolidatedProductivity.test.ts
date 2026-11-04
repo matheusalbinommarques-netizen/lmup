@@ -75,7 +75,7 @@ it('retira de hoje sem arquivar, descartar, apagar ou movimentar recursos e rest
   expect(data.events).toEqual(before.events);
   expect(data.profile).toEqual(before.profile);
   expect(data.occurrences[0].status).toBe(row.status);
-  expect(data.plannedToday).toHaveLength(0);
+  expect(todayView(data, day).planned).toHaveLength(0);
   expect(todayView(data, day).removed).toHaveLength(1);
   const copy = JSON.parse(JSON.stringify(await createJourneyBackup()));
   await restoreJourneyBackup(copy);
@@ -124,14 +124,14 @@ it('progresso parcial exige confirmação e permanece intacto inclusive dentro d
   ).toHaveLength(1);
   expect(todayView(await readJourneySnapshot(), day).planned).toHaveLength(0);
 });
-it('retirada é diária e ocorrências antigas não entram automaticamente no plano seguinte', async () => {
+it('retirada é diária e pontuais antigas entram automaticamente no plano seguinte', async () => {
   const id = await create(),
     row = await ensureOccurrence(id);
   await changeToday({ row, action: 'remove', day, requestId: 'remove' });
   vi.setSystemTime(new Date('2026-11-03T15:00:00'));
   const view = todayView(await readJourneySnapshot(), '2026-11-03');
-  expect(view.planned).toHaveLength(0);
-  expect(view.old.map((row) => row.id)).toContain(row.id);
+  expect(view.planned.map((item) => item.id)).toContain(row.id);
+  expect(view.old).toEqual([]);
   expect(view.removed).toHaveLength(0);
 });
 it('reagendamento preserva identidade, progresso e recibos, mas não modifica sessões congeladas', async () => {
@@ -187,7 +187,7 @@ it('reagendar cadastro antigo sem execução não fabrica progresso histórico',
   expect(await db.occurrences.count()).toBe(0);
   expect(await db.activityEvents.count()).toBe(0);
 });
-it('conclusões efetivas de outras datas aparecem hoje sem inflar o percentual do plano', async () => {
+it('conclusões efetivas de pontuais antigas integram o progresso das missões do dia', async () => {
   vi.setSystemTime(new Date('2026-11-01T15:00:00'));
   const oldId = await create('Antiga', '2026-11-01'),
     old = await ensureOccurrence(oldId, '2026-11-01');
@@ -195,8 +195,8 @@ it('conclusões efetivas de outras datas aparecem hoje sem inflar o percentual d
   await create('Plano atual');
   await progress(old.id, 1);
   const view = todayView(await readJourneySnapshot(), day);
-  expect(view.planned).toHaveLength(1);
-  expect(view.completed).toBe(0);
+  expect(view.planned).toHaveLength(2);
+  expect(view.completed).toBe(1);
   expect(view.completedEvents.map((event) => event.occurrenceId)).toContain(
     old.id,
   );

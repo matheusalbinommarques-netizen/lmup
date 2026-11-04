@@ -228,7 +228,7 @@ test('associação, reabertura e arquivamento preservam missões e recibos', asy
   expect(result.data.tasks[0].projectId).toBe(result.data.projects[0].id);
   expect(result.data.profile.totalXpEarned).toBe(58);
 });
-test('revisões registram sessões separadas, preservam notas e impedem repetição no mesmo dia', async ({
+test('missão concluída preserva notas e não oferece novas revisões no dia seguinte', async ({
   page,
 }) => {
   await page.clock.setFixedTime(new Date('2026-10-10T12:00:00-03:00'));
@@ -241,19 +241,9 @@ test('revisões registram sessões separadas, preservam notas e impedem repetiç
   await expect(page.getByRole('status')).toHaveText(
     'Tudo salvo neste navegador',
   );
-  await page
-    .getByRole('button', { name: 'Configurar revisão', exact: true })
-    .click();
-  const form = page.getByRole('dialog', {
-    name: 'Revisões desta missão',
-    exact: true,
-  });
-  await form.getByLabel('Intervalo entre revisões (dias)').fill('1');
-  await form.getByLabel('Próxima revisão', { exact: true }).fill('2026-10-10');
-  await form
-    .getByRole('button', { name: 'Salvar revisões', exact: true })
-    .click();
-  await expect(form).not.toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Configurar revisão', exact: true }),
+  ).toHaveCount(0);
   await page
     .getByRole('checkbox', { name: 'Explicar de memória', exact: true })
     .check();
@@ -261,78 +251,25 @@ test('revisões registram sessões separadas, preservam notas e impedem repetiç
     .getByRole('checkbox', { name: 'Conferir uma referência', exact: true })
     .check();
   await page
-    .getByRole('combobox', {
-      name: 'Como foi lembrar? (opcional)',
-      exact: true,
-    })
-    .selectOption('partial');
-  await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
   await expect(
-    page.getByText('1 sessão válida registrada · 0 desfeitas.', {
-      exact: true,
-    }),
+    page.getByRole('region', { name: 'Resumo da recompensa' }),
   ).toBeVisible();
-  await page.reload();
-  await expect(
-    page.getByRole('button', { name: 'Concluir missão', exact: true }),
-  ).not.toBeVisible();
   await page.clock.setFixedTime(new Date('2026-10-11T12:00:00-03:00'));
-  await page.reload();
-  await expect(
-    page.getByRole('checkbox', { name: 'Explicar de memória', exact: true }),
-  ).not.toBeChecked();
-  await page
-    .getByRole('button', { name: 'Consultar e editar notas', exact: true })
-    .click();
-  await expect(page.getByLabel('Notas da missão')).toHaveValue(
-    'Uma descoberta que quero retomar.',
-  );
-  await page
-    .getByRole('checkbox', { name: 'Explicar de memória', exact: true })
-    .check();
-  await page
-    .getByRole('checkbox', { name: 'Conferir uma referência', exact: true })
-    .check();
-  await page
-    .getByRole('combobox', {
-      name: 'Como foi lembrar? (opcional)',
-      exact: true,
-    })
-    .selectOption('recalled');
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
-  await expect(
-    page.getByText('2 sessões válidas registradas · 0 desfeitas.', {
-      exact: true,
-    }),
-  ).toBeVisible();
-  await page
-    .getByRole('button', { name: 'Desfazer última sessão', exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: 'Confirmar correção', exact: true })
-    .click();
-  await expect(
-    page.getByText('1 sessão válida registrada · 1 desfeita.', {
-      exact: true,
-    }),
-  ).toBeVisible();
-  const result = await backup(page);
-  expect(result.data.tasks).toHaveLength(1);
-  expect(
-    result.data.activityEvents.filter(
-      (event: any) => event.kind === 'review' && !event.reversedAt,
-    ),
-  ).toHaveLength(1);
-  expect(result.data.profile.totalXpEarned).toBe(106);
-  expect(result.data.profile.rewardDebt).toEqual({ xp: 53, gold: 25, food: 2 });
   await page.goto(url);
   await expect(
     page.getByRole('button', { name: 'Concluir missão', exact: true }),
-  ).toBeEnabled();
+  ).not.toBeVisible();
+  const result = await backup(page);
+  expect(result.data.tasks).toHaveLength(1);
+  expect(result.data.tasks[0].executionNotes).toBe(
+    'Uma descoberta que quero retomar.',
+  );
+  expect(
+    result.data.activityEvents.filter((event: any) => event.kind === 'review'),
+  ).toHaveLength(0);
+  expect(result.data.profile.totalXpEarned).toBe(53);
 });
 test('esforço define a recompensa e editar passos não fabrica XP', async ({
   page,
@@ -502,24 +439,8 @@ test('projetos e revisões funcionam em 320x568 com texto ampliado', async ({
   await page.evaluate(() => {
     document.documentElement.style.fontSize = '16px';
   });
-  await createTask(page, 'Uma revisão pequena');
-  await page.evaluate(() => {
-    document.documentElement.style.fontSize = '32px';
-  });
-  await page
-    .getByRole('button', { name: 'Configurar revisão', exact: true })
-    .click();
-  const review = page.getByRole('dialog', {
-    name: 'Revisões desta missão',
-    exact: true,
-  });
-  expect(
-    await review.evaluate(
-      (element) => element.scrollWidth <= element.clientWidth + 1,
-    ),
-  ).toBe(true);
-  await review
-    .getByRole('button', { name: 'Salvar revisões', exact: true })
-    .click();
-  await expect(review).not.toBeVisible();
+  await createTask(page, 'Missão sem revisões');
+  await expect(
+    page.getByRole('button', { name: 'Configurar revisão', exact: true }),
+  ).toHaveCount(0);
 });

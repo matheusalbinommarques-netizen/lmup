@@ -24,7 +24,6 @@
     { href: '/progresso', label: 'Meu progresso' },
     { href: '/perfil', label: 'Herói e equipamentos' },
     { href: '/config', label: 'Configurações e backup' },
-    { href: '/revisoes', label: 'Revisões e sessões' },
     { href: '/santuario', label: 'Santuário' },
     { href: '/bestiario', label: destinations.companions },
     { href: '/loja', label: 'Loja' },

@@ -111,11 +111,11 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Começar', exact: true }),
+    page.getByRole('button', { name: 'Começar missão', exact: true }),
   ).toBeVisible();
   if (info.project.name === 'mobile') {
     const action = await page
-      .getByRole('button', { name: 'Começar', exact: true })
+      .getByRole('button', { name: 'Começar missão', exact: true })
       .boundingBox();
     const navigation = await page
       .getByRole('navigation', { name: 'Navegação móvel', exact: true })
@@ -123,7 +123,9 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
     expect(action!.y + action!.height).toBeLessThan(navigation!.y);
   }
   await capture(page, info.project.name + '-pendentes');
-  await page.getByRole('button', { name: 'Começar', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Começar missão', exact: true })
+    .click();
   await page
     .getByRole('button', { name: 'Iniciar missão', exact: true })
     .click();
@@ -149,7 +151,9 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
     page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
   await page.goto('/');
-  await page.getByRole('button', { name: 'Começar', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Começar missão', exact: true })
+    .click();
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
@@ -160,9 +164,7 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
   await expect(
     page.getByRole('heading', { name: 'Seu plano está em dia', exact: true }),
   ).toBeVisible();
-  await expect(page.locator('.daily-summary')).toContainText(
-    '2 de 2 ocorrências',
-  );
+  await expect(page.locator('.daily-summary')).toContainText('2 de 2 missões');
   await expect(
     page.getByRole('link', { name: 'Ver todas as missões', exact: true }),
   ).toHaveAttribute('href', '/missoes');

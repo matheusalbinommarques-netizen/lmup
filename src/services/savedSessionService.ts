@@ -1,3 +1,4 @@
+import { reconcileProductivity } from './productivityLifecycle';
 import { db } from './db';
 import {
   closeSessionRecord,
@@ -109,6 +110,7 @@ export async function saveSession(
   )
     throw new Error('Sessão inválida.');
   return progressTransaction(async () => {
+    await reconcileProductivity();
     const current = await db.savedMissionSessions.get(input.id);
     if (current && !isOpenSession(current))
       throw new Error(
@@ -204,7 +206,7 @@ export async function startOrResumeSession(
     if (rows.some((row) => !row))
       throw new Error('Uma ocorrência não está mais disponível.');
     for (const row of rows) {
-      if (row!.plannedDate !== day || row!.removedFromDays?.includes(day))
+      if (row!.plannedDate > day || row!.removedFromDays?.includes(day))
         throw new Error(
           'A seleção contém uma ocorrência indisponível para hoje.',
         );
@@ -284,7 +286,10 @@ export async function startSelectedSession(
 }
 
 export async function reconcileSessions() {
-  return progressTransaction(() => settleCompletedSessions());
+  return progressTransaction(async () => {
+    await reconcileProductivity();
+    await settleCompletedSessions();
+  });
 }
 
 export async function endSession(id: string, expectedRevision: number) {
