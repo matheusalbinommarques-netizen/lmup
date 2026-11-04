@@ -25,6 +25,23 @@ test('primeira visita offline ao Centro permite construir e conserva as cenas, s
   await page.goto('/refugio/acampamento');
   await campReady(page);
   await campBuy(page);
+  await campPoint(page, 'bestiary', 'Bestiário');
+  await campPoint(page, 'companions', 'Companheiros descobertos');
+  const portrait = page.locator('.collection-pet img[alt="Lobo Etéreo"]');
+  await expect(portrait).toBeVisible();
+  await expect
+    .poll(() =>
+      portrait.evaluate(
+        (image) =>
+          (image as HTMLImageElement).complete &&
+          (image as HTMLImageElement).naturalWidth > 0,
+      ),
+    )
+    .toBe(true);
+  await page
+    .getByRole('button', { name: 'Fechar diálogo', exact: true })
+    .click();
+  await campBack(page);
   await campPoint(page, 'garden', 'Jardim da Árvore');
   await expect(page.getByTestId('layered-scene')).toHaveAttribute(
     'data-scene',

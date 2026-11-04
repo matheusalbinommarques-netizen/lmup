@@ -146,3 +146,15 @@ test('cinematic assets are reviewed and cached in the main application and previ
     false,
   );
 });
+
+test('companion compact fallbacks stay essential while larger art and item cards remain optional', () => {
+  assert.equal(isPrecacheAsset('art/companions-v2/wolf-1-160.webp'), true);
+  assert.equal(isPrecacheAsset('art/companions-v2/dragon-3-160.webp'), true);
+  assert.equal(isPrecacheAsset('art/companions-v2/wolf-1-320.webp'), false);
+  assert.equal(isPrecacheAsset('art/companions-v2/dragon-3-320.webp'), false);
+  assert.equal(
+    isPrecacheAsset('art/optimized/items-amuleto-do-cambista-160.webp'),
+    false,
+  );
+  assert.equal(isPrecacheAsset('art/camp-modular/center-built.webp'), true);
+});
