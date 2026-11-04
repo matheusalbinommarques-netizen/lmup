@@ -1,5 +1,13 @@
 import { test, expect } from '@playwright/test';
-test('primeira visita offline ao acampamento conserva terreno, fabricação e estoque após recarga', async ({
+import {
+  campPoint,
+  campReady,
+  campSeed,
+  campBuy,
+  campData,
+  campBack,
+} from '../e2e/camp-flow';
+test('primeira visita offline ao Centro permite construir e conserva as cenas, saldo e XP após recarga', async ({
   page,
   context,
   request,
@@ -7,6 +15,7 @@ test('primeira visita offline ao acampamento conserva terreno, fabricação e es
   await request.post('/__network', { data: 'online' });
   await request.post('/__release', { data: 'a' });
   await page.goto('/refugio');
+  await campSeed(page, { gold: 100, food: 83, totalXpEarned: 12000 });
   await page.evaluate(() => navigator.serviceWorker.ready);
   await expect
     .poll(() => page.evaluate(() => !!navigator.serviceWorker.controller))
@@ -14,44 +23,49 @@ test('primeira visita offline ao acampamento conserva terreno, fabricação e es
   await request.post('/__network', { data: 'offline' });
   await context.setOffline(true);
   await page.goto('/refugio/acampamento');
-  await expect(
-    page.getByRole('heading', { name: 'Acampamento', exact: true }),
-  ).toBeVisible();
-  await expect(page.locator('canvas.terrain-region')).toHaveAttribute(
-    'data-ready',
-    'true',
-  );
-  await page
-    .getByRole('button', { name: 'Selecionar Forja', exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: 'Fabricar espada de treino', exact: true })
-    .click();
-  await expect(page.locator('[data-resource="trainingSword"]')).toHaveText('1');
-  await page.reload();
-  await expect(page.locator('[data-stock-resource="wood"] strong')).toHaveText(
-    '10',
-  );
-  await expect(page.locator('[data-stock-resource="gold"] strong')).toHaveText(
-    '0',
-  );
-  await page
-    .getByRole('button', { name: 'Selecionar Forja', exact: true })
-    .click();
-  await expect(page.locator('[data-resource="trainingSword"]')).toHaveText('1');
+  await campReady(page);
+  await campBuy(page);
+  await campPoint(page, 'bestiary', 'Bestiário');
+  await campPoint(page, 'companions', 'Companheiros descobertos');
+  const portrait = page.locator('.collection-pet img[alt="Lobo Etéreo"]');
+  await expect(portrait).toBeVisible();
   await expect
     .poll(() =>
-      page
-        .locator('.scene-sprite img,.region-decoration')
-        .evaluateAll((nodes) =>
-          nodes.every(
-            (n) =>
-              (n as HTMLImageElement).complete &&
-              (n as HTMLImageElement).naturalWidth > 0,
-          ),
-        ),
+      portrait.evaluate(
+        (image) =>
+          (image as HTMLImageElement).complete &&
+          (image as HTMLImageElement).naturalWidth > 0,
+      ),
     )
     .toBe(true);
+  await page
+    .getByRole('button', { name: 'Fechar diálogo', exact: true })
+    .click();
+  await campBack(page);
+  await campPoint(page, 'garden', 'Jardim da Árvore');
+  await expect(page.getByTestId('layered-scene')).toHaveAttribute(
+    'data-scene',
+    'garden-4',
+  );
+  await page
+    .locator('img[data-layer="tree"]')
+    .evaluate((image) => (image as HTMLImageElement).decode());
+  await page.reload();
+  await expect(page.getByTestId('layered-scene')).toHaveAttribute(
+    'data-scene',
+    'garden-4',
+  );
+  await campBack(page);
+  await campPoint(page, 'interior', 'Aposentos');
+  await campPoint(page, 'equipment', 'Equipamentos');
+  await expect(page.getByRole('dialog')).toContainText('Minha coleção');
+  const state = await campData(page);
+  expect(state.profile.gold).toBe(50);
+  expect(state.profile.food).toBe(83);
+  expect(state.profile.totalXpEarned).toBe(12000);
+  expect(
+    state.audit.filter((row: any) => row.id === 'camp-settlement:built'),
+  ).toHaveLength(1);
   await context.setOffline(false);
   await request.post('/__network', { data: 'online' });
 });
@@ -71,11 +85,8 @@ test('prévia de construção em outra aba bloqueia atualização e cancelar lib
     .toBe(true);
   const other = await context.newPage();
   await other.goto('/refugio/acampamento');
-  await other.getByRole('button', { name: 'Construir', exact: true }).click();
-  await other
-    .getByRole('button', { name: 'Escolher Serraria', exact: true })
-    .click();
-  await expect(other.locator('.placement-preview img')).toBeVisible();
+  await campPoint(other, 'caretaker', 'Caseiro');
+  await expect(other.getByRole('dialog')).toBeVisible();
   await request.post('/__release', { data: 'camp-update' });
   await page.evaluate(async () => {
     await (await navigator.serviceWorker.getRegistration())!.update();
@@ -92,19 +103,22 @@ test('prévia de construção em outra aba bloqueia atualização e cancelar lib
   await expect(
     page.getByText(/Há uma gravação, formulário ou aba sem resposta/),
   ).toBeVisible();
-  await expect(other.locator('.placement-preview img')).toBeVisible();
+  await expect(other.getByRole('dialog')).toBeVisible();
   await other.keyboard.press('Escape');
-  await expect(other.locator('.placement-preview')).toHaveCount(0);
+  await expect(other.getByRole('dialog')).toHaveCount(0);
   await Promise.all([
     page.waitForEvent('domcontentloaded'),
     other.waitForEvent('domcontentloaded'),
     page.getByRole('button', { name: 'Atualizar agora', exact: true }).click(),
   ]);
   for (const tab of [page, other]) {
-    await expect(tab.locator('[data-stock-resource="wood"] strong')).toHaveText(
-      '12',
+    await campReady(tab);
+    await expect(tab.getByTestId('camp-balance')).toHaveText(
+      '0 ouro · 0 comida',
     );
-    await expect(tab.locator('.scene-sprite')).toHaveCount(4);
+    expect((await campData(tab)).profile.campSettlement.residenceBuilt).toBe(
+      false,
+    );
   }
   await other.close();
 });

@@ -1,9 +1,11 @@
+import { join } from 'node:path';
 import { getLocalPrecacheManifest } from './local-precache.mjs';
 import { readFile, writeFile, stat } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-await stat('build/200.html');
+const buildRoot = process.env.LMU_BUILD_DIR ?? 'build';
+await stat(join(buildRoot, '200.html'));
 const { manifestEntries, count, size } =
-  await getLocalPrecacheManifest('build');
+  await getLocalPrecacheManifest(buildRoot);
 const source = await readFile('pwa/worker.js', 'utf8');
 const client = await readFile('src/services/pwaService.ts', 'utf8');
 const schema = Number(source.match(/const SCHEMA = (\d+)/)?.[1]);
@@ -23,13 +25,13 @@ const version = createHash('sha256')
   .digest('hex')
   .slice(0, 16);
 await writeFile(
-  'build/sw.js',
+  join(buildRoot, 'sw.js'),
   source
     .replace('__LMU_RELEASE__', version)
     .replace('self.__WB_MANIFEST', JSON.stringify(manifestEntries)),
 );
 await writeFile(
-  'build/release.json',
+  join(buildRoot, 'release.json'),
   JSON.stringify(
     {
       version,

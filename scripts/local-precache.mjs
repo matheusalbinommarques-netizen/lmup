@@ -40,7 +40,28 @@ const exact = new Set([
   'art/pilot/companion.webp',
 ]);
 
+const campModularAssets = new Set([
+  'art/camp-modular/approved-garden.png',
+  'art/camp-modular/garden-clean-plate.webp',
+  'art/camp-modular/center-built.webp',
+  'art/camp-modular/center-empty.webp',
+  'art/camp-modular/bestiary.webp',
+  'art/camp-modular/interior.png',
+  'art/camp-modular/tree-seed.png',
+  'art/camp-modular/tree-sapling.png',
+  'art/camp-modular/tree-young.png',
+  'art/camp-modular/tree-ancient.png',
+  'art/camp-modular/vegetation.png',
+  'art/camp-modular/repair-mask.svg',
+  'art/camp-modular/foreground-mask.svg',
+  'art/camp-modular/rune-stones-mask.svg',
+  'art/camp-modular/rune-glyphs-mask.svg',
+  'art/camp-modular/center-empty-mask.svg',
+  'art/camp-modular/center-bed-mask.svg',
+  'art/camp-modular/center-runes.svg',
+]);
 export function isPrecacheAsset(path) {
+  if (path.startsWith('art/camp-modular/')) return campModularAssets.has(path);
   if (exact.has(path)) return true;
   return (
     /^pwa-[^/]*\.png$/.test(path) ||
