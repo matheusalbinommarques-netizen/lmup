@@ -321,7 +321,14 @@
       data?.plannedToday.filter((row) => row.taskId === task.id) ?? [];
     if (rows.length)
       return rows.some(
-        (row) => row.status !== 'completed' && operationalRow(row, task, today),
+        (row) =>
+          row.status !== 'completed' &&
+          // Leaving today's plan must not hide the mission's planning controls.
+          operationalRow(
+            { ...row, removedFromDays: [] },
+            { ...task, skippedDate: null },
+            today,
+          ),
       );
     return !task.recurrence && !task.reviewEnabled && !task.completed;
   };
