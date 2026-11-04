@@ -61,7 +61,7 @@ test('áreas no cadastro, edição, exclusão com transferência e criação ape
   await form
     .getByRole('button', { name: 'Gerenciar áreas', exact: true })
     .click();
-  const areas = page.getByRole('dialog', { name: 'Minhas áreas', exact: true });
+  let areas = page.getByRole('dialog', { name: 'Minhas áreas', exact: true });
   await areas.getByLabel('Nome da nova área').fill('Casa');
   await areas.getByRole('button', { name: 'Criar área', exact: true }).click();
   await expect(
@@ -108,12 +108,8 @@ test('áreas no cadastro, edição, exclusão com transferência e criação ape
     page.getByText('Pessoal · Sem repetição', { exact: false }),
   ).toBeVisible();
   await page.goto('/missoes');
-  await page
-    .getByRole('button', { name: 'Ferramentas de missões', exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: 'Gerenciar áreas', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Áreas', exact: true }).click();
+  areas = page.getByRole('region', { name: 'Gerenciar áreas', exact: true });
   await areas.getByRole('button', { name: 'Editar Casa', exact: true }).click();
   await areas.getByLabel('Novo nome de Casa').fill('Meu lar');
   await areas.getByRole('button', { name: 'Salvar área', exact: true }).click();
@@ -138,9 +134,9 @@ test('áreas no cadastro, edição, exclusão com transferência e criação ape
   await areas
     .getByRole('button', { name: 'Confirmar exclusão da área', exact: true })
     .click();
-  await areas
-    .getByRole('button', { name: 'Fechar diálogo', exact: true })
-    .click();
+  await expect(
+    areas.getByRole('button', { name: 'Excluir Pessoal', exact: true }),
+  ).toHaveCount(0);
   await page.goto(url);
   await expect(
     page.getByText('Geral · Sem repetição', { exact: false }),
@@ -223,6 +219,13 @@ test('rotina persiste por data, impede duplicação entre abas, preserva histór
   ).toBeVisible();
   await page.goto('/missoes');
   await page.getByRole('button', { name: 'Concluídas', exact: true }).click();
+  await expect(page.locator('.history-row')).toHaveCount(1);
+  await page
+    .getByRole('button', { name: 'Ferramentas de missões', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Histórico de missões', exact: true })
+    .click();
   const history = page.getByRole('region', {
     name: 'Histórico de conclusões',
     exact: true,

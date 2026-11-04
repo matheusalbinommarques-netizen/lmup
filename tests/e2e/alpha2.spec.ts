@@ -54,33 +54,21 @@ function metric(page: Page, label: string) {
     .filter({ hasText: label })
     .locator('strong');
 }
-test('histórico separa missão e revisão e mantém concessão e estorno no líquido', async ({
+test('histórico mantém concessão e correção sem criar sessões de revisão', async ({
   page,
 }) => {
   const url = await mission(page);
   await complete(page);
-  await page
-    .getByRole('button', { name: 'Configurar revisão', exact: true })
-    .click();
-  const form = page.getByRole('dialog', {
-    name: 'Revisões desta missão',
-    exact: true,
-  });
-  const today = await page.evaluate(() =>
-    new Date().toLocaleDateString('en-CA'),
-  );
-  await form.getByLabel('Próxima revisão', { exact: true }).fill(today);
-  await form
-    .getByRole('button', { name: 'Salvar revisões', exact: true })
-    .click();
-  await complete(page);
+  await expect(
+    page.getByRole('button', { name: 'Configurar revisão', exact: true }),
+  ).toHaveCount(0);
   await page.goto('/progresso');
   await expect(metric(page, 'Missões distintas')).toHaveText('1');
-  await expect(metric(page, 'Sessões de revisão válidas')).toHaveText('1');
-  await expect(metric(page, 'XP líquido no período')).toHaveText('+106');
+  await expect(metric(page, 'Sessões de revisão válidas')).toHaveText('0');
+  await expect(metric(page, 'XP líquido no período')).toHaveText('+53');
   await page.goto(url);
   await page
-    .getByRole('button', { name: 'Desfazer última sessão', exact: true })
+    .getByRole('button', { name: 'Desfazer conclusão', exact: true })
     .click();
   await page
     .getByRole('button', { name: 'Confirmar correção', exact: true })
@@ -89,16 +77,10 @@ test('histórico separa missão e revisão e mantém concessão e estorno no lí
     page.getByRole('button', { name: 'Concluir missão', exact: true }),
   ).toBeVisible();
   await page.goto('/progresso');
-  await expect(metric(page, 'XP líquido no período')).toHaveText('+106');
-  await expect(metric(page, 'Missões distintas')).toHaveText('1');
-  await expect(metric(page, 'Sessões de revisão válidas')).toHaveText('0');
-  await page.getByLabel('Mostrar', { exact: true }).selectOption('reversal');
+  await expect(metric(page, 'XP líquido no período')).toHaveText('+53');
+  await page.getByLabel('Mostrar', { exact: true }).selectOption('adjustment');
   await expect(page.locator('.progress-ledger>li')).toHaveCount(1);
-  await expect(page.locator('.progress-receipt')).toHaveText(
-    '0 XP · 0 Gold · 0 Comida',
-  );
   await page.getByText('Ver recibo', { exact: true }).click();
-  await expect(page.locator('.progress-ledger')).toContainText('53 XP');
   await expect(page.locator('.progress-ledger')).toContainText('Débito');
 });
 test('compras e cuidado entram como gasto sem fabricar XP e saldos correspondem ao backup', async ({

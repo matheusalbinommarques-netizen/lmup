@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { Occurrence } from '$services/productivityTypes';
   import { fraction } from '$services/productivityRules';
-  import { occurrenceSituation } from '$services/productivityInsights';
   import ApprovedIcon from './ApprovedIcon.svelte';
   import Button from './Button.svelte';
   let {
@@ -31,12 +30,14 @@
     paused: 'Pausada',
     partial: 'Parcial',
     completed: 'Concluída',
-    late: 'Início atrasado',
-    expired: 'Prazo vencido',
+    superseded: 'Substituída',
+    skipped: 'Pulada',
     discarded: 'Descartada',
     excused: 'Pausa justificada',
   };
-  const state = $derived(occurrenceSituation(row));
+  const state = $derived(
+    row.supersededBy ? 'superseded' : row.skipped ? 'skipped' : row.status,
+  );
 </script>
 
 <article
@@ -51,6 +52,7 @@
       type="checkbox"
       aria-label={`Selecionar ${row.title}`}
       {checked}
+      disabled={busy || !!row.supersededBy || !!row.skipped}
       onchange={(event) => onselect?.(event.currentTarget.checked)}
     />{/if}
   <span class="occurrence-time">{row.plannedTime ?? 'Flex.'}</span><ApprovedIcon
@@ -64,11 +66,9 @@
         >{row.estimatedMinutes
           ? `${row.estimatedMinutes} min`
           : 'Sem estimativa'}</span
-      ><span class="area-chip">{area}</span><span
-        class="state-chip"
-        class:attention={['late', 'expired'].includes(state)}
+      ><span class="area-chip">{area}</span><span class="state-chip"
         >{labels[state]}</span
-      >{#if recovery || row.originDate !== row.plannedDate}<span
+      >{#if recovery}<span
           >Origem: {row.originDate.split('-').reverse().join('/')}</span
         >{/if}
     </div>
@@ -86,13 +86,15 @@
         ><ApprovedIcon
           name={recovery ? 'recover' : 'comecar'}
           size={24}
-        />{row.status === 'completed'
-          ? 'Ver ou corrigir'
-          : recovery
-            ? 'Recuperar'
-            : row.value
-              ? 'Continuar'
-              : 'Executar agora'}</Button
+        />{row.supersededBy || row.skipped
+          ? 'Ver histórico'
+          : row.status === 'completed'
+            ? 'Ver ou corrigir'
+            : recovery
+              ? 'Recuperar'
+              : row.value
+                ? 'Continuar'
+                : 'Executar agora'}</Button
       >
     </div>
   </div>
@@ -176,10 +178,6 @@
   .state-chip {
     background: #354b4344;
     color: #c8d7cc;
-  }
-  .state-chip.attention {
-    background: #6b342c77;
-    color: #ffd0ac;
   }
   .completed .state-chip {
     background: #24533477;

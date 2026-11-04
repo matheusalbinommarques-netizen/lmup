@@ -88,6 +88,16 @@ test('conclusão recorrente sai de Pendentes, mantém histórico e aparece marca
   await page.getByRole('button', { name: 'Todas', exact: true }).click();
   await expect(row).toBeVisible();
   await page.getByRole('button', { name: 'Concluídas', exact: true }).click();
+  await expect(
+    page.locator('.history-row').filter({ hasText: 'Fruta diária' }),
+  ).toBeVisible();
+  await expect(page.locator('.history-period')).toHaveCount(0);
+  await page
+    .getByRole('button', { name: 'Ferramentas de missões', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Histórico de missões', exact: true })
+    .click();
   await expect(page.locator('.history-period')).toContainText(
     'Histórico de execuções',
   );
@@ -138,51 +148,23 @@ test('conclusão recorrente sai de Pendentes, mantém histórico e aparece marca
   ).toBeVisible();
 });
 
-test('pendências de ontem podem ir para hoje ou outra data, e próxima missão tem um único menu', async ({
+test('pendências pontuais entram automaticamente em Hoje e preservam o menu de planejamento', async ({
   page,
 }) => {
   await seed(page);
   await page.goto('/');
   await expect(page.locator('.next-mission .context-trigger')).toHaveCount(1);
-  await expect(page.locator('.next-mission summary')).toHaveCount(0);
+  await expect(page.locator('.day-plan')).toContainText('Organizar ontem');
+  await expect(page.locator('.day-plan')).toContainText('Revisar ontem');
+  await expect(
+    page.getByRole('button', { name: 'Trazer para hoje', exact: true }),
+  ).toHaveCount(0);
   await page.locator('.next-mission .context-trigger').click();
-  await expect(page.getByLabel('Manter em destaque')).toBeVisible();
   await page.getByLabel('Manter em destaque').selectOption('9001');
   await page.keyboard.press('Escape');
   await expect(page.locator('.next-mission')).toContainText('Água diária');
-  const old = page
-    .locator('.today-secondary li')
-    .filter({ hasText: 'Organizar ontem' });
-  await expect(old).toBeVisible();
-  await old
-    .getByRole('button', { name: 'Trazer para hoje', exact: true })
-    .click();
-  await expect(old).toHaveCount(0);
-  await expect(page.locator('.day-plan')).toContainText('Organizar ontem');
-  const other = page
-    .locator('.today-secondary li')
-    .filter({ hasText: 'Revisar ontem' });
-  await other
-    .getByRole('button', { name: 'Escolher data', exact: true })
-    .click();
-  const dialog = page.getByRole('dialog', {
-    name: 'Reagendar ocorrência',
-    exact: true,
-  });
-  await dialog.getByLabel('Nova data').fill('2026-11-04');
-  await dialog
-    .getByRole('button', { name: 'Confirmar reagendamento', exact: true })
-    .click();
-  await expect(dialog).not.toBeVisible();
   await page.reload();
   await expect(page.locator('.day-plan')).toContainText('Organizar ontem');
-  await expect(
-    page.locator('.today-secondary li').filter({ hasText: 'Revisar ontem' }),
-  ).toHaveCount(0);
-  await page.goto('/missoes?view=agenda&date=2026-11-04');
-  await expect(
-    page.locator('.occurrence-row').filter({ hasText: 'Revisar ontem' }),
-  ).toBeVisible();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth + 1,

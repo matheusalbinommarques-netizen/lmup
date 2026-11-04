@@ -1,3 +1,4 @@
+import { reconcileProductivity } from './productivityLifecycle';
 import { migrateAreaIcons } from './areaIcons';
 import { repairEquipmentSlots } from './shopService';
 import { companionContent } from '$lib/content/world';
@@ -109,4 +110,5 @@ export async function initializeJourney(): Promise<void> {
       }
     },
   );
+  await reconcileProductivity();
 }

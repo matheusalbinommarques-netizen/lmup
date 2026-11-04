@@ -14,6 +14,8 @@ export type Planning = {
   tracking?: ProgressConfig;
 };
 export type Occurrence = Planning & {
+  supersededBy?: string;
+  skipped?: boolean;
   removedFromDays?: string[];
   id: string;
   taskId: number;
@@ -56,6 +58,7 @@ export type Occurrence = Planning & {
   createdAt: string;
 };
 export type Routine = {
+  mergedInto?: string;
   defaultAreaId?: number;
   id: string;
   name: string;
@@ -64,6 +67,7 @@ export type Routine = {
   startDate: string;
   status: 'active' | 'paused' | 'archived';
   entries: {
+    days?: number[] | null;
     taskId: number;
     time: string | null;
     previousPlan: Record<string, unknown>;

@@ -67,7 +67,7 @@ test('Home mantém saudação, planejamento completo, destinos e ações sem rol
     ).toBeLessThanOrEqual(1);
   else {
     const action = await page
-      .getByRole('button', { name: 'Começar', exact: true })
+      .getByRole('button', { name: 'Começar missão', exact: true })
       .boundingBox();
     const nav = await page
       .getByRole('navigation', { name: 'Navegação móvel', exact: true })
@@ -241,9 +241,7 @@ test('recorrências contam a ocorrência de hoje e não reutilizam etapas antiga
       }),
   );
   await page.reload();
-  await expect(page.locator('.daily-summary')).toContainText(
-    '1 de 2 ocorrências',
-  );
+  await expect(page.locator('.daily-summary')).toContainText('1 de 2 missões');
   await expect(page.locator('#next-title')).toHaveText('Rotina pausada');
   await expect(page.locator('.today-plan')).not.toContainText('Missão futura');
   await expect(page.locator('.day-plan li')).toHaveCount(0);
@@ -252,7 +250,9 @@ test('recorrências contam a ocorrência de hoje e não reutilizam etapas antiga
       page.evaluate(() => localStorage.getItem('lmup.home-priority.v1')),
     )
     .toBeNull();
-  await page.getByRole('button', { name: 'Começar', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Começar missão', exact: true })
+    .click();
   await expect(page).toHaveURL(/\/missao\/202$/);
   await page
     .getByRole('button', { name: /^(Iniciar|Retomar) missão$/ })

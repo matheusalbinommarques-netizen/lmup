@@ -1,6 +1,34 @@
 import { db } from './db';
 import { isTaskIconKey } from '$lib/content/visualAssets';
 
+/** Customize the implicit area without creating a second Geral or touching missions. */
+export async function saveGeneralAreaIcon(
+  iconKey: string | null,
+  expectedIconKey: string | null | undefined,
+) {
+  if (iconKey !== null && !isTaskIconKey(iconKey))
+    throw new Error('Escolha um ícone da biblioteca disponível.');
+  return db.transaction('rw', db.profile, db.productivityAudit, async () => {
+    const profile = await db.profile.get(1);
+    if (!profile)
+      throw new Error('Seu perfil não está disponível. Reabra a edição.');
+    if (profile.generalAreaIconKey !== expectedIconKey)
+      throw new Error(
+        'O ícone de Geral mudou em outra aba. Reabra para conferir.',
+      );
+    if (profile.generalAreaIconKey === iconKey) return;
+    await db.profile.update(1, { generalAreaIconKey: iconKey });
+    await db.productivityAudit.add({
+      id: crypto.randomUUID(),
+      entityId: 'area:0',
+      action: 'area-icon-edit',
+      recordedAt: new Date().toISOString(),
+      before: { iconKey: profile.generalAreaIconKey ?? null },
+      after: { iconKey },
+    });
+  });
+}
+
 function areaName(value: string) {
   const name = value.trim();
   if (!name || name.length > 80)
@@ -18,6 +46,8 @@ export async function saveArea(
   const nome = areaName(name);
   return db.transaction('rw', db.areas, db.productivityAudit, async () => {
     const previous = id === undefined ? undefined : await db.areas.get(id);
+    if (previous?.archived)
+      throw new Error('Esta área foi arquivada. Atualize a lista de áreas.');
     if (
       description !== undefined &&
       (typeof description !== 'string' ||
@@ -31,6 +61,7 @@ export async function saveArea(
       (await db.areas
         .filter(
           (area) =>
+            !area.archived &&
             area.id !== id &&
             area.nome.toLocaleLowerCase('pt-BR') ===
               nome.toLocaleLowerCase('pt-BR'),
@@ -79,6 +110,10 @@ export async function deleteArea(id: number, destination = 0) {
     db.productivityAudit,
     async () => {
       const previous = await db.areas.get(id);
+      if (previous?.archived)
+        throw new Error(
+          'A área arquivada preserva o histórico e não pode ser excluída por esta ação.',
+        );
       const linkedTasks = await db.tasks.where('areaId').equals(id).toArray();
       const linkedRoutines = await db.routines
         .filter((routine) => routine.defaultAreaId === id)
@@ -87,7 +122,11 @@ export async function deleteArea(id: number, destination = 0) {
         throw new Error('Escolha outra área de destino.');
       if (!(await db.areas.get(id)))
         throw new Error('Esta área não está mais disponível.');
-      if (destination !== 0 && !(await db.areas.get(destination)))
+      if (
+        destination !== 0 &&
+        (!(await db.areas.get(destination)) ||
+          (await db.areas.get(destination))?.archived)
+      )
         throw new Error('A área de destino mudou. Escolha novamente.');
       await db.tasks
         .where('areaId')
@@ -140,7 +179,11 @@ export async function transferAreaTasks(
     db.tasks,
     db.productivityAudit,
     async () => {
-      if (destination !== 0 && !(await db.areas.get(destination)))
+      if (
+        destination !== 0 &&
+        (!(await db.areas.get(destination)) ||
+          (await db.areas.get(destination))?.archived)
+      )
         throw new Error('A área de destino mudou. Escolha novamente.');
       const tasks = await db.tasks.bulkGet(taskIds);
       for (const task of tasks) {

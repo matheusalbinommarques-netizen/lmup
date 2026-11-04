@@ -98,6 +98,12 @@ for (const archived of [false, true])
     await expect(
       page.getByRole('status', { name: 'Recompensa da conclusão' }),
     ).toBeVisible();
+    await page
+      .getByRole('button', {
+        name: 'Fechar feedback de conclusão',
+        exact: true,
+      })
+      .click();
     await page.getByRole('button', { name: 'Todas', exact: true }).click();
     if (archived) {
       const archive = await action(page, 'Missão pessoal', 'Arquivar missão');
@@ -164,7 +170,9 @@ test('execução individual iniciada em Hoje conclui e exclui sem mudar de pági
 }) => {
   await create(page);
   await page.goto('/');
-  await page.getByRole('button', { name: 'Começar', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Começar missão', exact: true })
+    .click();
   await expect(page).toHaveURL(/\/missao\/\d+$/);
   const url = page.url();
   await page

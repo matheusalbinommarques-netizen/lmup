@@ -39,6 +39,15 @@ export function validateProductivityBackup(
     if (task.productivityVersion) validatePlanning(task, task.subtasks ?? []);
   for (const row of lists.occurrences) {
     requireValue(tasks.has(row.taskId), 'ocorrência sem missão');
+    if (row.supersededBy !== undefined)
+      requireValue(
+        typeof row.supersededBy === 'string' &&
+          calendarDate(row.supersededBy) === row.supersededBy &&
+          row.supersededBy > row.originDate,
+        'substituição inválida',
+      );
+    if (row.skipped !== undefined)
+      requireValue(typeof row.skipped === 'boolean', 'pulo inválido');
     if (row.removedFromDays !== undefined)
       requireValue(
         Array.isArray(row.removedFromDays) &&
@@ -141,7 +150,29 @@ export function validateProductivityBackup(
   }
   const bound = new Set<number>();
   const areaIds = new Set([0, ...lists.areas.map((area) => area.id)]);
+  for (const area of lists.areas) {
+    if (area.archived !== undefined)
+      requireValue(
+        typeof area.archived === 'boolean',
+        'arquivo de área inválido',
+      );
+    if (area.mergedInto !== undefined)
+      requireValue(
+        area.archived &&
+          areaIds.has(area.mergedInto) &&
+          area.mergedInto !== area.id,
+        'mesclagem de área inválida',
+      );
+  }
   for (const row of lists.routines) {
+    if (row.mergedInto !== undefined)
+      requireValue(
+        row.status === 'archived' &&
+          routines.has(row.mergedInto) &&
+          row.mergedInto !== row.id &&
+          row.entries.length === 0,
+        'mesclagem de rotina inválida',
+      );
     if (row.defaultAreaId !== undefined)
       requireValue(
         Number.isSafeInteger(row.defaultAreaId) &&
@@ -179,6 +210,16 @@ export function validateProductivityBackup(
       );
       bound.add(entry.taskId);
       validateTime(entry.time);
+      if (entry.days != null)
+        requireValue(
+          Array.isArray(entry.days) &&
+            entry.days.length > 0 &&
+            new Set(entry.days).size === entry.days.length &&
+            entry.days.every(
+              (day: number) => Number.isInteger(day) && day >= 0 && day <= 6,
+            ),
+          'dias individuais inválidos',
+        );
       requireValue(
         entry.previousPlan && typeof entry.previousPlan === 'object',
         'planejamento anterior ausente',

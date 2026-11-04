@@ -274,50 +274,27 @@ describe('esforço, equipamentos e limites', () => {
   });
 });
 describe('sessões de revisão', () => {
-  it('uma tarefa tem sessões distintas, sem prêmio repetido no mesmo dia, e desfazer preserva a sessão anterior e o bônus', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(new Date('2026-10-10T12:00:00-03:00'));
-    const pid = await project();
-    const id = await mission({ projectId: pid });
+  it('retirar revisões não concede nova recompensa nem altera o bônus já recebido', async () => {
+    const pid = await project(),
+      id = await mission({ projectId: pid });
+    await completeTask(id);
+    const before = await db.profile.get(1);
     await configureReview(id, {
       enabled: true,
       intervalDays: 1,
-      dueDate: '2026-10-10',
+      dueDate: '2099-01-01',
     });
-    await Promise.all([
-      completeTask(id, { reviewOutcome: 'partial' }),
-      completeTask(id),
-    ]);
-    expect(await db.tasks.count()).toBe(1);
-    expect((await db.profile.get(1))?.totalXpEarned).toBe(58);
+    await initializeJourney();
     await expect(
-      configureReview(id, {
-        enabled: true,
-        intervalDays: 1,
-        dueDate: '2026-10-10',
-      }),
-    ).rejects.toThrow('amanhã');
-    await db.tasks.update(id, { reviewDueDate: '2026-10-10' });
+      completeTask(id, { reviewOutcome: 'partial' }),
+    ).rejects.toThrow('desativadas');
     expect(await completeTask(id)).toBeNull();
-    vi.setSystemTime(new Date('2026-10-11T12:00:00-03:00'));
-    await completeTask(id, { reviewOutcome: 'recalled' });
-    expect((await db.profile.get(1))?.totalXpEarned).toBe(111);
-    await undoTask(id);
-    expect((await db.profile.get(1))?.totalXpEarned).toBe(111);
-    expect((await db.profile.get(1))?.rewardDebt?.xp).toBe(53);
+    expect(await db.profile.get(1)).toEqual(before);
     expect((await db.projects.get(pid))?.rewardGranted).toBe(true);
-    expect((await db.tasks.get(id))?.completed).toBe(true);
-    await completeTask(id, { reviewOutcome: 'again' });
-    expect((await db.profile.get(1))?.totalXpEarned).toBe(111);
-    const sessions = (await db.activityEvents.toArray()).filter(
-      (event) => event.kind === 'review' && !event.reversedAt,
-    );
-    expect(sessions).toHaveLength(2);
-    expect(sessions[1].reviewOutcome).toBe('again');
+    expect((await db.tasks.get(id))?.reviewEnabled).toBe(false);
+    expect(await db.tasks.count()).toBe(1);
   });
-  it('revisão de missão concluída legada não apaga conclusão nem exige estornar bônus desconhecido', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(new Date('2026-10-10T12:00:00-03:00'));
+  it('aposentar revisão legada conserva conclusão e bônus desconhecido sem inventar recibos', async () => {
     const pid = await db.projects.add({
       name: 'Antigo',
       status: 'concluido',
@@ -332,21 +309,18 @@ describe('sessões de revisão', () => {
       status: 'completed',
       projectId: pid,
       createdAt: new Date('2026-01-01'),
+      reviewEnabled: true,
     });
-    await configureReview(id, {
-      enabled: true,
-      intervalDays: 7,
-      dueDate: '2026-10-10',
-    });
-    await completeTask(id);
-    await undoTask(id);
+    await initializeJourney();
+    expect(await completeTask(id)).toBeNull();
+    await expect(undoTask(id)).rejects.toThrow('anterior ao histórico');
     expect(await db.tasks.get(id)).toMatchObject({
       completed: true,
-      completionEventId: null,
+      reviewEnabled: false,
     });
     expect((await db.projects.get(pid))?.rewardGranted).toBe(true);
-    expect((await db.profile.get(1))?.rewardDebt?.xp).toBe(53);
-    expect((await db.profile.get(1))?.totalXpEarned).toBe(53);
+    expect((await db.profile.get(1))?.totalXpEarned).toBe(0);
+    expect(await db.activityEvents.count()).toBe(0);
   });
   it('falha ao registrar metadados da sessão reverte tarefa, evento e saldo', async () => {
     const id = await mission();
@@ -368,7 +342,7 @@ describe('sessões de revisão', () => {
     expect(await db.xpLogs.count()).toBe(0);
     expect((await db.profile.get(1))?.totalXpEarned).toBe(0);
   });
-  it('backup conserva etapas, esforço, sessões e programação; referências inválidas não substituem dados', async () => {
+  it('backup antigo conserva etapas e esforço e aposenta programação de revisão sem excluir metadados', async () => {
     const pid = await project({ stages: [{ id: 'a', title: 'Primeiro' }] });
     const id = await mission({
       projectId: pid,
@@ -380,57 +354,47 @@ describe('sessões de revisão', () => {
       intervalDays: 7,
       dueDate: '2020-01-01',
     });
-    await completeTask(id, { reviewOutcome: 'recalled' });
     const backup = JSON.parse(JSON.stringify(await createJourneyBackup()));
     await restoreJourneyBackup(backup);
     expect(await db.tasks.get(id)).toMatchObject({
       effort: 'medium',
       projectStageId: 'a',
-      reviewEnabled: true,
+      reviewEnabled: false,
+      reviewDueDate: '2020-01-01',
     });
-    expect(
-      (await db.activityEvents.toArray()).find(
-        (event) => event.kind === 'review',
-      )?.reviewOutcome,
-    ).toBe('recalled');
+    expect((await db.profile.get(1))?.totalXpEarned).toBe(0);
     backup.data.tasks[0].projectStageId = 'inexistente';
     expect(() => validateBackup(backup)).toThrow('etapa');
   });
-  it('sessões com passos têm marcações próprias e desfazer permite retomar sem perder os passos', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(new Date('2026-10-10T12:00:00-03:00'));
+  it('missão com passos continua executável após aposentar a revisão sem duplicar conclusão', async () => {
     const id = await mission({ steps: ['Um passo'] });
     await configureReview(id, {
       enabled: true,
       intervalDays: 1,
-      dueDate: '2026-10-10',
+      dueDate: '2020-01-01',
     });
+    await initializeJourney();
     await beginTask(id);
     await setTaskStep(id, 0, true);
     await completeTask(id);
-    vi.setSystemTime(new Date('2026-10-11T12:00:00-03:00'));
-    await expect(completeTask(id)).rejects.toThrow('Abra a sessão');
-    await beginTask(id);
-    expect((await db.tasks.get(id))?.completedSubtasks).toEqual([]);
-    await setTaskStep(id, 0, true);
-    await completeTask(id);
-    await undoTask(id);
-    await beginTask(id);
+    const before = await db.profile.get(1);
+    expect(await completeTask(id)).toBeNull();
+    expect(await db.profile.get(1)).toEqual(before);
     expect((await db.tasks.get(id))?.completedSubtasks).toEqual([0]);
     const backup = JSON.parse(JSON.stringify(await createJourneyBackup()));
     expect(() => validateBackup(backup)).not.toThrow();
   });
-  it('sessão em andamento da etapa anterior preserva suas marcações', async () => {
+  it('aposentar revisão em andamento preserva marcações já salvas', async () => {
     const id = await mission({ steps: ['Um passo'] });
-    const task = (await db.tasks.get(id))!;
     await db.tasks.update(id, {
       reviewEnabled: true,
       reviewDueDate: '2020-01-01',
-      reviewSession: new Date(task.createdAt).toISOString(),
       executionState: 'active',
       completedSubtasks: [0],
     });
+    await initializeJourney();
     await beginTask(id);
+    expect((await db.tasks.get(id))?.reviewEnabled).toBe(false);
     expect((await db.tasks.get(id))?.completedSubtasks).toEqual([0]);
   });
 });

@@ -51,23 +51,31 @@ async function instrumentPicker(page: Page) {
 }
 async function clickTime(page: Page, input: Locator, value: string) {
   await expect(input).toBeEnabled();
+  await expect(input).toHaveAttribute('type', 'text');
+  await expect(input).toHaveAttribute('inputmode', 'numeric');
   const before = await page.evaluate(
     () => (window as any).timePickerCalls.length,
   );
-  const box = (await input.boundingBox())!;
-  // Exercise the input surface, rather than the small native clock indicator.
-  await input.click({ position: { x: box.width / 2, y: box.height / 2 } });
+  await input.click();
   await expect(input).toBeFocused();
+  await input.fill('');
+  const [hours, minutes] = value.split(':');
+  await input.pressSequentially(hours);
+  await expect(input).toHaveValue(hours + ':');
   expect(
-    await page.evaluate(() => (window as any).timePickerCalls.length),
-  ).toBeGreaterThan(before);
-  await page.keyboard.press('Escape');
-  await input.fill(value);
+    await input.evaluate(
+      (element) => (element as HTMLInputElement).selectionStart,
+    ),
+  ).toBe(3);
+  await input.pressSequentially(minutes);
   await input.press('Tab');
   await expect(input).toHaveValue(value);
+  expect(
+    await page.evaluate(() => (window as any).timePickerCalls.length),
+  ).toBe(before);
 }
 
-test('horário abre pelo teclado e preserva o valor escolhido ao salvar', async ({
+test('horário avança das horas aos minutos pelo teclado e preserva o valor ao salvar', async ({
   page,
 }) => {
   await instrumentPicker(page);
@@ -75,18 +83,7 @@ test('horário abre pelo teclado e preserva o valor escolhido ao salvar', async 
   const form = await newMission(page, 'Horário pelo teclado');
   await form.getByRole('tab', { name: 'Planejamento', exact: true }).click();
   const input = form.getByLabel('Início desejado', { exact: true });
-  const before = await page.evaluate(
-    () => (window as any).timePickerCalls.length,
-  );
-  await input.focus();
-  await input.press('Enter');
-  await expect
-    .poll(() => page.evaluate(() => (window as any).timePickerCalls.length))
-    .toBeGreaterThan(before);
-  await page.keyboard.press('Escape');
-  await input.fill('14:45');
-  await input.press('Tab');
-  await expect(input).toHaveValue('14:45');
+  await clickTime(page, input, '14:45');
   await save(form);
   await expect(
     page
@@ -95,7 +92,7 @@ test('horário abre pelo teclado e preserva o valor escolhido ao salvar', async 
   ).toContainText('14:45');
 });
 
-test('formulário alinha áreas e passos, abre horário pela superfície e organiza grupos da Agenda', async ({
+test('formulário alinha áreas e passos, permite digitar horário e organiza grupos da Agenda', async ({
   page,
 }) => {
   await instrumentPicker(page);

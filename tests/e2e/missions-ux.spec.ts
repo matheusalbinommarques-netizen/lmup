@@ -43,7 +43,7 @@ test('navegação principal e ferramentas preservam todos os destinos', async ({
     ).toHaveAttribute('aria-pressed', 'true');
     await noOverflow(page);
   }
-  for (const name of ['Recuperar ocorrências', 'Arquivadas']) {
+  for (const name of ['Histórico de missões', 'Arquivadas']) {
     await page
       .getByRole('button', { name: 'Ferramentas de missões', exact: true })
       .click();
@@ -153,6 +153,10 @@ test('formulário preserva valores entre seções, edição e recarga', async ({
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
   await expect(form).not.toBeVisible();
   await page.reload();
+  await page.getByText('Mais filtros', { exact: true }).click();
+  await page
+    .getByLabel('Filtrar por data', { exact: true })
+    .selectOption('upcoming');
   const editor = await edit(page, 'Ler com atenção');
   await expect(
     editor.getByRole('tab', { name: 'Geral', exact: true }),
@@ -292,6 +296,12 @@ test('histórico filtra a data realizada e mantém conclusão consultável', asy
   await expect(
     page.getByRole('region', { name: 'Histórico de conclusões', exact: true }),
   ).toContainText('Missão de avaliação');
+  await page
+    .getByRole('button', { name: 'Ferramentas de missões', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Histórico de missões', exact: true })
+    .click();
   await page.getByLabel('De', { exact: true }).fill('2099-01-01');
   await expect(
     page.getByRole('region', { name: 'Histórico de conclusões', exact: true }),

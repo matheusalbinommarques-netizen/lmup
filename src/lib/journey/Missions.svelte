@@ -1,4 +1,8 @@
 <script lang="ts">
+  import { operationalRow } from '$services/operationalPlanning';
+  import { todayView } from './todayView';
+  import MissionActions from './MissionActions.svelte';
+  import { saveSession } from '$services/savedSessionService';
   import { isOpenSession } from '$services/sessionLifecycle';
   import { reconcileSessions } from '$services/savedSessionService';
   import {
@@ -16,12 +20,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { journeyQuery, type JourneySnapshot } from '$services/journeyQuery';
-  import {
-    isAvailable,
-    planTask,
-    pinTask,
-    taskSteps,
-  } from '$services/journeyService';
+  import { planTask, pinTask, taskSteps } from '$services/journeyService';
   import {
     completeTask,
     undoTask,
@@ -40,11 +39,7 @@
     type MissionSession,
   } from '$services/missionSession';
   import { dateKey } from '$services/rewardService';
-  import {
-    scheduledOn,
-    nextPlannedDate,
-    recurrenceLabel,
-  } from '$services/recurrence';
+  import { nextPlannedDate, recurrenceLabel } from '$services/recurrence';
   import { formatCalendar } from '$services/calendar';
   import type { Task } from '$services/db';
   import { guardUpdates } from './guardUpdates';
@@ -102,13 +97,13 @@
   }
   let selectionOpen = $state(false);
   let workspaceView = $state<
-    'list' | 'agenda' | 'routines' | 'areas' | 'recovery' | 'sessions'
+    'list' | 'agenda' | 'routines' | 'areas' | 'sessions'
   >('list');
   $effect(() => {
     const value = page.url.searchParams.get('view');
+    if (value === 'history' || value === 'recovery') filter = 'history';
     workspaceView =
-      value &&
-      ['agenda', 'routines', 'areas', 'recovery', 'sessions'].includes(value)
+      value && ['agenda', 'routines', 'areas', 'sessions'].includes(value)
         ? (value as typeof workspaceView)
         : 'list';
   });
@@ -126,7 +121,6 @@
           ? 'Agenda — Semana'
           : 'Agenda',
       routines: 'Rotinas',
-      recovery: 'Recuperar Ocorrências',
       sessions: 'Lista de Missões',
       areas: 'Áreas',
     }[workspaceView],
@@ -136,7 +130,6 @@
       list: 'Veja, filtre e gerencie todas as suas missões.',
       agenda: 'Organize seu tempo e mantenha o foco.',
       routines: 'Organize suas sequências e mantenha a constância.',
-      recovery: 'Recupere, reorganize e mantenha o progresso.',
       sessions: 'Retome suas atividades com o progresso preservado.',
       areas: 'Cuide das áreas que organizam suas missões.',
     }[workspaceView],
@@ -176,8 +169,7 @@
   }
   let error = $state(''),
     notice = $state('');
-  let open = $state(false),
-    areasOpen = $state(false);
+  let open = $state(false);
   let editTask = $state<Task>();
   let removalMode = $state<RemovalMode>('delete');
   let completion = $state<{ title: string; event: ActivityEvent }>();
@@ -193,6 +185,7 @@
     | 'all'
     | 'undated'
     | 'completed'
+    | 'history'
     | 'archived'
   >('pending');
   let historyFrom = $state(''),
@@ -221,20 +214,21 @@
     if (project) filter = 'all';
     const sub = journeyQuery().subscribe({
       next: (value) => {
+        refresh();
         data = value;
       },
       error: () =>
         (error =
           'Não foi possível carregar as missões. Recarregue para tentar novamente.'),
     });
-    const refresh = () => {
+    function refresh() {
       const current = dateKey();
       if (today !== current) {
         today = current;
         selected = [];
         storedSession = readMissionSession(current);
       }
-    };
+    }
     const clock = setInterval(refresh, 30000);
     window.addEventListener('focus', refresh);
     return () => {
@@ -255,24 +249,46 @@
   });
   const available = (task: Task) =>
     !task.archived &&
-    (task.productivityVersion && !task.reviewEnabled
-      ? !!data?.plannedToday.some(
-          (row) =>
-            row.taskId === task.id &&
-            !['completed', 'discarded', 'excused'].includes(row.status),
-        )
-      : isAvailable(task, new Date(`${today}T12:00:00`)));
+    (data?.plannedToday.some(
+      (row) =>
+        row.taskId === task.id &&
+        row.status !== 'completed' &&
+        operationalRow(row, task, today),
+    ) ??
+      false);
   const scheduledToday = (task: Task) =>
-    task.productivityVersion && !task.reviewEnabled
-      ? !!data?.plannedToday.some(
-          (row) =>
-            row.taskId === task.id &&
-            (!!task.recurrence ||
-              !!task.plannedDate ||
-              row.originDate !== row.plannedDate) &&
-            !['discarded', 'excused'].includes(row.status),
-        )
-      : scheduledOn(task, today);
+    !!data &&
+    todayView(data, today).planned.some((row) => row.taskId === task.id);
+  const completedToday = (task: Task) =>
+    !!data?.events.some(
+      (event) =>
+        event.taskId === task.id &&
+        event.date === today &&
+        !event.reversedAt &&
+        event.executionComplete !== false &&
+        ['task', 'review'].includes(event.kind),
+    ) ||
+    (!!task.completed &&
+      !!task.completedAt &&
+      dateKey(new Date(task.completedAt)) === today);
+  async function openMission(task: Task) {
+    if (!data) return;
+    const row = data.plannedToday.find((row) => row.taskId === task.id);
+    const session =
+      row &&
+      openSessions.find((session) => session.occurrenceIds.includes(row.id));
+    if (session) {
+      await saveSession({ ...session, status: 'active' }, session.revision);
+      await goto('/sessoes');
+      return;
+    }
+    if (row && row.originDate < today && row.status !== 'completed') {
+      await ensureOccurrence(task.id!, row.originDate);
+      await goto('/ocorrencia/' + encodeURIComponent(row.id));
+      return;
+    }
+    await goto('/missao/' + task.id);
+  }
   const historyCompletion = (event: JourneySnapshot['events'][number]) =>
     event.executionComplete !== false;
   const areaName = (id?: number) =>
@@ -301,30 +317,22 @@
     data?.tasks.filter((task) => task.archived && matchesFilters(task)) ?? [],
   );
   const hasPendingWork = (task: Task) => {
-    const current =
-      data?.plannedToday.filter(
-        (row) => row.taskId === task.id && !row.planningSuspended,
-      ) ?? [];
-    if (current.length)
-      return current.some(
+    const rows =
+      data?.plannedToday.filter((row) => row.taskId === task.id) ?? [];
+    if (rows.length)
+      return rows.some(
         (row) =>
-          !['completed', 'discarded', 'excused'].includes(row.status) &&
-          !reservedOccurrences.has(row.id),
+          row.status !== 'completed' &&
+          // Leaving today's plan must not hide the mission's planning controls.
+          operationalRow(
+            { ...row, removedFromDays: [] },
+            { ...task, skippedDate: null },
+            today,
+          ),
       );
-    if (
-      data?.occurrences.some(
-        (row) => row.taskId === task.id && reservedOccurrences.has(row.id),
-      )
-    )
-      return false;
-    if (task.reviewEnabled) return task.lastReviewDate !== today;
-    if (task.recurrence) return task.lastOccurrenceDate !== today;
-    return !task.completed;
+    return !task.recurrence && !task.reviewEnabled && !task.completed;
   };
   const openSessions = $derived(data?.sessions.filter(isOpenSession) ?? []);
-  const reservedOccurrences = $derived(
-    new Set(openSessions.flatMap((session) => session.occurrenceIds)),
-  );
   const counts = $derived({
     pending: tasks.filter(hasPendingWork).length,
     today: tasks.filter((task) => scheduledToday(task)).length,
@@ -333,7 +341,8 @@
         nextPlannedDate(task, today) &&
         (task.recurrence || task.reviewEnabled || !task.completed),
     ).length,
-    all: tasks.length,
+    all: tasks.filter((task) => hasPendingWork(task) || completedToday(task))
+      .length,
     archived: archivedTasks.length,
     undated: tasks.filter((task) => category(task) === 'Sem data').length,
     completed:
@@ -341,6 +350,14 @@
         (event) =>
           ['task', 'review'].includes(event.kind) &&
           !event.reversedAt &&
+          event.date === today &&
+          (!event.occurrenceId ||
+            data?.occurrences.some(
+              (row) =>
+                row.id === event.occurrenceId &&
+                row.status === 'completed' &&
+                row.completionEventId === event.id,
+            )) &&
           historyCompletion(event) &&
           tasks.some((task) => task.id === event.taskId),
       ).length ?? 0,
@@ -351,7 +368,8 @@
         (task) =>
           filter === 'archived' ||
           (filter === 'pending' && hasPendingWork(task)) ||
-          filter === 'all' ||
+          (filter === 'all' &&
+            (hasPendingWork(task) || completedToday(task))) ||
           (filter === 'undated' && category(task) === 'Sem data') ||
           (filter === 'today'
             ? scheduledToday(task)
@@ -395,8 +413,21 @@
           return false;
         if (!historyCompletion(event)) return false;
         if (
-          (historyFrom && event.date < historyFrom) ||
-          (historyTo && event.date > historyTo)
+          filter === 'completed' &&
+          (event.date !== today ||
+            event.reversedAt ||
+            (event.occurrenceId &&
+              !data?.occurrences.some(
+                (row) =>
+                  row.id === event.occurrenceId &&
+                  row.status === 'completed' &&
+                  row.completionEventId === event.id,
+              )))
+        )
+          return false;
+        if (
+          (filter === 'history' && historyFrom && event.date < historyFrom) ||
+          (filter === 'history' && historyTo && event.date > historyTo)
         )
           return false;
         const task = data?.tasks.find((item) => item.id === event.taskId);
@@ -415,7 +446,12 @@
   const legacy = $derived(
     tasks.filter(
       (task) =>
-        task.completed && !task.completionEventId && !historyFrom && !historyTo,
+        task.completed &&
+        !task.completionEventId &&
+        (filter === 'completed' || (!historyFrom && !historyTo)) &&
+        (filter !== 'completed' ||
+          (!!task.completedAt &&
+            dateKey(new Date(task.completedAt)) === today)),
     ),
   );
   async function act(key: string, work: () => Promise<unknown>, message = '') {
@@ -525,8 +561,13 @@
         }}
         >{tab.label}<small aria-hidden="true"
           >{tab.key === 'completed'
-            ? history.filter((event) => !event.reversedAt).length +
-              legacy.length
+            ? counts.completed +
+              tasks.filter(
+                (task) =>
+                  task.completed &&
+                  !task.completionEventId &&
+                  completedToday(task),
+              ).length
             : counts[tab.key as 'pending' | 'all']}</small
         ></Button
       >
@@ -596,8 +637,12 @@
         tabStyle
         icon="perfil"
       >
-        <Button variant="quiet" onclick={() => changeView('recovery')}
-          >Recuperar ocorrências</Button
+        <Button
+          variant="quiet"
+          onclick={() => {
+            filter = 'history';
+            changeView('list');
+          }}>Histórico de missões</Button
         >
         <Button
           variant="quiet"
@@ -606,10 +651,6 @@
             changeView('list');
           }}>Arquivadas</Button
         >
-        <Button variant="quiet" onclick={() => (areasOpen = true)}
-          >Gerenciar áreas</Button
-        >
-        <a href="/revisoes">Revisões e suas sessões</a>
       </ContextMenu>
     </div>
     {#if workspaceView === 'areas'}
@@ -700,7 +741,7 @@
                 ? ' · ativos'
                 : ''}</summary
             >
-            {#if filter !== 'completed' && filter !== 'archived'}<label
+            {#if !['completed', 'history', 'archived'].includes(filter)}<label
                 class="journey-label"
                 >Quando fazer<select
                   aria-label="Filtrar por data"
@@ -751,7 +792,7 @@
             }}>Limpar filtros</Button
           >{/if}
       </div>
-      {#if filter === 'completed'}<div class="history-period">
+      {#if filter === 'history'}<div class="history-period">
           <div>
             <strong>Histórico de execuções</strong><small
               >Cada conclusão é um registro, inclusive nas missões recorrentes.</small
@@ -772,13 +813,13 @@
           >
         </div>{/if}
       <p class="result-context" role="status">
-        {filter === 'completed'
+        {['completed', 'history'].includes(filter)
           ? `${history.filter((event) => !event.reversedAt).length + legacy.length} conclusões · registros corrigidos continuam consultáveis`
           : `${visible.length} ${visible.length === 1 ? 'missão' : 'missões'}${filter === 'archived' ? ' arquivadas' : ''}`}
       </p>
       <section
         class="rpg-frame organizer-list"
-        aria-label={filter === 'completed'
+        aria-label={['completed', 'history'].includes(filter)
           ? 'Histórico de conclusões'
           : 'Lista de missões'}
       >
@@ -794,11 +835,11 @@
                   ? 'Próximas atividades'
                   : filter === 'undated'
                     ? 'Sem data'
-                    : filter === 'completed'
+                    : ['completed', 'history'].includes(filter)
                       ? 'Suas conclusões'
                       : 'Todas as missões'}
         </h2>
-        {#if filter === 'completed'}
+        {#if ['completed', 'history'].includes(filter)}
           {#if historyFrom && historyTo && historyFrom > historyTo}<p
               role="alert"
             >
@@ -865,9 +906,13 @@
               {#each legacy as task (task.id)}<li class="mission-row">
                   <Icon name="check" size={21} />
                   <div class="mission-copy">
-                    <a href={`/missao/${task.id}`}>{task.title}</a><small
-                      >Conclusão antiga · Histórico preservado</small
-                    >
+                    <a
+                      href={`/missao/${task.id}`}
+                      onclick={(event) => {
+                        event.preventDefault();
+                        void act(String(task.id), () => openMission(task));
+                      }}>{task.title}</a
+                    ><small>Conclusão antiga · Histórico preservado</small>
                   </div>
                 </li>{/each}
             </ul>
@@ -875,6 +920,29 @@
               Nenhuma conclusão nesta seleção. Cada atividade realizada ficará
               registrada aqui.
             </p>{/if}
+          {#if filter === 'history'}<details open>
+              <summary
+                >Progresso parcial, pulos e execuções substituídas</summary
+              >
+              <ul>
+                {#each data.occurrences.filter((row) => ((row.value > 0 && row.status !== 'completed') || row.skipped || row.supersededBy) && (!historyFrom || row.originDate >= historyFrom) && (!historyTo || row.originDate <= historyTo) && (area === 'all' || row.areaId === Number(area)) && row.title
+                      .toLocaleLowerCase('pt-BR')
+                      .includes(search.toLocaleLowerCase('pt-BR'))) as row (row.id)}
+                  <li class="mission-row">
+                    <a href={'/ocorrencia/' + encodeURIComponent(row.id)}
+                      >{row.title}</a
+                    ><span
+                      >{formatCalendar(row.originDate)} · {row.skipped
+                        ? 'Pulada'
+                        : row.supersededBy
+                          ? 'Substituída'
+                          : 'Parcial'} · {Math.round(fraction(row) * 100)}%
+                      confirmado</span
+                    >
+                  </li>
+                {/each}
+              </ul>
+            </details>{/if}
         {:else if visible.length}<ul>
             {#each visible as task, index (task.id)}
               {#if !groupAreas && filter === 'all' && (index === 0 || category(visible[index - 1]) !== category(task))}<li
@@ -931,7 +999,7 @@
                       checked={selected.includes(task.id!)}
                       onchange={() => toggleSelection(task.id!)}
                     />
-                  </label>{:else if canComplete && (!task.tracking || task.tracking.method === 'direct') && !taskSteps(task).length && todayRows.length <= 1 && filter !== 'upcoming'}<button
+                  </label>{:else if canComplete && !linkedSession && (!task.tracking || task.tracking.method === 'direct') && !taskSteps(task).length && todayRows.length <= 1 && filter !== 'upcoming'}<button
                     class="mission-check"
                     disabled={pending.includes(String(task.id))}
                     aria-label={`Concluir ${task.title}`}
@@ -943,15 +1011,28 @@
                       >{/if}</span
                   >{/if}
                 <ApprovedIcon
-                  name={areaIconKey(task, data?.areas ?? [])}
+                  name={areaIconKey(
+                    task,
+                    data?.areas ?? [],
+                    data?.profile?.generalAreaIconKey,
+                  )}
                   size={32}
                 />
                 <div class="mission-copy">
-                  <a href={`/missao/${task.id}`}>{task.title}</a>
+                  <a
+                    href={`/missao/${task.id}`}
+                    onclick={(event) => {
+                      event.preventDefault();
+                      void act(String(task.id), () => openMission(task));
+                    }}>{task.title}</a
+                  >
                   {#if linkedSession}<a
                       class="session-membership"
-                      href="/missoes?view=sessions"
-                      >Em sessão · {linkedSession.name}</a
+                      href="/sessoes"
+                      onclick={(event) => {
+                        event.preventDefault();
+                        void act(String(task.id), () => openMission(task));
+                      }}>Em sessão · {linkedSession.name}</a
                     >{/if}
                   <small
                     >{areaName(task.areaId)} · {task.plannedTime ??
@@ -962,9 +1043,11 @@
                         ? `Concluída hoje · Próxima ${formatCalendar(nextPlannedDate(task, today) ?? today)}`
                         : 'Concluída'
                       : task.recurrence
-                        ? `${scheduledToday(task) ? 'Hoje' : formatCalendar(nextPlannedDate(task, today) ?? task.recurrence.startDate)} · ${recurrenceLabel(task)}`
+                        ? `${todayRows.length ? 'Hoje' : formatCalendar(nextPlannedDate(task, today) ?? task.recurrence.startDate)} · ${recurrenceLabel(task)}`
                         : task.plannedDate
-                          ? formatCalendar(task.plannedDate)
+                          ? task.plannedDate <= today
+                            ? 'Planejada para hoje'
+                            : formatCalendar(task.plannedDate)
                           : recurrenceLabel(task)}</small
                   >
                   {#if todayRows.length > 1}<details
@@ -1010,6 +1093,11 @@
                     >
                   </div>{/if}
                 <ContextMenu label={`Ações para ${task.title}`}>
+                  {#if todayRows[0]}<MissionActions
+                      row={todayRows[0]}
+                      recurring={!!task.recurrence}
+                      disabled={pending.length > 0}
+                    />{/if}
                   {#if task.archived}<a
                       class="journey-link"
                       href={`/missao/${task.id}`}>Ver registros</a
@@ -1047,7 +1135,7 @@
                           () => pinTask(task.id!, !task.pinned),
                           'Destaque atualizado.',
                         )}>{task.pinned ? 'Desafixar' : 'Fixar'}</Button
-                    >{#if canComplete && !taskSteps(task).length && filter !== 'upcoming'}<Button
+                    >{#if canComplete && !linkedSession && !taskSteps(task).length && filter !== 'upcoming'}<Button
                         disabled={pending.includes(String(task.id))}
                         onclick={() => complete(task)}>Completar missão</Button
                       >{/if}{#if done && task.completionEventId}<Button
@@ -1091,9 +1179,6 @@
             <Button variant="secondary" onclick={create}>Criar missão</Button>
           </div>{/if}
       </section>
-      <div class="organizer-links">
-        <a class="journey-link" href="/revisoes">Revisões e suas sessões</a>
-      </div>
     {/if}
     <Dialog bind:open={todayRemovalOpen} title="Remover de hoje"
       ><p>
@@ -1119,7 +1204,7 @@
         (notice = editTask
           ? 'Missão atualizada.'
           : 'Missão salva. Você pode criar outra ou continuar seu planejamento.')}
-    /><AreasDialog bind:open={areasOpen} snapshot={data} />
+    />
   {/if}
 </section>
 <TaskRemovalDialog
@@ -1412,13 +1497,6 @@
   }
   .organizer-empty h3 {
     font-family: var(--lmu-display);
-  }
-  .organizer-links {
-    display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 12px;
-    font-size: 0.8rem;
   }
   @media (max-width: 900px) {
     .missions-heading {

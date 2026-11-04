@@ -160,6 +160,11 @@ export function validateBackup(input: unknown): JourneyBackup {
         fail('demonstração sem recibos de provisão ou construção.');
     }
     if (
+      profile.generalAreaIconKey != null &&
+      !isTaskIconKey(profile.generalAreaIconKey)
+    )
+      fail('ícone de Geral inválido.');
+    if (
       profile.personalTaskDeletions !== undefined &&
       !validPersonalDeletions(profile.personalTaskDeletions)
     )

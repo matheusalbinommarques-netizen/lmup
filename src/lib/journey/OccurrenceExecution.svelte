@@ -1,4 +1,7 @@
 <script lang="ts">
+  import MissionActions from './MissionActions.svelte';
+  import { beginTask } from '$services/journeyService';
+  import { reconcileProductivity } from '$services/productivityLifecycle';
   import { timePicker } from '$lib/ui/timePicker';
   import { onMount } from 'svelte';
   import { beforeNavigate } from '$app/navigation';
@@ -31,7 +34,8 @@
     sessionId?: string;
     onBusyChange?: (busy: boolean) => void;
   } = $props();
-  let archived = $state(false);
+  let archived = $state(false),
+    recurring = $state(false);
   let row = $state<Occurrence>();
   let history = $state<ExecutionRecord[]>([]),
     changes = $state<ProductivityAudit[]>([]),
@@ -101,6 +105,10 @@
       .slice(0, 16);
   }
   onMount(() => {
+    let started = false;
+    void reconcileProductivity().catch(
+      () => (error = 'Não foi possível atualizar as missões.'),
+    );
     const sub = liveQuery(async () => ({
       occurrence: await db.occurrences.get(id),
       tasks: await db.tasks.toArray(),
@@ -114,8 +122,32 @@
         history = data.records.sort((a, b) => b.revision - a.revision);
         changes = data.audit;
         const next = data.occurrence;
+        const task = data.tasks.find((task) => task.id === next?.taskId);
+        if (
+          !started &&
+          next &&
+          task &&
+          !task.recurrence &&
+          !task.plannedDate &&
+          !task.completed &&
+          !next.supersededBy &&
+          !next.skipped
+        ) {
+          started = true;
+          void beginTask(task.id!).catch(
+            () => (error = 'Não foi possível iniciar a missão.'),
+          );
+        }
         archived = !!data.tasks.find((task) => task.id === next?.taskId)
           ?.archived;
+        recurring = !!data.tasks.find((task) => task.id === next?.taskId)
+          ?.recurrence;
+        if (next?.supersededBy) {
+          sync(next);
+          preview = undefined;
+          payload = undefined;
+          error = '';
+        }
         const dirty = draftDirty;
         row = next;
         if (next && loaded !== next.id + ':' + next.revision) {
@@ -202,21 +234,22 @@
         preview = undefined;
         payload = undefined;
         error = '';
-      }}>Reabrir ocorrência e descartar rascunho</Button
+      }}>Descartar alterações não confirmadas</Button
     >{/if}
   <p role="status">{notice}</p>
   {#if row}
-    <p class="lmu-eyebrow">
-      Ocorrência de {row.originDate}{row.reconstructed
-        ? ' · reconstruída manualmente'
-        : ''}
-    </p>
     <h2>{row.title}</h2>
-    <p>
-      Planejada: {row.plannedDate}
-      {row.plannedTime ?? '· horário flexível'} · Início original: {row.originalTime ??
-        'flexível'}
-    </p>
+    {#if row.supersededBy}<p class="journey-banner">
+        Execução substituída. Progresso confirmado e recompensas foram
+        preservados no histórico. <a href="/missoes">Abrir missões vigentes</a>
+      </p>{:else if row.skipped}<p class="journey-banner">
+        Missão pulada. Nenhuma recompensa foi concedida pelo pulo.
+      </p>{/if}
+    <MissionActions
+      {row}
+      {recurring}
+      disabled={saving || draftDirty || !!preview}
+    />
     <progress
       max="100"
       value={Math.round(fraction(row) * 100)}
@@ -236,7 +269,7 @@
     {#if archived}<p class="journey-banner">
         Missão arquivada. Os registros abaixo estão preservados para consulta.
       </p>{/if}
-    {#if !archived && !['excused', 'discarded'].includes(row.status)}
+    {#if !archived && !row.supersededBy && !row.skipped && !['excused', 'discarded'].includes(row.status)}
       <fieldset disabled={saving || !!preview} class="progress-controls">
         <legend class="sr-only">Registrar execução</legend>
         <div class="execution-fields">
@@ -372,7 +405,7 @@
           >
         </div>{/if}
     {/if}
-    {#if !archived}<details>
+    {#if !archived && !row.supersededBy && !row.skipped}<details>
         <summary>Reagendar e organizar</summary>
         <div class="execution-fields">
           <label>Nova data<input type="date" bind:value={date} /></label><label
@@ -394,8 +427,8 @@
                   { plannedDate: date, plannedTime: time || null },
                   crypto.randomUUID(),
                 ),
-              'Ocorrência reagendada; origem preservada.',
-            )}>Reagendar esta ocorrência</Button
+              'Missão reagendada; histórico preservado.',
+            )}>Reagendar missão</Button
         >
         {#if row.status === 'discarded'}<Button
             variant="quiet"
@@ -408,7 +441,7 @@
                     { status: 'planned' },
                     crypto.randomUUID(),
                   ),
-                'Ocorrência restaurada.',
+                'Missão restaurada.',
               )}>Restaurar</Button
           >{:else if row.value === 0 && row.status !== 'excused'}<Button
             variant="quiet"

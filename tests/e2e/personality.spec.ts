@@ -159,9 +159,13 @@ test('rascunho editável: cancelar não cria missão e salvar permite pausar, co
     .getByRole('button', { name: 'Pausar e voltar', exact: true })
     .click();
   await page.goto('/');
-  await expect(page.locator('.next-mission')).toContainText('Em andamento');
+  await expect(page.locator('.next-mission')).toContainText(
+    'Meu rascunho de verdade',
+  );
   await capture(page, 'retomada', info.project.name);
-  await page.getByRole('button', { name: 'Continuar', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Começar missão', exact: true })
+    .click();
   await page
     .getByRole('checkbox', { name: 'Fazer um rascunho', exact: true })
     .check();
@@ -221,7 +225,7 @@ test('rascunho editável: cancelar não cria missão e salvar permite pausar, co
   );
 });
 
-test('missões arquivadas e revisão futura não prometem uma próxima missão disponível', async ({
+test('missão arquivada fica fora de Hoje e revisão futura é desativada sem perder a missão original', async ({
   page,
 }, info) => {
   const id = await task(page, 'Uma missão guardada');
@@ -244,20 +248,36 @@ test('missões arquivadas e revisão futura não prometem uma próxima missão d
     reviewEnabled: true,
     reviewDueDate: '2099-12-31',
   });
+  await expect(page.locator('.next-mission')).toContainText(
+    'Uma missão guardada',
+  );
   await expect(
-    page.getByRole('heading', {
-      name: 'Qual será seu primeiro passo?',
-      exact: true,
-    }),
+    page.getByRole('button', { name: 'Começar missão', exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'Começar', exact: true }),
-  ).not.toBeVisible();
-  await expect(
-    page
-      .locator('.day-plan')
-      .getByRole('link', { name: /Uma missão guardada/ }),
-  ).toHaveCount(0);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          new Promise<boolean>((resolve) => {
+            const open = indexedDB.open('LevelMeUpDB');
+            open.onsuccess = () => {
+              const database = open.result;
+              const request = database
+                .transaction('tasks')
+                .objectStore('tasks')
+                .getAll();
+              request.onsuccess = () => {
+                database.close();
+                resolve(
+                  request.result[0].reviewEnabled === false &&
+                    !!request.result[0].reviewRetiredAt,
+                );
+              };
+            };
+          }),
+      ),
+    )
+    .toBe(true);
   await expect(
     page.getByRole('link', { name: 'Ver todas as missões', exact: true }),
   ).toHaveAttribute('href', '/missoes');

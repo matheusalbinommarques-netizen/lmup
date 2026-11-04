@@ -1,8 +1,15 @@
 <script lang="ts">
+  import { todayView } from './todayView';
+  import MergeDialog from './MergeDialog.svelte';
+  import MissionActions from './MissionActions.svelte';
+  import { operationalRow } from '$services/operationalPlanning';
+  import { currentOccurrences } from '$services/occurrenceService';
+  let mergeOpen = $state(false),
+    mergeSource = $state('');
+  import { timeEntry } from '$lib/ui/timeEntry';
   import { isOpenSession } from '$services/sessionLifecycle';
   import SessionSelection from './SessionSelection.svelte';
-  import EndSessionDialog from './EndSessionDialog.svelte';
-  import { timePicker } from '$lib/ui/timePicker';
+  import EndSessionButton from './EndSessionButton.svelte';
   import { areaIconKey } from '$services/areaIcons';
   import { onMount } from 'svelte';
   import { page } from '$app/state';
@@ -40,7 +47,7 @@
     view,
     snapshot,
   }: {
-    view: 'agenda' | 'routines' | 'recovery' | 'sessions';
+    view: 'agenda' | 'routines' | 'sessions';
     snapshot: JourneySnapshot;
   } = $props();
   let day = $state(dateKey()),
@@ -60,7 +67,9 @@
   let frequency = $state('weekdays');
   let days = $state<number[]>([1, 2, 3, 4, 5]),
     start = $state(dateKey()),
-    entries = $state<{ taskId: number; time: string | null }[]>([]);
+    entries = $state<
+      { taskId: number; time: string | null; days?: number[] | null }[]
+    >([]);
   let routineRevision = $state<number>(),
     editing = $state(false),
     quota = $state(2),
@@ -68,58 +77,31 @@
   let editTask = $state<Task>(),
     editOpen = $state(false),
     dismiss = $state<string[]>([]);
-  let reconstructTask = $state(''),
-    reconstructDate = $state(addCalendarDays(dateKey(), -1));
   let sessions = $state<SavedMissionSession[]>([]);
   let managedSession = $state<SavedMissionSession>(),
-    addOpen = $state(false),
-    endOpen = $state(false);
-  let routineSearch = $state(''),
-    recoverySearch = $state(''),
-    recoveryStatus = $state('pending');
-  let recoveryFrom = $state(addCalendarDays(dateKey(), -29)),
-    recoveryTo = $state(dateKey());
+    addOpen = $state(false);
+  let routineSearch = $state('');
   let creatingForRoutine = $state(false);
   guardUpdates(() => editing || editOpen || busy);
   $effect(() => {
+    void snapshot;
     const date = page.url.searchParams.get('date');
+    if (!date) day = dateKey();
     if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) day = date;
     week = page.url.searchParams.get('mode') === 'week';
   });
   const weekStart = $derived(
     addCalendarDays(day, -((new Date(day + 'T12:00:00').getDay() + 6) % 7)),
   );
-  const historicalRows = $derived(
-    rows.filter(
-      (row) => row.originDate < dateKey() || row.plannedDate < dateKey(),
-    ),
-  );
-  const recoveredRows = $derived(
-    historicalRows.filter(
-      (row) =>
-        (row.originDate < dateKey() || row.plannedDate < dateKey()) &&
-        row.title
-          .toLocaleLowerCase('pt-BR')
-          .includes(recoverySearch.trim().toLocaleLowerCase('pt-BR')) &&
-        (recoveryStatus === 'all' ||
-          (recoveryStatus === 'completed'
-            ? row.status === 'completed'
-            : !['completed', 'excused', 'discarded'].includes(row.status))),
-    ),
-  );
-  const pendingRecovery = $derived(
-    historicalRows.filter(
-      (row) =>
-        (row.originDate < dateKey() || row.plannedDate < dateKey()) &&
-        !['completed', 'excused', 'discarded'].includes(row.status),
-    ).length,
-  );
   const dayRows = $derived(
-    rows.filter(
-      (row) =>
-        row.plannedDate === day &&
-        !['discarded', 'excused'].includes(row.status),
-    ),
+    day === dateKey()
+      ? todayView(snapshot, day).planned
+      : rows.filter(
+          (row) =>
+            row.plannedDate === day &&
+            !row.skipped &&
+            !['discarded', 'excused'].includes(row.status),
+        ),
   );
   const completedDay = $derived(
     dayRows.filter((row) => row.status === 'completed').length,
@@ -161,6 +143,7 @@
     areaIconKey(
       tasks.find((task) => task.id === row.taskId),
       snapshot.areas,
+      snapshot.profile?.generalAreaIconKey,
     );
   function editFuture(row: Occurrence) {
     creatingForRoutine = false;
@@ -171,18 +154,8 @@
   let timer: ReturnType<typeof setInterval>;
   let now = $state(new Date());
   $effect(() => {
-    const from =
-      view === 'recovery'
-        ? recoveryFrom
-        : view === 'agenda' && week
-          ? weekStart
-          : day;
-    const to =
-      view === 'recovery'
-        ? recoveryTo
-        : view === 'agenda' && week
-          ? addCalendarDays(weekStart, 6)
-          : day;
+    const from = view === 'agenda' && week ? weekStart : day;
+    const to = view === 'agenda' && week ? addCalendarDays(weekStart, 6) : day;
     const sub = liveQuery(async () => ({
       rows: await plannedOccurrences(addCalendarDays(from, -7), to),
       routines: await db.routines.toArray(),
@@ -228,7 +201,9 @@
     ),
   );
   const tips = $derived(
-    recommendations(rows, now).filter((tip) => !dismiss.includes(tip.id)),
+    recommendations(day === dateKey() ? dayRows : contextRows, now).filter(
+      (tip) => !dismiss.includes(tip.id),
+    ),
   );
   async function run(work: () => Promise<unknown>, message = '') {
     if (busy) return;
@@ -259,7 +234,12 @@
     frequency =
       days.length === 7 ? 'daily' : days.length === 1 ? 'weekly' : 'weekdays';
     start = row?.startDate ?? dateKey();
-    entries = row?.entries.map(({ taskId, time }) => ({ taskId, time })) ?? [];
+    entries =
+      row?.entries.map(({ taskId, time, days }) => ({
+        taskId,
+        time,
+        days: days ? [...days] : null,
+      })) ?? [];
     routineRevision = row?.revision;
     quota = row?.pauseQuota ?? 2;
     period = row?.pausePeriodDays ?? 30;
@@ -411,8 +391,7 @@
             })}
           </p>
           <small
-            >Horários são inícios desejados. Seu progresso permanece na
-            ocorrência.</small
+            >Horários são inícios desejados. Seu progresso permanece na missão.</small
           >
         </aside>
         <div class="timeline">
@@ -482,105 +461,6 @@
           ) ?? 'sem intervalo encontrado'} · para sua revisão.
         </p>{/each}
     </details>
-  {:else if view === 'recovery'}
-    <div class="recovery-filters">
-      <label
-        >Buscar ocorrência<input
-          type="search"
-          bind:value={recoverySearch}
-          placeholder="Buscar missão ou atividade…"
-        /></label
-      >
-      <label
-        >De<input
-          type="date"
-          bind:value={recoveryFrom}
-          max={recoveryTo}
-        /></label
-      ><label
-        >Até<input
-          type="date"
-          bind:value={recoveryTo}
-          min={recoveryFrom}
-          max={dateKey()}
-        /></label
-      >
-      <label
-        >Situação<select bind:value={recoveryStatus}
-          ><option value="pending">Pendentes</option><option value="completed"
-            >Concluídas</option
-          ><option value="all">Todas</option></select
-        ></label
-      >
-    </div>
-    <div class="recovery-totals">
-      <div>
-        <ApprovedIcon name="pendente" size={38} /><span
-          >Pendentes<strong>{pendingRecovery}</strong></span
-        >
-      </div>
-      <div>
-        <ApprovedIcon name="em_andamento" size={38} /><span
-          >Com progresso<strong
-            >{historicalRows.filter(
-              (row) => row.value > 0 && row.status !== 'completed',
-            ).length}</strong
-          ></span
-        >
-      </div>
-      <div>
-        <ApprovedIcon name="concluida" size={38} /><span
-          >Recuperadas<strong
-            >{historicalRows.filter(
-              (row) => row.recovered && row.status === 'completed',
-            ).length}</strong
-          ></span
-        >
-      </div>
-    </div>
-    <div class="recovery-list">
-      {#each recoveredRows as row (row.id)}<OccurrenceRow
-          {row}
-          recovery
-          iconKey={iconKey(row)}
-          area={areaName(row)}
-          {busy}
-          onopen={() => open(row)}
-          onedit={() => editFuture(row)}
-        />{/each}{#if !recoveredRows.length}<p class="workspace-empty">
-          Nenhuma ocorrência nesta seleção. Ajuste o período ou a situação para
-          consultar o histórico.
-        </p>{/if}
-    </div>
-    <details>
-      <summary>Reconstruir uma atividade antiga</summary>
-      <p>
-        Use apenas para atividade realizada ou planejada cuja ocorrência não foi
-        preservada. O registro será identificado como reconstrução; recompensas
-        legadas não serão recalculadas.
-      </p>
-      <label
-        >Missão<select bind:value={reconstructTask}
-          ><option value="">Escolher missão</option
-          >{#each tasks.filter((task) => !task.archived && !task.reviewEnabled) as task (task.id)}<option
-              value={String(task.id)}>{task.title}</option
-            >{/each}</select
-        ></label
-      ><label
-        >Data de origem<input type="date" bind:value={reconstructDate} /></label
-      ><Button
-        variant="secondary"
-        onclick={() =>
-          run(async () => {
-            const row = await ensureOccurrence(
-              Number(reconstructTask),
-              reconstructDate,
-              true,
-            );
-            await goto('/ocorrencia/' + encodeURIComponent(row.id));
-          })}>Reconstruir explicitamente</Button
-      >
-    </details>
   {:else if view === 'routines'}
     <div class="workspace-controls">
       <h2>Suas rotinas</h2>
@@ -590,7 +470,7 @@
     </div>
     <div class="routine-workspace" class:editing>
       <div class="routine-list">
-        {#each routines as routine (routine.id)}<article
+        {#each routines.filter((routine) => !routine.mergedInto) as routine (routine.id)}<article
             class="rpg-frame routine-card"
             class:chosen={editing && routineId === routine.id}
           >
@@ -670,16 +550,47 @@
                   >{/each}
               </details>{/if}
             <details>
+              <summary>Missões vigentes</summary>
+              {#each snapshot.plannedToday.filter((row) => snapshot.tasks.find((task) => task.id === row.taskId)?.routineId === routine.id && !row.supersededBy && !['discarded', 'excused'].includes(row.status)) as row (row.id)}
+                <div class="routine-current-mission">
+                  <strong>{row.title}</strong><small
+                    >{row.skipped
+                      ? 'Pulada'
+                      : row.status === 'completed'
+                        ? 'Concluída'
+                        : 'Pendente'}</small
+                  >
+                  <MissionActions {row} recurring={true} disabled={busy} />
+                </div>
+              {/each}
+            </details>
+            <Button
+              variant="secondary"
+              disabled={busy || routine.status === 'archived'}
+              onclick={() => {
+                mergeSource = routine.id;
+                mergeOpen = true;
+              }}>Mesclar rotina</Button
+            >
+            <details>
               <summary>Mais ações</summary><Button
                 variant="quiet"
                 disabled={busy}
                 onclick={async () => {
-                  const candidates = await plannedOccurrences(
-                    dateKey(),
-                    dateKey(),
-                  );
+                  const candidates = await currentOccurrences();
                   await startSession(
-                    candidates.filter((row) => row.routineId === routine.id),
+                    candidates.filter(
+                      (row) =>
+                        row.routineId === routine.id &&
+                        row.status !== 'completed' &&
+                        operationalRow(
+                          row,
+                          snapshot.tasks.find(
+                            (task) => task.id === row.taskId,
+                          )!,
+                          dateKey(),
+                        ),
+                    ),
                     routine.name,
                   );
                 }}>Executar rotina</Button
@@ -776,9 +687,9 @@
               ></label
             >{/if}
           <p class="lmu-hint">
-            {routineRecurrenceLabel(days)}. Todas as missões vinculadas herdam
-            esta recorrência ao salvar a rotina. Os horários podem ser ajustados
-            em cada atividade.
+            {routineRecurrenceLabel(days)}. Missões sem dias personalizados
+            seguem esta recorrência. Ajuste dias e horários em cada atividade
+            quando precisar.
           </p>
           <div class="sequence-heading">
             <h3>Sequência de missões ({entries.length})</h3>
@@ -797,7 +708,11 @@
                 tasks.find((task) => task.id === entry.taskId)}
               <li>
                 <span class="sequence-number">{index + 1}</span><ApprovedIcon
-                  name={areaIconKey(task, snapshot.areas)}
+                  name={areaIconKey(
+                    task,
+                    snapshot.areas,
+                    snapshot.profile?.generalAreaIconKey,
+                  )}
                   size={32}
                 /><span class="sequence-title"
                   >{task?.title ?? 'Missão criada'}<small
@@ -805,8 +720,12 @@
                       ?.nome ?? 'Geral'}</small
                   ></span
                 ><input
-                  type="time"
-                  use:timePicker
+                  type="text"
+                  inputmode="numeric"
+                  use:timeEntry
+                  maxlength="5"
+                  pattern="([01][0-9]|2[0-3]):[0-5][0-9]"
+                  placeholder="HH:mm"
                   aria-label={`Horário de ${task?.title ?? 'missão'}`}
                   value={entry.time ?? ''}
                   onchange={(event) =>
@@ -846,6 +765,51 @@
                       ))}><ApprovedIcon name="excluir" size={22} /></Button
                   >
                 </div>
+                <div class="entry-days">
+                  <label
+                    ><input
+                      type="checkbox"
+                      checked={entry.days != null}
+                      onchange={(event) =>
+                        (entries = entries.map((item, i) =>
+                          i === index
+                            ? {
+                                ...item,
+                                days: event.currentTarget.checked
+                                  ? [...days]
+                                  : null,
+                              }
+                            : item,
+                        ))}
+                    />Usar dias personalizados</label
+                  >
+                  {#if entry.days != null}<div
+                      class="weekday-picker"
+                      role="group"
+                      aria-label={`Dias de ${task?.title ?? 'missão'}`}
+                    >
+                      {#each WEEKDAYS as weekday (weekday.value)}<label
+                          ><input
+                            type="checkbox"
+                            checked={entry.days.includes(weekday.value)}
+                            onchange={(event) =>
+                              (entries = entries.map((item, i) =>
+                                i === index
+                                  ? {
+                                      ...item,
+                                      days: event.currentTarget.checked
+                                        ? [...(item.days ?? []), weekday.value]
+                                        : (item.days ?? []).filter(
+                                            (day) => day !== weekday.value,
+                                          ),
+                                    }
+                                  : item,
+                              ))}
+                          />{weekday.short}</label
+                        >{/each}
+                    </div>{:else}<small>Segue a periodicidade da rotina.</small
+                    >{/if}
+                </div>
               </li>{/each}
           </ol>
           <details class="mission-search">
@@ -866,7 +830,11 @@
                       { taskId: task.id!, time: task.plannedTime ?? null },
                     ])}
                   ><ApprovedIcon
-                    name={areaIconKey(task, snapshot.areas)}
+                    name={areaIconKey(
+                      task,
+                      snapshot.areas,
+                      snapshot.profile?.generalAreaIconKey,
+                    )}
                     size={28}
                   />{task.title}<span>Adicionar +</span></button
                 >{/each}{#if !availableTasks.length}<p class="lmu-hint">
@@ -958,14 +926,14 @@
               addOpen = true;
             }}>+ Adicionar missões</Button
           >
-          <Button
-            variant="secondary"
+          <EndSessionButton
+            {session}
             disabled={busy}
-            onclick={() => {
-              managedSession = session;
-              endOpen = true;
-            }}>Encerrar</Button
-          >
+            onbusy={(value) => (busy = value)}
+            onended={() =>
+              (notice =
+                'Sessão encerrada. Progresso preservado e pendências liberadas.')}
+          />
         </div>
         <details>
           <summary>Recompensas registradas</summary><SessionSummary
@@ -994,14 +962,6 @@
         onadded={() =>
           (notice =
             'Missões adicionadas ao fim da fila. O progresso foi preservado.')}
-      />
-      <EndSessionDialog
-        bind:open={endOpen}
-        session={managedSession}
-        {snapshot}
-        onended={() =>
-          (notice =
-            'Sessão encerrada. As atividades incompletas estão disponíveis em Pendentes.')}
       />
     {/if}
   {/if}
@@ -1037,7 +997,47 @@
   />
 </section>
 
+<MergeDialog
+  bind:open={mergeOpen}
+  kind="routines"
+  {snapshot}
+  sourceId={mergeSource}
+  onmerged={() => {
+    notice = 'Rotinas mescladas. Histórico e dias individuais preservados.';
+    editing = false;
+  }}
+/>
+
 <style>
+  .entry-days {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: 8px;
+  }
+  .entry-days label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .entry-days input {
+    width: 18px;
+    height: 18px;
+    min-height: 0;
+    padding: 0;
+    flex: 0 0 18px;
+  }
+  .entry-days .weekday-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .routine-current-mission {
+    display: grid;
+    gap: 8px;
+    padding: 12px 0;
+    border-top: 1px solid #8d744a55;
+  }
+
   .productivity-workspace {
     display: grid;
     gap: 12px;
@@ -1211,39 +1211,6 @@
     color: #a6bda8;
     font-size: 0.85rem;
   }
-  .recovery-filters {
-    display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr;
-    gap: 8px;
-    align-items: end;
-  }
-  .recovery-totals {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-  }
-  .recovery-totals > div {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    padding: 10px 12px;
-    background: linear-gradient(100deg, #40351a40, #11272455);
-    border: 1px solid #84704766;
-    border-radius: 8px;
-  }
-  .recovery-totals span {
-    font-size: 0.72rem;
-    color: #d4ceb4;
-  }
-  .recovery-totals strong {
-    display: block;
-    color: #f5e3b7;
-    font-size: 1.3rem;
-  }
-  .recovery-list {
-    display: grid;
-    gap: 9px;
-  }
   .routine-workspace {
     display: grid;
     gap: 18px;
@@ -1409,7 +1376,7 @@
     line-height: 1.4;
     min-width: 0;
   }
-  .routine-sequence input {
+  .routine-sequence input[type='text'] {
     width: 124px;
     padding: 0.5rem;
     font-size: 0.82rem;
@@ -1485,13 +1452,6 @@
       grid-template-columns: 150px minmax(0, 1fr);
       gap: 12px;
     }
-    .recovery-filters {
-      grid-template-columns: 2fr 1fr;
-    }
-    .recovery-totals > div {
-      gap: 5px;
-      padding: 10px;
-    }
   }
   @media (max-width: 700px) {
     .daily-agenda {
@@ -1551,19 +1511,6 @@
     }
     .date-navigation input {
       max-width: 140px;
-    }
-    .recovery-filters {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .recovery-filters label:first-child {
-      grid-column: 1/-1;
-    }
-    .recovery-totals {
-      gap: 7px;
-    }
-    .recovery-totals > div {
-      flex-direction: column;
-      text-align: center;
     }
     .routine-fields {
       grid-template-columns: 1fr;

@@ -100,13 +100,8 @@ async function assertIcon(page: Page, title: string, key: string) {
   );
 }
 async function manage(page: Page) {
-  await page
-    .getByRole('button', { name: 'Ferramentas de missões', exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: 'Gerenciar áreas', exact: true })
-    .click();
-  return page.getByRole('dialog', { name: 'Minhas áreas', exact: true });
+  await page.getByRole('button', { name: 'Áreas', exact: true }).click();
+  return page.getByRole('region', { name: 'Gerenciar áreas', exact: true });
 }
 
 test('adoção e conflitos preservam dados e ícones da área atualizam Lista, Hoje, agenda e outra aba', async ({
@@ -139,9 +134,7 @@ test('adoção e conflitos preservam dados e ícones da área atualizam Lista, H
   await edit.getByText('Ícone da área', { exact: true }).click();
   await edit.getByRole('button', { name: 'Exercício', exact: true }).click();
   await edit.getByRole('button', { name: 'Salvar área', exact: true }).click();
-  await areas
-    .getByRole('button', { name: 'Fechar diálogo', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Lista', exact: true }).click();
   await assertIcon(page, 'Ler um capítulo', '/exercicio/');
   await assertIcon(page, 'Revisar anotações', '/exercicio/');
   await expect(
@@ -202,9 +195,7 @@ test('editor configura conflitos; criação e edição herdam área sem sobrescr
       fullPage: true,
     });
   }
-  await areas
-    .getByRole('button', { name: 'Fechar diálogo', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Lista', exact: true }).click();
   await page.getByRole('button', { name: 'Nova missão', exact: true }).click();
   const form = page.getByRole('dialog', {
     name: 'Uma nova missão',

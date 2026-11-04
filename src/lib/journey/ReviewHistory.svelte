@@ -1,6 +1,5 @@
 <script lang="ts">
   import type { Task, ActivityEvent } from '$services/db';
-  import { reviewDueDate } from '$services/reviewRules';
   import { formatCalendar } from '$services/calendar';
   import Card from '$lib/ui/Card.svelte';
   let { task, events }: { task: Task; events: ActivityEvent[] } = $props();
@@ -13,7 +12,7 @@
   const undone = $derived(sessions.filter((event) => event.reversedAt).length);
 </script>
 
-{#if task.reviewEnabled || sessions.length}<section
+{#if sessions.length}<section
     class="review-history"
     aria-label="Histórico de revisões"
   >
@@ -27,11 +26,7 @@
             : 'sessões válidas registradas'} · {undone}
           {undone === 1 ? 'desfeita' : 'desfeitas'}.
         </p>
-        <p>
-          {task.reviewEnabled
-            ? `Próxima revisão: ${formatCalendar(reviewDueDate(task))}`
-            : 'Revisões desativadas. Seu histórico continua aqui.'}
-        </p>
+        <p>Revisões desativadas. Seu histórico continua aqui.</p>
         {#if sessions.length}<ol class="lmu-list">
             {#each sessions as event (event.id)}<li class="review-session">
                 <strong>{formatCalendar(event.date)}</strong><span

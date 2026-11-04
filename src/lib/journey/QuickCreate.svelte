@@ -333,7 +333,11 @@
             </div>
             <p class="lmu-hint area-icon-preview">
               <ApprovedIcon
-                name={areaIconKey({ areaId: Number(area) }, snapshot.areas)}
+                name={areaIconKey(
+                  { areaId: Number(area) },
+                  snapshot.areas,
+                  snapshot.profile?.generalAreaIconKey,
+                )}
                 size={26}
               />Ícone herdado da área.
             </p>
@@ -466,9 +470,6 @@
               <ol>
                 {#each steps as step, index (step.id)}
                   <li>
-                    <span class="step-number" aria-hidden="true"
-                      >{index + 1}</span
-                    >
                     <input
                       id={step.id}
                       aria-label={`Passo ${index + 1}`}
@@ -614,12 +615,11 @@
     margin: 0;
   }
   .step-add-row {
-    padding-left: 28px;
     padding-top: 4px;
   }
   .step-builder li {
     display: grid;
-    grid-template-columns: 20px minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 8px;
     align-items: center;
   }
@@ -638,10 +638,6 @@
     outline: 2px solid #e0b45b;
     outline-offset: 2px;
   }
-  .step-number {
-    color: #c5a568;
-    font-size: 0.8rem;
-  }
   .step-controls {
     display: flex;
     gap: 4px;
@@ -653,10 +649,10 @@
   }
   @media (max-width: 600px) {
     .step-builder li {
-      grid-template-columns: 18px minmax(0, 1fr);
+      grid-template-columns: minmax(0, 1fr);
     }
     .step-controls {
-      grid-column: 2;
+      grid-column: 1;
       justify-content: flex-end;
     }
   }

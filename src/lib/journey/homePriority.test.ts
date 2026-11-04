@@ -149,11 +149,10 @@ describe('compatibilidade de apresentação da Home', () => {
       usesTaskExecution(recurring, { ...row, originDate: '2026-10-30' }, today),
     ).toBe(false);
   });
-  it('revisão pronta usa o fluxo existente e revisão futura não é oferecida', () => {
+  it('revisões prontas ou futuras não são oferecidas no fluxo ativo', () => {
     const review = { ...task, reviewEnabled: true, reviewDueDate: today };
     const ready = homeOccurrences([], [review], today);
-    expect(ready).toHaveLength(1);
-    expect(usesTaskExecution(review, ready[0], today)).toBe(true);
+    expect(ready).toHaveLength(0);
     expect(
       homeOccurrences([], [{ ...review, reviewDueDate: '2099-01-01' }], today),
     ).toEqual([]);

@@ -67,27 +67,25 @@ it('recusa confirmação com impacto econômico desatualizado sem alterar o déb
   );
   expect(await db.profile.get(1)).toEqual(before);
 });
-it('mantém a revisão independente de uma execução única no mesmo dia', async () => {
+it('recusa novas revisões mantendo a execução única e seu recibo', async () => {
   const taskId = await saveTaskDefinition({
-    title: 'Revisar conhecimento',
+    title: 'Conhecimento',
     requestId: 'review-independent',
     plannedDate: '2026-11-02',
   });
   await completeTask(taskId);
+  const before = await db.profile.get(1);
   await configureReview(taskId, {
     enabled: true,
     intervalDays: 7,
     dueDate: '2026-11-02',
   });
-  await completeTask(taskId, { reviewOutcome: 'partial' });
-  await completeTask(taskId, { reviewOutcome: 'recalled' });
-  expect(
-    await db.activityEvents
-      .where('taskId')
-      .equals(taskId)
-      .filter((event) => event.kind === 'review')
-      .count(),
-  ).toBe(1);
+  await initializeJourney();
+  await expect(
+    completeTask(taskId, { reviewOutcome: 'partial' }),
+  ).rejects.toThrow('desativadas');
+  expect(await completeTask(taskId)).toBeNull();
+  expect(await db.profile.get(1)).toEqual(before);
   expect(await db.occurrences.where('taskId').equals(taskId).count()).toBe(1);
 });
 it('alterações futuras de calendário podem ser desfeitas sem perder ocorrências não iniciadas', async () => {
@@ -481,8 +479,9 @@ describe('proteções de atualização, histórico e indicadores', () => {
     expect(freeSlot([row], row.plannedDate, 30)).toBe('08:00');
     expect(await db.occurrences.get(row.id)).toEqual(before);
   });
-  it('recuperação posterior não reescreve pontualidade e pausas não contam como execução', async () => {
+  it('pontual posterior mantém origem histórica sem multa e pausas não contam como execução', async () => {
     const row = await mission();
+    await db.tasks.update(row.taskId, { recurrence: null });
     vi.setSystemTime(new Date('2026-11-03T15:00:00'));
     await recordProgress({
       requestId: 'late',
@@ -505,7 +504,7 @@ describe('proteções de atualização, histórico e indicadores', () => {
     expect(report).toMatchObject({ completed: 1, recovered: 1, minutes: 40 });
     expect(report.neglected).toEqual([]);
   });
-  it('execução pontual lançada depois conta no dia real, sem mover o último dia da sequência para trás', async () => {
+  it('execução recorrente antiga não pode ser lançada depois da substituição', async () => {
     const row = await mission();
     vi.setSystemTime(new Date('2026-11-03T15:00:00'));
     const today = await ensureOccurrence(row.taskId, '2026-11-03');
@@ -516,18 +515,18 @@ describe('proteções de atualização, histórico e indicadores', () => {
       value: 40,
       executedAt: '2026-11-03T14:00:00',
     });
-    await recordProgress({
-      requestId: 'yesterday',
-      occurrenceId: row.id,
-      expectedRevision: 0,
-      value: 40,
-      executedAt: '2026-11-02T14:00:00',
-    });
-    expect((await db.occurrences.get(row.id))!.recovered).toBe(false);
-    expect(await db.profile.get(1)).toMatchObject({
-      currentStreak: 2,
-      lastCompletionDate: '2026-11-03',
-    });
+    const before = await db.profile.get(1);
+    await expect(
+      recordProgress({
+        requestId: 'yesterday',
+        occurrenceId: row.id,
+        expectedRevision: 0,
+        value: 40,
+        executedAt: '2026-11-02T14:00:00',
+      }),
+    ).rejects.toThrow('substituída');
+    expect(await db.profile.get(1)).toEqual(before);
+    expect((await db.occurrences.get(row.id))?.value).toBe(0);
   });
   it('recibo de conquista é único, persistente e pode ser invalidado com histórico', async () => {
     const row = await mission();

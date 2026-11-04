@@ -131,7 +131,7 @@ test('Home final mantém navegação inteira e estados claros nas cinco resoluç
       'Seu plano está em dia',
     );
     await expect(page.locator('.daily-summary')).toContainText(
-      '2 de 2 ocorrências',
+      '2 de 2 missões',
     );
     await expect(page.locator('.day-plan li')).toHaveCount(0);
     await expect(
@@ -141,7 +141,9 @@ test('Home final mantém navegação inteira e estados claros nas cinco resoluç
       page.getByRole('link', { name: 'Ver todas as missões', exact: true }),
     ).toHaveAttribute('href', '/missoes');
     await setTasks(page, false);
-    await page.getByRole('button', { name: 'Começar', exact: true }).focus();
+    await page
+      .getByRole('button', { name: 'Começar missão', exact: true })
+      .focus();
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/\/missao\/100$/);
     await expect(

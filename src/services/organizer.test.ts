@@ -177,7 +177,8 @@ describe('organizador e recorrência cotidiana', () => {
     expect(scheduledOn(task, '2026-11-03')).toBe(false);
     expect(nextPlannedDate(task, '2026-11-02')).toBe('2026-11-04');
     day('2026-11-03');
-    await expect(completeTask(id)).rejects.toThrow('prevista');
+    await completeTask(id);
+    expect((await db.tasks.get(id))?.lastOccurrenceDate).toBe('2026-11-02');
     const weekly = await routine({
       plannedDate: '2026-12-31',
       recurrence: { kind: 'weekly', startDate: '2026-12-31', days: [5] },

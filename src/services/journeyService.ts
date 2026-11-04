@@ -1,8 +1,8 @@
+import { cycleDate } from './operationalPlanning';
 import { db, type Task } from './db';
 import { dateKey } from './rewardService';
 import { saveTaskDefinition } from './taskDefinitionService';
 import { reviewDueDate } from './reviewRules';
-import { scheduledOn } from './recurrence';
 import { savePlanVersion } from './occurrenceService';
 
 export function taskSteps(task: Task) {
@@ -11,11 +11,11 @@ export function taskSteps(task: Task) {
     .filter((step) => step.label);
 }
 export function isAvailable(task: Task, now = new Date()): boolean {
-  if (task.archived) return false;
+  if (task.archived || task.planningPaused || task.reviewEnabled) return false;
   if (task.recurrence)
     return (
-      scheduledOn(task, dateKey(now)) &&
-      task.lastOccurrenceDate !== dateKey(now) &&
+      !!cycleDate(task, dateKey(now)) &&
+      task.lastOccurrenceDate !== cycleDate(task, dateKey(now)) &&
       task.lastReviewDate !== dateKey(now)
     );
   if (task.plannedDate && task.plannedDate > dateKey(now)) return false;
@@ -137,8 +137,9 @@ export async function beginTask(id: number) {
       updatedAt: new Date(),
       ...(task.recurrence
         ? {
-            occurrenceSession: dateKey(),
-            ...(task.occurrenceSession !== dateKey()
+            occurrenceSession: cycleDate(task, dateKey()) ?? dateKey(),
+            ...(task.occurrenceSession !==
+            (cycleDate(task, dateKey()) ?? dateKey())
               ? { completedSubtasks: [] }
               : {}),
           }
@@ -173,7 +174,8 @@ export async function setTaskStep(id: number, index: number, checked: boolean) {
       task.reviewSession === expectedReviewSession ||
       legacyReviewInProgress;
     const completed = new Set(
-      (task.recurrence && task.occurrenceSession !== dateKey()) ||
+      (task.recurrence &&
+        task.occurrenceSession !== (cycleDate(task, dateKey()) ?? dateKey())) ||
         !reviewIsCurrent
         ? []
         : (task.completedSubtasks ?? []),
@@ -182,7 +184,9 @@ export async function setTaskStep(id: number, index: number, checked: boolean) {
     else completed.delete(index);
     await db.tasks.update(id, {
       completedSubtasks: [...completed],
-      ...(task.recurrence ? { occurrenceSession: dateKey() } : {}),
+      ...(task.recurrence
+        ? { occurrenceSession: cycleDate(task, dateKey()) ?? dateKey() }
+        : {}),
       ...(task.reviewEnabled && !reviewIsCurrent
         ? { reviewSession: expectedReviewSession }
         : {}),

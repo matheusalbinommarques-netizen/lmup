@@ -250,24 +250,17 @@ describe('projetos e revisões', () => {
     ).toBe(true);
   });
 
-  it('revisão respeita a data e pode ser estornada e refeita', async () => {
+  it('revisão aposentada não gera execução adicional no dia seguinte', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-06-10T12:00:00-03:00'));
-    const id = await mission({
-      reviewEnabled: true,
-      reviewIntervalDays: 1,
-      createdAt: new Date('2026-06-08T12:00:00-03:00'),
-    });
+    const id = await mission({ reviewEnabled: true, reviewIntervalDays: 1 });
     await Promise.all([completeTask(id), completeTask(id)]);
-    expect(await db.activityEvents.count()).toBe(1);
+    const before = await db.profile.get(1);
     vi.setSystemTime(new Date('2026-06-11T12:00:00-03:00'));
-    await completeTask(id);
-    expect((await db.profile.get(1))?.totalXpEarned).toBe(106);
-    await undoTask(id);
-    expect((await db.profile.get(1))?.totalXpEarned).toBe(106);
-    expect((await db.profile.get(1))?.rewardDebt?.xp).toBe(53);
-    await completeTask(id);
-    expect((await db.profile.get(1))?.totalXpEarned).toBe(106);
+    expect(await completeTask(id)).toBeNull();
+    expect(await db.profile.get(1)).toEqual(before);
+    expect((await db.tasks.get(id))?.reviewEnabled).toBe(false);
+    expect(await db.activityEvents.count()).toBe(1);
   });
 });
 
@@ -315,31 +308,22 @@ describe('migração conservadora', () => {
   });
 });
 
-it('desfazer a primeira revisão após conclusão normal restaura a prática no mesmo dia', async () => {
+it('ativar revisão em missão já concluída não cria uma segunda conclusão', async () => {
   const id = await mission();
   await completeTask(id);
+  const before = await db.profile.get(1);
   await configureReview(id, {
     enabled: true,
     intervalDays: 1,
     dueDate: dateKey(),
   });
-  await completeTask(id);
-  await undoTask(id);
-  const restored = (await db.tasks.get(id))!;
-  expect(restored.completed).toBe(true);
-  expect(restored.lastReviewDate).toBeNull();
-  expect(isAvailable(restored)).toBe(true);
-  expect((await db.profile.get(1))?.totalXpEarned).toBe(106);
-  expect((await db.profile.get(1))?.rewardDebt?.xp).toBe(53);
+  await initializeJourney();
+  expect(await completeTask(id)).toBeNull();
+  expect(await db.profile.get(1)).toEqual(before);
+  expect(isAvailable((await db.tasks.get(id))!)).toBe(false);
   expect(
     (await db.activityEvents.toArray()).filter(
-      (event) => event.kind === 'review' && !event.reversedAt,
+      (event) => event.kind === 'review',
     ),
   ).toHaveLength(0);
-  await completeTask(id);
-  expect(
-    (await db.activityEvents.toArray()).filter(
-      (event) => event.kind === 'review' && !event.reversedAt,
-    ),
-  ).toHaveLength(1);
 });

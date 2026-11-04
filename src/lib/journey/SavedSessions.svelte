@@ -1,9 +1,10 @@
 <script lang="ts">
+  import MissionActions from './MissionActions.svelte';
   import SessionSummary from './SessionSummary.svelte';
   import { isOpenSession } from '$services/sessionLifecycle';
   import { reconcileSessions } from '$services/savedSessionService';
   import SessionSelection from './SessionSelection.svelte';
-  import EndSessionDialog from './EndSessionDialog.svelte';
+  import EndSessionButton from './EndSessionButton.svelte';
   import { summarizeSession } from '$services/sessionSummary';
   import { formatCalendar } from '$services/calendar';
   import { onMount } from 'svelte';
@@ -25,7 +26,6 @@
   import ContextMenu from '$lib/ui/ContextMenu.svelte';
   import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
   import QuickCreate from './QuickCreate.svelte';
-  import ReviewForm from './ReviewForm.svelte';
   import TaskRemovalDialog from './TaskRemovalDialog.svelte';
   import type { RemovalMode } from '$services/taskRemoval';
   import { guardUpdates } from './guardUpdates';
@@ -51,22 +51,13 @@
   let detailed = $state(false),
     sequenceOpen = $state(false);
   let editOpen = $state(false),
-    reviewOpen = $state(false),
     removalOpen = $state(false);
   let removalMode = $state<RemovalMode>('archive');
   let feedback = $state('');
-  let addOpen = $state(false),
-    endOpen = $state(false);
+  let addOpen = $state(false);
   let finishedSession = $state<SavedMissionSession>();
   guardUpdates(
-    () =>
-      busy ||
-      executionBusy ||
-      editOpen ||
-      reviewOpen ||
-      removalOpen ||
-      addOpen ||
-      endOpen,
+    () => busy || executionBusy || editOpen || removalOpen || addOpen,
   );
   $effect(() => {
     if (!session) executionBusy = false;
@@ -236,7 +227,11 @@
   const areaLabel = (row: Occurrence) =>
     snapshot?.areas.find((area) => area.id === row.areaId)?.nome ?? 'Geral';
   const icon = (row: Occurrence) =>
-    areaIconKey({ areaId: row.areaId }, snapshot?.areas ?? []);
+    areaIconKey(
+      { areaId: row.areaId },
+      snapshot?.areas ?? [],
+      snapshot?.profile?.generalAreaIconKey,
+    );
   function select(index: number) {
     if (executionBusy || busy) return;
     detailed = false;
@@ -311,11 +306,12 @@
               await goto('/missoes?view=sessions');
           }}>Pausar sessão</Button
         >
-        <Button
-          variant="quiet"
+        <EndSessionButton
+          {session}
           disabled={busy || executionBusy}
-          onclick={() => (endOpen = true)}>Encerrar sessão</Button
-        >
+          onbusy={(value) => (busy = value)}
+          onended={() => goto('/missoes')}
+        />
       </div>
     </header>
     <div class="session-progress rpg-frame">
@@ -394,6 +390,11 @@
           class="activity-panel rpg-frame"
           aria-label="Atividade selecionada"
         >
+          {#if currentTask}<MissionActions
+              row={current}
+              recurring={!!currentTask.recurrence}
+              disabled={busy || executionBusy}
+            />{/if}
           <div class="activity-top">
             <p class="lmu-eyebrow">Atividade {session.cursor + 1} de {total}</p>
             <ContextMenu label="Ações da atividade selecionada"
@@ -404,13 +405,6 @@
                   !currentTask ||
                   currentTask.archived}
                 onclick={() => (editOpen = true)}>Editar missão</Button
-              ><Button
-                variant="quiet"
-                disabled={busy ||
-                  executionBusy ||
-                  !currentTask ||
-                  currentTask.archived}
-                onclick={() => (reviewOpen = true)}>Configurar revisão</Button
               ><Button
                 variant="quiet"
                 disabled={busy || executionBusy}
@@ -598,7 +592,12 @@
                     ),
                   ),
                 )}>Revisar pendentes</Button
-            ><Button onclick={() => (endOpen = true)}>Finalizar sessão</Button>
+            ><EndSessionButton
+              {session}
+              disabled={busy || executionBusy}
+              onbusy={(value) => (busy = value)}
+              onended={() => goto('/missoes')}
+            />
           </div>
         </section>{/if}
     </div>
@@ -612,12 +611,6 @@
           (feedback =
             'Missões adicionadas ao fim da fila. Seu progresso foi preservado.')}
       />
-      <EndSessionDialog
-        bind:open={endOpen}
-        {session}
-        {snapshot}
-        onended={() => goto('/missoes')}
-      />
     {/if}
     {#if snapshot && currentTask}<QuickCreate
         bind:open={editOpen}
@@ -626,9 +619,6 @@
         oncreated={() =>
           (feedback =
             'Missão atualizada. A configuração desta execução foi preservada.')}
-      /><ReviewForm
-        bind:open={reviewOpen}
-        task={currentTask}
       /><TaskRemovalDialog
         bind:open={removalOpen}
         task={currentTask}

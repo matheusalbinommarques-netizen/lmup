@@ -23,6 +23,8 @@ import type {
 // PROFILE (herói)
 // ---------------------------------------------
 export interface Profile {
+  /** Presentation preference for the implicit area (ID 0); schema 6 stays unchanged. */
+  generalAreaIconKey?: string | null;
   /** Synthetic cinematic state; only enabled in the isolated preview build. */
   campPreview?: CampPreviewState;
   campSettlement?: CampSettlementState;
@@ -74,6 +76,8 @@ export interface Profile {
 // AREAS
 // ---------------------------------------------
 export interface Area {
+  archived?: boolean;
+  mergedInto?: number;
   /** Optional presentation fields; no index/schema change. Legacy task icons remain intact. */
   iconKey?: string | null;
   iconConflict?: boolean;
@@ -96,6 +100,7 @@ export type TaskRecurrence = {
 };
 
 export interface Task extends Planning {
+  reviewRetiredAt?: string;
   source?: 'personal' | 'story';
   /** Presentation only; optional and not indexed, so schema v6 is unchanged. */
   iconKey?: string | null;

@@ -1,3 +1,4 @@
+import { reconcileProductivity } from './productivityLifecycle';
 import { isAvailable } from './journeyService';
 import { db } from './db';
 import { liveQuery } from 'dexie';
@@ -5,7 +6,7 @@ import { buildHeroModifiersFromOwned } from './gearService';
 import { getActiveCompanionBuffs } from './companionService';
 import { calculateReward } from './rewardService';
 import { readAchievementStats } from './productivityAchievements';
-import { plannedOccurrences } from './occurrenceService';
+import { currentOccurrences } from './occurrenceService';
 import { dateKey } from './rewardService';
 import { Observable } from 'rxjs';
 
@@ -13,7 +14,7 @@ export async function readJourneySnapshot() {
   return db.transaction('r', db.tables, async () => {
     const profile = await db.profile.get(1);
     const tasks = await db.tasks.toArray();
-    const areas = await db.areas.toArray();
+    const areas = await db.areas.filter((area) => !area.archived).toArray();
     const routines = await db.routines.toArray();
     const companions = await db.companions.toArray();
     const owned = await db.ownedShopItems.toArray();
@@ -24,7 +25,7 @@ export async function readJourneySnapshot() {
     const occurrences = await db.occurrences.toArray();
     const executionRecords = await db.executionRecords.toArray();
     const sessions = await db.savedMissionSessions.toArray();
-    const plannedToday = await plannedOccurrences(dateKey(), dateKey());
+    const plannedToday = await currentOccurrences();
     const achievementReceipts = await db.achievementReceipts.toArray();
     const achievementStats = await readAchievementStats();
     const eventsById = new Map(events.map((event) => [event.id, event]));
@@ -87,19 +88,43 @@ export function journeyQuery() {
     const refresh = () => {
       if (lastDay === dateKey()) return;
       lastDay = dateKey();
-      void readJourneySnapshot().then(
-        (value) => subscriber.next(value),
-        (error) => subscriber.error(error),
-      );
+      void reconcileProductivity()
+        .then(() => readJourneySnapshot())
+        .then(
+          (value) => subscriber.next(value),
+          (error) => subscriber.error(error),
+        );
     };
     const timer = setInterval(refresh, 15000);
-    if (typeof window !== 'undefined')
+    let boundary: ReturnType<typeof setTimeout>;
+    const scheduleBoundary = () => {
+      const now = new Date();
+      const next = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + 1,
+      );
+      boundary = setTimeout(
+        () => {
+          refresh();
+          scheduleBoundary();
+        },
+        Math.max(1, next.getTime() - now.getTime() + 10),
+      );
+    };
+    scheduleBoundary();
+    if (typeof window !== 'undefined') {
       window.addEventListener('focus', refresh);
+      document.addEventListener('visibilitychange', refresh);
+    }
     return () => {
       subscription.unsubscribe();
       clearInterval(timer);
-      if (typeof window !== 'undefined')
+      clearTimeout(boundary);
+      if (typeof window !== 'undefined') {
         window.removeEventListener('focus', refresh);
+        document.removeEventListener('visibilitychange', refresh);
+      }
     };
   });
 }

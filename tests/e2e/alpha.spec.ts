@@ -83,10 +83,10 @@ test('primeira missão real persiste passos e notas, retoma, conclui e desfaz ap
   await expect(page).toHaveURL(/\/missoes$/);
   await page.goto('/');
   await expect(
-    page.getByRole('button', { name: 'Continuar', exact: true }),
+    page.getByRole('button', { name: 'Começar missão', exact: true }),
   ).toBeVisible();
   const contrast = await page
-    .getByRole('button', { name: 'Continuar', exact: true })
+    .getByRole('button', { name: 'Começar missão', exact: true })
     .evaluate((element) => {
       const style = getComputedStyle(element);
       const luminance = (color: string) => {
@@ -106,7 +106,9 @@ test('primeira missão real persiste passos e notas, retoma, conclui e desfaz ap
       return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
     });
   expect(contrast).toBeGreaterThanOrEqual(4.5);
-  await page.getByRole('button', { name: 'Continuar', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Começar missão', exact: true })
+    .click();
   await expect(page).toHaveURL(url);
   await page.reload();
   await expect(

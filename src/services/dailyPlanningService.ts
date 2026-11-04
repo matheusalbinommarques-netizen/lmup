@@ -27,13 +27,12 @@ export function occurrenceEligibility(
   if (row.removedFromDays?.includes(day) || task.skippedDate === day)
     return 'Removida deste dia';
   if (row.planningSuspended || task.planningPaused) return 'Rotina pausada';
+  if (row.supersededBy) return 'Execução substituída';
+  if (row.skipped) return 'Missão pulada';
   if (row.status === 'completed') return 'Ocorrência já concluída';
   if (['discarded', 'excused'].includes(row.status))
     return 'Fora do planejamento ativo';
-  if (row.plannedDate !== day)
-    return row.plannedDate > day
-      ? 'Planejada para outra data'
-      : 'Ocorrência de outro dia; retome a execução anterior';
+  if (row.plannedDate > day) return 'Planejada para outra data';
   return null;
 }
 export async function dayChangeNeedsConfirmation(id: string) {

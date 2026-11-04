@@ -12,7 +12,7 @@ type RoutineInput = {
   defaultAreaId?: number;
   days: number[];
   startDate: string;
-  entries: { taskId: number; time: string | null }[];
+  entries: { taskId: number; time: string | null; days?: number[] | null }[];
   status?: Routine['status'];
   expectedRevision?: number;
   pauseQuota?: number;
@@ -75,6 +75,15 @@ export async function saveRoutine(input: RoutineInput) {
     const entries: Routine['entries'] = [];
     for (const entry of input.entries) {
       validateTime(entry.time);
+      if (
+        entry.days != null &&
+        (!entry.days.length ||
+          new Set(entry.days).size !== entry.days.length ||
+          entry.days.some(
+            (day) => !Number.isInteger(day) || day < 0 || day > 6,
+          ))
+      )
+        throw new Error('Escolha os dias personalizados da missão.');
       const task = await db.tasks.get(entry.taskId);
       if (!task || task.archived || task.reviewEnabled)
         throw new Error('Uma missão não pode ser vinculada a esta rotina.');
@@ -85,7 +94,14 @@ export async function saveRoutine(input: RoutineInput) {
           ?.previousPlan ?? plan(task);
       if (!(await db.planVersions.where('taskId').equals(task.id!).count()))
         await savePlanVersion(task);
-      entries.push({ ...entry, previousPlan });
+      entries.push({
+        taskId: entry.taskId,
+        time: entry.time,
+        ...(entry.days === undefined
+          ? {}
+          : { days: entry.days === null ? null : [...entry.days] }),
+        previousPlan,
+      });
       await db.tasks.update(entry.taskId, {
         plannedDate: input.startDate,
         routineId: input.id,
@@ -93,7 +109,7 @@ export async function saveRoutine(input: RoutineInput) {
         recurrence: {
           kind: 'weekdays',
           startDate: input.startDate,
-          days: [...input.days],
+          days: [...(entry.days ?? input.days)],
         },
         planningPaused: status !== 'active',
         skippedDate: null,

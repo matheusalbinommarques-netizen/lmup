@@ -7,7 +7,7 @@ const routes: [string, string | RegExp][] = [
   ['/perfil', 'Perfil e equipamentos'],
   ['/refugio', 'Refúgio'],
   ['/projetos', 'Projetos'],
-  ['/revisoes', 'Revisões'],
+  ['/revisoes', 'Lista de Missões'],
   ['/progresso', 'Meu progresso'],
   ['/cla', 'Salão do Clã'],
   ['/santuario', 'Refúgio'],

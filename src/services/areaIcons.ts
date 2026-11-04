@@ -5,10 +5,11 @@ import { isTaskIconKey } from '$lib/content/visualAssets';
 export function areaIconKey(
   task: Pick<Task, 'areaId'> | undefined,
   areas: Area[],
+  generalIconKey?: string | null,
 ): string | null {
   const key = task?.areaId
     ? areas.find((area) => area.id === task.areaId)?.iconKey
-    : null;
+    : generalIconKey;
   return isTaskIconKey(key) ? key : null;
 }
 

@@ -86,7 +86,9 @@ test('Hoje conserva criação e escolha manual com duas missões sem data', asyn
   await expect(
     page.getByRole('button', { name: 'Nova missão', exact: true }),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Começar', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Começar missão', exact: true })
+    .click();
   await expect(page).toHaveURL(/\/missao\/\d+$/);
 });
 
@@ -122,7 +124,9 @@ test('Hoje abre execução legada preservando notas e sem criar ocorrência ou r
   );
   await page.reload();
   await expect(page.locator('#next-title')).toHaveText('Rascunho legado');
-  await page.getByRole('button', { name: 'Continuar', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Começar missão', exact: true })
+    .click();
   await expect(page).toHaveURL(new RegExp('/missao/' + id + '$'));
   const saved = await page.evaluate(
     (key) =>

@@ -9,6 +9,7 @@
     children,
     dismissible = true,
     wide = false,
+    portal = false,
     scenePanel = false,
   }: {
     open?: boolean;
@@ -17,9 +18,15 @@
     children: Snippet;
     dismissible?: boolean;
     wide?: boolean;
+    portal?: boolean;
     scenePanel?: boolean;
   } = $props();
   let element: HTMLDialogElement;
+  function portalToBody(node: HTMLDialogElement) {
+    if (!portal) return;
+    document.body.appendChild(node);
+    return { destroy: () => node.remove() };
+  }
   function containFocus(event: KeyboardEvent) {
     if (event.key !== 'Tab') return;
     const controls = [
@@ -60,6 +67,7 @@
 </script>
 
 <dialog
+  use:portalToBody
   onkeydown={containFocus}
   bind:this={element}
   class="lmu-dialog"

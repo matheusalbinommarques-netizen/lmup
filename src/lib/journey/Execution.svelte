@@ -1,4 +1,5 @@
 <script lang="ts">
+  import MissionActions from './MissionActions.svelte';
   import { isPersonalTask } from '$services/personalTaskDeletion';
   import type { RemovalMode } from '$services/taskRemoval';
   let removalMode = $state<RemovalMode>('delete');
@@ -16,7 +17,6 @@
   import { takeRewardCelebration } from '$services/rewardPresentation';
   import type { Task } from '$services/db';
   import QuickCreate from './QuickCreate.svelte';
-  import ReviewForm from './ReviewForm.svelte';
   import ReviewHistory from './ReviewHistory.svelte';
   import { beforeNavigate, goto } from '$app/navigation';
   import { journeyQuery, type JourneySnapshot } from '$services/journeyQuery';
@@ -65,7 +65,6 @@
   let data = $state<JourneySnapshot>();
   let error = $state('');
   let editOpen = $state(false),
-    reviewOpen = $state(false),
     revealNotes = $state(false);
   let notesExpanded = $state(false);
   $effect(() => {
@@ -541,19 +540,6 @@
             <p>Conclua quando terminar esta atividade.</p>
           </div>{/if}</Card
       >
-      {#if task.reviewEnabled}<p class="journey-banner">
-          Tente explicar o que lembra antes de consultar as notas. Sua avaliação
-          registra a prática; não altera o intervalo automaticamente.
-        </p>
-        <label class="journey-label"
-          >Como foi lembrar? (opcional)<select bind:value={reviewOutcome}
-            ><option value="">Não registrar avaliação</option><option
-              value="recalled">Lembrei bem</option
-            ><option value="partial">Lembrei em parte</option><option
-              value="again">Quero praticar mais</option
-            ></select
-          ></label
-        >{/if}
       {#if reward}<div class="execution-reward">
           <span>Recompensa prevista</span><strong
             ><ApprovedIcon name="xp" size={23} />+{reward.xp} XP</strong
@@ -651,7 +637,7 @@
       >
     </section>{/if}
   {#if task && data}<details class="execution-more" open={!compact}>
-      <summary hidden={!compact}>Ações e revisão</summary>
+      <summary hidden={!compact}>Ações da missão</summary>
       <div class="journey-actions" class:session-mission-actions={sessionMode}>
         {#if task.productivityVersion && !task.reviewEnabled}<Button
             disabled={busy || saves > 0 || dirty}
@@ -666,12 +652,6 @@
           onclick={() => {
             editOpen = true;
           }}>Editar missão</Button
-        ><Button
-          variant="secondary"
-          disabled={busy || saves > 0 || dirty}
-          onclick={() => {
-            reviewOpen = true;
-          }}>Configurar revisão</Button
         >
         {#if sessionMode && onSessionSkip}
           <Button
@@ -682,13 +662,14 @@
           >
         {/if}
       </div>
+      {#if data.plannedToday.find((row) => row.taskId === task.id)}<MissionActions
+          row={data.plannedToday.find((row) => row.taskId === task.id)!}
+          recurring={!!task.recurrence}
+          disabled={busy || dirty || saves > 0}
+        />{/if}
       <ReviewHistory {task} events={data.events} />
     </details>
-    <QuickCreate
-      bind:open={editOpen}
-      snapshot={data}
-      editTask={task}
-    /><ReviewForm bind:open={reviewOpen} {task} />{/if}
+    <QuickCreate bind:open={editOpen} snapshot={data} editTask={task} />{/if}
   {#if task && !compact}<section
       class="mission-management"
       aria-label="Gestão da missão"

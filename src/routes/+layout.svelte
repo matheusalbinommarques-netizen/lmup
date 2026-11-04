@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { reconcileProductivity } from '$services/productivityLifecycle';
   import { CAMP_PREVIEW } from '$lib/camp/cinematic/previewMode';
   import { initializePwa } from '$services/pwaService';
   import { updateLocked } from '$services/updateSafety';
@@ -40,10 +41,34 @@
   }
   // The laboratory remains independent of the personal database, including client navigation.
   onMount(() => {
+    let boundaryTimer: ReturnType<typeof setTimeout>;
+    const refreshCycles = () => {
+      clearTimeout(boundaryTimer);
+      if (ready && !page.url.pathname.startsWith('/laboratorio'))
+        void reconcileProductivity().catch(() => {
+          /* The next query/action retries safely. */
+        });
+      const now = new Date();
+      const next = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + 1,
+      );
+      boundaryTimer = setTimeout(
+        refreshCycles,
+        Math.max(1, next.getTime() - now.getTime() + 5),
+      );
+    };
+    refreshCycles();
+    window.addEventListener('focus', refreshCycles);
+    document.addEventListener('visibilitychange', refreshCycles);
     const cleanupComfort = initializeComfort();
     const cleanupPwa = initializePwa();
     if (!page.url.pathname.startsWith('/laboratorio')) void initialize();
     return () => {
+      clearTimeout(boundaryTimer);
+      window.removeEventListener('focus', refreshCycles);
+      document.removeEventListener('visibilitychange', refreshCycles);
       cleanupComfort();
       cleanupPwa();
     };
