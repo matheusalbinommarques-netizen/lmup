@@ -249,7 +249,7 @@ test('pulo reversível e dias individuais funcionam na rotina', async ({
     .click();
   const entry = page.locator('.routine-sequence > li');
   await entry
-    .getByRole('checkbox', { name: 'Usar dias personalizados', exact: true })
+    .getByRole('checkbox', { name: /^Usar dias personalizados/ })
     .check();
   for (const label of ['Seg', 'Qua', 'Sex'])
     await entry.getByRole('checkbox', { name: label, exact: true }).uncheck();
@@ -350,7 +350,7 @@ test('mescla rotinas preservando dias e mantém a configuração individual apó
     page
       .locator('.routine-sequence > li')
       .filter({ hasText: 'Rotina da origem' })
-      .getByRole('checkbox', { name: 'Usar dias personalizados', exact: true }),
+      .getByRole('checkbox', { name: /^Usar dias personalizados/ }),
   ).toBeChecked();
 });
 
