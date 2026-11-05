@@ -138,4 +138,4 @@ A Beta tem [escopo congelado para avaliação](docs/CONGELAMENTO-DA-BETA.md), co
 
 ## Estado da versão publicada
 
-Consulte o [estado da Beta](docs/BETA-ATUAL.md), o [roadmap](docs/planejamento/ROADMAP-Level-Me-Up.md) e o [backlog](docs/planejamento/BACKLOG-Level-Me-Up.md). O escopo funcional está congelado para avaliação; a V1 ainda não foi encerrada.
+Comece pelo [estado atual](docs/ESTADO.md). Registros anteriores: [estado da Beta](docs/BETA-ATUAL.md), o [roadmap](docs/planejamento/ROADMAP-Level-Me-Up.md) e o [backlog](docs/planejamento/BACKLOG-Level-Me-Up.md). O escopo funcional está congelado para avaliação; a V1 ainda não foi encerrada.
