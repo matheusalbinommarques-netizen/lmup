@@ -100,7 +100,8 @@ async function receipt(page: Page) {
 
 async function capture(page: Page, name: string) {
   const directory =
-    process.env.LMU_REWARD_CAPTURE_DIR ?? 'docs/recompensa-viva-capturas';
+    process.env.LMU_REWARD_CAPTURE_DIR ??
+    'test-results/recompensa-viva-capturas';
   await mkdir(directory, { recursive: true });
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({
