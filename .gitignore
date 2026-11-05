@@ -38,3 +38,9 @@ test-results-pwa/
 /.camp-preview/
 
 /test-results-camp/
+
+# Agent worktrees, audit evidence and personal settings. Other .claude/ files stay visible.
+/.claude/worktrees/
+/.claude/wt-*/
+/.claude/auditoria-*/
+/.claude/settings.local.json

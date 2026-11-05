@@ -24,6 +24,12 @@ As quatro imagens de estágio entram no cache essencial da PWA, inclusive quando
 
 ## Capturas reais
 
+Executar os testes grava capturas somente em `test-results/`. Para atualizar as imagens abaixo de propósito, depois de `npm run build`:
+
+```bash
+npm run capture:recompensa
+```
+
 | Estado                        | Desktop                                                    | Celular                                                   |
 | ----------------------------- | ---------------------------------------------------------- | --------------------------------------------------------- |
 | A — Comum                     | [Recompensa](recompensa-viva-capturas/desktop-comum.png)   | [Recompensa](recompensa-viva-capturas/mobile-comum.png)   |
