@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { countLabel } from '$lib/plural';
   import { untrack } from 'svelte';
   import type { JourneySnapshot } from '$services/journeyQuery';
   import {
@@ -70,7 +71,7 @@
         preview = {
           token: result.token,
           conflicts: result.conflicts,
-          summary: `${result.tasks.length} missões e ${result.routines.length} padrões de rotina serão transferidos para ${result.destination.nome}.`,
+          summary: `${countLabel(result.tasks.length, 'missão', 'missões')} e ${countLabel(result.routines.length, 'padrão de rotina', 'padrões de rotina')} serão transferidos para ${result.destination.nome}.`,
           lines: result.tasks.map((task) => task.title),
         };
       } else {
@@ -78,7 +79,7 @@
         preview = {
           token: result.token,
           conflicts: result.conflicts,
-          summary: `${result.destination.name} terá ${result.entries.length} missões. Os dias efetivos das missões da origem serão preservados.`,
+          summary: `${result.destination.name} terá ${countLabel(result.entries.length, 'missão', 'missões')}. Os dias efetivos das missões da origem serão preservados.`,
           lines: result.entries.map(
             (entry) =>
               `${result.tasks.find((task) => task?.id === entry.taskId)?.title ?? 'Missão'} · ${entry.time ?? 'Sem horário'} · ${WEEKDAYS.filter(

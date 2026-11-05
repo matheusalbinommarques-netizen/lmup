@@ -2,7 +2,7 @@
   import { liveQuery } from 'dexie';
   import { db } from '$services/db';
   import { dateKey } from '$services/rewardService';
-  import { addCalendarDays } from '$services/calendar';
+  import { addCalendarDays, formatCalendar } from '$services/calendar';
   import { plannedOccurrences } from '$services/occurrenceService';
   import { productivityReport } from '$services/productivityInsights';
   import Button from '$lib/ui/Button.svelte';
@@ -128,7 +128,7 @@
           {month.month}: {month.completed} ocorrências concluídas.
         </p>{/each}
       {#each report.weekly as point (point.from)}<div class="trend">
-          <span>{point.from}</span><progress
+          <span>{formatCalendar(point.from)}</span><progress
             max={Math.max(1, ...report.weekly.map((item) => item.completed))}
             value={point.completed}
             aria-label={'Conclusões na semana de ' + point.from}
@@ -190,6 +190,10 @@
     gap: 0.7rem;
     align-items: center;
     margin: 0.6rem 0;
+  }
+  .trend span {
+    flex: none;
+    white-space: nowrap;
   }
   progress {
     accent-color: #c8a463;

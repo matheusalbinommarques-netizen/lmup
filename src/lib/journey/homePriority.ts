@@ -4,6 +4,14 @@ import type { Task } from '$services/db';
 import { isAvailable } from '$services/journeyService';
 import type { Occurrence } from '$services/productivityTypes';
 
+// Timed rows first, earliest first; rows without a time keep their order at the end.
+export function comparePlannedTime(
+  a: { plannedTime?: string | null },
+  b: { plannedTime?: string | null },
+) {
+  return (a.plannedTime ?? '99:99').localeCompare(b.plannedTime ?? '99:99');
+}
+
 export function selectNextOccurrence(
   rows: Occurrence[],
   pinnedTaskId: number | null = null,
@@ -21,7 +29,7 @@ export function selectNextOccurrence(
             Number(a.taskId === pinnedTaskId) ||
           Number(['active', 'paused', 'partial'].includes(b.status)) -
             Number(['active', 'paused', 'partial'].includes(a.status)) ||
-          (a.plannedTime ?? '99:99').localeCompare(b.plannedTime ?? '99:99') ||
+          comparePlannedTime(a, b) ||
           a.id.localeCompare(b.id),
       )[0] ?? null
   );

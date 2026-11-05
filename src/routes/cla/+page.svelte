@@ -144,6 +144,8 @@
   }
 </script>
 
+<svelte:head><title>Clã · Level Me Up</title></svelte:head>
+
 <div class="min-h-full lmup-bg-cla bg-slate-950/60">
   <div class="flex flex-col gap-6">
     <PageTitleCard
