@@ -11,7 +11,7 @@
   import SessionSelection from './SessionSelection.svelte';
   import EndSessionButton from './EndSessionButton.svelte';
   import { areaIconKey } from '$services/areaIcons';
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { page } from '$app/state';
   import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
   import OccurrenceRow from '$lib/ui/OccurrenceRow.svelte';
@@ -299,6 +299,35 @@
     if (target < 0 || target >= next.length) return;
     [next[index], next[target]] = [next[target], next[index]];
     entries = next;
+  }
+  let routineSequence = $state<HTMLOListElement>();
+  // Reordering and removing replace the focused control, so focus is restored by hand.
+  function entryRow(taskId: number | undefined) {
+    return routineSequence?.querySelector(`[data-task-id="${taskId}"]`);
+  }
+  async function moveEntry(index: number, direction: number) {
+    const { taskId } = entries[index];
+    move(index, direction);
+    await tick();
+    const button = (step: number) =>
+      entryRow(taskId)?.querySelector<HTMLButtonElement>(
+        `[data-move="${step}"]`,
+      );
+    const same = button(direction);
+    (same?.disabled ? button(-direction) : same)?.focus();
+  }
+  async function removeEntry(index: number) {
+    entries = entries.filter((_, position) => position !== index);
+    await tick();
+    const neighbor = entries[Math.min(index, entries.length - 1)];
+    const target =
+      entryRow(neighbor?.taskId)?.querySelector<HTMLButtonElement>(
+        'button:enabled',
+      ) ??
+      routineSequence
+        ?.closest('form')
+        ?.querySelector<HTMLButtonElement>('[data-sequence-create]');
+    target?.focus();
   }
 </script>
 
@@ -695,6 +724,7 @@
             <h3>Sequência de missões ({entries.length})</h3>
             <Button
               variant="secondary"
+              data-sequence-create
               onclick={() => {
                 creatingForRoutine = true;
                 editTask = undefined;
@@ -703,10 +733,10 @@
               ><ApprovedIcon name="criar" size={22} />Criar missão na rotina</Button
             >
           </div>
-          <ol class="routine-sequence">
+          <ol class="routine-sequence" bind:this={routineSequence}>
             {#each entries as entry, index (entry.taskId)}{@const task =
                 tasks.find((task) => task.id === entry.taskId)}
-              <li>
+              <li data-task-id={entry.taskId}>
                 <span class="sequence-number">{index + 1}</span><ApprovedIcon
                   name={areaIconKey(
                     task,
@@ -750,25 +780,26 @@
                     variant="quiet"
                     disabled={index === 0}
                     aria-label={`Mover ${task?.title} para cima`}
-                    onclick={() => move(index, -1)}>↑</Button
+                    data-move={-1}
+                    onclick={() => moveEntry(index, -1)}>↑</Button
                   ><Button
                     variant="quiet"
                     disabled={index === entries.length - 1}
                     aria-label={`Mover ${task?.title} para baixo`}
-                    onclick={() => move(index, 1)}>↓</Button
+                    data-move={1}
+                    onclick={() => moveEntry(index, 1)}>↓</Button
                   ><Button
                     variant="quiet"
                     aria-label={`Remover ${task?.title} da sequência`}
-                    onclick={() =>
-                      (entries = entries.filter(
-                        (item) => item.taskId !== entry.taskId,
-                      ))}><ApprovedIcon name="excluir" size={22} /></Button
+                    onclick={() => removeEntry(index)}
+                    ><ApprovedIcon name="excluir" size={22} /></Button
                   >
                 </div>
                 <div class="entry-days">
                   <label
                     ><input
                       type="checkbox"
+                      aria-label={`Usar dias personalizados para ${task?.title ?? 'missão'}`}
                       checked={entry.days != null}
                       onchange={(event) =>
                         (entries = entries.map((item, i) =>
@@ -1010,7 +1041,7 @@
 
 <style>
   .entry-days {
-    grid-column: 1 / -1;
+    grid-column: 3 / -1;
     display: grid;
     gap: 8px;
   }
@@ -1356,9 +1387,11 @@
     margin: 0;
     display: grid;
     gap: 7px;
+    container-type: inline-size;
   }
   .routine-sequence li {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto auto minmax(120px, 1fr) 124px auto;
     align-items: center;
     gap: 8px;
     padding: 8px;
@@ -1371,10 +1404,10 @@
     font-size: 0.7rem;
   }
   .sequence-title {
-    flex: 1;
     font-size: 0.9rem;
     line-height: 1.4;
     min-width: 0;
+    overflow-wrap: anywhere;
   }
   .routine-sequence input[type='text'] {
     width: 124px;
@@ -1383,12 +1416,47 @@
   }
   .sequence-actions {
     display: flex;
-    gap: 0;
+    gap: 4px;
   }
   .sequence-actions :global(.lmu-button) {
     min-height: 34px;
     min-width: 32px;
     padding: 2px;
+  }
+  .sequence-actions :global(.lmu-button:disabled) {
+    background: transparent;
+    border-color: transparent;
+    opacity: 0.4;
+  }
+  /* The row depends on the editor's width, which varies beside the routine list. */
+  @container (max-width: 640px) {
+    .routine-sequence li {
+      grid-template-columns: 24px 32px minmax(0, 1fr) auto;
+    }
+    .sequence-title {
+      grid-column: 3 / -1;
+    }
+    .routine-sequence input[type='text'] {
+      grid-column: 1 / 4;
+      justify-self: start;
+      width: 96px;
+    }
+    .sequence-actions {
+      gap: 2px;
+    }
+    .sequence-actions :global(.lmu-button) {
+      min-height: 40px;
+      min-width: 40px;
+    }
+    .entry-days {
+      grid-column: 1 / -1;
+    }
+  }
+  @container (max-width: 300px) {
+    .sequence-actions {
+      grid-column: 1 / -1;
+      justify-self: end;
+    }
   }
   .mission-results {
     display: grid;
@@ -1517,15 +1585,6 @@
     }
     .routine-form {
       padding: 14px;
-    }
-    .routine-sequence li {
-      flex-wrap: wrap;
-    }
-    .sequence-title {
-      flex-basis: calc(100% - 74px);
-    }
-    .sequence-actions {
-      margin-left: auto;
     }
     .routine-list {
       grid-template-columns: 1fr;
