@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { countLabel } from '$lib/plural';
   import MergeDialog from './MergeDialog.svelte';
   let mergeOpen = $state(false),
     mergeSource = $state('');
@@ -210,9 +211,11 @@
       /></label
     >
     <p>
-      {snapshot.areas.length + 1} áreas · {snapshot.tasks.filter(
-        (task) => !task.archived,
-      ).length} cadastros não arquivados
+      {countLabel(snapshot.areas.length + 1, 'área', 'áreas')} · {countLabel(
+        snapshot.tasks.filter((task) => !task.archived).length,
+        'cadastro não arquivado',
+        'cadastros não arquivados',
+      )}
     </p>
   </div>
   <p class="lmu-hint">

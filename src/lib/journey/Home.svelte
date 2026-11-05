@@ -1,5 +1,6 @@
 <script lang="ts">
   import { todayView } from './todayView';
+  import { countLabel } from '$lib/plural';
   import {
     changeToday,
     dayChangeNeedsConfirmation,
@@ -379,7 +380,9 @@
         <section class="day-plan rpg-frame" aria-labelledby="plan-title">
           <header>
             <h2 id="plan-title">
-              Plano do dia <small>({planned.length} missões)</small>
+              Plano do dia <small
+                >({countLabel(planned.length, 'missão', 'missões')})</small
+              >
             </h2>
             <a href="/missoes?view=agenda&mode=day"
               ><ApprovedIcon name="agenda" size={24} />Ver agenda →</a
@@ -467,7 +470,11 @@
       <header>
         <h2>
           Concluídas hoje <small
-            >({(view?.completedEvents.length ?? 0) + (view?.legacy.length ?? 0)} conclusões)</small
+            >({countLabel(
+              (view?.completedEvents.length ?? 0) + (view?.legacy.length ?? 0),
+              'conclusão',
+              'conclusões',
+            )})</small
           >
         </h2>
         <p>Execuções realizadas hoje, incluindo atividades de outras datas.</p>

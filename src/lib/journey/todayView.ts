@@ -2,6 +2,7 @@ import type { Occurrence } from '$services/productivityTypes';
 import type { JourneySnapshot } from '$services/journeyQuery';
 import { makeOccurrence } from '$services/occurrenceService';
 import { dateKey } from '$services/rewardService';
+import { comparePlannedTime } from './homePriority';
 
 export function todayView(data: JourneySnapshot, day: string) {
   const byTask = new Map(data.tasks.map((task) => [task.id, task]));
@@ -66,7 +67,8 @@ export function todayView(data: JourneySnapshot, day: string) {
       !removed.includes(row) &&
       (row.status !== 'completed' || completedIds.has(row.taskId)),
   );
-  const planned = current.filter((row) => {
+  const ordered = [...current].sort(comparePlannedTime);
+  const planned = ordered.filter((row) => {
     const task = byTask.get(row.taskId)!;
     return (
       !!task.recurrence ||
@@ -80,7 +82,7 @@ export function todayView(data: JourneySnapshot, day: string) {
       )
     );
   });
-  const flexible = current.filter(
+  const flexible = ordered.filter(
     (row) => !planned.includes(row) && row.status !== 'completed',
   );
   return {

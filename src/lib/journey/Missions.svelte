@@ -1,6 +1,7 @@
 <script lang="ts">
   import { operationalRow } from '$services/operationalPlanning';
   import { todayView } from './todayView';
+  import { countLabel } from '$lib/plural';
   import MissionActions from './MissionActions.svelte';
   import { saveSession } from '$services/savedSessionService';
   import { isOpenSession } from '$services/sessionLifecycle';
@@ -814,7 +815,7 @@
         </div>{/if}
       <p class="result-context" role="status">
         {['completed', 'history'].includes(filter)
-          ? `${history.filter((event) => !event.reversedAt).length + legacy.length} conclusões · registros corrigidos continuam consultáveis`
+          ? `${countLabel(history.filter((event) => !event.reversedAt).length + legacy.length, 'conclusão', 'conclusões')} · registros corrigidos continuam consultáveis`
           : `${visible.length} ${visible.length === 1 ? 'missão' : 'missões'}${filter === 'archived' ? ' arquivadas' : ''}`}
       </p>
       <section
@@ -880,7 +881,8 @@
                         ? 'Corrigida'
                         : event.kind === 'review'
                           ? 'Revisão realizada'
-                          : event.occurrenceDate
+                          : event.occurrenceDate &&
+                              (task?.recurrence || task?.routineId)
                             ? 'Rotina realizada'
                             : 'Concluída'}</small
                     >

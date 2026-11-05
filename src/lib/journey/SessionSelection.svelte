@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { countLabel } from '$lib/plural';
   import type { JourneySnapshot } from '$services/journeyQuery';
   import { makeOccurrence } from '$services/occurrenceService';
   import { occurrenceEligibility } from '$services/dailyPlanningService';
@@ -140,7 +141,11 @@
   </div>
   {#if error}<p role="alert" class="journey-error">{error}</p>{/if}
   <p class="lmu-hint">
-    {selected.length} ocorrências selecionadas ·
+    {countLabel(
+      selected.length,
+      'ocorrência selecionada',
+      'ocorrências selecionadas',
+    )} ·
     <a href="/missoes?view=sessions">Ver sessões ativas</a>
   </p>
   <div class="journey-actions">
