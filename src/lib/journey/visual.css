@@ -63,6 +63,18 @@
   font: 0.68rem var(--lmu-font);
   margin-top: 4px;
 }
+/* Logo com o nome do app, centralizado na barra lateral. */
+.visual-shell .journey-brand-logo {
+  justify-content: center;
+  /* Metade do espaço padrão entre o logo e o menu. */
+  margin-bottom: -12px;
+}
+.visual-shell .journey-brand-logo img {
+  display: block;
+  width: 100%;
+  max-width: 150px;
+  height: auto;
+}
 .visual-shell .journey-sidebar nav {
   gap: 5px;
 }

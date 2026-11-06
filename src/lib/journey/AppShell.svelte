@@ -92,10 +92,15 @@
 >
   <a class="lmu-skip" href="#journey-main">Pular para o conteúdo</a>
   <aside class="journey-sidebar" aria-label="Navegação lateral">
-    <a href="/" class="journey-brand" aria-label={identity.name}
-      ><Icon name="spark" size={28} /><span
-        >{identity.name}<small>{identity.tagline}</small></span
-      ></a
+    <a href="/" class="journey-brand journey-brand-logo"
+      ><img
+        src="/art/brand/logo-400.webp"
+        srcset="/art/brand/logo-400.webp 400w, /art/brand/logo-800.webp 800w"
+        sizes="150px"
+        width="400"
+        height="309"
+        alt={identity.name}
+      /></a
     >
     <nav aria-label="Navegação principal">
       {#each homeLinks as link (link.href)}<a
@@ -124,7 +129,13 @@
   <div class="journey-content">
     <header class="journey-mobile-header">
       <a href="/" class="journey-brand"
-        ><Icon name="spark" size={24} />{identity.name}</a
+        ><img
+          src="/art/brand/monograma-64.webp"
+          srcset="/art/brand/monograma-64.webp 1x, /art/brand/monograma-128.webp 2x"
+          width="30"
+          height="32"
+          alt=""
+        />{identity.name}</a
       ><Button
         variant="quiet"
         aria-label="Perfil e mais"

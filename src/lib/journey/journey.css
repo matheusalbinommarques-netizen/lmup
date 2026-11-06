@@ -19,6 +19,9 @@
 .journey-brand svg {
   color: var(--lmu-action);
 }
+.journey-brand > img {
+  flex: none;
+}
 .journey-brand small {
   display: block;
   color: var(--lmu-muted);
@@ -1235,7 +1238,6 @@
 .companion-summary p {
   margin: 0.4rem 0;
 }
-
 
 /* The RPG is an opt-in, full-viewport experience, not a card in the task manager.
    Navigation remains inside the adventure itself. All other routes are unchanged. */

@@ -158,7 +158,6 @@ for (const state of states)
       if (width > 900) {
         const sidebar = page.locator('.journey-sidebar');
         for (const label of [
-          sidebar.locator('.journey-brand > span'),
           sidebar
             .getByRole('link', { name: 'Acampamento', exact: true })
             .locator('.journey-nav-label'),

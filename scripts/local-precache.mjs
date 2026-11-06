@@ -36,7 +36,11 @@ const exact = new Set([
   ].map((key) => `art/approved/paintings/${key}.webp`),
   '200.html',
   'manifest.webmanifest',
-  'favicon-shield.ico',
+  'favicon.ico',
+  'art/brand/logo-400.webp',
+  'art/brand/logo-800.webp',
+  'art/brand/monograma-64.webp',
+  'art/brand/monograma-128.webp',
   'art/pilot/companion.webp',
 ]);
 
