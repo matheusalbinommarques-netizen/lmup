@@ -603,7 +603,7 @@
     height: 0.8rem;
   }
   .rpg-xp-numbers {
-    font-variant-numeric: tabular-nums;
+    font-variant-numeric: lining-nums tabular-nums;
   }
   .rpg-message {
     background: #2e1616;

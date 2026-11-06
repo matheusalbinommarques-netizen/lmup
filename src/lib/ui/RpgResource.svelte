@@ -14,7 +14,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
-    font-variant-numeric: tabular-nums;
+    font-variant-numeric: lining-nums tabular-nums;
   }
   strong {
     font-weight: 500;

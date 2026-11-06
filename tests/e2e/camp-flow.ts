@@ -141,6 +141,10 @@ async function seedBuiltCamp(page: Page) {
             row = profiles.get(1);
           row.onsuccess = () => {
             const state = row.result.campSettlement;
+            if (!state) {
+              reject(new Error('Acampamento ainda não inicializado.'));
+              return;
+            }
             if (state.residenceBuilt) return;
             profiles.put({
               ...row.result,
