@@ -1131,7 +1131,7 @@
     font-size: 0.8rem;
   }
   .agenda-summary small {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     color: #9fb29e;
   }
   .timeline {
@@ -1295,7 +1295,7 @@
   .routine-card :global(.lmu-button) {
     min-height: 30px;
     padding: 0.3rem 0.45rem;
-    font-size: 0.72rem;
+    font-size: 0.75rem;
   }
   .routine-card details {
     font-size: 0.78rem;
@@ -1404,7 +1404,7 @@
   }
   .sequence-number {
     color: #cbbf8d;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
   }
   .sequence-title {
     font-size: 0.9rem;
@@ -1483,7 +1483,7 @@
   .mission-results > button > span:last-child {
     margin-left: auto;
     color: #dfc07d;
-    font-size: 0.65rem;
+    font-size: 0.75rem;
   }
   .routine-footer {
     margin: 0;
@@ -1577,7 +1577,7 @@
       gap: 7px;
     }
     .date-navigation label {
-      font-size: 0.65rem;
+      font-size: 0.75rem;
       gap: 4px;
     }
     .date-navigation input {

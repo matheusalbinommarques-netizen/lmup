@@ -438,7 +438,7 @@
   }
   .queue-copy small {
     display: block;
-    font-size: 0.73rem;
+    font-size: 0.75rem;
     color: #b8c5bd;
     margin-top: 0.2rem;
   }

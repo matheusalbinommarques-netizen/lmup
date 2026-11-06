@@ -355,7 +355,7 @@
       height: 30px;
     }
     header .lmu-eyebrow {
-      font-size: 0.65rem;
+      font-size: 0.75rem;
       letter-spacing: 0.07em;
       margin: 0.6rem 0;
     }

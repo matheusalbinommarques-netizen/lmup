@@ -60,7 +60,7 @@
   width: 24px;
 }
 .visual-shell .journey-brand small {
-  font: 0.68rem var(--lmu-font);
+  font: 0.75rem var(--lmu-font);
   margin-top: 4px;
 }
 /* Logo com o nome do app, centralizado na barra lateral. */
@@ -211,7 +211,7 @@
     display: grid;
     justify-items: center;
     gap: 0;
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     padding: 5px;
     text-decoration: none;
     min-height: 60px;

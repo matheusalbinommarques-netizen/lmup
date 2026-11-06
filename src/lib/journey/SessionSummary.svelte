@@ -105,7 +105,7 @@
     font-size: 0.95rem;
   }
   .session-totals small {
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     margin-bottom: 4px;
   }
   details {

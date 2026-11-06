@@ -685,7 +685,7 @@
     margin: 3px 0 0;
   }
   .session-heading .lmu-eyebrow {
-    font-size: 0.67rem;
+    font-size: 0.75rem;
     margin: 0;
   }
   .session-tools {
@@ -802,7 +802,7 @@
   .queue-copy small {
     display: block;
     color: #a8baa9;
-    font-size: 0.68rem;
+    font-size: 0.75rem;
     margin-top: 4px;
   }
   .activity-panel {
@@ -816,7 +816,7 @@
   }
   .activity-top p {
     margin: 0;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
   }
   .activity-identity {
     display: flex;
@@ -961,7 +961,7 @@
     .session-tools :global(.lmu-button) {
       flex: 1;
       min-width: 0;
-      font-size: 0.73rem;
+      font-size: 0.75rem;
       padding: 7px 6px;
     }
     .session-progress {
@@ -974,7 +974,7 @@
       flex-basis: 100%;
     }
     .session-progress strong {
-      font-size: 0.73rem;
+      font-size: 0.75rem;
     }
     .quick-execution.eligible > p {
       display: none;
@@ -1005,7 +1005,7 @@
     }
     .activity-navigation :global(.lmu-button) {
       padding: 6px;
-      font-size: 0.7rem;
+      font-size: 0.75rem;
     }
     .execution-mode :global(.lmu-button) {
       font-size: 0.75rem;

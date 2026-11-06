@@ -156,7 +156,7 @@
     background: #0a1a1d;
     color: #e8e5d7;
     padding: 0.5rem 0.2rem;
-    font-size: 0.65rem;
+    font-size: 0.75rem;
   }
   .icon-choices button[aria-pressed='true'] {
     border-color: #eac06a;
