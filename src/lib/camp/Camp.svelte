@@ -737,7 +737,7 @@
       <span class="eyebrow">LMUP / Refúgio</span>
       <h1>Acampamento</h1>
     </div>
-    <a href="/refugio">Voltar ao Refúgio</a>
+    <a href="/acampamento">Voltar ao Acampamento</a>
   </header>
   <p class="camp-save-status" role="status">
     {!loaded

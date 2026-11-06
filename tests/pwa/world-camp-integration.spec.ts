@@ -35,7 +35,7 @@ test('Mundo, Aposentos e acampamento coexistem na primeira navegação offline s
   ).toBeVisible();
   await expect(page.getByTestId('point-caretaker')).toBeAttached();
   await expect(page.getByTestId('point-interior')).toHaveCount(0);
-  await page.goto('/refugio/acampamento');
+  await page.goto('/acampamento');
   await expect(page.getByTestId('layered-scene')).toHaveAttribute(
     'data-scene',
     'center-empty',

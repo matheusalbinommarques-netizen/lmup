@@ -77,9 +77,7 @@
   </header>
   <CollectionNav />
   <p>
-    <a class="journey-link" href="/refugio/acampamento"
-      >Entrar no acampamento →</a
-    >
+    <a class="journey-link" href="/acampamento">Entrar no acampamento →</a>
   </p>
 {/if}
 {#if error}<p role="alert">{error}</p>{:else if data?.profile}
@@ -118,7 +116,7 @@
             Cuidado é opcional. Não há fome, perda de evolução ou punição por
             ficar longe.
           </p>
-          <a class="lmu-button lmu-button--primary" href="/bestiario"
+          <a class="lmu-button lmu-button--primary" href="/acampamento"
             >Cuidar dos companheiros</a
           >
         </div>

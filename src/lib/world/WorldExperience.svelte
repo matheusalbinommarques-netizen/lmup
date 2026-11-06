@@ -374,7 +374,7 @@
                   </p>{/if}{:else}<p class="lmu-hint">
                   Novas expedições permitirão explorar esta localidade. Por
                   enquanto, sua jornada começa no Oásis e em seus arredores.
-                </p>{/if}<a class="journey-link" href="/refugio/acampamento"
+                </p>{/if}<a class="journey-link" href="/acampamento"
                 >Entrar no Acampamento →</a
               >
             </aside>

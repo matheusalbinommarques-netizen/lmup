@@ -1,9 +1,5 @@
 <script lang="ts">
-  import CampCinematic from '$lib/camp/cinematic/CampCinematic.svelte';
-  import { CAMP_PREVIEW } from '$lib/camp/cinematic/previewMode';
-  import Refuge from '$lib/journey/Refuge.svelte';
+  import RedirectToCamp from '$lib/journey/RedirectToCamp.svelte';
 </script>
 
-{#if CAMP_PREVIEW}<CampCinematic initialScene="center" />{:else}
-  <Refuge />
-{/if}
+<RedirectToCamp />

@@ -1,3 +1,4 @@
+import { openMilestones, openCompanions } from './camp-flow';
 import { confirmBackupImport } from './backup-ui';
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
@@ -153,7 +154,7 @@ test('evolução confirma comida e bônus, persiste e restaura recibo', async ({
   page,
 }) => {
   await seed(page);
-  await page.goto('/bestiario');
+  await openCompanions(page);
   await pet(page)
     .getByRole('button', { name: 'Evoluir · 100 Comida', exact: true })
     .click();
@@ -170,20 +171,14 @@ test('evolução confirma comida e bônus, persiste e restaura recibo', async ({
   await expect(
     page.getByText('400 Comida disponível', { exact: true }),
   ).toBeVisible();
-  await page.reload();
+  await openCompanions(page);
   await expect(
     pet(page).getByText('Evolução 2 de 3 · +10% XP', { exact: true }),
   ).toBeVisible();
-  await expect(
-    pet(page, 'Dragão Ancião').getByRole('button', {
-      name: 'Disponível no nível 15',
-      exact: true,
-    }),
-  ).toBeDisabled();
   const saved = await backup(page);
   expect(saved.data.companions[0].careHistory).toHaveLength(1);
   await restore(page, saved);
-  await page.goto('/bestiario');
+  await openCompanions(page);
   await pet(page).getByText('Últimos cuidados', { exact: true }).click();
   await expect(pet(page).getByText(/100 Comida · evolução 2/)).toBeVisible();
   await expect(
@@ -195,9 +190,9 @@ test('prévia de cuidado aberta em duas abas não gasta duas vezes', async ({
   context,
 }) => {
   await seed(page);
-  await page.goto('/bestiario');
+  await openCompanions(page);
   const other = await context.newPage();
-  await other.goto('/bestiario');
+  await openCompanions(other);
   for (const tab of [page, other])
     await pet(tab)
       .getByRole('button', { name: 'Evoluir · 100 Comida', exact: true })
@@ -251,11 +246,12 @@ test('transformação preserva o estágio e o prêmio após correção da missã
   await expect(
     page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
-  await page.goto('/refugio');
+  await openMilestones(page);
   await expect(
-    page
-      .locator('.collection-scene')
-      .getByRole('heading', { name: 'Brotinho', exact: true }),
+    page.getByRole('dialog').getByRole('heading', {
+      name: 'Brotinho',
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(page.getByText(/Recibo de origem preservado/)).toBeVisible();
   await page.goto(url);
@@ -268,11 +264,12 @@ test('transformação preserva o estágio e o prêmio após correção da missã
   await expect(
     page.getByRole('button', { name: 'Concluir missão', exact: true }),
   ).toBeVisible();
-  await page.goto('/refugio');
+  await openMilestones(page);
   await expect(
-    page
-      .locator('.collection-scene')
-      .getByRole('heading', { name: 'Brotinho', exact: true }),
+    page.getByRole('dialog').getByRole('heading', {
+      name: 'Brotinho',
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(
     page.getByText('Recompensa registrada', { exact: true }),
@@ -311,8 +308,6 @@ test('lista funcional continua acessível sem arte em 320x568 e texto ampliado',
   await page.setViewportSize({ width: 320, height: 568 });
   await page.route('**/art/**', (route) => route.abort());
   for (const [route, title] of [
-    ['/refugio', 'Refúgio'],
-    ['/bestiario', 'Companheiros'],
     ['/loja', 'Loja'],
     ['/inventario', 'Minha coleção'],
     ['/trofeus', 'Conquistas'],
@@ -331,8 +326,24 @@ test('lista funcional continua acessível sem arte em 320x568 e texto ampliado',
       page.getByRole('navigation', { name: 'Explorar o Refúgio', exact: true }),
     ).toBeVisible();
   }
-  await page.goto('/refugio');
-  await expect(
-    page.getByRole('link', { name: 'Cuidar dos companheiros', exact: true }),
-  ).toBeVisible();
+  await openMilestones(page);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test('os endereços antigos do Refúgio e do Santuário abrem o Acampamento', async ({
+  page,
+}) => {
+  for (const old of [
+    '/refugio',
+    '/refugio/acampamento',
+    '/santuario',
+    '/bestiario',
+  ]) {
+    await page.goto(old);
+    await expect(page).toHaveURL(/\/acampamento$/);
+  }
 });

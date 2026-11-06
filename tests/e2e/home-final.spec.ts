@@ -235,7 +235,7 @@ test('Home mantém identidade de todas as companhias e navegação acessível se
     await camp.focus();
     await expect(camp).toBeFocused();
     await page.keyboard.press('Enter');
-    await expect(page).toHaveURL(/\/refugio\/acampamento$/);
+    await expect(page).toHaveURL(/\/acampamento$/);
     await expect(page.getByTestId('point-caretaker')).toBeAttached();
     const more = page.getByRole('button', {
       name: 'Perfil e mais',
@@ -243,13 +243,13 @@ test('Home mantém identidade de todas as companhias e navegação acessível se
     });
     await more.focus();
     await page.keyboard.press('Enter');
-    const companions = page
+    const shop = page
       .getByRole('dialog', { name: 'Seu espaço', exact: true })
-      .getByRole('link', { name: 'Companheiros', exact: true });
-    await companions.focus();
-    await expect(companions).toBeFocused();
+      .getByRole('link', { name: 'Loja', exact: true });
+    await shop.focus();
+    await expect(shop).toBeFocused();
     await page.keyboard.press('Enter');
-    await expect(page).toHaveURL(/\/bestiario$/);
+    await expect(page).toHaveURL(/\/loja$/);
   } else {
     await page
       .getByRole('button', { name: 'Nova missão', exact: true })

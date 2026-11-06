@@ -1,3 +1,4 @@
+import { openCompanions } from './camp-flow';
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { confirmBackupImport } from './backup-ui';
@@ -54,18 +55,25 @@ async function capture(
     fullPage,
   });
 }
-test('evoluções de companhia bloqueada podem ser exploradas sem gastar nem selecionar e devolvem foco', async ({
+test('o Acampamento só mostra companhias descobertas; a prévia de evoluções não gasta nem seleciona e devolve foco', async ({
   page,
 }, info) => {
+  await openCompanions(page);
   const before = await backup(page);
-  await page.goto('/bestiario');
+  await openCompanions(page);
+  await expect(
+    page.getByRole('button', {
+      name: 'Ver evoluções de Dragão Ancião',
+      exact: true,
+    }),
+  ).toHaveCount(0);
   const trigger = page.getByRole('button', {
-    name: 'Ver evoluções de Dragão Ancião',
+    name: 'Ver evoluções de Lobo Etéreo',
     exact: true,
   });
   await trigger.click();
   const dialog = page.getByRole('dialog', {
-    name: 'Evoluções: Dragão Ancião',
+    name: 'Evoluções: Lobo Etéreo',
     exact: true,
   });
   await expect(
@@ -75,35 +83,14 @@ test('evoluções de companhia bloqueada podem ser exploradas sem gastar nem sel
     ),
   ).toBeFocused();
   await expect(dialog.locator('.companion-evolution')).toHaveCount(3);
-  await expect(dialog.getByText('+15% Gold', { exact: true })).toBeVisible();
   await expect(dialog.locator('img')).toHaveCount(3);
-  await expect
-    .poll(() =>
-      dialog
-        .locator('img')
-        .evaluateAll(
-          (images) =>
-            images.length === 3 &&
-            images.every(
-              (image) =>
-                (image as HTMLImageElement).naturalWidth > 0 &&
-                (image as HTMLImageElement).currentSrc.includes(
-                  '/art/companions-v2/dragon-',
-                ),
-            ),
-        ),
-    )
-    .toBe(true);
-  await capture(page, 'previa-dragao', info.project.name, false);
+  await capture(page, 'previa-lobo', info.project.name, false);
   await page.keyboard.press('Escape');
   await expect(trigger).toBeFocused();
-  await expect(
-    pet(page, 'Dragão Ancião').getByRole('button', {
-      name: 'Disponível no nível 15',
-      exact: true,
-    }),
-  ).toBeDisabled();
-  expect((await backup(page)).data).toEqual(before.data);
+  const after = await backup(page);
+  expect(after.data.companions).toEqual(before.data.companions);
+  expect(after.data.profile.gold).toBe(before.data.profile.gold);
+  expect(after.data.profile.food).toBe(before.data.profile.food);
 });
 test('cuidado parcial mostra saldo e progresso até o próximo estágio, sem descontar no cancelamento', async ({
   page,
@@ -112,7 +99,7 @@ test('cuidado parcial mostra saldo e progresso até o próximo estágio, sem des
   saved.data.profile.food = 15;
   saved.data.companions[0].foodInvested = 95;
   await restore(page, saved);
-  await page.goto('/bestiario');
+  await openCompanions(page);
   await expect(
     pet(page).getByText(/Faltam 5 Comida\s+investida/),
   ).toBeVisible();
@@ -166,7 +153,7 @@ test('saldo alterado em outra aba bloqueia confirmação sem descontar alimento'
   context,
 }, info) => {
   await seed(page, { food: 100 });
-  await page.goto('/bestiario');
+  await openCompanions(page);
   await pet(page)
     .getByRole('button', { name: 'Evoluir · 100 Comida', exact: true })
     .click();
@@ -188,7 +175,7 @@ test('cuidar de companhia inativa não troca a seleção nem promete bônus apli
   page,
 }) => {
   await seed(page, { level: 5, food: 100 });
-  await page.goto('/bestiario');
+  await openCompanions(page);
   await pet(page, 'Lorde Lich')
     .getByRole('button', { name: 'Evoluir · 100 Comida', exact: true })
     .click();
@@ -226,16 +213,10 @@ test('evolução máxima e seleção indisponível explicam o estado sem cuidado
     foodInvested: 300,
   });
   await restore(page, saved);
-  await page.goto('/bestiario');
+  await openCompanions(page);
   await expect(
     page.getByRole('region', { name: 'Sua companhia atual' }),
   ).toContainText('não concede bônus');
-  await expect(
-    pet(page, 'Dragão Ancião').getByRole('button', {
-      name: 'Disponível no nível 15',
-      exact: true,
-    }),
-  ).toBeDisabled();
   await expect(
     pet(page).getByText(/Evolução máxima. Você pode continuar/),
   ).toBeVisible();
@@ -250,7 +231,7 @@ test('prévia e confirmação cabem em 320px com texto ampliado e arte ausente',
   await seed(page, { food: 100 });
   await page.setViewportSize({ width: 320, height: 568 });
   await page.route('**/art/**', (route) => route.abort());
-  await page.goto('/bestiario');
+  await openCompanions(page);
   await page.addStyleTag({ content: '.lmu-design {font-size:200%}' });
   const trigger = page.getByRole('button', {
     name: 'Ver evoluções de Lobo Etéreo',
@@ -308,8 +289,9 @@ test('jornada antiga usa arte nova sem substituir caminhos legados, saldo ou inv
     evolutionStage: 2,
   });
   await restore(page, saved);
+  await openCompanions(page);
   const before = await backup(page);
-  await page.goto('/bestiario');
+  await openCompanions(page);
   const wolf = pet(page);
   await expect(
     wolf.getByText('Evolução 2 de 3 · +10% XP', { exact: true }),

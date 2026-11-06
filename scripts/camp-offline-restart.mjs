@@ -12,7 +12,7 @@ let context;
 try {
   context = await chromium.launchPersistentContext(profile, options);
   let page = context.pages()[0];
-  await page.goto('http://127.0.0.1:5318/refugio/acampamento');
+  await page.goto('http://127.0.0.1:5318/acampamento');
   await page.getByTestId('point-caretaker').click();
   await page
     .getByRole('button', {
@@ -43,7 +43,7 @@ try {
   page = context.pages()[0];
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
-  await page.goto('http://127.0.0.1:5318/santuario', {
+  await page.goto('http://127.0.0.1:5318/acampamento?scene=garden', {
     waitUntil: 'domcontentloaded',
   });
   await expect(page.getByTestId('layered-scene')).toHaveAttribute(

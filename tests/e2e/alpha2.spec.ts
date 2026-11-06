@@ -1,3 +1,4 @@
+import { openCompanions } from './camp-flow';
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { confirmBackupImport } from './backup-ui';
@@ -100,7 +101,7 @@ test('compras e cuidado entram como gasto sem fabricar XP e saldos correspondem 
   await expect(
     page.getByRole('button', { name: 'Equipar Cota da Rotina', exact: true }),
   ).toBeVisible();
-  await page.goto('/bestiario');
+  await openCompanions(page);
   await page
     .locator('.collection-pet')
     .first()
@@ -170,14 +171,13 @@ test('preferências valem no acesso direto, recarga e outra aba sem ocultar íco
 }) => {
   await page.goto('/config');
   const other = await context.newPage();
-  await other.goto('/refugio');
+  await other.goto('/progresso');
   for (const name of ['Modo foco', 'Texto maior', 'Reduzir movimento'])
     await page.getByRole('checkbox', { name, exact: true }).check();
   await expect(other.locator('html')).toHaveAttribute(
     'data-neuro-focus',
     'true',
   );
-  await expect(other.locator('.collection-scene img')).not.toBeVisible();
   await expect(other.locator('html')).toHaveAttribute(
     'data-neuro-large-text',
     'true',

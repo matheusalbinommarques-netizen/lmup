@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { CAMP_PREVIEW } from '$lib/camp/cinematic/previewMode';
   import { page } from '$app/state';
   import { identity, destinations } from '$lib/content/experience';
   import type { Snippet } from 'svelte';
@@ -19,14 +18,12 @@
   ];
   const extras = [
     { href: '/projetos', label: 'Projetos' },
-    { href: '/refugio/acampamento', label: 'Acampamento' },
+    { href: '/acampamento', label: 'Acampamento' },
     { href: '/aposentos', label: 'Aposentos' },
     { href: '/mundo', label: 'Mundo, mapa e aventuras' },
     { href: '/progresso', label: 'Meu progresso' },
     { href: '/perfil', label: 'Herói e equipamentos' },
     { href: '/config', label: 'Configurações e backup' },
-    { href: '/santuario', label: 'Registros do ambiente' },
-    { href: '/bestiario', label: destinations.companions },
     { href: '/loja', label: 'Loja' },
     { href: '/inventario', label: 'Inventário' },
     { href: '/trofeus', label: destinations.achievements },
@@ -36,8 +33,9 @@
     { href: '/', label: 'Hoje', icon: 'today' },
     { href: '/missoes', label: 'Missões', icon: 'missions' },
     { href: '/mundo', label: 'Mundo', icon: 'mundo' },
-    { href: '/refugio/acampamento', label: 'Acampamento', icon: 'refugio' },
+    { href: '/acampamento', label: 'Acampamento', icon: 'refugio' },
     { href: '/perfil', label: 'Herói', icon: 'heroi' },
+    { href: '/loja', label: 'Loja', icon: 'ouro' },
     { href: '/projetos', label: 'Projetos', icon: 'projetos_navegacao' },
   ];
   function active(href: string) {
@@ -55,24 +53,10 @@
         path.startsWith('/missao/') ||
         path.startsWith('/ocorrencia/')
       );
-    if (href === '/refugio/acampamento')
-      return [
-        '/refugio/acampamento',
-        '/aposentos',
-        '/refugio',
-        '/santuario',
-        '/bestiario',
-      ].includes(path);
+    if (href === '/acampamento')
+      return ['/acampamento', '/aposentos'].includes(path);
     if (href === '/aposentos')
-      return [
-        '/aposentos',
-        '/refugio',
-        '/santuario',
-        '/bestiario',
-        '/loja',
-        '/inventario',
-        '/trofeus',
-      ].includes(path);
+      return ['/aposentos', '/loja', '/inventario', '/trofeus'].includes(path);
     return href !== '/mundo#mapa' && path.startsWith(href.split('?')[0]);
   }
   afterNavigate(() => {
@@ -84,11 +68,9 @@
   class="lmu-design journey-shell rpg-theme visual-shell"
   class:journey-adventure={page.url.pathname === '/aventura'}
   class:journey-home={page.url.pathname === '/'}
-  class:journey-camp={['/refugio/acampamento', '/aposentos'].includes(
+  class:journey-camp={['/acampamento', '/aposentos'].includes(
     page.url.pathname,
-  ) ||
-    (CAMP_PREVIEW &&
-      ['/refugio', '/santuario', '/bestiario'].includes(page.url.pathname))}
+  )}
 >
   <a class="lmu-skip" href="#journey-main">Pular para o conteúdo</a>
   <aside class="journey-sidebar" aria-label="Navegação lateral">
