@@ -1452,7 +1452,7 @@
     text-align: right;
     font-size: 0.85rem;
     color: var(--rpg-gold);
-    font-variant-numeric: tabular-nums;
+    font-variant-numeric: lining-nums tabular-nums;
   }
   .mission-check,
   .mission-check-static,

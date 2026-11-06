@@ -144,7 +144,7 @@
   .occurrence-time {
     font-size: 0.82rem;
     color: #e8e4cd;
-    font-variant-numeric: tabular-nums;
+    font-variant-numeric: lining-nums tabular-nums;
   }
   .occurrence-copy {
     min-width: 0;
@@ -195,7 +195,7 @@
     gap: 7px;
     font-size: 0.78rem;
     color: #c5d1bc;
-    font-variant-numeric: tabular-nums;
+    font-variant-numeric: lining-nums tabular-nums;
   }
   .occurrence-progress progress {
     width: 64px;
