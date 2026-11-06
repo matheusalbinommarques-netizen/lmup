@@ -270,7 +270,9 @@ export function ordinaryReward(event: ActivityEvent): Resources {
 export async function refreshCompletionStreak() {
   const profile = await db.profile.get(1);
   if (!profile) return;
-  const history = (await db.activityEvents.toArray())
+  const events = await db.activityEvents.toArray();
+  const eventsById = new Map(events.map((event) => [event.id, event]));
+  const history = events
     .filter((event) => event.streakBefore)
     .sort((a, b) => a.sequence - b.sequence);
   const initial = history[0]?.streakBefore;
@@ -281,7 +283,7 @@ export async function refreshCompletionStreak() {
   for (const row of await db.occurrences.toArray())
     if (row.status === 'completed' && row.completedLocalDate) {
       const event = row.completionEventId
-        ? await db.activityEvents.get(row.completionEventId)
+        ? eventsById.get(row.completionEventId)
         : undefined;
       completions.push({
         day: row.completedLocalDate,
