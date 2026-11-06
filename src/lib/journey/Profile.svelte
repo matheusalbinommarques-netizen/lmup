@@ -179,8 +179,8 @@
           </li>{/each}
       </ul>
       {#if data.unknownEquipment}<p class="journey-banner">
-          Há {data.unknownEquipment} item(ns) equipado(s) de versão anterior sem
-          efeito reconhecido. Eles continuam nos seus dados.
+          Há {data.unknownEquipment} item(ns) equipado(s) de versão anterior sem efeito
+          reconhecido. Eles continuam nos seus dados.
         </p>{/if}</Card
     >
   </section>
@@ -248,8 +248,8 @@
     <a href="/loja" class="journey-link">Loja <Icon name="arrow" size={18} /></a
     ><a href="/trofeus" class="journey-link"
       >Conquistas <Icon name="arrow" size={18} /></a
-    ><a href="/refugio" class="journey-link"
-      >Refúgio <Icon name="arrow" size={18} /></a
+    ><a href="/refugio/acampamento" class="journey-link"
+      >Acampamento <Icon name="arrow" size={18} /></a
     ><a href="/config" class="journey-link"
       >Configurações e backup <Icon name="arrow" size={18} /></a
     >

@@ -147,7 +147,7 @@ test('mapa sem controles ou lista redundante permite selecionar os pontos com te
       exact: true,
     }),
   ).toBeVisible();
-  await page.goto('/refugio');
+  await page.goto('/santuario');
   await expect(
     page.getByRole('heading', { name: 'Refúgio', level: 1, exact: true }),
   ).toBeVisible();

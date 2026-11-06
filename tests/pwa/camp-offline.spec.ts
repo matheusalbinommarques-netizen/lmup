@@ -14,7 +14,7 @@ test('primeira visita offline ao Centro permite construir e conserva as cenas, s
 }) => {
   await request.post('/__network', { data: 'online' });
   await request.post('/__release', { data: 'a' });
-  await page.goto('/refugio');
+  await page.goto('/santuario');
   await campSeed(page, { gold: 100, food: 83, totalXpEarned: 12000 });
   await page.evaluate(() => navigator.serviceWorker.ready);
   await expect

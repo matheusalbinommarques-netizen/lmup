@@ -49,7 +49,7 @@ test('seis telas finais carregam artes e ações sem erros ou transbordamento', 
   for (const path of [
     '/projetos',
     '/perfil',
-    '/refugio',
+    '/santuario',
     '/revisoes',
     '/config',
   ]) {

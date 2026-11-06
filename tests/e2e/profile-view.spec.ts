@@ -68,7 +68,7 @@ test('perfil vazio apresenta dados reais, mantém atalhos e não grava ao ser co
     ['Trocar companheiro', '/bestiario'],
     ['Loja', '/loja'],
     ['Conquistas', '/trofeus'],
-    ['Refúgio', '/refugio'],
+    ['Acampamento', '/refugio/acampamento'],
     ['Configurações e backup', '/config'],
   ]) {
     await expect(

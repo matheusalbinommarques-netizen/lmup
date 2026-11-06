@@ -2,7 +2,7 @@
   import { page } from '$app/state';
   import { destinations, refugeCopy } from '$lib/content/experience';
   const links = [
-    { href: '/refugio', label: 'Visão geral' },
+    { href: '/refugio/acampamento', label: 'Acampamento' },
     { href: '/bestiario', label: destinations.companions },
     { href: '/inventario', label: 'Minha coleção' },
     { href: '/loja', label: 'Loja' },

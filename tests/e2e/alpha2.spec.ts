@@ -170,7 +170,7 @@ test('preferências valem no acesso direto, recarga e outra aba sem ocultar íco
 }) => {
   await page.goto('/config');
   const other = await context.newPage();
-  await other.goto('/refugio');
+  await other.goto('/santuario');
   for (const name of ['Modo foco', 'Texto maior', 'Reduzir movimento'])
     await page.getByRole('checkbox', { name, exact: true }).check();
   await expect(other.locator('html')).toHaveAttribute(

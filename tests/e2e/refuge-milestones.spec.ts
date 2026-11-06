@@ -134,7 +134,7 @@ test('marco recebido preserva paisagem, recursos e recibo após correção da mi
   page,
 }, info) => {
   const url = await cross(page);
-  await page.goto('/refugio');
+  await page.goto('/santuario');
   const sprout = milestone(page, 'Brotinho');
   await expect(
     sprout.getByText('Recompensa registrada', { exact: true }),
@@ -154,7 +154,7 @@ test('marco recebido preserva paisagem, recursos e recibo após correção da mi
   await expect(
     page.getByRole('button', { name: 'Concluir missão', exact: true }),
   ).toBeVisible();
-  await page.goto('/refugio');
+  await page.goto('/santuario');
   await expect(
     sprout.getByText('Recompensa registrada', { exact: true }),
   ).toBeVisible();
@@ -178,7 +178,7 @@ test('prêmio legado permanece marcado com XP abaixo do marco e XP sem recibo fi
     ecoGoldClaimedUpToStage: 2,
     gold: 1000,
   });
-  await page.goto('/refugio');
+  await page.goto('/santuario');
   await expect(
     milestone(page, 'Brotinho').getByText('Marcado como recebido', {
       exact: true,
@@ -201,7 +201,7 @@ test('prêmio legado permanece marcado com XP abaixo do marco e XP sem recibo fi
     ecoGoldClaimedUpToStage: 1,
   });
   await restore(page, legacy);
-  await page.goto('/refugio');
+  await page.goto('/santuario');
   await expect(
     milestone(page, 'Brotinho').getByText('Sem recompensa registrada', {
       exact: true,
@@ -241,7 +241,7 @@ test('prévia e marcos funcionam sem arte em 320px com texto 200%', async ({
 }, info) => {
   await page.route('**/art/**', (route) => route.abort());
   await page.setViewportSize({ width: 320, height: 568 });
-  await page.goto('/refugio');
+  await page.goto('/santuario');
   await page.evaluate(() => {
     document.documentElement.style.fontSize = '200%';
   });

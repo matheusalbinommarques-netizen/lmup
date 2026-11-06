@@ -411,7 +411,6 @@ test('abre URLs não visitadas, cria e salva notas com a rede desligada', async 
     ['/progresso', 'Meu progresso'],
     ['/bestiario', 'Companheiros'],
     ['/config', 'Configurações'],
-    ['/refugio', 'Refúgio'],
     ['/santuario', 'Refúgio'],
   ]) {
     await page.goto(route);

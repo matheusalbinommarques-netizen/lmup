@@ -251,7 +251,7 @@ test('transformação preserva o estágio e o prêmio após correção da missã
   await expect(
     page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
-  await page.goto('/refugio');
+  await page.goto('/santuario');
   await expect(
     page
       .locator('.collection-scene')
@@ -268,7 +268,7 @@ test('transformação preserva o estágio e o prêmio após correção da missã
   await expect(
     page.getByRole('button', { name: 'Concluir missão', exact: true }),
   ).toBeVisible();
-  await page.goto('/refugio');
+  await page.goto('/santuario');
   await expect(
     page
       .locator('.collection-scene')
@@ -311,7 +311,7 @@ test('lista funcional continua acessível sem arte em 320x568 e texto ampliado',
   await page.setViewportSize({ width: 320, height: 568 });
   await page.route('**/art/**', (route) => route.abort());
   for (const [route, title] of [
-    ['/refugio', 'Refúgio'],
+    ['/santuario', 'Refúgio'],
     ['/bestiario', 'Companheiros'],
     ['/loja', 'Loja'],
     ['/inventario', 'Minha coleção'],
@@ -331,8 +331,15 @@ test('lista funcional continua acessível sem arte em 320x568 e texto ampliado',
       page.getByRole('navigation', { name: 'Explorar o Refúgio', exact: true }),
     ).toBeVisible();
   }
-  await page.goto('/refugio');
+  await page.goto('/santuario');
   await expect(
     page.getByRole('link', { name: 'Cuidar dos companheiros', exact: true }),
   ).toBeVisible();
+});
+
+test('o endereço antigo /refugio abre o Acampamento sem erro', async ({
+  page,
+}) => {
+  await page.goto('/refugio');
+  await expect(page).toHaveURL(/\/refugio\/acampamento$/);
 });
