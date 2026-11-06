@@ -986,9 +986,6 @@
   grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
   gap: 1.5rem;
 }
-.profile-grid > section:only-child {
-  grid-column: 1 / -1;
-}
 .profile-grid > section > .lmu-card {
   height: 100%;
 }
@@ -1021,6 +1018,9 @@
   gap: 1rem;
 }
 .profile-resources dt {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   color: var(--lmu-muted);
   font-size: 0.875rem;
 }
@@ -1072,19 +1072,38 @@
 .profile-effects li + li {
   margin-top: 0.5rem;
 }
-.profile-reward {
-  display: flex;
+.profile-grid .journey-section-heading {
+  margin: 0;
   flex-wrap: wrap;
-  gap: 0.75rem 1.5rem;
-  align-items: center;
-  color: var(--lmu-positive);
-  font-size: 1.25rem;
 }
-.profile-shortcuts {
+.profile-grid .profile-slot-list {
+  grid-template-columns: 1fr;
+}
+.profile-achievement-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+.profile-achievements {
+  display: grid;
+  gap: 0.75rem;
+  border-top: 1px solid var(--lmu-line);
+  padding-top: 1.25rem;
+}
+.profile-achievement-list li {
   display: flex;
-  flex-wrap: wrap;
-  gap: 1rem 2rem;
-  margin-top: 2rem;
+  gap: 1rem;
+  align-items: center;
+  border-top: 1px solid var(--lmu-line);
+  padding: 0.85rem 0;
+}
+.profile-achievement-list img {
+  width: 3.5rem;
+  height: 3.5rem;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 @media (max-width: 900px) {
   .profile-grid {

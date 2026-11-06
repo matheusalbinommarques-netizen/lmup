@@ -10,6 +10,8 @@
   import Button from '$lib/ui/Button.svelte';
   import Artwork from '$lib/ui/Artwork.svelte';
   import Icon from '$lib/ui/Icon.svelte';
+  import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
+  import ProfileAchievements from './ProfileAchievements.svelte';
   let data = $state<ProfileSnapshot>(),
     error = $state(''),
     editing = $state(false);
@@ -44,7 +46,9 @@
   <div>
     <p class="lmu-eyebrow">Sua identidade na jornada</p>
     <h1>Perfil e equipamentos</h1>
-    <p>Seu nível, sua companhia e as escolhas que acompanham o que você faz.</p>
+    <p>
+      Seu nível, seu equipamento e as conquistas que acompanham o que você faz.
+    </p>
   </div>
   {#if data && !error}<Button
       onclick={() => {
@@ -62,6 +66,12 @@
   <div class="profile-grid">
     <section aria-label="Sua identidade">
       <Card class="journey-stack">
+        <div class="journey-section-heading">
+          <p class="lmu-eyebrow">Sua identidade</p>
+          <a class="lmu-button lmu-button--secondary" href="/progresso"
+            >Ver meu progresso e histórico <Icon name="arrow" size={18} /></a
+          >
+        </div>
         <div class="profile-identity-header">
           <div class="profile-avatar">
             {#if data.profile.avatarUrl}<Artwork
@@ -97,130 +107,96 @@
           </div>{/if}
         <dl class="profile-resources">
           <div>
-            <dt>XP acumulado</dt>
+            <dt><ApprovedIcon name="xp" size={32} />XP acumulado</dt>
             <dd>{data.profile.totalXpEarned}</dd>
           </div>
           <div>
-            <dt>Gold disponível</dt>
+            <dt><ApprovedIcon name="ouro" size={32} />Gold disponível</dt>
             <dd>{data.profile.gold}</dd>
           </div>
           <div>
-            <dt>Comida disponível</dt>
+            <dt>
+              <ApprovedIcon name="alimentacao" size={32} />Comida disponível
+            </dt>
             <dd>{data.profile.food ?? 0}</dd>
           </div>
         </dl>
-        <a href="/progresso" class="journey-link"
-          >Ver meu progresso e histórico <Icon name="arrow" size={18} /></a
+        <ProfileAchievements />
+      </Card>
+    </section>
+    <section aria-labelledby="profile-equipment">
+      <Card class="journey-stack">
+        <p class="lmu-eyebrow">Em uso agora</p>
+        <h2 id="profile-equipment">Equipamentos em uso</h2>
+        <ul class="profile-slot-list">
+          {#each slots as slot (slot.key)}<li>
+              <div class="profile-slot-copy">
+                <p class="lmu-eyebrow">{slot.label}</p>
+                {#if slot.item}<h3>{slot.item.name}</h3>
+                  <p class="lmu-hint">{slot.item.description}</p>{:else}<p
+                    class="lmu-muted"
+                  >
+                    Sem equipamento
+                  </p>{/if}
+              </div>
+              {#if slot.item?.iconSrc}<Artwork
+                  src={slot.item.iconSrc}
+                  alt=""
+                  sizes="64px"
+                  class="profile-gear-art"
+                />{/if}
+            </li>{/each}
+        </ul>
+        {#if data.unknownEquipment}<p class="journey-banner">
+            Há {data.unknownEquipment} item(ns) equipado(s) de versão anterior sem
+            efeito reconhecido. Eles continuam nos seus dados.
+          </p>{/if}
+        <details>
+          <summary>Entender os efeitos ativos</summary>
+          <ul class="profile-effects">
+            <li>
+              Ambiente: +{Math.round(
+                (data.sanctuary.xpBonusMultiplier - 1) * 100,
+              )}% XP.
+            </li>
+            <li>
+              Companhia: {data.active && data.companion
+                ? companionBonusLabel(data.companion)
+                : 'sem bônus ativo'}.
+            </li>
+            <li>
+              Equipamento em missões e revisões: +{data.mods
+                .taskXpBonusPercent ?? 0}% XP.
+            </li>
+            <li>
+              Equipamento: +{Math.round((data.mods.goldMultiplier - 1) * 100)}%
+              Gold.
+            </li>
+            <li>
+              Equipamento no ambiente: +{data.mods.sanctuaryBonusExtraPercent} ponto(s)
+              percentual(is) de XP.
+            </li>
+            <li>
+              Equipamento no bônus de projeto: +{Math.round(
+                data.mods.projectBonusExtraFraction * 100,
+              )} ponto(s) percentual(is).
+            </li>
+            <li>
+              Proteção de sequência: {data.mods.streakProtectionDays} dia(s).
+            </li>
+            <li>Espaços extras na coleção: {data.mods.inventoryExtraSlots}.</li>
+          </ul>
+          <p class="lmu-hint">
+            Os efeitos são combinados pelas regras de cada recompensa; a soma
+            dos percentuais não é o resultado final.
+          </p>
+        </details>
+        <a class="lmu-button lmu-button--secondary" href="/inventario"
+          >Gerenciar equipamento <Icon name="arrow" size={18} /></a
         >
       </Card>
     </section>
   </div>
-  <section aria-labelledby="profile-equipment" class="profile-section">
-    <div class="journey-section-heading">
-      <h2 id="profile-equipment">Equipamentos em uso</h2>
-      <a href="/inventario" class="journey-link"
-        >Gerenciar equipamentos <Icon name="arrow" size={18} /></a
-      >
-    </div>
-    <Card
-      ><p class="lmu-muted">
-        Um item por espaço. Os efeitos acompanham o que está equipado agora.
-      </p>
-      <ul class="profile-slot-list">
-        {#each slots as slot (slot.key)}<li>
-            <div class="profile-slot-copy">
-              <p class="lmu-eyebrow">{slot.label}</p>
-              {#if slot.item}<h3>{slot.item.name}</h3>
-                <p class="lmu-hint">{slot.item.description}</p>{:else}<p
-                  class="lmu-muted"
-                >
-                  Sem equipamento
-                </p>{/if}
-            </div>
-            {#if slot.item?.iconSrc}<Artwork
-                src={slot.item.iconSrc}
-                alt=""
-                sizes="64px"
-                class="profile-gear-art"
-              />{/if}
-          </li>{/each}
-      </ul>
-      {#if data.unknownEquipment}<p class="journey-banner">
-          Há {data.unknownEquipment} item(ns) equipado(s) de versão anterior sem efeito
-          reconhecido. Eles continuam nos seus dados.
-        </p>{/if}</Card
-    >
-  </section>
-  <section aria-labelledby="profile-bonuses" class="profile-section">
-    <Card class="journey-stack"
-      ><div>
-        <p class="lmu-eyebrow">Das escolhas ao resultado</p>
-        <h2 id="profile-bonuses">Seus bônus na prática</h2>
-        <p class="lmu-muted">
-          Em uma missão de 100 XP base, com seus bônus atuais:
-        </p>
-      </div>
-      <div class="profile-reward" aria-label="Prévia de recompensa">
-        <strong>+{data.preview.xp} XP</strong><span
-          >+{data.preview.gold} Gold</span
-        ><span>+{data.preview.food} Comida</span>
-      </div>
-      <p class="lmu-hint">
-        É uma simulação; não cria missão nem concede recompensas. O esforço e o
-        tipo de ação mudam o resultado.
-      </p>
-      <details>
-        <summary>Entender os efeitos ativos</summary>
-        <ul class="profile-effects">
-          <li>
-            Ambiente: +{Math.round(
-              (data.sanctuary.xpBonusMultiplier - 1) * 100,
-            )}% XP.
-          </li>
-          <li>
-            Companhia: {data.active && data.companion
-              ? companionBonusLabel(data.companion)
-              : 'sem bônus ativo'}.
-          </li>
-          <li>
-            Equipamento em missões e revisões: +{data.mods.taskXpBonusPercent ??
-              0}% XP.
-          </li>
-          <li>
-            Equipamento: +{Math.round((data.mods.goldMultiplier - 1) * 100)}%
-            Gold.
-          </li>
-          <li>
-            Equipamento no ambiente: +{data.mods.sanctuaryBonusExtraPercent} ponto(s)
-            percentual(is) de XP.
-          </li>
-          <li>
-            Equipamento no bônus de projeto: +{Math.round(
-              data.mods.projectBonusExtraFraction * 100,
-            )} ponto(s) percentual(is).
-          </li>
-          <li>
-            Proteção de sequência: {data.mods.streakProtectionDays} dia(s).
-          </li>
-          <li>Espaços extras na coleção: {data.mods.inventoryExtraSlots}.</li>
-        </ul>
-        <p class="lmu-hint">
-          Os efeitos são combinados pelas regras de cada recompensa; a soma dos
-          percentuais não é o resultado final.
-        </p>
-      </details>
-    </Card>
-  </section>
-  <nav class="profile-shortcuts" aria-label="Explorar sua jornada">
-    <a href="/loja" class="journey-link">Loja <Icon name="arrow" size={18} /></a
-    ><a href="/trofeus" class="journey-link"
-      >Conquistas <Icon name="arrow" size={18} /></a
-    ><a href="/acampamento" class="journey-link"
-      >Acampamento <Icon name="arrow" size={18} /></a
-    ><a href="/config" class="journey-link"
-      >Configurações e backup <Icon name="arrow" size={18} /></a
-    >
-  </nav>
 {/if}
 
 {#if editing && data}<EditProfileModal

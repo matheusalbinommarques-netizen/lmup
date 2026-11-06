@@ -35,6 +35,7 @@
     { href: '/mundo', label: 'Mundo', icon: 'mundo' },
     { href: '/acampamento', label: 'Acampamento', icon: 'refugio' },
     { href: '/perfil', label: 'Herói', icon: 'heroi' },
+    { href: '/loja', label: 'Loja', icon: 'ouro' },
     { href: '/projetos', label: 'Projetos', icon: 'projetos_navegacao' },
   ];
   function active(href: string) {
