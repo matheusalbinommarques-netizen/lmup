@@ -56,7 +56,7 @@ test('perfil vazio apresenta dados reais, mantém atalhos e não grava ao ser co
   await page.goto('/perfil');
   await expect(
     page.getByRole('heading', {
-      name: 'Perfil e equipamentos',
+      name: 'Herói',
       level: 1,
       exact: true,
     }),
@@ -67,9 +67,7 @@ test('perfil vazio apresenta dados reais, mantém atalhos e não grava ao ser co
   await expect(await effects(page)).toContainText(
     'Equipamento em missões e revisões: +0% XP.',
   );
-  await expect(page.getByText('Sem equipamento', { exact: true })).toHaveCount(
-    6,
-  );
+  await expect(page.getByRole('button', { name: /: vazio$/ })).toHaveCount(6);
   for (const [name, href] of [
     ['Ver meu progresso e histórico', '/progresso'],
     ['Gerenciar equipamento', '/inventario'],
@@ -111,7 +109,7 @@ test('equipar e guardar em outra aba atualiza itens, saldo e prévia sem recarre
   await expect(await effects(page)).not.toContainText(
     'Equipamento em missões e revisões: +0% XP.',
   );
-  await expect(page.locator('.profile-resources')).toContainText('16800');
+  await expect(page.locator('.resources')).toContainText('16800');
   await capture(page, 'perfil-equipado', info.project.name);
   await other
     .getByRole('button', { name: 'Guardar Lâmina da Otimização', exact: true })

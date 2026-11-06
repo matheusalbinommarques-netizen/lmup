@@ -10,18 +10,18 @@ Ponto de partida para agentes e para quem retoma o projeto. Atualize no mesmo PR
 
 ## Sistemas ativos
 
-| Sistema      | Entrada                       | Código principal                                             |
-| ------------ | ----------------------------- | ------------------------------------------------------------ |
-| Hoje         | `/`                           | `src/lib/journey/Home.svelte`, `todayView.ts`                |
-| Missões      | `/missoes`                    | `Missions.svelte`, `ProductivityWorkspace.svelte`            |
-| Execução     | `/missao`, `/ocorrencia`      | `Execution.svelte`, `OccurrenceExecution.svelte`             |
-| Sessões      | `/sessoes`                    | `MissionSession.svelte`, `SavedSessions.svelte`              |
-| Projetos     | `/projetos`                   | `Projects.svelte`, `ProjectDetail.svelte`                    |
-| Mundo        | `/mundo`, `/aventura`         | `src/routes/mundo`, `src/lib/content/world.ts`               |
-| Acampamento  | `/acampamento` e `/aposentos` | `src/lib/camp/cinematic/`                                    |
-| Herói e loja | `/perfil`, `/loja`            | `Profile.svelte`, `HeroIdentity.svelte`, `Collection.svelte` |
-| Dados        | `/config`                     | `Settings.svelte`, `src/services/backupDataService.ts`       |
-| Persistência | –                             | `src/services/db.ts` (Dexie, schema 6)                       |
+| Sistema      | Entrada                       | Código principal                                                                                                                        |
+| ------------ | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Hoje         | `/`                           | `src/lib/journey/Home.svelte`, `todayView.ts`                                                                                           |
+| Missões      | `/missoes`                    | `Missions.svelte`, `ProductivityWorkspace.svelte`                                                                                       |
+| Execução     | `/missao`, `/ocorrencia`      | `Execution.svelte`, `OccurrenceExecution.svelte`                                                                                        |
+| Sessões      | `/sessoes`                    | `MissionSession.svelte`, `SavedSessions.svelte`                                                                                         |
+| Projetos     | `/projetos`                   | `Projects.svelte`, `ProjectDetail.svelte`                                                                                               |
+| Mundo        | `/mundo`, `/aventura`         | `src/routes/mundo`, `src/lib/content/world.ts`                                                                                          |
+| Acampamento  | `/acampamento` e `/aposentos` | `src/lib/camp/cinematic/`                                                                                                               |
+| Herói e loja | `/perfil`, `/loja`            | `Profile.svelte`, `HeroSlots.svelte`, `HeroGearDetail.svelte`, `HeroPortrait.svelte`, `ProfileAchievements.svelte`, `Collection.svelte` |
+| Dados        | `/config`                     | `Settings.svelte`, `src/services/backupDataService.ts`                                                                                  |
+| Persistência | –                             | `src/services/db.ts` (Dexie, schema 6)                                                                                                  |
 
 ## Não tratar como referência
 
@@ -38,6 +38,7 @@ Ponto de partida para agentes e para quem retoma o projeto. Atualize no mesmo PR
 - Mecânicas novas de RPG, como o Assentamento Vivo, são hipóteses, não decisões.
 - Telas já aprovadas só mudam com prévia antes e depois e aprovação do autor.
 - Nomes, artes e lore provisórios não são definitivos. A marca atual e a origem das artes estão em [arte/MARCA.md](arte/MARCA.md).
+- O retrato do Herói é provisório (ícone encapuzado aprovado dentro da moldura rúnica) até a decisão DP3; o retrato enviado pelo usuário sempre vence. `heroi.png` não é o padrão.
 
 ## Entregas recentes
 
