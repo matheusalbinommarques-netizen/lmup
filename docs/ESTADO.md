@@ -36,15 +36,19 @@ Ponto de partida para agentes e para quem retoma o projeto. Atualize no mesmo PR
 - Sem punição por inatividade e sem bloqueio artificial da história principal.
 - Mecânicas novas de RPG, como o Assentamento Vivo, são hipóteses, não decisões.
 - Telas já aprovadas só mudam com prévia antes e depois e aprovação do autor.
-- Nomes, artes e lore provisórios não são definitivos. O logotipo oficial é preservado.
+- Nomes, artes e lore provisórios não são definitivos. A marca atual e a origem das artes estão em [arte/MARCA.md](arte/MARCA.md).
 
 ## Entregas recentes
 
-| PR  | Entrega                                 | Lição reutilizável                                                    |
-| --- | --------------------------------------- | --------------------------------------------------------------------- |
-| #56 | Testes não alteram capturas versionadas | Reproduzir o defeito antes de corrigir e testar o próprio verificador |
+| PR  | Entrega                                    | Lição reutilizável                                                       |
+| --- | ------------------------------------------ | ------------------------------------------------------------------------ |
+| #59 | Horários em ordem e correções de texto     | Testar o comportamento antes de corrigir derrubou um achado errado       |
+| #58 | Rotinas legíveis e navegáveis pelo teclado | Validar teclado e composição na prévia achou o que os testes não pegavam |
+| #57 | Modelo de PR, estado e camadas de teste    | –                                                                        |
+| #56 | Testes não alteram capturas versionadas    | Reproduzir o defeito antes de corrigir e testar o próprio verificador    |
 
 ## Pendências técnicas conhecidas
 
-- Um teste E2E ignorado na CI; candidato: `tests/e2e/today-shell.spec.ts:85`. Falta confirmar.
+- `tests/e2e/today-shell.spec.ts:81` é ignorado de propósito no mobile (a barra lateral só existe no desktop).
+- `tests/e2e/alpha.spec.ts:165` falha de forma intermitente no mobile sob carga; passa isolado.
 - Toda versão publicada baixa o pré-cache inteiro, mesmo sem mudança no app.
