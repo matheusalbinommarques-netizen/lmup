@@ -177,6 +177,13 @@
   const completed = $derived(
     planned.filter((row) => row.status === 'completed').length,
   );
+  const heroLine = $derived(
+    planned.length === 0
+      ? 'Seu dia está livre. Um passo pequeno já conta como começo.'
+      : completed === planned.length
+        ? 'Plano de hoje cumprido. Seu progresso está registrado.'
+        : 'Suas missões te aguardam, e seu futuro depende apenas de você!',
+  );
   const remaining = $derived(
     planned.filter((row) => row.id !== next?.id && row.status !== 'completed'),
   );
@@ -298,7 +305,7 @@
       />
       <div class="hero-copy">
         <h1>{greeting}{name ? `, ${name}` : ''}.</h1>
-        <p>Suas missões te aguardam, e seu futuro depende apenas de você!</p>
+        <p>{heroLine}</p>
       </div>
       <span class="today-date"
         ><ApprovedIcon name="agenda" size={26} />{now.toLocaleDateString(
@@ -343,7 +350,8 @@
                       ? 'Planejada para hoje'
                       : 'Sugestão flexível'}
               </p>{:else}<p>
-                Escolha uma missão para começar sua jornada de hoje.
+                Escolha uma missão curta, de poucos minutos, para abrir sua
+                jornada de hoje.
               </p>{/if}
           </div>
           {#if next}<Button disabled={busy} onclick={() => execute(next)}
