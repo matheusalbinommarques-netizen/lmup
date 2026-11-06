@@ -92,3 +92,82 @@ export async function campCapture(page: Page, info: TestInfo, name: string) {
     fullPage: true,
   });
 }
+
+/** Abre "Registros do ambiente" pelo Acampamento, com o acampamento já construído e sem mexer em saldos. */
+export async function openMilestones(page: Page) {
+  await seedBuiltCamp(page);
+  await page.goto('/acampamento?scene=garden');
+  await expect(page.getByTestId('layered-scene')).toHaveAttribute(
+    'data-scene',
+    /garden/,
+  );
+  await campPoint(page, 'tree', 'Árvore de Evolução');
+  await page
+    .getByRole('button', {
+      name: 'Consultar registros do ambiente',
+      exact: true,
+    })
+    .click();
+  await expect(page.getByRole('dialog')).toContainText(
+    'Transformações do ambiente',
+  );
+}
+
+/** Abre "Companheiros descobertos" pelo Acampamento já construído, sem mexer em saldos. */
+export async function openCompanions(page: Page) {
+  await seedBuiltCamp(page);
+  await page.goto('/acampamento?scene=bestiary');
+  await expect(page.getByTestId('layered-scene')).toHaveAttribute(
+    'data-scene',
+    /bestiary/,
+  );
+  await campPoint(page, 'companions', 'Companheiros descobertos');
+  await expect(page.getByRole('dialog')).toBeVisible();
+}
+
+async function seedBuiltCamp(page: Page) {
+  await page.goto('/acampamento');
+  await expect(page.getByTestId('layered-scene')).toBeVisible();
+  // Estado legítimo de acampamento herdado: recibo `legacy` sem custo, compatível com backup.
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open('LevelMeUpDB');
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const db = request.result,
+            tx = db.transaction(['profile', 'productivityAudit'], 'readwrite'),
+            profiles = tx.objectStore('profile'),
+            row = profiles.get(1);
+          row.onsuccess = () => {
+            const state = row.result.campSettlement;
+            if (state.residenceBuilt) return;
+            profiles.put({
+              ...row.result,
+              campSettlement: {
+                ...state,
+                caretakerMet: true,
+                residenceBuilt: true,
+                revision: state.revision + 1,
+              },
+            });
+            tx.objectStore('productivityAudit').put({
+              id: 'camp-settlement:built',
+              entityId: 'camp-settlement:built',
+              action: 'camp-settlement:inherit',
+              recordedAt: new Date().toISOString(),
+              before: null,
+              after: { source: 'legacy', cost: 0 },
+            });
+          };
+          tx.onerror = () => reject(tx.error);
+          tx.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+        };
+      }),
+  );
+  // Native IndexedDB fixtures do not emit Dexie's live-query mutation events.
+  await page.reload();
+}

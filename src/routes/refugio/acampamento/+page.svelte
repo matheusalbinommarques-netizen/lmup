@@ -1,5 +1,5 @@
 <script lang="ts">
-  import CampCinematic from '$lib/camp/cinematic/CampCinematic.svelte';
+  import RedirectToCamp from '$lib/journey/RedirectToCamp.svelte';
 </script>
 
-<CampCinematic initialScene="center" />
+<RedirectToCamp />

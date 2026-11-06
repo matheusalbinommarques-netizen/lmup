@@ -14,7 +14,7 @@ test('primeira visita offline ao Centro permite construir e conserva as cenas, s
 }) => {
   await request.post('/__network', { data: 'online' });
   await request.post('/__release', { data: 'a' });
-  await page.goto('/santuario');
+  await page.goto('/acampamento');
   await campSeed(page, { gold: 100, food: 83, totalXpEarned: 12000 });
   await page.evaluate(() => navigator.serviceWorker.ready);
   await expect
@@ -22,7 +22,7 @@ test('primeira visita offline ao Centro permite construir e conserva as cenas, s
     .toBe(true);
   await request.post('/__network', { data: 'offline' });
   await context.setOffline(true);
-  await page.goto('/refugio/acampamento');
+  await page.goto('/acampamento');
   await campReady(page);
   await campBuy(page);
   await campPoint(page, 'bestiary', 'Bestiário');
@@ -78,13 +78,13 @@ test('prévia de construção em outra aba bloqueia atualização e cancelar lib
   test.slow();
   await request.post('/__network', { data: 'online' });
   await request.post('/__release', { data: 'a' });
-  await page.goto('/refugio/acampamento');
+  await page.goto('/acampamento');
   await page.evaluate(() => navigator.serviceWorker.ready);
   await expect
     .poll(() => page.evaluate(() => !!navigator.serviceWorker.controller))
     .toBe(true);
   const other = await context.newPage();
-  await other.goto('/refugio/acampamento');
+  await other.goto('/acampamento');
   await campPoint(other, 'caretaker', 'Caseiro');
   await expect(other.getByRole('dialog')).toBeVisible();
   await request.post('/__release', { data: 'camp-update' });

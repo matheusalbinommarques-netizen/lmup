@@ -1,3 +1,4 @@
+import { openMilestones } from './camp-flow';
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { confirmBackupImport } from './backup-ui';
@@ -85,11 +86,9 @@ async function cross(page: Page) {
 test('explorar paisagem futura não muda ambiente, saldo ou registros e devolve o foco', async ({
   page,
 }, info) => {
+  await openMilestones(page);
   const before = await backup(page);
-  await page.goto('/santuario');
-  await expect(
-    page.getByRole('heading', { name: 'Refúgio', level: 1, exact: true }),
-  ).toBeVisible();
+  await openMilestones(page);
   await expect(page.locator('.refuge-stage-thumbnail img')).toHaveCount(4);
   const trigger = page.getByRole('button', {
     name: 'Ver paisagem de Floresta Anciã',
@@ -117,11 +116,6 @@ test('explorar paisagem futura não muda ambiente, saldo ou registros e devolve 
   await page.keyboard.press('Escape');
   await expect(trigger).toBeFocused();
   await expect(
-    page
-      .locator('.collection-scene')
-      .getByRole('heading', { name: 'Semente', exact: true }),
-  ).toBeVisible();
-  await expect(
     milestone(page, 'Brotinho').getByText('Ainda por alcançar', {
       exact: true,
     }),
@@ -134,7 +128,7 @@ test('marco recebido preserva paisagem, recursos e recibo após correção da mi
   page,
 }, info) => {
   const url = await cross(page);
-  await page.goto('/santuario');
+  await openMilestones(page);
   const sprout = milestone(page, 'Brotinho');
   await expect(
     sprout.getByText('Recompensa registrada', { exact: true }),
@@ -154,15 +148,11 @@ test('marco recebido preserva paisagem, recursos e recibo após correção da mi
   await expect(
     page.getByRole('button', { name: 'Concluir missão', exact: true }),
   ).toBeVisible();
-  await page.goto('/santuario');
+  await openMilestones(page);
   await expect(
     sprout.getByText('Recompensa registrada', { exact: true }),
   ).toBeVisible();
-  await expect(
-    page
-      .locator('.collection-scene')
-      .getByRole('heading', { name: 'Brotinho', exact: true }),
-  ).toBeVisible();
+  await expect(milestone(page, 'Brotinho')).toBeVisible();
   await capture(page, 'marco-estornado', info.project.name);
   const saved = await backup(page);
   expect(saved.data.profile.gold).toBe(225);
@@ -178,19 +168,11 @@ test('prêmio legado permanece marcado com XP abaixo do marco e XP sem recibo fi
     ecoGoldClaimedUpToStage: 2,
     gold: 1000,
   });
-  await page.goto('/santuario');
+  await openMilestones(page);
   await expect(
     milestone(page, 'Brotinho').getByText('Marcado como recebido', {
       exact: true,
     }),
-  ).toBeVisible();
-  await expect(
-    page
-      .locator('.refuge-next')
-      .getByText(
-        'O prêmio deste marco já consta como recebido. Alcançá-lo novamente não gera outro Gold.',
-        { exact: true },
-      ),
   ).toBeVisible();
   await capture(page, 'marco-legado', info.project.name);
   const legacy = await backup(page);
@@ -201,7 +183,7 @@ test('prêmio legado permanece marcado com XP abaixo do marco e XP sem recibo fi
     ecoGoldClaimedUpToStage: 1,
   });
   await restore(page, legacy);
-  await page.goto('/santuario');
+  await openMilestones(page);
   await expect(
     milestone(page, 'Brotinho').getByText('Sem recompensa registrada', {
       exact: true,
@@ -241,19 +223,10 @@ test('prévia e marcos funcionam sem arte em 320px com texto 200%', async ({
 }, info) => {
   await page.route('**/art/**', (route) => route.abort());
   await page.setViewportSize({ width: 320, height: 568 });
-  await page.goto('/santuario');
+  await openMilestones(page);
   await page.evaluate(() => {
     document.documentElement.style.fontSize = '200%';
   });
-  expect(
-    await page.locator('.collection-scene').evaluate((scene) => {
-      const bounds = scene.getBoundingClientRect(),
-        caption = scene
-          .querySelector('.collection-scene-copy')!
-          .getBoundingClientRect();
-      return caption.top >= bounds.top && caption.bottom <= bounds.bottom;
-    }),
-  ).toBe(true);
   const trigger = page.getByRole('button', {
     name: 'Ver paisagem de Floresta Anciã',
     exact: true,

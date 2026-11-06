@@ -1,3 +1,4 @@
+import { openCompanions } from './camp-flow';
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { confirmBackupImport } from './backup-ui';
@@ -65,10 +66,9 @@ test('perfil vazio apresenta dados reais, mantém atalhos e não grava ao ser co
   for (const [name, href] of [
     ['Ver meu progresso e histórico', '/progresso'],
     ['Gerenciar equipamentos', '/inventario'],
-    ['Trocar companheiro', '/bestiario'],
     ['Loja', '/loja'],
     ['Conquistas', '/trofeus'],
-    ['Acampamento', '/refugio/acampamento'],
+    ['Acampamento', '/acampamento'],
     ['Configurações e backup', '/config'],
   ]) {
     await expect(
@@ -115,7 +115,7 @@ test('equipar e guardar em outra aba atualiza itens, saldo e prévia sem recarre
   await other.close();
 });
 
-test('seleção de companhia em outra aba é refletida e uma seleção bloqueada não ganha bônus', async ({
+test('seleção de companhia pelo Acampamento é refletida nos bônus do Perfil e uma seleção bloqueada não ganha bônus', async ({
   page,
   context,
 }, info) => {
@@ -127,18 +127,16 @@ test('seleção de companhia em outra aba é refletida e uma seleção bloqueada
   });
   await page.goto('/perfil');
   const other = await context.newPage();
-  await other.goto('/bestiario');
+  await openCompanions(other);
   const lich = other.locator('.collection-pet').filter({
     has: other.getByRole('heading', { name: 'Lorde Lich', exact: true }),
   });
   await lich
     .getByRole('button', { name: 'Escolher companhia', exact: true })
     .click();
-  await expect(
-    page.getByRole('heading', { name: 'Lorde Lich', exact: true }),
-  ).toBeVisible();
   await expect(reward(page)).toContainText('+100 XP');
-  await expect(page.getByText('+5% Comida', { exact: true })).toBeVisible();
+  await page.getByText('Entender os efeitos ativos', { exact: true }).click();
+  await expect(page.getByText(/Companhia: .*\+5% Comida/)).toBeVisible();
   await capture(page, 'perfil-companhia', info.project.name);
   await other.close();
   await seed(page, {
@@ -149,12 +147,8 @@ test('seleção de companhia em outra aba é refletida e uma seleção bloqueada
     activeCompanionId: 3,
   });
   await page.goto('/perfil');
-  await expect(
-    page.getByRole('heading', { name: 'Dragão Ancião', exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByText(/Esta seleção não tem bônus ativo/),
-  ).toBeVisible();
+  await page.getByText('Entender os efeitos ativos', { exact: true }).click();
+  await expect(page.getByText('Companhia: sem bônus ativo.')).toBeVisible();
   await expect(reward(page)).toContainText('+100 XP');
   await capture(page, 'perfil-selecao-indisponivel', info.project.name);
 });

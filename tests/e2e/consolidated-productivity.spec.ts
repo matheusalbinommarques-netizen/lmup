@@ -299,12 +299,7 @@ test('navegação principal concentra exploração em Mundo e mantém destinos a
     await mobile.getByRole('button', { name: 'Mais', exact: true }).click();
   }
   const more = page.getByRole('dialog', { name: 'Seu espaço', exact: true });
-  for (const title of [
-    'Projetos',
-    'Herói e equipamentos',
-    'Aposentos',
-    'Companheiros',
-  ])
+  for (const title of ['Projetos', 'Herói e equipamentos', 'Aposentos'])
     await expect(
       more.getByRole('link', { name: title, exact: true }),
     ).toBeVisible();

@@ -193,7 +193,7 @@
           >Ir para Missões<Icon name="arrow" size={18} /></a
         >{/if}{#if evolved}<a
           class="lmu-button lmu-button--secondary"
-          href="/refugio/acampamento">Ver Acampamento</a
+          href="/acampamento">Ver Acampamento</a
         >{/if}
     </div>
     {#if fresh && !skipped}<button
