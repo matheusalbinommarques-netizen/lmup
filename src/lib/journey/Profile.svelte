@@ -5,7 +5,6 @@
   import { companionBonusLabel } from '$services/companionService';
   import { slotLabels } from '$services/collectionRules';
   import { identity } from '$lib/content/experience';
-  import { companionArtwork } from './companionArtwork';
   import EditProfileModal from '$lib/EditProfileModal.svelte';
   import Card from '$lib/ui/Card.svelte';
   import Button from '$lib/ui/Button.svelte';
@@ -115,38 +114,6 @@
         >
       </Card>
     </section>
-    <section aria-labelledby="profile-companion">
-      <Card class="journey-stack"
-        ><p class="lmu-eyebrow">Companhia para o caminho</p>
-        <h2 id="profile-companion">
-          {data.companion?.name ?? 'Escolha sua companhia'}
-        </h2>
-        {#if data.companion}<div class="profile-companion-art lmu-decorative">
-            <Artwork
-              src={companionArtwork(data.companion)}
-              alt={data.companion.name}
-              sizes="180px"
-            />
-          </div>
-          <p class="lmu-muted">{data.companion.type}</p>
-          <p>
-            {data.active
-              ? companionBonusLabel(data.companion)
-              : 'Esta seleção não tem bônus ativo no seu nível atual. Escolha um companheiro disponível.'}
-          </p>
-        {:else}<p class="lmu-muted">
-            {data.profile.activeCompanionId
-              ? 'A seleção anterior não está disponível. Seus dados foram preservados.'
-              : 'Nenhum companheiro está selecionado.'}
-          </p>{/if}
-        <a href="/bestiario" class="lmu-button lmu-button--secondary"
-          >Trocar companheiro <Icon name="arrow" size={18} /></a
-        >
-        <p class="lmu-hint">
-          Cuidado é opcional; ficar longe não reduz a evolução.
-        </p>
-      </Card>
-    </section>
   </div>
   <section aria-labelledby="profile-equipment" class="profile-section">
     <div class="journey-section-heading">
@@ -179,8 +146,8 @@
           </li>{/each}
       </ul>
       {#if data.unknownEquipment}<p class="journey-banner">
-          Há {data.unknownEquipment} item(ns) equipado(s) de versão anterior sem
-          efeito reconhecido. Eles continuam nos seus dados.
+          Há {data.unknownEquipment} item(ns) equipado(s) de versão anterior sem efeito
+          reconhecido. Eles continuam nos seus dados.
         </p>{/if}</Card
     >
   </section>
@@ -248,8 +215,8 @@
     <a href="/loja" class="journey-link">Loja <Icon name="arrow" size={18} /></a
     ><a href="/trofeus" class="journey-link"
       >Conquistas <Icon name="arrow" size={18} /></a
-    ><a href="/refugio" class="journey-link"
-      >Refúgio <Icon name="arrow" size={18} /></a
+    ><a href="/acampamento" class="journey-link"
+      >Acampamento <Icon name="arrow" size={18} /></a
     ><a href="/config" class="journey-link"
       >Configurações e backup <Icon name="arrow" size={18} /></a
     >

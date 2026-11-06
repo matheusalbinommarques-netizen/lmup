@@ -13,7 +13,7 @@ import {
 } from './helpers';
 test.beforeEach(async ({ context, page }) => {
   await watchDatabase(context);
-  await page.goto('/refugio/acampamento');
+  await page.goto('/acampamento');
   await ready(page);
 });
 test('Centro vazio, áreas bloqueadas e Região em preparação', async ({
@@ -50,7 +50,7 @@ test('Centro vazio, áreas bloqueadas e Região em preparação', async ({
     'data-scene',
     'center',
   );
-  await page.goto('/refugio/acampamento?legacy=1');
+  await page.goto('/acampamento?legacy=1');
   await ready(page);
   await expect(page.getByTestId('camp-scene')).toHaveAttribute(
     'data-scene',
@@ -258,7 +258,7 @@ test('Reinício exige confirmação, retorna ao Centro e preserva banco pessoal 
       exact: true,
     })
     .click();
-  await expect(page).toHaveURL(/\/refugio\/acampamento$/);
+  await expect(page).toHaveURL(/\/acampamento$/);
   await expect(page.getByTestId('camp-scene')).toHaveAttribute(
     'data-scene',
     'center',
@@ -286,7 +286,7 @@ test('Duas abas atualizam a mesma construção com um único débito', async ({
   context,
 }, info) => {
   const other = await context.newPage();
-  await other.goto('/refugio/acampamento');
+  await other.goto('/acampamento');
   await ready(other);
   await point(page, 'caretaker', 'Caseiro', info);
   await point(other, 'caretaker', 'Caseiro', info);

@@ -11,7 +11,7 @@ import {
   campCapture,
 } from './camp-flow';
 test.beforeEach(async ({ page }) => {
-  await page.goto('/refugio/acampamento');
+  await page.goto('/acampamento');
   await campReady(page);
 });
 test('Centro normal não provisiona recursos nem oferece simulação ou reinício sintético', async ({
@@ -51,7 +51,7 @@ test('compra habilita as três cenas e conserva o débito único em outra aba e 
   await campSeed(page, { gold: 100, food: 83, totalXpEarned: 123 });
   const before = await campData(page);
   const other = await context.newPage();
-  await other.goto('/refugio/acampamento');
+  await other.goto('/acampamento');
   await campReady(other);
   await campBuy(page);
   await expect(other.getByTestId('point-interior')).toBeAttached();
@@ -198,7 +198,7 @@ test('backup e restauração conservam construção e saldo sem segunda cobranç
     buffer: Buffer.from(JSON.stringify(saved)),
   });
   await confirmBackupImport(page);
-  await page.goto('/refugio/acampamento');
+  await page.goto('/acampamento');
   await campReady(page);
   await expect(page.getByTestId('point-interior')).toBeAttached();
   expect((await campData(page)).profile.gold).toBe(50);
@@ -238,7 +238,7 @@ test('conclusão de missão atualiza imediatamente Centro e Jardim já abertos, 
   await campSeed(page, { gold: 100, totalXpEarned: 2490 });
   await campBuy(page);
   const garden = await context.newPage();
-  await garden.goto('/refugio/acampamento?scene=garden');
+  await garden.goto('/acampamento?scene=garden');
   await expect(garden.getByTestId('layered-scene')).toHaveAttribute(
     'data-scene',
     'garden-1',

@@ -122,10 +122,10 @@
     open = false;
     error = '';
     notice = '';
-    await goto(
-      '/refugio/acampamento' + (id === 'center' ? '' : '?scene=' + id),
-      { keepFocus: true, noScroll: true },
-    );
+    await goto('/acampamento' + (id === 'center' ? '' : '?scene=' + id), {
+      keepFocus: true,
+      noScroll: true,
+    });
   }
   async function interact(id: string) {
     if (busy || !loaded || !settlement) return;

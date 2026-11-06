@@ -1,3 +1,4 @@
+import { openMilestones, openCompanions } from '../e2e/camp-flow';
 import { chooseTracking } from '../e2e/mission-form';
 import { test, expect, type Page } from '@playwright/test';
 import { captureProtocolDiagnostics } from './protocol-diagnostics';
@@ -409,16 +410,14 @@ test('abre URLs não visitadas, cria e salva notas com a rede desligada', async 
   ).toBeVisible();
   for (const [route, title] of [
     ['/progresso', 'Meu progresso'],
-    ['/bestiario', 'Companheiros'],
     ['/config', 'Configurações'],
-    ['/refugio', 'Refúgio'],
-    ['/santuario', 'Refúgio'],
   ]) {
     await page.goto(route);
     await expect(
       page.getByRole('heading', { name: title, level: 1, exact: true }),
     ).toBeVisible();
   }
+  await openMilestones(page);
   await page
     .getByRole('button', {
       name: 'Ver paisagem de Floresta Anciã',
@@ -445,13 +444,9 @@ test('abre URLs não visitadas, cria e salva notas com a rede desligada', async 
   await preview
     .getByRole('button', { name: 'Fechar prévia', exact: true })
     .click();
-  await page.goto('/bestiario');
-  for (const name of [
-    'Lobo Etéreo',
-    'Lorde Lich',
-    'Dragão Ancião',
-    'Aberração Abissal',
-  ]) {
+  await openCompanions(page);
+  // Só companhias descobertas aparecem no Acampamento; as demais artes seguem cobertas pelo pré-cache abaixo.
+  for (const name of ['Lobo Etéreo']) {
     await page
       .getByRole('button', { name: 'Ver evoluções de ' + name, exact: true })
       .click();

@@ -40,8 +40,8 @@
     },
     { href: '/cla', label: 'Clã', icon: '/art/icones/icon-cla.png' },
     {
-      href: '/santuario',
-      label: 'Santuário',
+      href: '/acampamento',
+      label: 'Acampamento',
       icon: '/art/icones/icon-leaf-eco.png',
     },
     {

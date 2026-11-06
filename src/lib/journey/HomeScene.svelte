@@ -38,7 +38,7 @@
     {#if companion}
       <a
         class="rpg-scene-companion"
-        href="/bestiario"
+        href="/acampamento"
         aria-label={`Seu companheiro: ${companion.name}`}
         title={companion.name}
       >

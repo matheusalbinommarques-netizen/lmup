@@ -22,7 +22,7 @@
     {#if next}Faltam {Math.max(0, next.minXp - totalXp)} XP para {next.label}.{:else}Floresta
       Anciã alcançada. Seu mundo continua aqui.{/if}
   </p>
-  <a href="/refugio">Visitar refúgio <Icon name="arrow" size={16} /></a>
+  <a href="/acampamento">Visitar acampamento <Icon name="arrow" size={16} /></a>
 </section>
 
 <style>

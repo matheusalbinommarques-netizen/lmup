@@ -46,13 +46,7 @@ test('seis telas finais carregam artes e ações sem erros ou transbordamento', 
       });
     }
   }
-  for (const path of [
-    '/projetos',
-    '/perfil',
-    '/refugio',
-    '/revisoes',
-    '/config',
-  ]) {
+  for (const path of ['/projetos', '/perfil', '/revisoes', '/config']) {
     await page.goto(path);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   }

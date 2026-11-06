@@ -5,16 +5,13 @@ const routes: [string, string | RegExp][] = [
   ['/missoes', 'Lista de Missões'],
   ['/arquivo/missoes', 'Lista de Missões'],
   ['/perfil', 'Perfil e equipamentos'],
-  ['/refugio', 'Refúgio'],
   ['/projetos', 'Projetos'],
   ['/revisoes', 'Lista de Missões'],
   ['/progresso', 'Meu progresso'],
   ['/cla', 'Salão do Clã'],
-  ['/santuario', 'Refúgio'],
   ['/config', 'Configurações'],
   ['/loja', 'Loja'],
   ['/inventario', 'Minha coleção'],
-  ['/bestiario', 'Companheiros'],
   ['/trofeus', 'Conquistas'],
 ];
 
