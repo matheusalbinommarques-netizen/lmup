@@ -237,6 +237,17 @@ test('missão arquivada fica fora de Hoje e revisão futura é desativada sem pe
     }),
   ).toBeVisible();
   await expect(
+    page.getByText(
+      'Seu dia está livre. Um passo pequeno já conta como começo.',
+      {
+        exact: true,
+      },
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByText('Suas missões te aguardam', { exact: false }),
+  ).toHaveCount(0);
+  await expect(
     page.getByRole('button', {
       name: 'Nova missão',
       exact: true,
