@@ -40,8 +40,13 @@ async function capture(page: Page, name: string, project: string) {
     fullPage: true,
   });
 }
-function reward(page: Page) {
-  return page.getByLabel('Prévia de recompensa', { exact: true });
+// Efeitos ativos ficam num bloco recolhido; abre sem alternar o estado a cada chamada.
+async function effects(page: Page) {
+  await page
+    .locator('details')
+    .filter({ hasText: 'Entender os efeitos ativos' })
+    .evaluate((element) => ((element as HTMLDetailsElement).open = true));
+  return page.locator('.profile-effects');
 }
 
 test('perfil vazio apresenta dados reais, mantém atalhos e não grava ao ser consultado', async ({
@@ -51,7 +56,7 @@ test('perfil vazio apresenta dados reais, mantém atalhos e não grava ao ser co
   await page.goto('/perfil');
   await expect(
     page.getByRole('heading', {
-      name: 'Perfil e equipamentos',
+      name: 'Herói',
       level: 1,
       exact: true,
     }),
@@ -59,17 +64,14 @@ test('perfil vazio apresenta dados reais, mantém atalhos e não grava ao ser co
   await expect(
     page.getByRole('heading', { name: before.data.profile.name, exact: true }),
   ).toBeVisible();
-  await expect(reward(page)).toContainText('+105 XP');
-  await expect(page.getByText('Sem equipamento', { exact: true })).toHaveCount(
-    6,
+  await expect(await effects(page)).toContainText(
+    'Equipamento em missões e revisões: +0% XP.',
   );
+  await expect(page.getByRole('button', { name: /: vazio$/ })).toHaveCount(6);
   for (const [name, href] of [
     ['Ver meu progresso e histórico', '/progresso'],
-    ['Gerenciar equipamentos', '/inventario'],
-    ['Loja', '/loja'],
-    ['Conquistas', '/trofeus'],
-    ['Acampamento', '/acampamento'],
-    ['Configurações e backup', '/config'],
+    ['Gerenciar equipamento', '/inventario'],
+    ['Ver todas as conquistas', '/trofeus'],
   ]) {
     await expect(
       page.getByRole('main').getByRole('link', { name, exact: true }),
@@ -86,7 +88,9 @@ test('equipar e guardar em outra aba atualiza itens, saldo e prévia sem recarre
 }, info) => {
   await seed(page, { gold: 20000, food: 500 });
   await page.goto('/perfil');
-  await expect(reward(page)).toContainText('+105 XP');
+  await expect(await effects(page)).toContainText(
+    'Equipamento em missões e revisões: +0% XP.',
+  );
   const other = await context.newPage();
   await other.goto('/loja');
   await other
@@ -102,8 +106,10 @@ test('equipar e guardar em outra aba atualiza itens, saldo e prévia sem recarre
   await expect(
     page.getByRole('heading', { name: 'Lâmina da Otimização', exact: true }),
   ).toBeVisible();
-  await expect(reward(page)).toContainText('+116 XP');
-  await expect(page.locator('.profile-resources')).toContainText('16800');
+  await expect(await effects(page)).not.toContainText(
+    'Equipamento em missões e revisões: +0% XP.',
+  );
+  await expect(page.locator('.resources')).toContainText('16800');
   await capture(page, 'perfil-equipado', info.project.name);
   await other
     .getByRole('button', { name: 'Guardar Lâmina da Otimização', exact: true })
@@ -111,7 +117,9 @@ test('equipar e guardar em outra aba atualiza itens, saldo e prévia sem recarre
   await expect(
     page.getByRole('heading', { name: 'Lâmina da Otimização', exact: true }),
   ).not.toBeVisible();
-  await expect(reward(page)).toContainText('+105 XP');
+  await expect(await effects(page)).toContainText(
+    'Equipamento em missões e revisões: +0% XP.',
+  );
   await other.close();
 });
 
@@ -134,9 +142,7 @@ test('seleção de companhia pelo Acampamento é refletida nos bônus do Perfil 
   await lich
     .getByRole('button', { name: 'Escolher companhia', exact: true })
     .click();
-  await expect(reward(page)).toContainText('+100 XP');
-  await page.getByText('Entender os efeitos ativos', { exact: true }).click();
-  await expect(page.getByText(/Companhia: .*\+5% Comida/)).toBeVisible();
+  await expect(await effects(page)).toContainText(/Companhia: .*\+5% Comida/);
   await capture(page, 'perfil-companhia', info.project.name);
   await other.close();
   await seed(page, {
@@ -147,9 +153,9 @@ test('seleção de companhia pelo Acampamento é refletida nos bônus do Perfil 
     activeCompanionId: 3,
   });
   await page.goto('/perfil');
-  await page.getByText('Entender os efeitos ativos', { exact: true }).click();
-  await expect(page.getByText('Companhia: sem bônus ativo.')).toBeVisible();
-  await expect(reward(page)).toContainText('+100 XP');
+  await expect(await effects(page)).toContainText(
+    'Companhia: sem bônus ativo.',
+  );
   await capture(page, 'perfil-selecao-indisponivel', info.project.name);
 });
 

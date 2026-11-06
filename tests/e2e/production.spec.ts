@@ -4,7 +4,7 @@ const routes: [string, string | RegExp][] = [
   ['/', /^Bo(m dia|a tarde|a noite)\.$/],
   ['/missoes', 'Lista de Missões'],
   ['/arquivo/missoes', 'Lista de Missões'],
-  ['/perfil', 'Perfil e equipamentos'],
+  ['/perfil', 'Herói'],
   ['/projetos', 'Projetos'],
   ['/revisoes', 'Lista de Missões'],
   ['/progresso', 'Meu progresso'],
