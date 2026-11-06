@@ -131,7 +131,7 @@
   }
   .hero-compact .hero-details > .lmu-eyebrow {
     grid-column: 1;
-    font-size: 0.6rem;
+    font-size: 0.75rem;
   }
   .hero-compact .hero-details h2 {
     grid-column: 1;
@@ -155,7 +155,7 @@
   .hero-compact .hero-xp-label {
     grid-column: 1 / -1;
     margin-top: 0.4rem;
-    font-size: 0.65rem;
+    font-size: 0.75rem;
   }
   .hero-compact .hero-details progress {
     grid-column: 1 / -1;

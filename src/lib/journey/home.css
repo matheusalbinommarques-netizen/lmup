@@ -29,7 +29,7 @@
   gap: 0.55rem;
 }
 .journey-home .journey-brand small {
-  font-size: 0.65rem;
+  font-size: 0.75rem;
 }
 .journey-home .journey-sidebar nav {
   gap: 0.25rem;
@@ -87,7 +87,7 @@
   margin-top: 0.2rem;
 }
 .rpg-heading .lmu-eyebrow {
-  font-size: 0.6rem;
+  font-size: 0.75rem;
   color: var(--rpg-gold);
 }
 .rpg-heading-note {
@@ -177,7 +177,7 @@
 }
 .rpg-scene-caption > span {
   display: block;
-  font: 0.65rem var(--lmu-font);
+  font: 0.75rem var(--lmu-font);
   color: #e4ded1;
 }
 /* Collection artwork is a framed portrait, never a simulated world sprite. */
@@ -215,7 +215,7 @@
 }
 .rpg-scene-companion small {
   display: block;
-  font: 0.6rem var(--lmu-font);
+  font: 0.75rem var(--lmu-font);
   color: #c4cbbd;
 }
 .rpg-character-status {
@@ -301,7 +301,7 @@
   border-radius: 1rem;
   padding: 0.2rem 0.4rem;
   color: #d2d8cf;
-  font-size: 0.65rem;
+  font-size: 0.75rem;
 }
 .rpg-priority-body {
   display: flex;
@@ -584,14 +584,14 @@
   border-color: #d4b06b;
 }
 .rpg-project-name {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: var(--rpg-gold) !important;
   min-height: 1.75rem;
 }
 .rpg-project-name span {
   display: block;
   color: var(--lmu-muted);
-  font-size: 0.6rem;
+  font-size: 0.75rem;
 }
 .rpg-horizons {
   padding: 0.8rem 1rem;
@@ -614,7 +614,7 @@
   display: inline-flex;
   gap: 0.35rem;
   align-items: center;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   min-height: 2rem;
   color: var(--rpg-gold);
 }
@@ -633,11 +633,11 @@
 }
 .rpg-horizons .world-progress .lmu-eyebrow,
 .rpg-level-goal .lmu-eyebrow {
-  font-size: 0.6rem;
+  font-size: 0.75rem;
 }
 .rpg-horizons .world-progress p:not(.lmu-eyebrow),
 .rpg-level-goal > p:not(.lmu-eyebrow) {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   margin-top: 0.35rem;
   color: var(--lmu-muted);
 }
@@ -647,7 +647,7 @@
   align-items: center;
   gap: 0.35rem;
   min-height: 2rem;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: var(--rpg-gold);
 }
 .rpg-level-goal h3 {
@@ -670,7 +670,7 @@
 }
 .rpg-earned small {
   display: block;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   margin-top: 0.4rem;
   color: var(--lmu-muted);
 }
@@ -748,7 +748,7 @@
     display: none;
   }
   .rpg-heading .lmu-eyebrow {
-    font-size: 0.55rem;
+    font-size: 0.75rem;
   }
   .rpg-home {
     gap: 0.75rem;
@@ -769,7 +769,7 @@
     font-size: 0.8rem;
   }
   .rpg-scene-caption span {
-    font-size: 0.5rem;
+    font-size: 0.75rem;
   }
   .rpg-scene-meta {
     padding: 0.5rem 0.7rem;
@@ -789,7 +789,7 @@
     font-size: 0.85rem;
   }
   .rpg-scene-companion small {
-    font-size: 0.55rem;
+    font-size: 0.75rem;
   }
   .rpg-character-status {
     padding: 0.65rem 0.7rem;

@@ -738,7 +738,7 @@
     position: relative;
     grid-area: profile;
     z-index: 1;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     color: #d7dfcf;
     text-decoration: none;
   }
@@ -845,7 +845,7 @@
   }
   .day-plan li small {
     display: block;
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     color: #a7b9ab;
   }
   .time-chip {
@@ -1051,7 +1051,7 @@
     font-size: 1.4rem;
   }
   .horizons :global(.world-progress .lmu-eyebrow) {
-    font-size: 0.65rem;
+    font-size: 0.75rem;
   }
   .horizons :global(.world-progress a) {
     min-height: 28px;
@@ -1100,7 +1100,7 @@
       position: absolute;
       top: 10px;
       right: 12px;
-      font-size: 0.65rem;
+      font-size: 0.75rem;
       padding: 0.2rem 0.35rem;
     }
     .today-date :global(img) {
@@ -1191,7 +1191,7 @@
       font-size: 1rem;
     }
     .mission-meta {
-      font-size: 0.68rem;
+      font-size: 0.75rem;
     }
   }
   @media (max-width: 360px) {

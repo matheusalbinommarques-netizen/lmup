@@ -105,7 +105,8 @@
     border-radius: 12px;
     color: #f4d58e;
     font:
-      400 clamp(24px, 2.7vw, 43px)/1.15 Georgia,
+      400 clamp(24px, 2.7vw, 43px)/1.15 var(--lmu-display, Georgia),
+      Georgia,
       serif;
     box-shadow: 0 5px 20px #0005;
   }

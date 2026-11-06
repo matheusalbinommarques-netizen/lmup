@@ -1264,7 +1264,7 @@
     margin: 4px 0;
   }
   .missions-heading .lmu-eyebrow {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     color: #e4c481;
     letter-spacing: 0.04em;
   }

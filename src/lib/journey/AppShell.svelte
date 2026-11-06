@@ -176,7 +176,7 @@
     border: 0;
     color: inherit;
     font: inherit;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     cursor: pointer;
   }
   .mobile-more:focus-visible {
