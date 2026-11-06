@@ -90,17 +90,17 @@
         selectedKey={selected?.key ?? ''}
         onselect={(key) => (chosen = key)}
       >
-        <div class="who">
-          <HeroPortrait
-            name={data.profile.name}
-            avatarUrl={data.profile.avatarUrl ?? ''}
-          />
-          <h2><span>{data.profile.name}</span></h2>
-          <p class="title">
-            Nível {data.profile.level} · {getTitleForLevel(data.profile.level)}
-          </p>
-        </div>
+        <HeroPortrait
+          name={data.profile.name}
+          avatarUrl={data.profile.avatarUrl ?? ''}
+        />
       </HeroSlots>
+      <div class="who">
+        <h2><span>{data.profile.name}</span></h2>
+        <p class="title">
+          Nível {data.profile.level} · {getTitleForLevel(data.profile.level)}
+        </p>
+      </div>
     </section>
     <section class="progress" aria-label="Seu progresso">
       <div class="level-row">
@@ -234,6 +234,7 @@
     background: linear-gradient(to top, #02090ccc, transparent);
   }
   .who {
+    margin-top: 0.5rem;
     display: grid;
     justify-items: center;
     text-align: center;

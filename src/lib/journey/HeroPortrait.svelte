@@ -60,8 +60,8 @@
   .placeholder {
     display: grid;
     place-items: center;
-    width: 82%;
-    height: 82%;
+    width: 90%;
+    height: 90%;
     opacity: 0.95;
   }
   .placeholder :global(.approved-icon) {
