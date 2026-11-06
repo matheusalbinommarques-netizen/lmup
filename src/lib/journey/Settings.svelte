@@ -34,7 +34,8 @@
     resetOpen = $state(false),
     confirmText = $state(''),
     lastExport = $state(''),
-    origin = $state('');
+    origin = $state(''),
+    persisted = $state<boolean | null>(null);
   let fileInput: HTMLInputElement;
   let prepared = $state.raw<{
     backup: JourneyBackup;
@@ -82,6 +83,10 @@
     } catch {
       /* Storage may be unavailable independently of the database. */
     }
+    void navigator.storage
+      ?.persisted?.()
+      .then((value) => (persisted = value))
+      .catch(() => (persisted = null));
     const sub = settingsQuery().subscribe({
       next: (value) => {
         data = value;
@@ -195,34 +200,6 @@
     {error}
   </p>{/if}
 <section class="journey-stack">
-  <UpdateCenter />
-  <Card
-    ><div class="journey-stack">
-      <div>
-        <h2>Conforto e leitura</h2>
-        <p class="lmu-muted">
-          As preferências valem neste navegador e são aplicadas ao abrir
-          qualquer tela. Não alteram XP, saldos ou recompensas.
-        </p>
-      </div>
-      {#each preferences as preference (preference.key)}<label
-          class="settings-preference"
-          ><div>
-            <strong>{preference.title}</strong>
-            <p class="lmu-hint">{preference.description}</p>
-          </div>
-          <input
-            type="checkbox"
-            checked={$comfort[preference.key]}
-            onchange={(event) =>
-              setComfort(preference.key, event.currentTarget.checked)}
-            aria-label={preference.title}
-          /></label
-        >{/each}{#if $comfortWarning}<p role="status" class="journey-banner">
-          {$comfortWarning}
-        </p>{/if}
-    </div></Card
-  >
   <Card
     ><div class="journey-stack">
       <div>
@@ -246,6 +223,11 @@
           : 'Nenhuma exportação foi registrada neste navegador.'} Essa informação
         não comprova que o arquivo foi salvo; confira seus downloads.
       </p>
+      {#if persisted !== null}<p class="lmu-hint" role="status">
+          {persisted
+            ? 'Proteção contra limpeza automática: concedida pelo navegador.'
+            : 'Proteção contra limpeza automática: não concedida. Mantenha backups externos.'}
+        </p>{/if}
       <div class="journey-actions">
         <Button loading={busy} onclick={() => download()}>Exportar dados</Button
         ><Button
@@ -277,6 +259,34 @@
           e importe o arquivo no destino.
         </p>
       </details>
+    </div></Card
+  >
+  <UpdateCenter />
+  <Card
+    ><div class="journey-stack">
+      <div>
+        <h2>Conforto e leitura</h2>
+        <p class="lmu-muted">
+          As preferências valem neste navegador e são aplicadas ao abrir
+          qualquer tela. Não alteram XP, saldos ou recompensas.
+        </p>
+      </div>
+      {#each preferences as preference (preference.key)}<label
+          class="settings-preference"
+          ><div>
+            <strong>{preference.title}</strong>
+            <p class="lmu-hint">{preference.description}</p>
+          </div>
+          <input
+            type="checkbox"
+            checked={$comfort[preference.key]}
+            onchange={(event) =>
+              setComfort(preference.key, event.currentTarget.checked)}
+            aria-label={preference.title}
+          /></label
+        >{/each}{#if $comfortWarning}<p role="status" class="journey-banner">
+          {$comfortWarning}
+        </p>{/if}
     </div></Card
   >
   <Card
