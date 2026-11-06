@@ -41,6 +41,11 @@
   --rpg-selected: linear-gradient(90deg, #a675334d, #7052212b 70%, #362e1b33);
   --rpg-xp: linear-gradient(180deg, #fff0b5, #f7c66b 45%, #d49339);
 }
+/* O atalho `font:` zera as variantes numéricas; por isso a regra vale para todos os descendentes. */
+.rpg-theme.rpg-theme,
+.rpg-theme.rpg-theme * {
+  font-variant-numeric: lining-nums;
+}
 .rpg-theme .rpg-frame {
   position: relative;
   border: 1px solid var(--rpg-line);

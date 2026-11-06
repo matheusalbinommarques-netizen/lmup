@@ -426,7 +426,7 @@
     flex: 0 0 27px;
     border: 1px solid #a27c4377;
     border-radius: 0.3rem;
-    font-variant-numeric: tabular-nums;
+    font-variant-numeric: lining-nums tabular-nums;
   }
   .queue-copy {
     min-width: 0;
