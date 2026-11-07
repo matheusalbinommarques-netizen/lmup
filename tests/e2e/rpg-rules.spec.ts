@@ -13,7 +13,9 @@ const prohibitedGates = [
 ];
 
 async function expectFreeWorld(page: Page) {
-  const content = await page.locator('.world-experience').innerText();
+  // The cinematic scene replaces .world-experience completely. Read all
+  // currently visible UI text, whether on the map, campaign, or scene.
+  const content = await page.locator('body').innerText();
   for (const gate of prohibitedGates) expect(content).not.toMatch(gate);
   // Do not accidentally bring back the retired chapter progression.
   await expect(page.locator('.rpg-chapter-state')).toHaveCount(0);
