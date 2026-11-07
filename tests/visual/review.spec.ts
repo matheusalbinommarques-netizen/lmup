@@ -1,0 +1,159 @@
+import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+
+const scope = process.env.LMU_VISUAL_SCOPE ?? 'world';
+const world = scope === 'world' || scope === 'all';
+const core = scope === 'core' || scope === 'all';
+
+test.beforeEach(async ({ context }) => {
+  // Only the compiled LMUP on the disposable CI loopback server is reachable.
+  // No production installation, account, personal backup or remote API.
+  await context.route('**/*', (route) => {
+    const url = new URL(route.request().url());
+    if (
+      (url.protocol === 'http:' || url.protocol === 'https:') &&
+      !['127.0.0.1', 'localhost'].includes(url.hostname)
+    ) {
+      return route.abort();
+    }
+    return route.continue();
+  });
+});
+
+async function capture(
+  page: Page,
+  info: TestInfo,
+  name: string,
+  fullPage = true,
+) {
+  const directory = join('visual-review', info.project.name);
+  await mkdir(directory, { recursive: true });
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    window.scrollTo(0, 0);
+  });
+  await page.screenshot({
+    path: join(directory, name + '.png'),
+    fullPage,
+    animations: 'disabled',
+  });
+  const details = await page.evaluate(() => ({
+    title: document.title,
+    heading: document.querySelector('h1')?.textContent?.trim() ?? null,
+    horizontalOverflowPx: Math.max(
+      0,
+      document.documentElement.scrollWidth - window.innerWidth,
+    ),
+    brokenImages: [...document.images]
+      .filter((image) => image.complete && image.naturalWidth === 0)
+      .map((image) => image.getAttribute('src')),
+  }));
+  await writeFile(
+    join(directory, name + '.json'),
+    JSON.stringify(
+      {
+        scene: name,
+        viewport: page.viewportSize(),
+        path: new URL(page.url()).pathname + new URL(page.url()).search,
+        ...details,
+      },
+      null,
+      2,
+    ),
+  );
+  // Do not reject a useful screenshot when its layout is imperfect: it is
+  // evidence for the visual reviewer, and its issue is recorded above.
+}
+
+if (world) {
+  test('Mundo: mapa, atlas e diário', async ({ page }, info) => {
+    await page.goto('/mundo');
+    await expect(
+      page.getByRole('heading', { name: 'Mundo', level: 1, exact: true }),
+    ).toBeVisible();
+    await capture(page, info, '01-mundo-mapa');
+    await page.getByRole('button', { name: 'Atlas', exact: true }).click();
+    await capture(page, info, '02-mundo-atlas');
+    await page
+      .getByRole('button', { name: 'História do Mundo', exact: true })
+      .click();
+    await capture(page, info, '03-mundo-diario');
+  });
+
+  test('Mundo: campanha real e seus objetivos', async ({ page }, info) => {
+    await page.goto('/mundo');
+    await page
+      .getByRole('link', { name: 'Campanha e objetivos →', exact: true })
+      .click();
+    await expect(
+      page.getByRole('heading', {
+        name: 'Aventura nos Ermos',
+        level: 1,
+        exact: true,
+      }),
+    ).toBeVisible();
+    await capture(page, info, '04-campanha-objetivos');
+  });
+
+  test('Mundo: cena de exploração do Oásis', async ({ page }, info) => {
+    await page.goto('/mundo');
+    await page
+      .getByRole('button', { name: 'Entrar no assentamento', exact: true })
+      .click();
+    await expect(
+      page.getByRole('dialog', { name: 'Exploração do Oásis', exact: true }),
+    ).toBeVisible();
+    await capture(page, info, '05-oasis-exploracao', false);
+  });
+}
+
+if (core) {
+  test('Hoje: vazio e criação de uma missão sintética', async ({
+    page,
+  }, info) => {
+    await page.goto('/');
+    await expect(
+      page.getByRole('button', { name: 'Nova missão', exact: true }),
+    ).toBeVisible();
+    await capture(page, info, '06-hoje-vazio');
+    await page
+      .getByRole('button', { name: 'Nova missão', exact: true })
+      .click();
+    const dialog = page.getByRole('dialog', { name: 'Uma nova missão' });
+    await expect(dialog).toBeVisible();
+    await capture(page, info, '07-criar-missao');
+    await dialog
+      .getByLabel('O que você quer fazer?')
+      .fill('Exemplo sintético de missão');
+    await dialog.getByRole('button', { name: 'Criar missão' }).click();
+    await expect(dialog).not.toBeVisible();
+    await page.goto('/');
+    await expect(
+      page.getByText('Exemplo sintético de missão', { exact: true }).first(),
+    ).toBeVisible();
+    await capture(page, info, '08-hoje-com-missao');
+  });
+
+  test('Missões: organização inicial', async ({ page }, info) => {
+    await page.goto('/missoes');
+    await expect(
+      page.getByRole('button', { name: 'Nova missão', exact: true }),
+    ).toBeVisible();
+    await capture(page, info, '09-missoes');
+  });
+
+  test('Herói: ficha inicial', async ({ page }, info) => {
+    await page.goto('/perfil');
+    await expect(
+      page.getByRole('heading', { name: 'Herói', level: 1, exact: true }),
+    ).toBeVisible();
+    await capture(page, info, '10-heroi');
+  });
+
+  test('Acampamento: centro inicial', async ({ page }, info) => {
+    await page.goto('/acampamento');
+    await expect(page.getByTestId('point-caretaker')).toBeAttached();
+    await capture(page, info, '11-acampamento');
+  });
+}
