@@ -22,12 +22,9 @@ for (const dir of await readdir(root, { withFileTypes: true })) {
     if (!filename.endsWith('.png')) continue;
     const imagePath = dir.name + '/' + filename;
     const jsonPath = join(root, dir.name, filename.replace(/\.png$/, '.json'));
-    let metadata = {};
-    try {
-      metadata = JSON.parse(await readFile(jsonPath, 'utf8'));
-    } catch {
-      metadata = { warning: 'Metadados indisponíveis' };
-    }
+    const metadata = await readFile(jsonPath, 'utf8')
+      .then((content) => JSON.parse(content))
+      .catch(() => ({ warning: 'Metadados indisponíveis' }));
     photos.push({ imagePath, viewport: dir.name, metadata });
   }
 }
