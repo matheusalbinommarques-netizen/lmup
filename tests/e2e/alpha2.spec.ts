@@ -277,6 +277,38 @@ test('importação permite conferir e cancelar, valida erro e atualiza sem recar
     }),
   ).toBeVisible();
 });
+test('importação avisa sobre saldo sem registro e recusa título abusivo, sem alterar os dados', async ({
+  page,
+}) => {
+  await mission(page, 'Missão base');
+  const original = await backup(page);
+  const input = (name: string, data: unknown) =>
+    page.locator('input[type=file]').setInputFiles({
+      name,
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(data)),
+    });
+  const unexplained = structuredClone(original);
+  Object.assign(unexplained.data.profile, { gold: 5000, totalXpEarned: 900 });
+  await input('sem-registro.json', unexplained);
+  const dialog = page.getByRole('dialog', {
+    name: 'Importar este backup?',
+    exact: true,
+  });
+  await expect(dialog.getByText(/nenhum registro de progresso/)).toBeVisible();
+  await expect(
+    dialog.getByRole('button', {
+      name: 'Substituir pelos dados do backup',
+      exact: true,
+    }),
+  ).toBeEnabled();
+  await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  const abusive = structuredClone(original);
+  abusive.data.tasks[0].title = 'x'.repeat(2000);
+  await input('abusivo.json', abusive);
+  await expect(page.getByRole('alert')).toContainText('excede o limite');
+  expect((await backup(page)).data).toEqual(original.data);
+});
 test('reinício exige confirmação, preserva identidade e conforto e permite recuperar', async ({
   page,
 }) => {

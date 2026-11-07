@@ -39,7 +39,13 @@
   let fileInput: HTMLInputElement;
   let prepared = $state.raw<{
     backup: JourneyBackup;
-    summary: { tasks: number; projects: number; events: number; name: string };
+    summary: {
+      tasks: number;
+      projects: number;
+      events: number;
+      name: string;
+      warnings: string[];
+    };
   } | null>(null);
   const preferences: {
     key: keyof ComfortPrefs;
@@ -361,6 +367,12 @@
         {prepared.backup.data.profile?.gold ?? 0} · Comida: {prepared.backup
           .data.profile?.food ?? 0}.
       </p>
+      {#each prepared.summary.warnings as warning (warning)}<p
+          class="lmu-hint"
+          role="status"
+        >
+          Atenção: {warning}
+        </p>{/each}
       <p>
         Este arquivo substituirá os dados atuais. Uma cópia local do estado
         anterior será guardada antes da troca. Missões excluídas definitivamente
