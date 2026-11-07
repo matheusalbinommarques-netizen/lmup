@@ -8,6 +8,11 @@ on:
 permissions:
   contents: read
 
+# Re-running a PR replaces stale checks; pushes to main must never cancel each other.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('run-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   verify:
     runs-on: ubuntu-24.04
@@ -50,3 +55,13 @@ jobs:
       # Keep the strict audit mandatory; run functional checks before it so
       # pre-existing advisories cannot hide unrelated regressions.
       - run: npm run audit:security
+      # Even after a failed test, detect accidental modifications to tracked files.
+      - name: Ensure tests did not modify versioned files
+        if: ${{ !cancelled() }}
+        run: |
+          if ! git diff --quiet HEAD --; then
+            echo "::error::Tests or build changed tracked files. Review the changes before merging."
+            git status --short
+            git diff --stat HEAD --
+            exit 1
+          fi
