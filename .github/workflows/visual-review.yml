@@ -62,5 +62,5 @@ jobs:
           path: |
             visual-review/
             test-results-visual/
-          retention-days: 14
+          retention-days: 3
           if-no-files-found: error
