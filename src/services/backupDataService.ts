@@ -74,9 +74,17 @@ function integer(
   if (!Number.isSafeInteger(value) || (value as number) < min)
     fail(`${label} precisa ser um inteiro válido.`);
 }
-function text(value: unknown, label: string): asserts value is string {
+export const MAX_BACKUP_TITLE = 1000;
+export const REGISTERED_TITLE_LIMIT = 160;
+function text(
+  value: unknown,
+  label: string,
+  max?: number,
+): asserts value is string {
   if (typeof value !== 'string' || !value.trim())
     fail(`${label} está ausente.`);
+  if (max !== undefined && value.length > max)
+    fail(`${label} excede o limite de ${max} caracteres.`);
 }
 function date(value: unknown, label: string, optional = false) {
   if (optional && (value == null || value === '')) return;
@@ -237,7 +245,7 @@ export function validateBackup(input: unknown): JourneyBackup {
       fail('companheiro ativo não encontrado.');
   }
   for (const area of lists.areas) {
-    text(area.nome, 'areas.nome');
+    text(area.nome, 'areas.nome', MAX_BACKUP_TITLE);
     if (area.descricao != null && typeof area.descricao !== 'string')
       fail('descrição de área inválida.');
     if (area.iconKey != null && !isTaskIconKey(area.iconKey))
@@ -250,7 +258,7 @@ export function validateBackup(input: unknown): JourneyBackup {
   for (const task of lists.tasks) {
     if (task.iconKey != null && !isTaskIconKey(task.iconKey))
       fail('ícone de missão inválido.');
-    text(task.title, 'tasks.title');
+    text(task.title, 'tasks.title', MAX_BACKUP_TITLE);
     if (task.recurrence != null) {
       try {
         validateRecurrence(task.recurrence);
@@ -367,7 +375,7 @@ export function validateBackup(input: unknown): JourneyBackup {
       date(task[key], `tasks.${key}`, true);
   }
   for (const project of lists.projects) {
-    text(project.name, 'projects.name');
+    text(project.name, 'projects.name', MAX_BACKUP_TITLE);
     date(project.createdAt, 'projects.createdAt');
     if (
       ![
@@ -399,7 +407,7 @@ export function validateBackup(input: unknown): JourneyBackup {
       for (const raw of project.stages) {
         const stage = object(raw, 'etapa');
         text(stage.id, 'etapa.id');
-        text(stage.title, 'etapa.title');
+        text(stage.title, 'etapa.title', MAX_BACKUP_TITLE);
         if (ids.has(stage.id)) fail('etapas duplicadas.');
         ids.add(stage.id);
       }
@@ -833,10 +841,33 @@ export async function latestRecoveryBackup(): Promise<JourneyBackup | null> {
 
 export function inspectJourneyBackup(input: unknown) {
   const backup = validateBackup(input);
+  const profile = backup.data.profile;
+  const events = (backup.data.activityEvents as ActivityEvent[]).length;
+  const warnings: string[] = [];
+  if (
+    profile &&
+    (profile.totalXpEarned > 0 ||
+      profile.gold > 0 ||
+      (profile.food ?? 0) > 0) &&
+    events === 0 &&
+    (backup.data.xpLogs as unknown[]).length === 0
+  )
+    warnings.push(
+      'Este arquivo tem XP, ouro ou comida, mas nenhum registro de progresso que os explique. Os valores serão mantidos como estão, sem recalcular.',
+    );
+  const long = [
+    ...(backup.data.tasks as Task[]).map((task) => task.title),
+    ...(backup.data.projects as HeroProject[]).map((project) => project.name),
+  ].filter((title) => title.length > REGISTERED_TITLE_LIMIT).length;
+  if (long)
+    warnings.push(
+      `${long} título(s) passam de ${REGISTERED_TITLE_LIMIT} caracteres, o limite atual de cadastro. Serão mantidos.`,
+    );
   return {
     tasks: (backup.data.tasks as Task[]).length,
     projects: (backup.data.projects as HeroProject[]).length,
-    events: (backup.data.activityEvents as ActivityEvent[]).length,
-    name: backup.data.profile?.name ?? 'Novo herói',
+    events,
+    name: profile?.name ?? 'Novo herói',
+    warnings,
   };
 }
