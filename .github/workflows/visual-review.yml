@@ -1,0 +1,66 @@
+name: Revisão visual LMUP
+
+on:
+  # Available in the Actions UI after this workflow reaches main.
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: 'Grupo de telas a capturar'
+        required: true
+        type: choice
+        default: world
+        options:
+          - world
+          - core
+          - all
+  # Bootstrap validation of the tooling itself, not a costly job on every PR.
+  pull_request:
+    paths:
+      - '.github/workflows/visual-review.yml'
+      - 'playwright.visual.config.ts'
+      - 'tests/visual/**'
+      - 'scripts/visual-review-index.mjs'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('run-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  capture:
+    name: Capturas visuais
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - name: Instalar dependências
+        run: npm ci
+      - name: Construir app isolado
+        run: npm run build
+      - name: Instalar Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Capturar telas com dados sintéticos
+        run: npx playwright test --config playwright.visual.config.ts
+        env:
+          LMU_VISUAL_SCOPE: ${{ github.event_name == 'pull_request' && 'all' || inputs.scope || 'world' }}
+      - name: Gerar galeria offline e manifesto
+        if: ${{ always() }}
+        run: node scripts/visual-review-index.mjs
+        env:
+          LMU_VISUAL_SCOPE: ${{ github.event_name == 'pull_request' && 'all' || inputs.scope || 'world' }}
+      - name: Publicar capturas e evidências de falhas
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-review-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            visual-review/
+            test-results-visual/
+          retention-days: 3
+          if-no-files-found: error
