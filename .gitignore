@@ -44,3 +44,6 @@ test-results-pwa/
 /.claude/wt-*/
 /.claude/auditoria-*/
 /.claude/settings.local.json
+
+# Medidor de desempenho (resultados locais)
+/perf-results/
