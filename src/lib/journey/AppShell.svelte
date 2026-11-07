@@ -42,7 +42,7 @@
     const path = page.url.pathname;
     if (href === '/') return path === '/';
     if (href === '/mundo')
-      return path.startsWith('/mundo') || path.startsWith('/aventura');
+      return path.startsWith('/mundo');
     if (href === '/missoes')
       return (
         path.startsWith('/missoes') ||
@@ -66,7 +66,7 @@
 
 <div
   class="lmu-design journey-shell rpg-theme visual-shell"
-  class:journey-adventure={page.url.pathname === '/aventura'}
+  class:journey-adventure={page.url.pathname === '/mundo/campanha'}
   class:journey-home={page.url.pathname === '/'}
   class:journey-camp={['/acampamento', '/aposentos'].includes(
     page.url.pathname,

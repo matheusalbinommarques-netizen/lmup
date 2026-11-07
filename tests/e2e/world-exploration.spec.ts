@@ -84,10 +84,9 @@ test('Mundo entrega investigação completa, retomada, consequência e campanha 
   const saved = await worldData(page);
   await page.reload();
   expect((await worldData(page)).profile.world).toEqual(saved.profile.world);
-  await page
-    .getByRole('link', { name: 'Piloto experimental de Védria →', exact: true })
-    .click();
-  await expect(page.locator('.rpg-chapter-state')).toBeVisible();
+  await expect(page).toHaveURL(/\/mundo\/campanha$/);
+  await page.getByRole('link', { name: 'Abrir Mundo', exact: true }).click();
+  await expect(page).toHaveURL(/\/mundo$/);
   expect((await worldData(page)).profile.world).toEqual(saved.profile.world);
   await page.goto('/progresso');
   await expect(
