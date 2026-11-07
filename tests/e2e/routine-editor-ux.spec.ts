@@ -134,6 +134,7 @@ test('edição de missão vinculada preserva a configuração da sessão iniciad
 }) => {
   const routine = await prepare(page);
   await add(page, 'Beber água');
+  await routine.getByLabel('Recorrência da rotina').selectOption('daily');
   await routine
     .getByRole('button', { name: 'Salvar rotina', exact: true })
     .click();
@@ -328,4 +329,33 @@ test('a recorrência é definida na rotina e herdada por todas as missões', asy
       (task) => JSON.stringify(task.recurrence.days) === '[1,3]',
     ),
   ).toBe(true);
+});
+
+test('rotina agendada para outro dia não cria sessão vazia', async ({ page }) => {
+  const routine = await prepare(page);
+  await add(page, 'Beber água');
+  await routine.getByLabel('Recorrência da rotina').selectOption('weekly');
+  const tomorrowWeekday = await page.evaluate(
+    () => (new Date().getDay() + 1) % 7,
+  );
+  await routine
+    .getByLabel('Dia da rotina')
+    .selectOption(String(tomorrowWeekday));
+  await routine
+    .getByRole('button', { name: 'Salvar rotina', exact: true })
+    .click();
+  await expect(routine).not.toBeVisible();
+
+  await page
+    .locator('.routine-card')
+    .getByText('Mais ações', { exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Executar rotina', exact: true })
+    .click();
+
+  await expect(page).toHaveURL(/\/missoes\?view=routines$/);
+  await expect(page.getByRole('alert')).toContainText(
+    'Selecione ocorrências disponíveis hoje.',
+  );
 });
