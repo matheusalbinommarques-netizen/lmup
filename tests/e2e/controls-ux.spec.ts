@@ -275,6 +275,7 @@ test('editor aproveita o espaço e altera o horário da rotina pela Lista sem pe
     .getByRole('button')
     .filter({ hasText: 'Alongar' })
     .click();
+  await routine.getByLabel('Recorrência da rotina').selectOption('daily');
   await routine.getByLabel('Horário de Alongar', { exact: true }).fill('08:30');
   await routine
     .getByRole('button', { name: 'Salvar rotina', exact: true })
