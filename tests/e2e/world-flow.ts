@@ -83,7 +83,10 @@ export async function investigate(page: Page) {
     ).toBeVisible();
   }
 }
-export async function resolveInvestigation(page: Page) {
+export async function resolveInvestigation(
+  page: Page,
+  resolution: 'route' | 'rescue' = 'route',
+) {
   await interact(page, 'Voltar ao Oásis');
   await interact(page, 'Conversar com Lucan');
   await page
@@ -102,7 +105,10 @@ export async function resolveInvestigation(page: Page) {
   ).toBeVisible();
   await page
     .getByRole('button', {
-      name: 'Vou preparar uma rota mais segura.',
+      name:
+      resolution === 'route'
+        ? 'Vou preparar uma rota mais segura.'
+        : 'Vou ajudar a recuperar a carga restante.',
       exact: false,
     })
     .click();
