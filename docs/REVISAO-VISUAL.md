@@ -7,7 +7,7 @@ Produzir **evidências visuais**, não confundir "CI verde" com aprovação de a
 - Usa `npm run build` + `npm run serve:build` na CI, endereço fixo `127.0.0.1:4174`. **Nunca** a instalação local `127.0.0.1:5174`.
 - Cada teste do Playwright usa novo contexto do navegador e banco IndexedDB descartável. Quando preenchido, é **apenas com dados sintéticos**. Não importa backup, storageState nem cookie pessoal.
 - Bloqueia solicitações HTTP(S) para hosts que não sejam `localhost` ou `127.0.0.1` e bloqueia Service Workers durante a captura. Os testes PWA do pipeline obrigatório continuam separados.
-- Os resultados são ignorados pelo Git, disponibilizados como artefatos do Actions por **14 dias**. Não incluir credenciais ou dados reais nos testes.
+- Os resultados são ignorados pelo Git e expiram automaticamente após **3 dias**. Após a inspeção visual e aprovação, os artefatos podem ser excluídos antes desse prazo pela interface do GitHub Actions (execução → Artifacts → excluir). Não incluir credenciais ou dados reais nos testes.
 
 ## Executar
 Depois que `.github/workflows/visual-review.yml` entrar na `main`:
