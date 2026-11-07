@@ -47,3 +47,7 @@ test-results-pwa/
 
 # Medidor de desempenho (resultados locais)
 /perf-results/
+
+# Capturas sob demanda: nunca versionar imagens, traços ou metadados gerados.
+/visual-review/
+/test-results-visual/

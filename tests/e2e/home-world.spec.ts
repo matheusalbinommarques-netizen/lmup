@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { worldData } from './world-flow';
 
 async function capture(page: Page, name: string) {
   if (!process.env.LMU_HOME_CAPTURE_DIR) return;
@@ -179,7 +180,7 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
   expect(errors).toEqual([]);
 });
 
-test('Home mostra perfil, equipamento, ambiente e capítulo dos dados acumulados', async ({
+test('Home mostra perfil, equipamento, ambiente e preserva dados históricos do piloto', async ({
   page,
 }, info) => {
   await page.setViewportSize(
@@ -267,13 +268,17 @@ test('Home mostra perfil, equipamento, ambiente e capítulo dos dados acumulados
   await expect(
     page.getByRole('heading', { name: 'Preparar o portfólio', exact: true }),
   ).toBeVisible();
-  await page.goto('/aventura');
-  await expect(page.locator('.rpg-chapter-state')).toContainText(
-    'Capítulo 2: liberado',
-  );
-  await expect(page.locator('.rpg-story-card .rpg-overline')).toHaveText(
-    'Capítulo 2 · Cena 2 de 3',
-  );
+  const beforeCampaign = await worldData(page);
+  await page.goto('/mundo/campanha');
+  await expect(
+    page.getByRole('heading', { name: 'Aventura nos Ermos', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Diário da campanha', exact: true }),
+  ).toBeVisible();
+  const afterCampaign = await worldData(page);
+  expect(afterCampaign.profile.rpgPilot).toEqual(beforeCampaign.profile.rpgPilot);
+  expect(afterCampaign.events).toEqual(beforeCampaign.events);
   await page.goto('/');
   await noOverflow(page);
   await capture(page, info.project.name + '-progresso');

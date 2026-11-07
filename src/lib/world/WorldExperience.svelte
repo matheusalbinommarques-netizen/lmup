@@ -321,9 +321,7 @@
           >{#if world.lastScene}<a
               class="lmu-button lmu-button--secondary"
               href="/mundo?retomar=1">Continuar exploração</a
-            >{/if}<a class="journey-link" href="/aventura"
-            >Piloto experimental de Védria →</a
-          ><a class="journey-link" href="/progresso">Meu progresso →</a>
+            >{/if}<a class="journey-link" href="/progresso">Meu progresso →</a>
         </nav>
       {:else}<nav class="world-tabs" aria-label="Seções de Mundo">
           {#each [{ id: 'explore', label: 'Exploração' }, { id: 'atlas', label: 'Atlas' }, { id: 'history', label: 'História do Mundo' }] as item (item.id)}<Button
@@ -331,7 +329,7 @@
               aria-pressed={section === item.id}
               onclick={() => (section = item.id as typeof section)}
               >{item.label}</Button
-            >{/each}<a class="journey-link" href="/aventura?campanha=ermos"
+            >{/each}<a class="journey-link" href="/mundo/campanha"
             >Campanha e objetivos →</a
           ><a class="journey-link" href="/progresso">Meu progresso →</a>
         </nav>{/if}
