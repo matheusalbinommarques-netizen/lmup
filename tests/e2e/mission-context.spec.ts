@@ -301,6 +301,10 @@ test('rotina e sessão permanecem na atividade até o avanço explícito', async
       .filter({ hasText: name })
       .click();
   await page
+    .locator('.routine-form')
+    .getByLabel('Recorrência da rotina')
+    .selectOption('daily');
+  await page
     .getByRole('button', { name: 'Salvar rotina', exact: true })
     .click();
   await page
