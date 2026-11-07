@@ -16,9 +16,9 @@ Depois que `.github/workflows/visual-review.yml` entrar na `main`:
 2. Selecionar a branch que contém as alterações a avaliar (precisa ter o workflow; atualizar a branch se ela for anterior à instalação).
 3. Selecionar **world**, **core** ou **all**.
 4. Ao concluir, abrir a execução → **Artifacts** → baixar `visual-review-...`.
-5. Descompactar o ZIP e abrir **`index.html`** num navegador. Imagens em diretórios `desktop-1440`, `mobile-390` e `mobile-320`; metadados individuais, `manifest.json` e eventuais traces do Playwright também ficam no artefato.
+5. Descompactar o ZIP e abrir **`index.html`** num navegador. Imagens em diretórios `desktop-1440`, `mobile-390` e `mobile-320`; no celular, cada página longa tem também um PNG `-viewport` para mostrar o que cabe na tela com a navegação fixa no lugar correto. Metadados individuais, `manifest.json` e eventuais traces do Playwright também ficam no artefato.
 
-Na primeira PR que adiciona/edita estas ferramentas, a CI de revisão visual roda automaticamente para validá-las. Nos demais PRs o job é **sob demanda** e não altera os checks obrigatórios `verify (22)`/`verify (24)`.
+Na primeira PR que adiciona/edita estas ferramentas, a CI de revisão visual roda automaticamente em **all** para validar os dois escopos. Nos demais PRs o job é **sob demanda** e não altera os checks obrigatórios `verify (22)`/`verify (24)`.
 
 ## Escopos atuais
 - **world**: mapa, atlas, diário do Mundo, campanha/objetivos do Oásis, cena de exploração.
