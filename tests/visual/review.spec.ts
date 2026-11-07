@@ -49,21 +49,31 @@ async function capture(
       .filter((image) => image.complete && image.naturalWidth === 0)
       .map((image) => image.getAttribute('src')),
   }));
+  const metadata = {
+    scene: name,
+    viewport: page.viewportSize(),
+    path: new URL(page.url()).pathname + new URL(page.url()).search,
+    ...details,
+  };
   await writeFile(
     join(directory, name + '.json'),
-    JSON.stringify(
-      {
-        scene: name,
-        viewport: page.viewportSize(),
-        path: new URL(page.url()).pathname + new URL(page.url()).search,
-        ...details,
-      },
-      null,
-      2,
-    ),
+    JSON.stringify(metadata, null, 2),
   );
-  // Do not reject a useful screenshot when its layout is imperfect: it is
-  // evidence for the visual reviewer, and its issue is recorded above.
+  // Full-page mobile images show fixed navigation midway through the long
+  // screenshot. Preserve a real viewport shot as well to inspect the fold.
+  if (fullPage && info.project.name.startsWith('mobile-')) {
+    const viewportName = name + '-viewport';
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({
+      path: join(directory, viewportName + '.png'),
+      animations: 'disabled',
+    });
+    await writeFile(
+      join(directory, viewportName + '.json'),
+      JSON.stringify({ ...metadata, scene: viewportName }, null, 2),
+    );
+  }
+  // Keep imperfect screenshots as evidence; metadata records layout issues.
 }
 
 if (world) {
