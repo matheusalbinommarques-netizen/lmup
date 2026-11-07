@@ -48,12 +48,12 @@ jobs:
       - name: Capturar telas com dados sintéticos
         run: npx playwright test --config playwright.visual.config.ts
         env:
-          LMU_VISUAL_SCOPE: ${{ inputs.scope || 'world' }}
+          LMU_VISUAL_SCOPE: ${{ github.event_name == 'pull_request' && 'all' || inputs.scope || 'world' }}
       - name: Gerar galeria offline e manifesto
         if: ${{ always() }}
         run: node scripts/visual-review-index.mjs
         env:
-          LMU_VISUAL_SCOPE: ${{ inputs.scope || 'world' }}
+          LMU_VISUAL_SCOPE: ${{ github.event_name == 'pull_request' && 'all' || inputs.scope || 'world' }}
       - name: Publicar capturas e evidências de falhas
         if: ${{ always() }}
         uses: actions/upload-artifact@v7
