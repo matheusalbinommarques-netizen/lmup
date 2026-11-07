@@ -146,9 +146,14 @@ test('E01: missões, rotina, sessão e recompensa funcionam sem abrir o Mundo', 
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
     .click();
+  // A single-activity session ends automatically; the session receipt replaces
+  // the individual reward overlay. Inspect the persisted reward below as well.
   await expect(
-    page.getByRole('region', { name: 'Resumo da recompensa' }),
+    page.getByRole('heading', { name: 'Sessão concluída', exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: 'Resumo da sessão', exact: true }),
+  ).toContainText('1 concluídas');
 
   await page.goto('/missoes');
   await expect(
