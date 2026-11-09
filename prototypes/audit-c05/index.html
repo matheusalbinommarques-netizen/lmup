@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="pt-BR">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>LMUP — comparação do fundo lateral</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      background: #0c161e;
+      color: #e8edf2;
+      font: 16px/1.5 system-ui;
+    }
+    main {
+      max-width: 1250px;
+      margin: auto;
+    }
+    h1 {
+      font-size: 26px;
+      margin-bottom: 8px;
+    }
+    p {
+      color: #b8c8d8;
+    }
+    .toolbar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 24px 0;
+    }
+    button,
+    a {
+      font: inherit;
+      color: #e8edf2;
+      background: #173752;
+      border: 1px solid #6ca4d0;
+      padding: 10px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    button[aria-pressed='true'] {
+      background: #3276ad;
+      border-color: #b5dcff;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+    article {
+      background: #11222e;
+      border: 1px solid #35516a;
+      border-radius: 12px;
+      padding: 16px;
+      min-width: 0;
+    }
+    article h2 {
+      font-size: 18px;
+      margin: 0;
+    }
+    .view {
+      overflow: auto;
+      max-height: 620px;
+      margin: 16px 0;
+      border: 1px solid #486077;
+      background: #061115;
+    }
+    canvas {
+      display: block;
+      margin: auto;
+    }
+    .stats {
+      font-variant-numeric: tabular-nums;
+      min-height: 75px;
+    }
+    .note {
+      padding: 12px;
+      border-left: 3px solid #7dbaf0;
+    }
+    #status {
+      color: #b5dcff;
+    }
+    @media (max-width: 850px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      article {
+        max-width: 500px;
+      }
+      .view {
+        max-height: 420px;
+      }
+    }
+  </style>
+  <main>
+    <h1>O mesmo fundo, duas opções de otimização</h1>
+    <p>
+      Compare o mapa no rodapé da barra. A referência é a pintura original
+      aprovada. Nenhuma opção foi aplicada ao aplicativo.
+    </p>
+    <div class="toolbar">
+      <span>Inspeção:</span
+      ><button id="one" aria-pressed="true">1x — tamanho normal</button
+      ><button id="two" aria-pressed="false">2x — ampliar detalhes</button
+      ><a id="download" hidden download="sidebar-map-432.webp"
+        >Baixar variante menor</a
+      >
+    </div>
+    <p id="status" role="status">Preparando as imagens…</p>
+    <div class="grid">
+      <article>
+        <h2>Original — referência</h2>
+        <p class="stats" id="s0"></p>
+        <div class="view">
+          <canvas id="c0" aria-label="Barra com a pintura original"></canvas>
+        </div>
+      </article>
+      <article>
+        <h2>A — compressão atual</h2>
+        <p class="stats" id="s1"></p>
+        <div class="view">
+          <canvas
+            id="c1"
+            aria-label="Barra com a versão comprimida em resolução original"
+          ></canvas>
+        </div>
+      </article>
+      <article>
+        <h2>B — variante menor</h2>
+        <p class="stats" id="s2"></p>
+        <div class="view">
+          <canvas
+            id="c2"
+            aria-label="Barra com a variante de 432 pixels"
+          ></canvas>
+        </div>
+      </article>
+    </div>
+    <p class="note">
+      A mantém a resolução e reduz o tamanho do arquivo. B reduz também os
+      pixels decodificados. O “2x” amplia o mesmo recorte para inspecionar
+      nitidez; esta prévia não substitui teste de navegação ou offline.
+    </p>
+    <p>
+      As duas propostas preservam o arquivo original. Depois da escolha, o
+      impacto no pré-cache precisa ser declarado e testado.
+    </p>
+  </main>
+  <script type="module">
+    const images = [];
+    let zoom = 1;
+    const bytes = (value) => `${(value / 1024).toFixed(1)} KiB`;
+    const decoded = (image) =>
+      `${((image.width * image.height * 4) / 1048576).toFixed(2)} MiB de pixels RGBA`;
+    function draw() {
+      images.forEach((image, index) => {
+        const canvas = document.querySelector(`#c${index}`);
+        canvas.width = 216 * zoom;
+        canvas.height = 600 * zoom;
+        canvas.style.width = `${216 * zoom}px`;
+        canvas.style.height = `${600 * zoom}px`;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(zoom, zoom);
+        ctx.fillStyle = '#061115';
+        ctx.fillRect(0, 0, 216, 600);
+        const height = 600 * 0.45,
+          width = (height * image.width) / image.height;
+        ctx.drawImage(image, (216 - width) / 2, 600 - height, width, height);
+        const gradient = ctx.createLinearGradient(0, 0, 0, 600);
+        gradient.addColorStop(0, '#061115');
+        gradient.addColorStop(0.58, '#061115');
+        gradient.addColorStop(1, '#06111588');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 216, 600);
+        ctx.fillStyle = '#e8d9aa';
+        ctx.font = '18px Georgia';
+        ctx.fillText('LEVEL ME UP', 22, 42);
+        ctx.fillStyle = '#c3d1dc';
+        ctx.font = '15px system-ui';
+        [
+          'Hoje',
+          'Missões',
+          'Projetos',
+          'Mundo',
+          'Acampamento',
+          'Herói',
+        ].forEach((text, i) => ctx.fillText(text, 22, 100 + i * 43));
+        ctx.fillStyle = '#c3d1dc';
+        ctx.font = '12px system-ui';
+        ctx.fillText('Configurações', 22, 566);
+        const view = canvas.parentElement;
+        view.scrollTop = view.scrollHeight - view.clientHeight;
+        view.scrollLeft = (view.scrollWidth - view.clientWidth) / 2;
+      });
+      document
+        .querySelector('#one')
+        .setAttribute('aria-pressed', String(zoom === 1));
+      document
+        .querySelector('#two')
+        .setAttribute('aria-pressed', String(zoom === 2));
+    }
+    document.querySelector('#one').onclick = () => {
+      zoom = 1;
+      draw();
+    };
+    document.querySelector('#two').onclick = () => {
+      zoom = 2;
+      draw();
+    };
+    try {
+      const blobs = await Promise.all(
+        ['/source.webp', '/compressed.webp'].map(async (url) => {
+          const r = await fetch(url);
+          if (!r.ok) throw Error('Imagem indisponível');
+          return r.blob();
+        }),
+      );
+      images.push(
+        ...(await Promise.all(blobs.map((blob) => createImageBitmap(blob)))),
+      );
+      const small = document.createElement('canvas');
+      small.width = 432;
+      small.height = Math.round((images[0].height * 432) / images[0].width);
+      small
+        .getContext('2d')
+        .drawImage(images[0], 0, 0, small.width, small.height);
+      const blob = await new Promise((resolve) =>
+        small.toBlob(resolve, 'image/webp', 0.84),
+      );
+      if (!blob || blob.type !== 'image/webp')
+        throw Error('Este navegador não exportou WebP.');
+      images.push(await createImageBitmap(blob));
+      blobs.push(blob);
+      images.forEach((image, index) => {
+        document.querySelector(`#s${index}`).textContent =
+          `${image.width} × ${image.height} px · ${bytes(blobs[index].size)} · ${decoded(image)}`;
+      });
+      const link = document.querySelector('#download');
+      link.href = URL.createObjectURL(blob);
+      link.hidden = false;
+      document.querySelector('#status').textContent =
+        `A: ${(100 * (1 - blobs[1].size / blobs[0].size)).toFixed(1)}% menos bytes. B: ${(100 * (1 - blobs[2].size / blobs[0].size)).toFixed(1)}% menos bytes e ${(100 * (1 - (images[2].width * images[2].height) / (images[0].width * images[0].height))).toFixed(1)}% menos pixels. Encoder WebP do navegador, qualidade 0,84 na opção B.`;
+      draw();
+    } catch (error) {
+      document.querySelector('#status').textContent =
+        `Não foi possível preparar a comparação: ${error.message}`;
+    }
+  </script>
+</html>

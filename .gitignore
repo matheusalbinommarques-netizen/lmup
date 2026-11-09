@@ -51,3 +51,6 @@ test-results-pwa/
 # Capturas sob demanda: nunca versionar imagens, traços ou metadados gerados.
 /visual-review/
 /test-results-visual/
+
+# Evidências da comparação C05, geradas sob demanda.
+/c05-evidence/

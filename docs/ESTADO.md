@@ -2,6 +2,8 @@
 
 Ponto de partida para agentes e para quem retoma o projeto. Atualize no mesmo PR quando uma entrega mudar algo abaixo. Prevalece sobre documentos antigos em `docs/`, que são registros históricos.
 
+Execução e pendências do plano de 04/11: [reconciliação de 09/11](AUDITORIA-20261104-EXECUCAO.md). Não considerar um PR integrado como prova de que todos os critérios do lote foram atendidos.
+
 ## Como consultar a versão
 
 - Código de referência: `origin/main`. A `main` local pode estar desatualizada.
@@ -17,7 +19,7 @@ Ponto de partida para agentes e para quem retoma o projeto. Atualize no mesmo PR
 | Execução     | `/missao`, `/ocorrencia`      | `Execution.svelte`, `OccurrenceExecution.svelte`                                                                                        |
 | Sessões      | `/sessoes`                    | `MissionSession.svelte`, `SavedSessions.svelte`                                                                                         |
 | Projetos     | `/projetos`                   | `Projects.svelte`, `ProjectDetail.svelte`                                                                                               |
-| Mundo        | `/mundo`, `/mundo/campanha`   | `src/routes/mundo`, `src/lib/world/WorldExperience.svelte`, `src/services/worldService.ts`                                               |
+| Mundo        | `/mundo`, `/mundo/campanha`   | `src/routes/mundo`, `src/lib/world/WorldExperience.svelte`, `src/services/worldService.ts`                                              |
 | Acampamento  | `/acampamento` e `/aposentos` | `src/lib/camp/cinematic/`                                                                                                               |
 | Herói e loja | `/perfil`, `/loja`            | `Profile.svelte`, `HeroSlots.svelte`, `HeroGearDetail.svelte`, `HeroPortrait.svelte`, `ProfileAchievements.svelte`, `Collection.svelte` |
 | Dados        | `/config`                     | `Settings.svelte`, `src/services/backupDataService.ts`                                                                                  |
@@ -43,20 +45,24 @@ Ponto de partida para agentes e para quem retoma o projeto. Atualize no mesmo PR
 
 ## Entregas recentes
 
-| PR  | Entrega                                    | Lição reutilizável                                                       |
-| --- | ------------------------------------------ | ------------------------------------------------------------------------ |
-| #59 | Horários em ordem e correções de texto     | Testar o comportamento antes de corrigir derrubou um achado errado       |
-| #60–#63 | Marca LMU, economia de leituras, backup e tipografia | Sem afirmar desempenho medido onde não houve comparação |
-| #64 | Acampamento como entrada única e redirecionamentos antigos | Preservar economia e links offline |
-| #65–#67 | Ficha do Herói, textos e Hoje | Retrato continua provisório |
-| #68–#71 | Testes de integridade e importação de backup | Guardas de execução, planejamento e backups |
-| #72 | Medidor de desempenho versionado | Medir antes/depois na mesma máquina |
-| #73 | Testes de rotinas independentes do dia da semana | Explicitar recorrência nos cenários |
-| #74 | Guarda de arquivos versionados e cancelamento de PR obsoleto | Execução confirmada; falta ensaio deliberado do cancelamento |
-| Em preparação | Aposentadoria do piloto `/aventura` | Redirecionar links antigos sem apagar `rpgPilot` |
-| #58 | Rotinas legíveis e navegáveis pelo teclado | Validar teclado e composição na prévia achou o que os testes não pegavam |
-| #57 | Modelo de PR, estado e camadas de teste    | –                                                                        |
-| #56 | Testes não alteram capturas versionadas    | Reproduzir o defeito antes de corrigir e testar o próprio verificador    |
+| PR      | Entrega                                                      | Lição reutilizável                                                       |
+| ------- | ------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| #59     | Horários em ordem e correções de texto                       | Testar o comportamento antes de corrigir derrubou um achado errado       |
+| #60–#63 | Marca LMU, economia de leituras, backup e tipografia         | Sem afirmar desempenho medido onde não houve comparação                  |
+| #64     | Acampamento como entrada única e redirecionamentos antigos   | Preservar economia e links offline                                       |
+| #65–#67 | Ficha do Herói, textos e Hoje                                | Retrato continua provisório                                              |
+| #68–#71 | Testes de integridade e importação de backup                 | Guardas de execução, planejamento e backups                              |
+| #72     | Medidor de desempenho versionado                             | Medir antes/depois na mesma máquina                                      |
+| #73     | Testes de rotinas independentes do dia da semana             | Explicitar recorrência nos cenários                                      |
+| #74     | Guarda de arquivos versionados e cancelamento de PR obsoleto | Execução confirmada; falta ensaio deliberado do cancelamento             |
+| #76     | Piloto `/aventura` aposentado; campanha em `/mundo/campanha` | Redirecionar links antigos sem apagar `rpgPilot`                         |
+| #77     | Capturas visuais sob demanda                                 | Capturar imagens não equivale à aprovação visual                         |
+| #58     | Rotinas legíveis e navegáveis pelo teclado                   | Validar teclado e composição na prévia achou o que os testes não pegavam |
+| #57     | Modelo de PR, estado e camadas de teste                      | –                                                                        |
+| #79     | A04 concluído e C02 medido com M06                           | Ganho medido não equivale à meta de latência atingida                    |
+| #75     | Liberdade do jogador na investigação do Oásis                | Cobrir desfechos, inatividade e produtividade independente               |
+| #80     | Fundo lateral com compressão A aprovada                      | Menos bytes de imagem não reduz pixels decodificados nem pré-cache total |
+| #56     | Testes não alteram capturas versionadas                      | Reproduzir o defeito antes de corrigir e testar o próprio verificador    |
 
 ## Pendências técnicas conhecidas
 

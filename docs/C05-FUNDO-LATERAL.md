@@ -1,6 +1,6 @@
 # C05 — fundo lateral comprimido, decisão de 09/11/2026
 
-O autor escolheu **A, preservar detalhes**, após comparar com o original e com uma variante de 432×324 em 1x e 2x. A decisão substitui a proposta inicial de aproximadamente 432 px. Ele também confirmou ter backup recente fora do navegador. Isso não autoriza merge.
+O autor escolheu **A, preservar detalhes**, após comparar com o original e com uma variante de 432×324 em 1x e 2x. A decisão substitui a proposta inicial de aproximadamente 432 px. Ele também confirmou ter backup recente fora do navegador. Após os checks iniciais, o autor também autorizou a integração sequencial dos três PRs em 09/11/2026; a branch atualizada continua sujeita aos checks obrigatórios.
 
 | Arquivo                             | Pixels    |     Bytes | Pixels RGBA, estimativa |
 | ----------------------------------- | --------- | --------: | ----------------------: |
