@@ -1,0 +1,108 @@
+{
+  "before": {
+    "meta": {
+      "mode": "scale",
+      "quick": false,
+      "port": 5198,
+      "date": "2026-11-09T23:14:05.986Z",
+      "node": "v24.22.2",
+      "note": "Dados sintéticos; compare tendências, não milissegundos."
+    },
+    "results": [
+      {
+        "years": 0,
+        "rowsPerTable": 0,
+        "rawReadAllMs": 1,
+        "openHomeMs": 206,
+        "openMissionsMs": 206,
+        "completeMs": 74,
+        "storageMb": 0.1
+      },
+      {
+        "years": 1,
+        "rowsPerTable": 2920,
+        "rawReadAllMs": 74,
+        "openHomeMs": 603,
+        "openMissionsMs": 687,
+        "completeMs": 1115,
+        "storageMb": 7.5
+      },
+      {
+        "years": 3,
+        "rowsPerTable": 8760,
+        "rawReadAllMs": 220,
+        "openHomeMs": 1409,
+        "openMissionsMs": 1665,
+        "completeMs": 2835,
+        "storageMb": 10.3
+      },
+      {
+        "years": 5,
+        "rowsPerTable": 14600,
+        "rawReadAllMs": 395,
+        "openHomeMs": 2320,
+        "openMissionsMs": 2731,
+        "completeMs": 5067,
+        "storageMb": 36.2
+      }
+    ]
+  },
+  "after": {
+    "meta": {
+      "mode": "scale",
+      "quick": false,
+      "port": 5198,
+      "date": "2026-11-09T23:16:00.502Z",
+      "node": "v24.22.2",
+      "note": "Dados sintéticos; compare tendências, não milissegundos."
+    },
+    "results": [
+      {
+        "years": 0,
+        "rowsPerTable": 0,
+        "rawReadAllMs": 1,
+        "openHomeMs": 184,
+        "openMissionsMs": 228,
+        "completeMs": 74,
+        "storageMb": 0.1
+      },
+      {
+        "years": 1,
+        "rowsPerTable": 2920,
+        "rawReadAllMs": 79,
+        "openHomeMs": 596,
+        "openMissionsMs": 670,
+        "completeMs": 725,
+        "storageMb": 7.5
+      },
+      {
+        "years": 3,
+        "rowsPerTable": 8760,
+        "rawReadAllMs": 222,
+        "openHomeMs": 1439,
+        "openMissionsMs": 1645,
+        "completeMs": 2070,
+        "storageMb": 13.6
+      },
+      {
+        "years": 5,
+        "rowsPerTable": 14600,
+        "rawReadAllMs": 407,
+        "openHomeMs": 2344,
+        "openMissionsMs": 2762,
+        "completeMs": 3712,
+        "storageMb": 45.2
+      }
+    ]
+  },
+  "m06": {
+    "result": "morto",
+    "killer": "refreshCompletionStreak (caracterização) recalcula com conclusões diretas, de ocorrência, estornadas, sem evento e legadas"
+  },
+  "meta": {
+    "sha": "2df764203f40626995ddf9d19f5350c5434c640a",
+    "node": "v24.22.2",
+    "measuredAt": "2026-11-09T23:16:01.968Z",
+    "note": "C01 scale completo; mesma máquina, mesma configuração; apenas C02 reconstruído no antes. Ordem fixa antes/depois, sem atribuir toda diferença a C02."
+  }
+}
