@@ -37,6 +37,7 @@ const exact = new Set([
   '200.html',
   'manifest.webmanifest',
   'favicon.ico',
+  'art/ui/sidebar-map.webp',
   'art/brand/logo-400.webp',
   'art/brand/logo-800.webp',
   'art/brand/monograma-64.webp',
