@@ -1,6 +1,7 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { seedAuditText } from '../e2e/audit-text-fixture';
 
 const scope = process.env.LMU_VISUAL_SCOPE ?? 'world';
 const world = scope === 'world' || scope === 'all';
@@ -119,6 +120,31 @@ if (world) {
 }
 
 if (core) {
+  test('Auditoria A04: progresso e histórico com dados sintéticos', async ({
+    page,
+  }, info) => {
+    await seedAuditText(page);
+    await page.goto('/progresso');
+    const report = page.locator('.productivity-progress');
+    await report
+      .getByText('Tendências semanais, mensais e horários', { exact: true })
+      .click();
+    await expect(
+      report.getByText('outubro de 2026: 1 ocorrência concluída.', {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await capture(page, info, '12-a04-progresso');
+    await page.goto('/missoes');
+    await page.getByRole('button', { name: 'Concluídas', exact: true }).click();
+    await expect(
+      page
+        .locator('.history-row')
+        .filter({ hasText: 'Caminhada recorrente sem rotina' }),
+    ).toContainText('Concluída');
+    await capture(page, info, '13-a04-historico');
+  });
+
   test('Hoje: vazio e criação de uma missão sintética', async ({
     page,
   }, info) => {

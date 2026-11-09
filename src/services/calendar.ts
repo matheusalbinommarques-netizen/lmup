@@ -36,3 +36,17 @@ export function formatCalendar(value?: string | Date | null): string {
     return 'Data antiga inválida';
   }
 }
+
+export function formatCalendarMonth(value: string): string {
+  try {
+    const key = calendarDate(`${value}-01`);
+    if (!key) return 'Mês antigo inválido';
+    return new Intl.DateTimeFormat('pt-BR', {
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'UTC',
+    }).format(new Date(`${key}T12:00:00Z`));
+  } catch {
+    return 'Mês antigo inválido';
+  }
+}
