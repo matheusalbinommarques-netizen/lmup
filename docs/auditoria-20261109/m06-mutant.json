@@ -1,0 +1,72 @@
+{
+  "numTotalTestSuites": 2,
+  "numPassedTestSuites": 0,
+  "numFailedTestSuites": 2,
+  "numPendingTestSuites": 0,
+  "numTotalTests": 3,
+  "numPassedTests": 2,
+  "numFailedTests": 1,
+  "numPendingTests": 0,
+  "numTodoTests": 0,
+  "snapshot": {
+    "added": 0,
+    "failure": false,
+    "filesAdded": 0,
+    "filesRemoved": 0,
+    "filesRemovedList": [],
+    "filesUnmatched": 0,
+    "filesUpdated": 0,
+    "matched": 0,
+    "total": 0,
+    "unchecked": 0,
+    "uncheckedKeysByFile": [],
+    "unmatched": 0,
+    "updated": 0,
+    "didUpdate": false
+  },
+  "startTime": 1794266161487,
+  "success": false,
+  "testResults": [
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["refreshCompletionStreak (caracterização)"],
+          "fullName": "refreshCompletionStreak (caracterização) recalcula com conclusões diretas, de ocorrência, estornadas, sem evento e legadas",
+          "status": "failed",
+          "title": "recalcula com conclusões diretas, de ocorrência, estornadas, sem evento e legadas",
+          "duration": 34.57553200000001,
+          "failureMessages": [
+            "AssertionError: expected [ 6, '2026-10-08' ] to deeply equal [ 5, '2026-10-08' ]\n    at /home/runner/work/lmup/lmup/src/services/refreshCompletionStreak.test.ts:102:28\n    at runNextTicks (node:internal/process/task_queues:65:5)\n    at processImmediate (node:internal/timers:541:9)\n    at file:///home/runner/work/lmup/lmup/node_modules/@vitest/runner/dist/chunk-artifact.js:1903:20"
+          ],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["refreshCompletionStreak (caracterização)"],
+          "fullName": "refreshCompletionStreak (caracterização) sem histórico com streakBefore, o perfil não muda",
+          "status": "passed",
+          "title": "sem histórico com streakBefore, o perfil não muda",
+          "duration": 7.196181999999965,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["refreshCompletionStreak (caracterização)"],
+          "fullName": "refreshCompletionStreak (caracterização) não faz leituras por ocorrência em activityEvents",
+          "status": "passed",
+          "title": "não faz leituras por ocorrência em activityEvents",
+          "duration": 6.923512999999957,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1794266161891,
+      "endTime": 1794266161938.9236,
+      "status": "failed",
+      "message": "",
+      "name": "/home/runner/work/lmup/lmup/src/services/refreshCompletionStreak.test.ts"
+    }
+  ]
+}
