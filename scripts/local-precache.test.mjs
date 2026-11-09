@@ -85,6 +85,7 @@ test('approved visual assets are available on the first offline visit without or
     'art/approved/navigation/Missoes_64.png',
     'art/approved/navigation/XP_128.png',
     'art/approved/paintings/01_Hoje_Vedria_panorama.webp',
+    'art/ui/sidebar-map.webp',
   ])
     assert.equal(isPrecacheAsset(path), true, path);
   for (const path of [

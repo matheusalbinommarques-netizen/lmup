@@ -33,8 +33,7 @@
   scrollbar-gutter: stable;
   background:
     linear-gradient(#061115 58%, #06111588),
-    url('/art/approved/paintings/05_Cartao_Mapa.webp') center bottom/auto 45%
-      no-repeat;
+    url('/art/ui/sidebar-map.webp') center bottom/auto 45% no-repeat;
   border-right: 1px solid #9e7b4366;
   margin: 0;
   border-radius: 0;

@@ -62,5 +62,6 @@ jobs:
           path: |
             visual-review/
             test-results-visual/
+            build/
           retention-days: 3
           if-no-files-found: error
