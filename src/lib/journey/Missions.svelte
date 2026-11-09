@@ -881,8 +881,7 @@
                         ? 'Corrigida'
                         : event.kind === 'review'
                           ? 'Revisão realizada'
-                          : event.occurrenceDate &&
-                              (task?.recurrence || task?.routineId)
+                          : event.occurrenceDate && task?.routineId
                             ? 'Rotina realizada'
                             : 'Concluída'}</small
                     >
