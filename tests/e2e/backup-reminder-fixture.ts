@@ -11,16 +11,16 @@ export async function seedBackupReminder(
   await page.clock.setFixedTime(new Date(REMINDER_NOW));
   await page.goto('/');
   await expect(page.locator('.today-hero')).toBeVisible();
-  await page.getByRole('button', { name: 'Nova miss�o', exact: true }).click();
+  await page.getByRole('button', { name: 'Nova missão', exact: true }).click();
   const dialog = page.getByRole('dialog', {
-    name: 'Uma nova miss�o',
+    name: 'Uma nova missão',
     exact: true,
   });
   await dialog
-    .getByLabel('O que voc� quer fazer?')
-    .fill('Minha miss�o para proteger');
+    .getByLabel('O que você quer fazer?')
+    .fill('Minha missão para proteger');
   await dialog
-    .getByRole('button', { name: 'Criar miss�o', exact: true })
+    .getByRole('button', { name: 'Criar missão', exact: true })
     .click();
   await expect(dialog).not.toBeVisible();
   await page.goto('/');
