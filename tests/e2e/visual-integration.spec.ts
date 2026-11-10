@@ -291,3 +291,32 @@ test('lista compacta preserva busca, filtros e seleção sem iniciar execução'
     ),
   ).toBe(true);
 });
+
+test('o fundo lateral usa a variante leve e as telas internas não baixam a pintura original', async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name.includes('mobile'),
+    'A barra lateral só existe no desktop.',
+  );
+  const requested: string[] = [];
+  page.on('request', (request) =>
+    requested.push(new URL(request.url()).pathname),
+  );
+  await page.goto('/missoes');
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await expect
+    .poll(() =>
+      page
+        .locator('.journey-sidebar')
+        .first()
+        .evaluate((element) => getComputedStyle(element).backgroundImage),
+    )
+    .toContain('/art/ui/sidebar-map.webp');
+  await expect
+    .poll(() => requested.some((path) => path === '/art/ui/sidebar-map.webp'))
+    .toBe(true);
+  expect(requested).not.toContain(
+    '/art/approved/paintings/05_Cartao_Mapa.webp',
+  );
+});

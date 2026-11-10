@@ -36,6 +36,16 @@ test('seis telas e biblioteca visual estão disponíveis na primeira navegação
       )
       .toEqual([]);
   }
+  const sidebar = await page.evaluate(async () => {
+    const response = await fetch('/art/ui/sidebar-map.webp');
+    return {
+      ok: response.ok,
+      type: response.headers.get('content-type'),
+      bytes: (await response.arrayBuffer()).byteLength,
+    };
+  });
+  expect(sidebar).toMatchObject({ ok: true, type: 'image/webp' });
+  expect(sidebar.bytes).toBeLessThan(400_000);
   await page.getByRole('button', { name: 'Nova missão', exact: true }).click();
   const missionForm = page.getByRole('dialog', { name: 'Uma nova missão' });
   await missionForm

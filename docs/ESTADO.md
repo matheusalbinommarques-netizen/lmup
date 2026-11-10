@@ -59,6 +59,9 @@ Execução e pendências do plano de 04/11: [reconciliação de 09/11](AUDITORIA
 | #77     | Capturas visuais sob demanda                                 | Capturar imagens não equivale à aprovação visual                         |
 | #58     | Rotinas legíveis e navegáveis pelo teclado                   | Validar teclado e composição na prévia achou o que os testes não pegavam |
 | #57     | Modelo de PR, estado e camadas de teste                      | –                                                                        |
+| #79     | A04 concluído e C02 medido com M06                           | Ganho medido não equivale à meta de latência atingida                    |
+| #75     | Liberdade do jogador na investigação do Oásis                | Cobrir desfechos, inatividade e produtividade independente               |
+| #80     | Fundo lateral com compressão A aprovada                      | Menos bytes de imagem não reduz pixels decodificados nem pré-cache total |
 | #56     | Testes não alteram capturas versionadas                      | Reproduzir o defeito antes de corrigir e testar o próprio verificador    |
 
 ## Pendências técnicas conhecidas
