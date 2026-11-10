@@ -62,4 +62,6 @@ Repetição de C02 no head `cd013da9` do #79: [execução #42719808747](https://
 
 ## Próximos candidatos, sem autorização nova implícita
 
-A14/DP2, D03 em diante, C03 depois de medir C02, A12 e decisões de arte e RPG. E02/E03 e E06–E09 continuam condicionados às decisões e evidências previstas. Não é correto chamar Ondas 3–5 de concluídas.
+A14/DP2: o autor autorizou seguir com o lembrete de 14 dias, dispensável, sem aviso em instalação vazia e sem cópia em pasta. Implementação e critérios em [A14-LEMBRETE-BACKUP.md](A14-LEMBRETE-BACKUP.md); aceite visual e merge permanecem separados da autorização de implementar.
+
+D03 em diante, C03 depois de medir C02, A12 e decisões de arte e RPG continuam candidatos. E02/E03 e E06–E09 continuam condicionados às decisões e evidências previstas. Não é correto chamar Ondas 3–5 de concluídas.

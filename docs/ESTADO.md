@@ -42,6 +42,7 @@ Execução e pendências do plano de 04/11: [reconciliação de 09/11](AUDITORIA
 - Telas já aprovadas só mudam com prévia antes e depois e aprovação do autor.
 - Nomes, artes e lore provisórios não são definitivos. A marca atual e a origem das artes estão em [arte/MARCA.md](arte/MARCA.md).
 - O retrato do Herói é provisório (ícone encapuzado aprovado dentro da moldura rúnica) até a decisão DP3; o retrato enviado pelo usuário sempre vence. `heroi.png` não é o padrão.
+- Hoje e Configurações têm um [lembrete opcional de backup a cada 14 dias](A14-LEMBRETE-BACKUP.md), dispensável por mais 14 dias. Instalação vazia não avisa; sem exportação anterior, a carência começa na primeira visita com conteúdo. Cópia automática em pasta continua fora do escopo.
 
 ## Entregas recentes
 

@@ -2,6 +2,12 @@ import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { seedAuditText } from '../e2e/audit-text-fixture';
+import {
+  OLD_EXPORT,
+  REMINDER_NOW,
+  expectBackupSnooze,
+  seedBackupReminder,
+} from '../e2e/backup-reminder-fixture';
 
 const scope = process.env.LMU_VISUAL_SCOPE ?? 'world';
 const world = scope === 'world' || scope === 'all';
@@ -120,6 +126,34 @@ if (world) {
 }
 
 if (core) {
+  test('A14: lembrete de backup em Hoje e Configurações, antes e depois', async ({
+    page,
+    context,
+  }, info) => {
+    await seedBackupReminder(page, REMINDER_NOW);
+    await capture(page, info, '14-a14-hoje-antes');
+    await page.goto('/config');
+    await expect(
+      page.getByRole('heading', { name: 'Configurações', exact: true }),
+    ).toBeVisible();
+    await capture(page, info, '15-a14-config-antes');
+    await page.evaluate(
+      (value) => localStorage.setItem('lmup:last-export', value),
+      OLD_EXPORT,
+    );
+    await page.reload();
+    await expect(
+      page.getByRole('complementary', { name: 'Lembrete de backup' }),
+    ).toBeVisible();
+    await capture(page, info, '15-a14-config-depois');
+    await page.goto('/');
+    await expect(
+      page.getByRole('complementary', { name: 'Lembrete de backup' }),
+    ).toBeVisible();
+    await capture(page, info, '14-a14-hoje-depois');
+    await expectBackupSnooze(page, context);
+  });
+
   test('Auditoria A04: progresso e histórico com dados sintéticos', async ({
     page,
   }, info) => {

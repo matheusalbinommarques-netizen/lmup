@@ -1,5 +1,7 @@
 <script lang="ts">
   import UpdateCenter from './UpdateCenter.svelte';
+  import BackupReminder from './BackupReminder.svelte';
+  import { hasBackupContent } from '$services/backupReminder';
   import { onMount } from 'svelte';
   import {
     comfort,
@@ -207,7 +209,7 @@
   </p>{/if}
 <section class="journey-stack">
   <Card
-    ><div class="journey-stack">
+    ><div class="journey-stack" id="backup">
       <div>
         <p class="lmu-eyebrow">Armazenamento local</p>
         <h2>Seus dados ficam neste navegador</h2>
@@ -251,6 +253,13 @@
         hidden
         aria-label="Arquivo de backup JSON"
       />
+      {#if data}
+        <BackupReminder
+          hasContent={hasBackupContent(data)}
+          onexport={() => download()}
+          {busy}
+        />
+      {/if}
       <p class="lmu-hint">
         O arquivo pode conter nome, notas, missões, compras e cuidados dos
         companheiros. Guarde uma cópia externa em local de sua confiança.
