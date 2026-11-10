@@ -5,6 +5,7 @@ import { seedAuditText } from '../e2e/audit-text-fixture';
 import {
   OLD_EXPORT,
   REMINDER_NOW,
+  expectBackupSnooze,
   seedBackupReminder,
 } from '../e2e/backup-reminder-fixture';
 
@@ -127,6 +128,7 @@ if (world) {
 if (core) {
   test('A14: lembrete de backup em Hoje e Configurações, antes e depois', async ({
     page,
+    context,
   }, info) => {
     await seedBackupReminder(page, REMINDER_NOW);
     await capture(page, info, '14-a14-hoje-antes');
@@ -149,6 +151,7 @@ if (core) {
       page.getByRole('complementary', { name: 'Lembrete de backup' }),
     ).toBeVisible();
     await capture(page, info, '14-a14-hoje-depois');
+    await expectBackupSnooze(page, context);
   });
 
   test('Auditoria A04: progresso e histórico com dados sintéticos', async ({

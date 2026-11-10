@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import {
   OLD_EXPORT,
   REMINDER_NOW,
+  expectBackupSnooze,
   seedBackupReminder,
 } from './backup-reminder-fixture';
 
@@ -88,23 +89,7 @@ test('A14: adiar sincroniza entre abas, persiste ao recarregar e volta após 14 
   context,
 }) => {
   await seedBackupReminder(page);
-  const other = await context.newPage();
-  await other.clock.install({ time: new Date(REMINDER_NOW) });
-  await other.goto('/config');
-  const reminder = (tab: typeof page) =>
-    tab.getByRole('complementary', { name: 'Lembrete de backup' });
-  await expect(reminder(other)).toBeVisible();
-  await reminder(page)
-    .getByRole('button', { name: 'Lembrar em 14 dias' })
-    .click();
-  await expect(reminder(page)).toHaveCount(0);
-  await expect(reminder(other)).toHaveCount(0);
-  await page.reload();
-  await expect(page.locator('.today-hero')).toBeVisible();
-  await expect(reminder(page)).toHaveCount(0);
-  await page.clock.setFixedTime(new Date('2026-12-14T12:00:00Z'));
-  await page.reload();
-  await expect(reminder(page)).toBeVisible();
+  await expectBackupSnooze(page, context);
 });
 
 test('A14: falha no download preserva o aviso e a data da exportação anterior', async ({
