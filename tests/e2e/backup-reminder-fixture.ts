@@ -8,6 +8,7 @@ export async function seedBackupReminder(
   lastExport: string | null = OLD_EXPORT,
 ) {
   await page.clock.install({ time: new Date(REMINDER_NOW) });
+  await page.clock.setFixedTime(new Date(REMINDER_NOW));
   await page.goto('/');
   await expect(page.locator('.today-hero')).toBeVisible();
   await page.getByRole('button', { name: 'Nova miss�o', exact: true }).click();
