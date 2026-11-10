@@ -1,5 +1,7 @@
 <script lang="ts">
   import { todayView } from './todayView';
+  import BackupReminder from './BackupReminder.svelte';
+  import { hasBackupContent } from '$services/backupReminder';
   import { countLabel } from '$lib/plural';
   import {
     changeToday,
@@ -319,6 +321,14 @@
           : ''}</a
       >
     </header>
+    <BackupReminder
+      hasContent={hasBackupContent({
+        tasks: data.tasks.length,
+        projects: data.projects.length,
+        events: data.events.length,
+        profile: data.profile,
+      })}
+    />
     <div class="today-main">
       <div class="today-plan">
         <section

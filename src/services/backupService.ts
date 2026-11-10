@@ -1,4 +1,5 @@
 import { browser } from '$app/environment';
+import { recordBackupExport } from './backupReminder';
 import {
   BACKUP_LIMIT,
   createJourneyBackup,
@@ -35,11 +36,7 @@ export async function parseBackupFile(file: File): Promise<unknown> {
 export async function exportData(): Promise<void> {
   if (browser) {
     download(await createJourneyBackup(), 'lmup-backup');
-    try {
-      localStorage.setItem('lmup:last-export', new Date().toISOString());
-    } catch {
-      /* Export remains usable without preference storage. */
-    }
+    recordBackupExport();
   }
 }
 
