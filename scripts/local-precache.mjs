@@ -1,4 +1,3 @@
-import campAssets from '../static/art/camp/preservation-manifest.json' with { type: 'json' };
 import approvedIcons from '../src/lib/content/approved-icons.json' with { type: 'json' };
 // A deterministic manifest for this app's static assets; no globbing dependency.
 // Personal data never enters this generator: only the compiled build/ tree is read.
@@ -18,9 +17,6 @@ const exact = new Set([
     'lucan-dorian.webp',
     'lucan-dorian-horizontal.png',
   ].map((name) => `art/world/${name}`),
-  ...campAssets.files
-    .filter(({ file }) => file.endsWith('.png'))
-    .map(({ file }) => file),
   ...approvedIcons.flatMap(({ key }) =>
     [64, 128].map((size) => `art/approved/icons/${key}/${size}.png`),
   ),
