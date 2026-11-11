@@ -363,7 +363,7 @@
           </p>
           <div class="reward-strip" aria-label="Recompensa de exemplo">
             <span><strong>+53</strong> XP</span><span
-              ><strong>+25</strong> Gold</span
+              ><strong>+25</strong> Ouro</span
             ><span><strong>+2</strong> Comida</span>
           </div>
           <Artwork
@@ -419,7 +419,7 @@
           </ul>
           {#if !'dar forma a uma boa ideia'.includes(search.toLocaleLowerCase('pt-BR')) && !added.some( (title) => title
                   .toLocaleLowerCase('pt-BR')
-                  .includes(search.toLocaleLowerCase('pt-BR')), )}<div
+                  .includes(search.toLocaleLowerCase('pt-BR')) )}<div
               class="empty-state"
             >
               <Icon name="missions" size={36} />

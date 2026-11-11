@@ -493,7 +493,7 @@ export const ALL_ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'pao-duro',
     title: 'Pão-Duro',
-    description: 'Mantenha um saldo de pelo menos 5.000 Gold.',
+    description: 'Mantenha um saldo de pelo menos 5.000 Ouro.',
     icon: '/art/badge-icons/pao-duro.png',
     rarity: 'raro',
     category: 'economia',
@@ -502,7 +502,7 @@ export const ALL_ACHIEVEMENTS: AchievementDef[] = [
   {
     id: 'magnata',
     title: 'Magnata',
-    description: 'Mantenha um saldo de pelo menos 50.000 Gold.',
+    description: 'Mantenha um saldo de pelo menos 50.000 Ouro.',
     icon: '/art/badge-icons/magnata.png',
     rarity: 'épico',
     category: 'economia',

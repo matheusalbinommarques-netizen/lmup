@@ -96,7 +96,7 @@
     </section>
     <div class="collection-summary" aria-label="Seus recursos">
       <span><strong>{data.profile.totalXpEarned}</strong> XP acumulado</span
-      ><span><strong>{data.profile.gold}</strong> Gold disponível</span><span
+      ><span><strong>{data.profile.gold}</strong> Ouro disponível</span><span
         ><strong>{data.profile.food ?? 0}</strong> Comida disponível</span
       >
     </div>
@@ -152,12 +152,12 @@
             ? nextRow?.inconsistent
               ? 'Há uma diferença entre o recibo e a marcação de prêmio. Confira seus registros antes de continuar.'
               : nextRow?.markedReceived
-                ? 'O prêmio deste marco já consta como recebido. Alcançá-lo novamente não gera outro Gold.'
+                ? 'O prêmio deste marco já consta como recebido. Alcançá-lo novamente não gera outro Ouro.'
                 : nextRow?.rewardStatus === 'reversed'
                   ? 'O prêmio anterior foi estornado. Ao alcançar o marco em uma nova ação válida, o cálculo pode registrá-lo novamente.'
                   : 'Este marco prevê ' +
                     next.goldRewardOnEnter +
-                    ' Gold. A recompensa é registrada na ação que alcançar o marco; abrir a paisagem não concede Gold.'
+                    ' Ouro. A recompensa é registrada na ação que alcançar o marco; abrir a paisagem não concede Ouro.'
             : 'Você já conhece todas as paisagens desta versão.'}
         </p>
         <a class="journey-link" href="/#journey-main"
@@ -247,7 +247,7 @@
           </details>
           {#if row.stage.id > 1}<p class="lmu-hint">
               Regra atual do marco: {row.stage.minXp} XP · {row.stage
-                .goldRewardOnEnter} Gold.
+                .goldRewardOnEnter} Ouro.
             </p>{/if}
           {#if row.inconsistent}<p class="journey-error">
               O recibo e a marcação de prêmio não coincidem. Confira o histórico
@@ -267,7 +267,7 @@
               </p>
               <p>
                 Recompensa total da ação: +{row.source.reward.xp} XP · +{row
-                  .source.reward.gold} Gold · +{row.source.reward.food} Comida.
+                  .source.reward.gold} Ouro · +{row.source.reward.food} Comida.
               </p>
               <p class="lmu-hint">
                 O total pode incluir outros ganhos da ação, além do marco.
@@ -296,7 +296,7 @@
   description="Uma paisagem da sua jornada."
 >
   {#if previewOpen}<p class="lmu-hint" tabindex="-1" data-initial-focus>
-      Prévia visual. Não altera o ambiente ativo, XP ou Gold.
+      Prévia visual. Não altera o ambiente ativo, XP ou Ouro.
     </p>
     <div class="refuge-preview-art">
       <Artwork

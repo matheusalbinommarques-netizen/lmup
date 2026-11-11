@@ -63,7 +63,7 @@ test('estado inicial: retrato provisório identificado, nível 1, recursos zerad
     page.getByText('250 XP para o nível 2', { exact: false }),
   ).toBeVisible();
   const resources = page.locator('.resources');
-  for (const label of ['XP acumulado', 'Gold disponível', 'Comida disponível'])
+  for (const label of ['XP acumulado', 'Ouro disponível', 'Comida disponível'])
     await expect(resources.getByText(label, { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /: vazio$/ })).toHaveCount(6);
   await expect(
