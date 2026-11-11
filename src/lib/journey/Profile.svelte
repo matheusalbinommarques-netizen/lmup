@@ -51,7 +51,7 @@
           `Ambiente: +${Math.round((data.sanctuary.xpBonusMultiplier - 1) * 100)}% XP.`,
           `Companhia: ${data.active && data.companion ? companionBonusLabel(data.companion) : 'sem bônus ativo'}.`,
           `Equipamento em missões e revisões: +${data.mods.taskXpBonusPercent ?? 0}% XP.`,
-          `Equipamento: +${Math.round((data.mods.goldMultiplier - 1) * 100)}% Gold.`,
+          `Equipamento: +${Math.round((data.mods.goldMultiplier - 1) * 100)}% Ouro.`,
           `Equipamento no ambiente: +${data.mods.sanctuaryBonusExtraPercent} ponto(s) percentual(is) de XP.`,
           `Equipamento no bônus de projeto: +${Math.round(data.mods.projectBonusExtraFraction * 100)} ponto(s) percentual(is).`,
           `Proteção de sequência: ${data.mods.streakProtectionDays} dia(s).`,
@@ -144,7 +144,7 @@
         <div>
           <ApprovedIcon name="ouro" size={40} />
           <dd>{data.profile.gold}</dd>
-          <dt>Gold disponível</dt>
+          <dt>Ouro disponível</dt>
         </div>
         <div>
           <ApprovedIcon name="alimentacao" size={40} />

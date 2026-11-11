@@ -101,7 +101,7 @@ test('explorar paisagem futura não muda ambiente, saldo ou registros e devolve 
   });
   await expect(
     preview.getByText(
-      'Prévia visual. Não altera o ambiente ativo, XP ou Gold.',
+      'Prévia visual. Não altera o ambiente ativo, XP ou Ouro.',
       { exact: true },
     ),
   ).toBeFocused();
@@ -135,7 +135,7 @@ test('marco recebido preserva paisagem, recursos e recibo após correção da mi
   ).toBeVisible();
   await sprout.getByText('Ver registro deste marco', { exact: true }).click();
   await expect(
-    sprout.getByText(/Recompensa total da ação:.*225 Gold/),
+    sprout.getByText(/Recompensa total da ação:.*225 Ouro/),
   ).toBeVisible();
   await capture(page, 'marco-registrado', info.project.name);
   await page.goto(url);

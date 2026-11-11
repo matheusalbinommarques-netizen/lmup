@@ -33,6 +33,7 @@
     saveSession,
   } from '$services/savedSessionService';
   import { saveRoutine, setRoutineStatus } from '$services/routineService';
+  import { discardDraftMissions } from '$services/taskRemoval';
   import { WEEKDAYS, routineRecurrenceLabel } from '$services/recurrence';
   import { freeSlot, recommendations } from '$services/productivityInsights';
   import type {
@@ -83,6 +84,8 @@
     addOpen = $state(false);
   let routineSearch = $state('');
   let creatingForRoutine = $state(false);
+  // Missions created inside this routine editor; they only stay if the routine is saved with them.
+  let draftMissions = $state<number[]>([]);
   guardUpdates(() => editing || editOpen || busy);
   $effect(() => {
     void snapshot;
@@ -134,8 +137,10 @@
     void goto(url.pathname + url.search, { noScroll: true, keepFocus: true });
   }
   function addedMission(id: number, time: string | null = null) {
-    if (creatingForRoutine && !entries.some((entry) => entry.taskId === id))
+    if (creatingForRoutine && !entries.some((entry) => entry.taskId === id)) {
       entries = [...entries, { taskId: id, time }];
+      draftMissions = [...draftMissions, id];
+    }
     creatingForRoutine = false;
     notice =
       'Missão criada e adicionada à sequência. Salve a rotina para aplicar o vínculo.';
@@ -252,6 +257,7 @@
     routineRevision = row?.revision;
     quota = row?.pauseQuota ?? 2;
     period = row?.pausePeriodDays ?? 30;
+    draftMissions = [];
     editing = true;
   }
   async function startSession(
@@ -291,8 +297,28 @@
         pauseQuota: quota,
         pausePeriodDays: period,
       });
+      // Created here but removed from the sequence before saving: not created.
+      await discardDraftMissions(
+        draftMissions.filter((id) => !entries.some((e) => e.taskId === id)),
+      );
+      draftMissions = [];
       editing = false;
     }, 'Rotina salva. Ocorrências iniciadas e histórico foram preservados.');
+  }
+  async function cancelRoutineForm() {
+    if (busy) return;
+    if (!draftMissions.length) {
+      editing = false;
+      return;
+    }
+    await run(async () => {
+      const kept = await discardDraftMissions(draftMissions);
+      draftMissions = [];
+      editing = false;
+      if (kept.length)
+        notice =
+          'Rotina cancelada. Missões que já tinham progresso foram mantidas.';
+    });
   }
   function earliestSlot(date: string) {
     if (date !== dateKey() || now.getHours() < 8) return '08:00';
@@ -905,7 +931,7 @@
             >
           </details>
           <div class="journey-actions routine-footer">
-            <Button variant="quiet" onclick={() => (editing = false)}
+            <Button variant="quiet" disabled={busy} onclick={cancelRoutineForm}
               >Cancelar</Button
             ><Button type="submit" disabled={busy}>Salvar rotina</Button>
           </div>

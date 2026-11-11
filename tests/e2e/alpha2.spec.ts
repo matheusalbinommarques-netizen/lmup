@@ -96,7 +96,7 @@ test('compras e cuidado entram como gasto sem fabricar XP e saldos correspondem 
     .click();
   await page
     .getByRole('dialog', { name: 'Confirmar compra', exact: true })
-    .getByRole('button', { name: 'Confirmar · 500 Gold', exact: true })
+    .getByRole('button', { name: 'Confirmar · 500 Ouro', exact: true })
     .click();
   await expect(
     page.getByRole('button', { name: 'Equipar Cota da Rotina', exact: true }),
@@ -126,11 +126,11 @@ test('compras e cuidado entram como gasto sem fabricar XP e saldos correspondem 
   ).toBeVisible();
   await page.getByLabel('Mostrar', { exact: true }).selectOption('purchase');
   await expect(page.locator('.progress-receipt')).toHaveText(
-    '0 XP · -500 Gold · 0 Comida',
+    '0 XP · -500 Ouro · 0 Comida',
   );
   await page.getByLabel('Mostrar', { exact: true }).selectOption('care');
   await expect(page.locator('.progress-receipt')).toHaveText(
-    '0 XP · 0 Gold · -100 Comida',
+    '0 XP · 0 Ouro · -100 Comida',
   );
 });
 test('legado preserva saldo sem gerar movimentos ou sessões fictícias', async ({
@@ -327,7 +327,7 @@ test('reinício exige confirmação, preserva identidade e conforto e permite re
     .getByRole('button', { name: 'Comprar Cota da Rotina', exact: true })
     .click();
   await page
-    .getByRole('button', { name: 'Confirmar · 500 Gold', exact: true })
+    .getByRole('button', { name: 'Confirmar · 500 Ouro', exact: true })
     .click();
   await expect(
     page.getByRole('button', { name: 'Equipar Cota da Rotina', exact: true }),

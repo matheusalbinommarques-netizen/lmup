@@ -365,3 +365,28 @@ test('rotina agendada para outro dia não cria sessão vazia', async ({
     'Selecione ocorrências disponíveis hoje.',
   );
 });
+
+test('cancelar a rotina não cria as missões montadas no editor', async ({
+  page,
+}) => {
+  const routine = await prepare(page);
+  for (const title of ['Alongar', 'Ler uma página']) await add(page, title);
+  await routine.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await expect(routine).not.toBeVisible();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  // A mission created outside the editor proves the list has loaded.
+  await page.goto('/missoes');
+  await page
+    .getByRole('button', { name: 'Nova missão', exact: true })
+    .first()
+    .click();
+  const form = page.getByRole('dialog', { name: 'Uma nova missão' });
+  await form.getByLabel('O que você quer fazer?').fill('Referência fora');
+  await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
+  await expect(form).not.toBeVisible();
+  await expect(page.getByText('Referência fora').first()).toBeVisible();
+  await expect(page.getByText('Alongar', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Ler uma página', { exact: true })).toHaveCount(
+    0,
+  );
+});

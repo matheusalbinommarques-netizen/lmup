@@ -82,7 +82,7 @@
       if (!result.ok)
         throw new Error(
           result.code === 'no_funds'
-            ? 'Você não tem Gold suficiente.'
+            ? 'Você não tem Ouro suficiente.'
             : result.code === 'capacity'
               ? 'Sua coleção está sem espaço. Equipe uma mochila para ampliar a capacidade.'
               : 'Este item não está disponível.',
@@ -132,10 +132,10 @@
     <p>
       {inventoryOnly
         ? 'O que você conquistou, pronto para usar.'
-        : 'Conheça o efeito antes de gastar seu Gold.'}
+        : 'Conheça o efeito antes de gastar seu Ouro.'}
     </p>
   </div>
-  <p class="collection-balance">{data?.profile?.gold ?? 0} Gold disponível</p>
+  <p class="collection-balance">{data?.profile?.gold ?? 0} Ouro disponível</p>
 </header>
 {#if !embedded}<CollectionNav />{/if}
 <p role="status">{notice}</p>
@@ -181,7 +181,7 @@
           <p class="lmu-muted">{item.description}</p>
           {#if preview}<p class="lmu-hint">
               Ao equipar, missão de 100 XP base: +{preview.xp} XP · +{preview.gold}
-              Gold · +{preview.food} Comida.
+              Ouro · +{preview.food} Comida.
             </p>{/if}{#if current && current.itemId !== item.id}<p
               class="lmu-hint"
             >
@@ -196,7 +196,7 @@
                 item.name}
               >{owned.equipped ? 'Guardar equipamento' : 'Equipar'}</Button
             >{:else}<p>
-              <strong>{item.price} Gold</strong
+              <strong>{item.price} Ouro</strong
               >{#if data.profile.gold < item.price}
                 · faltam {item.price - data.profile.gold}{/if}
             </p>
@@ -212,7 +212,7 @@
               aria-label={'Comprar ' + item.name}
               >{item.status !== 'available'
                 ? 'Em breve'
-                : 'Comprar · ' + item.price + ' Gold'}</Button
+                : 'Comprar · ' + item.price + ' Ouro'}</Button
             >{/if}
         </div></Card
       >
@@ -227,7 +227,7 @@
         </h2>
         <p class="lmu-muted">
           {inventoryOnly
-            ? 'O Gold das missões pode virar equipamentos. Nenhuma compra é necessária para continuar.'
+            ? 'O Ouro das missões pode virar equipamentos. Nenhuma compra é necessária para continuar.'
             : 'Experimente outro nome ou espaço.'}
         </p>
         {#if inventoryOnly && !embedded}<a
@@ -263,9 +263,9 @@
   >{#if selected}<div class="collection-confirm">
       <h3>{selected.name}</h3>
       <p>{selected.description}</p>
-      <p>Preço: <strong>{selected.price} Gold</strong></p>
+      <p>Preço: <strong>{selected.price} Ouro</strong></p>
       <p>
-        Saldo após a compra: {(data?.profile?.gold ?? 0) - selected.price} Gold.
+        Saldo após a compra: {(data?.profile?.gold ?? 0) - selected.price} Ouro.
       </p>
       <p class="lmu-hint">
         A compra adiciona o item à coleção. Equipar é uma escolha separada.
@@ -280,7 +280,7 @@
             open = false;
           }}>Cancelar</Button
         ><Button loading={busy} onclick={purchase}
-          >Confirmar · {selected.price} Gold</Button
+          >Confirmar · {selected.price} Ouro</Button
         >
       </footer>
     </div>{/if}</Dialog
