@@ -1,5 +1,6 @@
 <!-- src/lib/AvatarAchievementsPanel.svelte -->
 <script lang="ts">
+  import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
   import { onMount } from 'svelte';
   import { liveQuery } from 'dexie';
   import { db, type Task, type Companion, type Profile } from '$services/db';
@@ -392,11 +393,9 @@
               class="h-full w-full rounded-full object-cover"
             />
           {:else}
-            <img
-              src="/art/heroi.png"
-              alt="Avatar do herói"
-              class="h-full w-full rounded-full object-cover"
-            />
+            <span role="img" aria-label="Silhueta do herói"
+              ><ApprovedIcon name="heroi" size={96} /></span
+            >
           {/if}
         </div>
         <div class="text-xs">

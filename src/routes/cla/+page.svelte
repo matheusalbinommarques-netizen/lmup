@@ -1,5 +1,6 @@
 <!-- src/routes/cla/+page.svelte -->
 <script lang="ts">
+  import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
   import { db, type Profile } from '$services/db';
   import { liveQuery } from 'dexie';
   import { onMount } from 'svelte';
@@ -249,11 +250,9 @@
                           class="absolute inset-0 w-full h-full pointer-events-none scale-[1.50]"
                         />
                       {:else if player.isUser}
-                        <img
-                          src="/art/hero-avatar-default.png"
-                          alt="Seu Avatar"
-                          class="w-full h-full object-cover scale-[1.50]"
-                        />
+                        <span role="img" aria-label="Silhueta do seu herói"
+                          ><ApprovedIcon name="heroi" size={40} /></span
+                        >
                       {:else}
                         <span>{player.name[0]}</span>
                       {/if}
