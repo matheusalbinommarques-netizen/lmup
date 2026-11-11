@@ -100,7 +100,7 @@ test('approved visual assets are available on the first offline visit without or
     assert.equal(isPrecacheAsset(path), false, path);
 });
 
-test('integrated camp precaches only preserved sprites while laboratory stays excluded', () => {
+test('removed legacy isometric camp art never enters precache', () => {
   for (const name of [
     'forge-feudalwars.png',
     'hall-feudalwars.png',
@@ -116,7 +116,7 @@ test('integrated camp precaches only preserved sprites while laboratory stays ex
     'region/tree-30.png',
     'region/tree-36.png',
   ])
-    assert.equal(isPrecacheAsset('art/camp/' + name), true);
+    assert.equal(isPrecacheAsset('art/camp/' + name), false);
   assert.equal(isPrecacheAsset('art/camp/not-reviewed.png'), false);
   assert.equal(isPrecacheAsset('art/lab/camp/forge-feudalwars.png'), false);
   assert.equal(isPrecacheAsset('art/camp/preservation-manifest.json'), false);
