@@ -65,11 +65,11 @@ test('compra confirma custo, troca de espaço e prévia coincidem com missão re
     exact: true,
   });
   await expect(
-    dialog.getByText('Saldo após a compra: 18200 Gold.', { exact: true }),
+    dialog.getByText('Saldo após a compra: 18200 Ouro.', { exact: true }),
   ).toBeVisible();
   await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click();
   await expect(
-    page.getByText('20000 Gold disponível', { exact: true }),
+    page.getByText('20000 Ouro disponível', { exact: true }),
   ).toBeVisible();
   await buy(page, 'Espada da Eficiência');
   await page
@@ -89,7 +89,7 @@ test('compra confirma custo, troca de espaço e prévia coincidem com missão re
   ).toBeVisible();
   await expect(
     item(page, 'Lâmina da Otimização').getByText(
-      'Ao equipar, missão de 100 XP base: +116 XP · +50 Gold · +4 Comida.',
+      'Ao equipar, missão de 100 XP base: +116 XP · +50 Ouro · +4 Comida.',
       { exact: true },
     ),
   ).toBeVisible();
@@ -140,7 +140,7 @@ test('duas abas compram um equipamento uma vez e preservam o saldo', async ({
     [page, other].map((tab) =>
       tab
         .getByRole('dialog', { name: 'Confirmar compra', exact: true })
-        .getByRole('button', { name: 'Confirmar · 1800 Gold', exact: true })
+        .getByRole('button', { name: 'Confirmar · 1800 Ouro', exact: true })
         .evaluate((button: HTMLButtonElement) => button.click()),
     ),
   );

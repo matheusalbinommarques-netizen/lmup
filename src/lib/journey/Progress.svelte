@@ -192,7 +192,7 @@
       </p>
     </div>
     <div class="progress-balance-grid">
-      {#each [['xp', 'XP', data.profile.totalXpEarned], ['gold', 'Gold', data.profile.gold], ['food', 'Comida', data.profile.food ?? 0]] as [key, label, current] (key)}<Card
+      {#each [['xp', 'XP', data.profile.totalXpEarned], ['gold', 'Ouro', data.profile.gold], ['food', 'Comida', data.profile.food ?? 0]] as [key, label, current] (key)}<Card
           ><h3>{label}</h3>
           <p>
             Anterior ou sem registro: {signed(
@@ -255,15 +255,15 @@
                   row.food < 0}
               >
                 {signed(row.xp)} XP · {row.unknownCost
-                  ? 'Gold sem valor registrado'
-                  : signed(row.gold) + ' Gold'} · {signed(row.food)} Comida
+                  ? 'Ouro sem valor registrado'
+                  : signed(row.gold) + ' Ouro'} · {signed(row.food)} Comida
               </p>
               {#if row.event}<details>
                   <summary>Ver recibo</summary>
                   <p>
                     XP base: {row.event.baseXp}. Multiplicadores registrados: XP {row.event.modifiers.xpMultiplier.toFixed(
                       2,
-                    )} · Gold {row.event.modifiers.goldMultiplier.toFixed(2)} · Comida
+                    )} · Ouro {row.event.modifiers.goldMultiplier.toFixed(2)} · Comida
                     {row.event.modifiers.foodMultiplier.toFixed(2)}.
                   </p>
                   {#if row.event.grossReward}<p>

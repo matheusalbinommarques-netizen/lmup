@@ -253,7 +253,7 @@ for (const state of states)
         await expect(page.locator('.horizon-hero')).toContainText(
           'Helena da Aurora',
         );
-        await expect(page.locator('.horizon-hero')).toContainText('735 Gold');
+        await expect(page.locator('.horizon-hero')).toContainText('735 Ouro');
         await expect(page.locator('.horizon-hero')).toContainText('24 Comida');
         const earned = await page.evaluate(
           () =>

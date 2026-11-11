@@ -202,13 +202,13 @@
     </div>
     {#if bonusEvent}<p class="journey-status">
         Recibo do projeto: +{bonusEvent.reward.xp} XP · +{bonusEvent.reward
-          .gold} Gold · +{bonusEvent.reward.food} Comida.
+          .gold} Ouro · +{bonusEvent.reward.food} Comida.
       </p>{/if}
     {#if bonus}<p class="lmu-hint">
         {project.rewardGranted
           ? 'Bônus já registrado.'
           : 'Prévia do próximo bônus:'}
-        {#if !project.rewardGranted}+{bonus.xp} XP · +{bonus.gold} Gold · +{bonus.food}
+        {#if !project.rewardGranted}+{bonus.xp} XP · +{bonus.gold} Ouro · +{bonus.food}
           Comida.{/if} Base de 10% do XP das missões, acrescida do equipamento de
         projeto. Dividir em mais tarefas não aumenta esse percentual.
       </p>{/if}{#if project.rewardGranted}<p class="lmu-hint">

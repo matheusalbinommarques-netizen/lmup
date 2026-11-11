@@ -28,7 +28,7 @@ export interface EcoStageConfig {
  *  - Árvore Jovem:   +10%
  *  - Floresta Anciã: +20%
  *
- * Rewards de Gold ao entrar:
+ * Rewards de Ouro ao entrar:
  *  - Brotinho:       +200
  *  - Árvore Jovem:   +500
  *  - Floresta Anciã: +1000
