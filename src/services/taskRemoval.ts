@@ -234,3 +234,31 @@ export async function removeTask(
   }
   return result;
 }
+/**
+ * Missions created inside a routine editor that was cancelled. Only missions
+ * still without any history are erased (same rule as the removal dialog);
+ * one that gained progress meanwhile, e.g. in another tab, is kept.
+ * Returns the ids that were kept.
+ */
+export async function discardDraftMissions(ids: number[]): Promise<number[]> {
+  const kept: number[] = [];
+  for (const id of new Set(ids)) {
+    if (!(await db.tasks.get(id))) continue;
+    const preview = await previewTaskRemoval(id);
+    if (preview.mode !== 'delete' || !preview.canDelete) {
+      kept.push(id);
+      continue;
+    }
+    try {
+      await removeTask(
+        id,
+        preview.token,
+        `draft-discard:${id}:${crypto.randomUUID()}`,
+        'delete',
+      );
+    } catch {
+      kept.push(id);
+    }
+  }
+  return kept;
+}

@@ -2,7 +2,11 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { db } from './db';
 import { initializeJourney } from './profileService';
 import { saveTaskDefinition } from './taskDefinitionService';
-import { previewTaskRemoval, removeTask } from './taskRemoval';
+import {
+  discardDraftMissions,
+  previewTaskRemoval,
+  removeTask,
+} from './taskRemoval';
 import { completeTask } from './taskService';
 import {
   ensureOccurrence,
@@ -193,4 +197,30 @@ it('falha na gravação final reverte toda a exclusão', async () => {
     db.productivityAudit.hook('creating').unsubscribe(failure);
   }
   expect((await createJourneyBackup()).data).toEqual(before.data);
+});
+
+it('cancelar o editor de rotina apaga as missões novas sem histórico e preserva as que ganharam progresso', async () => {
+  const fresh = await create('Nova no editor');
+  const progressed = await create('Concluída em outra aba');
+  const old = await create('Já existia');
+  await completeTask(progressed);
+  const profile = await db.profile.get(1);
+  const events = await db.activityEvents.count();
+
+  expect(await discardDraftMissions([fresh, progressed, fresh, 999])).toEqual([
+    progressed,
+  ]);
+  expect(await db.tasks.get(fresh)).toBeUndefined();
+  expect(await db.occurrences.where('taskId').equals(fresh).count()).toBe(0);
+  expect(await db.tasks.get(progressed)).toBeTruthy();
+  expect(await db.tasks.get(old)).toBeTruthy();
+  // Saldos, recompensas e histórico intactos; repetir não muda nada.
+  expect(await db.profile.get(1)).toMatchObject({
+    gold: profile!.gold,
+    totalXpEarned: profile!.totalXpEarned,
+    food: profile!.food,
+  });
+  expect(await db.activityEvents.count()).toBe(events);
+  expect(await discardDraftMissions([fresh, progressed])).toEqual([progressed]);
+  expect(await db.tasks.count()).toBe(2);
 });
