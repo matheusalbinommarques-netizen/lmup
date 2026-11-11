@@ -20,7 +20,7 @@
   import Icon from '$lib/ui/Icon.svelte';
   import Dialog from '$lib/ui/Dialog.svelte';
   let { id }: { id: number | null } = $props();
-  let data = $state<JourneySnapshot>();
+  let data = $state.raw<JourneySnapshot>();
   let edit = $state(false),
     create = $state(false),
     associate = $state(false),

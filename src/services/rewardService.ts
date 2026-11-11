@@ -14,6 +14,7 @@ import {
 import { computeStreakWithProtection } from './streakService';
 import { settleResources } from './productivityRules';
 import { ZERO_RESOURCES, type Resources } from './productivityTypes';
+import type { PlanningData } from './occurrenceService';
 
 export const progressTransaction = <T>(work: () => Promise<T>) =>
   db.transaction('rw', db.tables, work);
@@ -267,10 +268,12 @@ export function ordinaryReward(event: ActivityEvent): Resources {
   };
 }
 
-export async function refreshCompletionStreak() {
+export async function refreshCompletionStreak(
+  data?: Pick<PlanningData, 'events' | 'occurrences'>,
+) {
   const profile = await db.profile.get(1);
   if (!profile) return;
-  const events = await db.activityEvents.toArray();
+  const events = data?.events ?? (await db.activityEvents.toArray());
   const eventsById = new Map(events.map((event) => [event.id, event]));
   const history = events
     .filter((event) => event.streakBefore)
@@ -280,7 +283,7 @@ export async function refreshCompletionStreak() {
   const completions = history
     .filter((event) => !event.occurrenceId && !event.reversedAt)
     .map((event) => ({ day: event.date, protection: event.protectionDays }));
-  for (const row of await db.occurrences.toArray())
+  for (const row of data?.occurrences ?? (await db.occurrences.toArray()))
     if (row.status === 'completed' && row.completedLocalDate) {
       const event = row.completionEventId
         ? eventsById.get(row.completionEventId)

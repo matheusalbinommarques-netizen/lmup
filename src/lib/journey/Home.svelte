@@ -37,7 +37,7 @@
     selectNextOccurrence,
     usesTaskExecution,
   } from './homePriority';
-  let data = $state<JourneySnapshot>();
+  let data = $state.raw<JourneySnapshot>();
   let error = $state(''),
     busy = $state(false),
     open = $state(false);

@@ -19,7 +19,7 @@
   import RpgTrim from '$lib/ui/RpgTrim.svelte';
 
   let session = $state<MissionSession | null>(null);
-  let snapshot = $state<JourneySnapshot>();
+  let snapshot = $state.raw<JourneySnapshot>();
   let today = $state(dateKey());
   let error = $state('');
   let navigationBlocked = $state(false);

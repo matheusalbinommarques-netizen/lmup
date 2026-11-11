@@ -6,28 +6,39 @@ import { buildHeroModifiersFromOwned } from './gearService';
 import { getActiveCompanionBuffs } from './companionService';
 import { calculateReward } from './rewardService';
 import { readAchievementStats } from './productivityAchievements';
-import { currentOccurrences } from './occurrenceService';
+import {
+  projectCurrentOccurrences,
+  readPlanningData,
+} from './occurrenceService';
 import { dateKey } from './rewardService';
-import { Observable } from 'rxjs';
+import { Observable, shareReplay } from 'rxjs';
 
 export async function readJourneySnapshot() {
   return db.transaction('r', db.tables, async () => {
+    // Each table is read once; the projections and achievement rules reuse it.
     const profile = await db.profile.get(1);
-    const tasks = await db.tasks.toArray();
+    const planning = await readPlanningData();
+    const { tasks, events, occurrences } = planning;
     const areas = await db.areas.filter((area) => !area.archived).toArray();
     const routines = await db.routines.toArray();
     const companions = await db.companions.toArray();
     const owned = await db.ownedShopItems.toArray();
     const inventory = await db.inventory.toArray();
     const projects = await db.projects.toArray();
-    const events = await db.activityEvents.toArray();
     const logs = await db.xpLogs.toArray();
-    const occurrences = await db.occurrences.toArray();
     const executionRecords = await db.executionRecords.toArray();
     const sessions = await db.savedMissionSessions.toArray();
-    const plannedToday = await currentOccurrences();
+    const plannedToday = projectCurrentOccurrences(planning);
     const achievementReceipts = await db.achievementReceipts.toArray();
-    const achievementStats = await readAchievementStats();
+    const achievementStats = await readAchievementStats({
+      ...planning,
+      profile,
+      records: executionRecords,
+      companions,
+      owned,
+      projects,
+      routines,
+    });
     const eventsById = new Map(events.map((event) => [event.id, event]));
     const companion = profile?.activeCompanionId
       ? await db.companions.get(profile.activeCompanionId)
@@ -75,7 +86,17 @@ export async function readJourneySnapshot() {
     };
   });
 }
-export function journeyQuery() {
+let shared: Observable<JourneySnapshot> | undefined;
+/**
+ * One live snapshot shared by every mounted screen: a change triggers a single
+ * read instead of one per subscriber. The last value is replayed to late
+ * subscribers and the source stops (and forgets it) when nobody listens.
+ */
+export function journeyQuery(): Observable<JourneySnapshot> {
+  shared ??= liveJourney().pipe(shareReplay({ bufferSize: 1, refCount: true }));
+  return shared;
+}
+function liveJourney() {
   return new Observable<JourneySnapshot>((subscriber) => {
     let lastDay = dateKey();
     const subscription = liveQuery(readJourneySnapshot).subscribe({

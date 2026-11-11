@@ -12,7 +12,7 @@
   import Field from '$lib/ui/Field.svelte';
   import Icon from '$lib/ui/Icon.svelte';
   import Dialog from '$lib/ui/Dialog.svelte';
-  let data = $state<JourneySnapshot>();
+  let data = $state.raw<JourneySnapshot>();
   let open = $state(false),
     search = $state(''),
     archived = $state(false),

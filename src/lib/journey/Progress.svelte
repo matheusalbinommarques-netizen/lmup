@@ -9,7 +9,7 @@
   import Card from '$lib/ui/Card.svelte';
   import Button from '$lib/ui/Button.svelte';
   import ProductivityProgress from './ProductivityProgress.svelte';
-  let data = $state<JourneySnapshot>();
+  let data = $state.raw<JourneySnapshot>();
   let error = $state(''),
     range = $state<'7' | '30' | 'all'>('7'),
     kind = $state(''),

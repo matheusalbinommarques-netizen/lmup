@@ -62,7 +62,7 @@
     onSessionSkip?: () => void;
     onSessionBusyChange?: (blocked: boolean) => void;
   } = $props();
-  let data = $state<JourneySnapshot>();
+  let data = $state.raw<JourneySnapshot>();
   let error = $state('');
   let editOpen = $state(false),
     revealNotes = $state(false);

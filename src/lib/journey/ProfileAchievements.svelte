@@ -6,7 +6,7 @@
   import Icon from '$lib/ui/Icon.svelte';
   import RarityTag from './RarityTag.svelte';
   const SHOWN = 6;
-  let data = $state<JourneySnapshot>(),
+  let data = $state.raw<JourneySnapshot>(),
     error = $state('');
   onMount(() => {
     const sub = journeyQuery().subscribe({

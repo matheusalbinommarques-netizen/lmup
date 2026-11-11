@@ -7,7 +7,7 @@
     close,
     taskToEdit = null,
   }: { close: () => void; taskToEdit?: Task | null } = $props();
-  let snapshot = $state<JourneySnapshot>();
+  let snapshot = $state.raw<JourneySnapshot>();
   let open = $state(true);
   let error = $state('');
   onMount(() => {
