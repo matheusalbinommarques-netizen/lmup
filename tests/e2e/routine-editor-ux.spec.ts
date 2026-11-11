@@ -80,6 +80,8 @@ test('área padrão, três heranças e edição aninhada preservam rascunho e pe
     .click();
   await edit.getByLabel('O que você quer fazer?').fill('Rascunho cancelado');
   await edit.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await edit.getByRole('button', { name: 'Descartar', exact: true }).click();
+  await expect(edit).not.toBeVisible();
   await expect(routine.locator('.routine-sequence')).toContainText(
     'Beber água',
   );

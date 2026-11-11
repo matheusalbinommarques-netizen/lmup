@@ -110,6 +110,8 @@ test('rascunho editável: cancelar não cria missão e salvar permite pausar, co
   );
   await capture(page, 'rascunho', info.project.name);
   await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Descartar', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
   await page.getByRole('button', { name: 'Nova missão', exact: true }).click();
   await expect(dialog.getByLabel('O que você quer fazer?')).toHaveValue('');
   await dialog
