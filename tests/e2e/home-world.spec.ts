@@ -256,7 +256,7 @@ test('Home mostra perfil, equipamento, ambiente e preserva dados históricos do 
   await expect(
     page.getByText('Faltam 4000 XP para Floresta Anciã.', { exact: true }),
   ).toBeVisible();
-  await expect(page.getByText('735 Gold', { exact: true })).toBeVisible();
+  await expect(page.getByText('735 Ouro', { exact: true })).toBeVisible();
   await expect(
     page.getByRole('link', { name: 'Equipado: Cota da Rotina' }),
   ).toBeVisible();
@@ -277,7 +277,9 @@ test('Home mostra perfil, equipamento, ambiente e preserva dados históricos do 
     page.getByRole('heading', { name: 'Diário da campanha', exact: true }),
   ).toBeVisible();
   const afterCampaign = await worldData(page);
-  expect(afterCampaign.profile.rpgPilot).toEqual(beforeCampaign.profile.rpgPilot);
+  expect(afterCampaign.profile.rpgPilot).toEqual(
+    beforeCampaign.profile.rpgPilot,
+  );
   expect(afterCampaign.events).toEqual(beforeCampaign.events);
   await page.goto('/');
   await noOverflow(page);

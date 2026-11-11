@@ -3,6 +3,7 @@
   import { equippedItemsForOwned } from '$services/gearService';
   import { getTitleForLevel, MAX_LEVEL } from '$services/progression';
   import Artwork from '$lib/ui/Artwork.svelte';
+  import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
   import Icon from '$lib/ui/Icon.svelte';
   import RpgResource from '$lib/ui/RpgResource.svelte';
 
@@ -38,24 +39,9 @@
         eager
       />
     {:else}
-      <svg
-        viewBox="0 0 100 120"
-        role="img"
-        aria-label="Emblema provisório do viajante"
+      <span class="hero-silhouette" role="img" aria-label="Silhueta do viajante"
+        ><ApprovedIcon name="heroi" size={compact ? 40 : 80} /></span
       >
-        <path
-          d="M50 8 85 28v46c0 20-20 32-35 39C35 106 15 94 15 74V28Z"
-          fill="#182b30"
-          stroke="#c7a768"
-        />
-        <path
-          d="M50 24c-12 0-22 16-24 36l13-7h22l13 7c-2-20-12-36-24-36Z"
-          fill="#71847d"
-        />
-        <path d="m37 50 13-15 13 15-5 25H42Z" fill="#0d1b22" />
-        <path d="M24 89 34 65l16 14 16-14 10 24-26 14Z" fill="#435d5b" />
-        <path d="m50 79 0 24M39 53h22" stroke="#c7a768" />
-      </svg>
     {/if}
   </a>
   <div class="hero-details">
@@ -79,7 +65,7 @@
       ></progress>
     {/if}
     <div class="hero-resources">
-      <RpgResource value={profile.gold} label="Gold" icon="coin" />
+      <RpgResource value={profile.gold} label="Ouro" icon="coin" />
       {#if compact}<RpgResource
           value={profile.food ?? 0}
           label="Comida"
@@ -210,9 +196,14 @@
     object-fit: cover;
     border-radius: inherit;
   }
-  .hero-portrait svg {
+  .hero-silhouette {
+    display: grid;
+    place-items: center;
     width: 72%;
-    height: 90%;
+  }
+  .hero-silhouette :global(img) {
+    border-radius: 0;
+    object-fit: contain;
   }
   .hero-details {
     min-width: 0;

@@ -164,7 +164,7 @@
     <div class="flex items-center gap-2">
       <span class="text-xs font-semibold text-amber-300">
         {item.price}
-        <span class="text-[0.65rem] font-normal text-amber-200"> Gold</span>
+        <span class="text-[0.65rem] font-normal text-amber-200"> Ouro</span>
       </span>
 
       <button

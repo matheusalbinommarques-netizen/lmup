@@ -132,7 +132,7 @@ describe('conclusão e estorno', () => {
     expect(await db.activityEvents.count()).toBe(0);
   });
 
-  it('preserva compra e permite correção quando parte do Gold foi gasta', async () => {
+  it('preserva compra e permite correção quando parte do Ouro foi gasta', async () => {
     const id = await mission({ xp: 2000 });
     await completeTask(id);
     const item = getShopItemById(101)!;
