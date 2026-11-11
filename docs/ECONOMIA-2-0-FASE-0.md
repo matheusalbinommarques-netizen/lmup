@@ -65,5 +65,5 @@ Toda escrita de saldo está numa transação Dexie. As conclusões têm idempot�
 
 - O perfil pessoal **não tem** estoque do acampamento antigo: não há materiais a migrar. Backups antigos com `profile.camp` continuam aceitos.
 - Depois da 5ª caixa do dia não há outra caixa; o XP excedente não acumula para caixas.
-- Reclassificar por domínio transfere o progresso (conquistas, itens, marcos, trilha) do domínio antigo para o novo, sem aumentar o total; detalhes em `PLANO-EXECUCAO-20261111.md`, seção 5.
+- Reclassificar por domínio vale daqui para frente: o que já foi conquistado fica no domínio antigo e o que for feito depois conta no novo, sem transferência; detalhes em `PLANO-EXECUCAO-20261111.md`, seção 5.
 - Em aberto: preços (depois do S1) e as demais perguntas da seção 12 do plano.

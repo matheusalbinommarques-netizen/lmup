@@ -78,9 +78,10 @@ Fase 4 (projetos), Fase 5 (domínios e Roda da Vida), Fase 6 (economia ampliada)
 
 1. Estoque do acampamento antigo no perfil pessoal: **não há** (11/11).
 2. Caixas: **5 por dia; depois da 5ª, nenhuma outra caixa no dia** (11/11). Os números de cada caixa saem do S1.
-3. Reclassificação por domínio (11/11): **o progresso acompanha a classificação.** Ao reclassificar, o histórico afetado sai do domínio antigo e entra no novo; conquistas, itens, marcos e trilha são transferidos — perde-se no antigo o que deixou de ser alcançado e ganha-se no novo o que passou a ser. O total nunca aumenta, então reclassificar não vira atalho. Pontos a fechar na especificação da Fase 5:
-   - o progresso de trilha é calculado a partir do histórico com a classificação atual, e cada desbloqueio tem recibo `(domínio, marco)` com estorno;
-   - antes de aplicar, o app mostra o que se perde e o que se ganha, e a pessoa confirma; a operação fica registrada e pode ser desfeita;
-   - recompensas de trilha **não são gastáveis** (decidido em 11/11): títulos, receitas, exibições, espaços de Legado; nada de ouro ou material, para a transferência ser sempre limpa;
-   - XP e ouro básicos das missões não dependem de domínio e não mudam;
-   - histórico anterior aos domínios começa não classificado.
+3. Reclassificação por domínio (11/11, revisado): **vale daqui para frente, sem transferência.** O que já foi conquistado no domínio antigo (conquistas, itens, receitas, marcos, trilha) fica onde está; o que for feito depois da mudança conta no domínio novo. Assim não dá para levar receitas e vantagens de um domínio para outro quando for conveniente. Pontos para a especificação da Fase 5:
+   - cada conclusão guarda o domínio que tinha no momento, e o progresso de trilha soma essas conclusões; mudar a classificação não recalcula o passado;
+   - recibos de desbloqueio por `(domínio, marco)`, concedidos uma vez e nunca revogados por reclassificação;
+   - painéis e Roda da Vida mostram o passado com o domínio da época;
+   - recompensas de trilha **não são gastáveis** (decidido em 11/11): títulos, receitas, exibições, espaços de Legado; nada de ouro ou material;
+   - XP e ouro básicos das missões não dependem de domínio;
+   - histórico anterior aos domínios fica não classificado.
