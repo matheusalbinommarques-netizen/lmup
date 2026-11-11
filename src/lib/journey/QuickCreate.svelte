@@ -73,6 +73,23 @@
   let section = $state<string>('general');
   let initialGroups = $state<Record<string, string>>({});
   let savedNotice = $state('');
+  let confirmDiscard = $state(false);
+  let keepEditing = $state<HTMLElement>();
+  /** Esc, ✕ and Cancelar: close directly, or ask first when something was typed. */
+  async function requestClose() {
+    if (busy) return;
+    if (confirmDiscard) {
+      confirmDiscard = false;
+      return;
+    }
+    if (!changed.length) {
+      open = false;
+      return;
+    }
+    confirmDiscard = true;
+    await tick();
+    keepEditing?.focus();
+  }
   function groups() {
     return {
       general: JSON.stringify([title, area, description, effort]),
@@ -142,6 +159,7 @@
       untrack(() => {
         section = 'general';
         savedNotice = '';
+        confirmDiscard = false;
         title = editTask?.title ?? starter?.title ?? '';
         steps = (editTask?.subtasks ?? starter?.steps ?? []).map((label) => ({
           id: crypto.randomUUID(),
@@ -238,6 +256,7 @@
         description = '';
         requestId = crypto.randomUUID();
         saveAnother = false;
+        initialGroups = groups();
         await tick();
         document.getElementById(`${uid}-title`)?.focus();
       } else {
@@ -262,6 +281,7 @@
   <Dialog
     bind:open
     dismissible={!busy}
+    onrequestclose={requestClose}
     wide
     title={editTask ? 'Editar missão' : 'Uma nova missão'}
     description={editTask
@@ -539,8 +559,33 @@
           </div>
         </div>
       </div>
+      {#if confirmDiscard}<div
+          class="discard-confirm"
+          role="group"
+          aria-labelledby={`${uid}-discard`}
+        >
+          <p id={`${uid}-discard`}>
+            Descartar o que você preencheu? Nada foi salvo ainda.
+          </p>
+          <div>
+            <button
+              type="button"
+              class="lmu-button lmu-button--secondary"
+              bind:this={keepEditing}
+              onclick={() => (confirmDiscard = false)}
+              >Continuar editando</button
+            ><button
+              type="button"
+              class="lmu-button lmu-button--quiet"
+              onclick={() => {
+                confirmDiscard = false;
+                open = false;
+              }}>Descartar</button
+            >
+          </div>
+        </div>{/if}
       <footer>
-        <Button variant="quiet" disabled={busy} onclick={() => (open = false)}
+        <Button variant="quiet" disabled={busy} onclick={requestClose}
           >Cancelar</Button
         >{#if !editTask && allowSaveAnother}<Button
             type="submit"
@@ -778,6 +823,29 @@
     padding: 0;
     min-width: 0;
     margin: 0;
+  }
+  .discard-confirm {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+    margin: 0 0 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--lmu-border, #70868b);
+    border-radius: 10px;
+    background: var(--lmu-raised, #24343a);
+  }
+  .discard-confirm p {
+    margin: 0;
+  }
+  .discard-confirm div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .discard-confirm .lmu-button {
+    min-height: 44px;
   }
   footer {
     gap: 8px !important;

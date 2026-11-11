@@ -11,6 +11,7 @@
     wide = false,
     portal = false,
     scenePanel = false,
+    onrequestclose,
   }: {
     open?: boolean;
     title: string;
@@ -20,6 +21,8 @@
     wide?: boolean;
     portal?: boolean;
     scenePanel?: boolean;
+    /** Esc and ✕ ask the owner instead of closing (e.g. to protect a draft). */
+    onrequestclose?: () => void;
   } = $props();
   let element: HTMLDialogElement;
   function portalToBody(node: HTMLDialogElement) {
@@ -28,6 +31,13 @@
     return { destroy: () => node.remove() };
   }
   function containFocus(event: KeyboardEvent) {
+    if (event.key === 'Escape' && onrequestclose) {
+      // Prevented here, the browser never turns repeated Esc into a forced close.
+      event.preventDefault();
+      event.stopPropagation();
+      if (dismissible) onrequestclose();
+      return;
+    }
     if (event.key !== 'Tab') return;
     const controls = [
       ...element.querySelectorAll<HTMLElement>(
@@ -77,7 +87,10 @@
   aria-describedby={description ? `${uid}-description` : undefined}
   oncancel={(event) => {
     if (!dismissible) event.preventDefault();
-    else open = false;
+    else if (onrequestclose) {
+      event.preventDefault();
+      onrequestclose();
+    } else open = false;
   }}
   onclose={() => {
     open = false;
@@ -90,7 +103,8 @@
       disabled={!dismissible}
       aria-label="Fechar diálogo"
       onclick={() => {
-        open = false;
+        if (onrequestclose) onrequestclose();
+        else open = false;
       }}>✕</Button
     >
   </header>
