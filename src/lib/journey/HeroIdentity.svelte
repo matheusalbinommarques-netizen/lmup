@@ -79,7 +79,7 @@
       ></progress>
     {/if}
     <div class="hero-resources">
-      <RpgResource value={profile.gold} label="Gold" icon="coin" />
+      <RpgResource value={profile.gold} label="Ouro" icon="coin" />
       {#if compact}<RpgResource
           value={profile.food ?? 0}
           label="Comida"

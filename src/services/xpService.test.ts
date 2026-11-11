@@ -64,7 +64,7 @@ describe('xpService com IndexedDB em memória', () => {
     expect(next).toMatchObject({ totalXpEarned: 2602, gold: 250 });
   });
 
-  it('registra redução de XP e Gold sem saldo negativo', async () => {
+  it('registra redução de XP e Ouro sem saldo negativo', async () => {
     await xpService.addXp(50);
     const result = await xpService.removeXp(100);
     expect(result).toMatchObject({ totalXpEarned: 0, gold: 0, level: 1 });

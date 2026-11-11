@@ -90,7 +90,7 @@ export const milestoneRewardCopy = {
   initial: {
     label: 'Ponto de partida',
     description:
-      'Sua jornada começa nesta paisagem. Este estágio não concede Gold.',
+      'Sua jornada começa nesta paisagem. Este estágio não concede Ouro.',
   },
   recorded: {
     label: 'Recompensa registrada',
@@ -110,7 +110,7 @@ export const milestoneRewardCopy = {
   pending: {
     label: 'Sem recompensa registrada',
     description:
-      'Seu XP alcançou este marco, mas o prêmio ainda não consta como recebido. O cálculo de uma próxima ação válida considera os marcos pendentes; visitar esta tela não credita Gold.',
+      'Seu XP alcançou este marco, mas o prêmio ainda não consta como recebido. O cálculo de uma próxima ação válida considera os marcos pendentes; visitar esta tela não credita Ouro.',
   },
   locked: {
     label: 'Ainda por alcançar',

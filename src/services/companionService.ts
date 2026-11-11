@@ -447,7 +447,7 @@ export function companionBonusLabel(companion: Companion): string {
   if (!buffs) return 'Sem bônus disponível';
   return [
     [buffs.xpBonusPercent, 'XP'],
-    [buffs.goldBonusPercent, 'Gold'],
+    [buffs.goldBonusPercent, 'Ouro'],
     [buffs.foodBonusPercent, 'Comida'],
   ]
     .filter(([value]) => value)
