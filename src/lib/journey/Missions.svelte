@@ -135,7 +135,7 @@
       areas: 'Cuide das áreas que organizam suas missões.',
     }[workspaceView],
   );
-  let data = $state<JourneySnapshot>();
+  let data = $state.raw<JourneySnapshot>();
   let undoOpen = $state(false);
   let undoSelection = $state<{
     taskId: number;

@@ -18,7 +18,7 @@
     embedded = false,
   }: { inventoryOnly?: boolean; embedded?: boolean } = $props();
   const slotId = $props.id();
-  let data = $state<JourneySnapshot>();
+  let data = $state.raw<JourneySnapshot>();
   let error = $state(''),
     notice = $state(''),
     search = $state(''),

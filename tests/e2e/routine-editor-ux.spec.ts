@@ -105,6 +105,8 @@ test('área padrão, três heranças e edição aninhada preservam rascunho e pe
   await routine
     .getByRole('button', { name: 'Salvar rotina', exact: true })
     .click();
+  // The form is inline: wait for the save to close it before reopening.
+  await expect(routine).not.toBeVisible();
   await page
     .getByRole('button', { name: 'Editar rotina', exact: true })
     .click();
@@ -331,7 +333,9 @@ test('a recorrência é definida na rotina e herdada por todas as missões', asy
   ).toBe(true);
 });
 
-test('rotina agendada para outro dia não cria sessão vazia', async ({ page }) => {
+test('rotina agendada para outro dia não cria sessão vazia', async ({
+  page,
+}) => {
   const routine = await prepare(page);
   await add(page, 'Beber água');
   await routine.getByLabel('Recorrência da rotina').selectOption('weekly');

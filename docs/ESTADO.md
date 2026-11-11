@@ -64,9 +64,11 @@ Execução e pendências do plano de 04/11: [reconciliação de 09/11](AUDITORIA
 | #75     | Liberdade do jogador na investigação do Oásis                | Cobrir desfechos, inatividade e produtividade independente               |
 | #80     | Fundo lateral com compressão A aprovada                      | Menos bytes de imagem não reduz pixels decodificados nem pré-cache total |
 | #56     | Testes não alteram capturas versionadas                      | Reproduzir o defeito antes de corrigir e testar o próprio verificador    |
+| C03     | Leitura compartilhada: concluir com 5 anos em 1,4 s          | Contar leituras antes de otimizar; snapshot em `$state.raw`              |
 
 ## Pendências técnicas conhecidas
 
+- `journeyQuery()` é uma fonte compartilhada (`shareReplay`): componentes não podem mutar o snapshot recebido; guarde-o em `$state.raw`. Detalhes em [C03-LEITURA-COMPARTILHADA.md](C03-LEITURA-COMPARTILHADA.md).
 - `tests/e2e/today-shell.spec.ts:81` é ignorado de propósito no mobile (a barra lateral só existe no desktop).
 - `tests/e2e/alpha.spec.ts:165` falha de forma intermitente no mobile sob carga; passa isolado.
 - Toda versão publicada baixa o pré-cache inteiro, mesmo sem mudança no app.

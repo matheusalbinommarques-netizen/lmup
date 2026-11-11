@@ -156,7 +156,7 @@ export async function completeTask(
       throw new Error(
         'Revisões espaçadas foram desativadas. O histórico foi preservado.',
       );
-    const operational = (await currentOccurrences()).find(
+    const operational = (await currentOccurrences(dateKey(), taskId)).find(
       (row) => row.taskId === taskId,
     );
     const linkedOccurrence = !task.reviewEnabled

@@ -9,7 +9,7 @@
   import Artwork from '$lib/ui/Artwork.svelte';
   import Button from '$lib/ui/Button.svelte';
   import Field from '$lib/ui/Field.svelte';
-  let data = $state<JourneySnapshot>();
+  let data = $state.raw<JourneySnapshot>();
   let error = $state(''),
     search = $state(''),
     filter = $state<'next' | 'earned' | 'future'>('next');

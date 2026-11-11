@@ -23,6 +23,7 @@ import {
 import {
   ZERO_RESOURCES,
   type Occurrence,
+  type PlanVersion,
   type Planning,
   type Resources,
 } from './productivityTypes';
@@ -152,150 +153,190 @@ export async function savePlanVersion(task: Task, effectiveFrom = dateKey()) {
     });
   }
 }
+/** Tables the planning projections read; pass them in to avoid re-reading. */
+export type PlanningData = {
+  tasks: Task[];
+  versions: PlanVersion[];
+  occurrences: Occurrence[];
+  events: ActivityEvent[];
+};
+/**
+ * Reads the planning tables once. With `taskId`, only that mission's rows are
+ * read through the existing indexes; the projections below then return exactly
+ * that mission's subset of the full result.
+ */
+export async function readPlanningData(taskId?: number): Promise<PlanningData> {
+  if (taskId === undefined)
+    return {
+      tasks: await db.tasks.toArray(),
+      versions: await db.planVersions.toArray(),
+      occurrences: await db.occurrences.toArray(),
+      events: await db.activityEvents.toArray(),
+    };
+  const task = await db.tasks.get(taskId);
+  return {
+    tasks: task ? [task] : [],
+    versions: await db.planVersions.where('taskId').equals(taskId).toArray(),
+    occurrences: await db.occurrences.where('taskId').equals(taskId).toArray(),
+    events: await db.activityEvents.where('taskId').equals(taskId).toArray(),
+  };
+}
 export async function plannedOccurrences(
   from: string,
   to: string,
+  taskId?: number,
 ): Promise<Occurrence[]> {
   if (!calendarDate(from) || !calendarDate(to) || from > to)
     throw new Error('Período inválido.');
-  return db.transaction('r', db.tables, async () => {
-    const tasks = await db.tasks.toArray(),
-      versions = await db.planVersions.toArray();
-    const stored = await db.occurrences.toArray(),
-      events = await db.activityEvents.toArray();
-    const result = new Map(
-      stored
-        .filter(
-          (row) =>
-            !row.planningSuspended &&
-            !row.removedFromDays?.includes(row.plannedDate) &&
-            row.plannedDate >= from &&
-            row.plannedDate <= to,
-        )
-        .map((row) => [row.id, row]),
-    );
-    const storedIds = new Set(stored.map((row) => row.id));
-    for (const current of tasks.filter((task) => !task.reviewEnabled)) {
-      const plans = versions
-        .filter((row) => row.taskId === current.id)
-        .sort(
-          (a, b) =>
-            a.effectiveFrom.localeCompare(b.effectiveFrom) ||
-            (a.sequence ?? 0) - (b.sequence ?? 0),
-        );
-      for (let day = from; day <= to; day = addCalendarDays(day, 1)) {
-        const version = plans.filter((row) => row.effectiveFrom <= day).at(-1);
-        // No inference of historical schedules before the first recorded version.
-        if (!version && day < dateKey()) continue;
-        const task = (version?.definition ?? current) as unknown as Task;
-        if (
-          task.archived ||
-          task.planningPaused ||
-          (!task.recurrence && task.completed)
-        )
-          continue;
-        if (!(
-          scheduledOn(task, day) ||
-          (!task.recurrence && !task.plannedDate && day === dateKey())
-        ))
-          continue;
-        const id = occurrenceId(task, day);
-        if (storedIds.has(id)) continue;
-        if (
-          events.some(
-            (event) =>
-              event.taskId === task.id &&
-              event.kind === 'task' &&
-              !event.reversedAt &&
-              !event.occurrenceId &&
-              (task.recurrence
-                ? (event.occurrenceDate ?? event.date) === day
-                : true),
-          )
-        )
-          continue;
-        result.set(id, makeOccurrence(task, day));
-      }
-    }
-    return [...result.values()]
+  return db.transaction('r', db.tables, async () =>
+    projectPlannedOccurrences(await readPlanningData(taskId), from, to),
+  );
+}
+/** Pure projection of {@link plannedOccurrences} over tables already read. */
+export function projectPlannedOccurrences(
+  data: PlanningData,
+  from: string,
+  to: string,
+): Occurrence[] {
+  if (!calendarDate(from) || !calendarDate(to) || from > to)
+    throw new Error('Período inválido.');
+  const { tasks, versions, occurrences: stored, events } = data;
+  const result = new Map(
+    stored
       .filter(
         (row) =>
-          tasks.find((task) => task.id === row.taskId)?.skippedDate !==
-          row.plannedDate,
+          !row.planningSuspended &&
+          !row.removedFromDays?.includes(row.plannedDate) &&
+          row.plannedDate >= from &&
+          row.plannedDate <= to,
       )
+      .map((row) => [row.id, row]),
+  );
+  const storedIds = new Set(stored.map((row) => row.id));
+  for (const current of tasks.filter((task) => !task.reviewEnabled)) {
+    const plans = versions
+      .filter((row) => row.taskId === current.id)
       .sort(
         (a, b) =>
-          a.plannedDate.localeCompare(b.plannedDate) ||
-          (a.plannedTime ?? '99:99').localeCompare(b.plannedTime ?? '99:99') ||
-          a.id.localeCompare(b.id),
+          a.effectiveFrom.localeCompare(b.effectiveFrom) ||
+          (a.sequence ?? 0) - (b.sequence ?? 0),
       );
-  });
+    for (let day = from; day <= to; day = addCalendarDays(day, 1)) {
+      const version = plans.filter((row) => row.effectiveFrom <= day).at(-1);
+      // No inference of historical schedules before the first recorded version.
+      if (!version && day < dateKey()) continue;
+      const task = (version?.definition ?? current) as unknown as Task;
+      if (
+        task.archived ||
+        task.planningPaused ||
+        (!task.recurrence && task.completed)
+      )
+        continue;
+      if (!(
+        scheduledOn(task, day) ||
+        (!task.recurrence && !task.plannedDate && day === dateKey())
+      ))
+        continue;
+      const id = occurrenceId(task, day);
+      if (storedIds.has(id)) continue;
+      if (
+        events.some(
+          (event) =>
+            event.taskId === task.id &&
+            event.kind === 'task' &&
+            !event.reversedAt &&
+            !event.occurrenceId &&
+            (task.recurrence
+              ? (event.occurrenceDate ?? event.date) === day
+              : true),
+        )
+      )
+        continue;
+      result.set(id, makeOccurrence(task, day));
+    }
+  }
+  return [...result.values()]
+    .filter(
+      (row) =>
+        tasks.find((task) => task.id === row.taskId)?.skippedDate !==
+        row.plannedDate,
+    )
+    .sort(
+      (a, b) =>
+        a.plannedDate.localeCompare(b.plannedDate) ||
+        (a.plannedTime ?? '99:99').localeCompare(b.plannedTime ?? '99:99') ||
+        a.id.localeCompare(b.id),
+    );
 }
 /** One operational execution per mission; historical rows keep their original dates. */
 export async function currentOccurrences(
   day = dateKey(),
+  taskId?: number,
 ): Promise<Occurrence[]> {
-  return db.transaction('r', db.tables, async () => {
-    const tasks = await db.tasks.toArray(),
-      rows = await db.occurrences.toArray();
-    const versions = await db.planVersions.toArray(),
-      events = await db.activityEvents.toArray();
-    const result: Occurrence[] = [];
-    for (const task of tasks) {
-      if (task.archived || task.planningPaused || task.reviewEnabled) continue;
-      const origin = task.recurrence
-        ? cycleDate(task, day, versions)
-        : (task.plannedDate ?? day);
-      if (!origin || origin > day) continue;
-      const id = occurrenceId(task, origin);
-      let row = rows.find((row) => row.id === id);
-      if (!row) {
-        const plan = versions
-          .filter(
-            (plan) => plan.taskId === task.id && plan.effectiveFrom <= origin,
-          )
-          .sort(
-            (a, b) =>
-              a.effectiveFrom.localeCompare(b.effectiveFrom) ||
-              a.sequence - b.sequence,
-          )
-          .at(-1);
-        row = makeOccurrence(
-          (task.recurrence
-            ? (plan?.definition ?? task)
-            : task) as unknown as Task,
-          origin,
-        );
-        const event = events.find(
-          (event) =>
-            event.taskId === task.id &&
-            !event.occurrenceId &&
-            !event.reversedAt &&
-            ['task', 'review'].includes(event.kind) &&
-            (!task.recurrence ||
-              (event.occurrenceDate ?? event.date) === origin),
-        );
-        const done =
-          !!event ||
-          (task.completed &&
-            (!task.recurrence || task.lastOccurrenceDate === origin));
-        if (done)
-          row = {
-            ...row,
-            status: 'completed',
-            value: progressTarget(row),
-            completedLocalDate:
-              event?.date ??
-              (task.completedAt
-                ? dateKey(new Date(task.completedAt))
-                : undefined),
-            completionEventId: event?.id,
-          };
-      }
-      if (!isSuperseded(row, task, day, versions)) result.push(row);
+  return db.transaction('r', db.tables, async () =>
+    projectCurrentOccurrences(await readPlanningData(taskId), day),
+  );
+}
+/** Pure projection of {@link currentOccurrences} over tables already read. */
+export function projectCurrentOccurrences(
+  data: PlanningData,
+  day = dateKey(),
+): Occurrence[] {
+  const { tasks, versions, occurrences: rows, events } = data;
+  const result: Occurrence[] = [];
+  for (const task of tasks) {
+    if (task.archived || task.planningPaused || task.reviewEnabled) continue;
+    const origin = task.recurrence
+      ? cycleDate(task, day, versions)
+      : (task.plannedDate ?? day);
+    if (!origin || origin > day) continue;
+    const id = occurrenceId(task, origin);
+    let row = rows.find((row) => row.id === id);
+    if (!row) {
+      const plan = versions
+        .filter(
+          (plan) => plan.taskId === task.id && plan.effectiveFrom <= origin,
+        )
+        .sort(
+          (a, b) =>
+            a.effectiveFrom.localeCompare(b.effectiveFrom) ||
+            a.sequence - b.sequence,
+        )
+        .at(-1);
+      row = makeOccurrence(
+        (task.recurrence
+          ? (plan?.definition ?? task)
+          : task) as unknown as Task,
+        origin,
+      );
+      const event = events.find(
+        (event) =>
+          event.taskId === task.id &&
+          !event.occurrenceId &&
+          !event.reversedAt &&
+          ['task', 'review'].includes(event.kind) &&
+          (!task.recurrence || (event.occurrenceDate ?? event.date) === origin),
+      );
+      const done =
+        !!event ||
+        (task.completed &&
+          (!task.recurrence || task.lastOccurrenceDate === origin));
+      if (done)
+        row = {
+          ...row,
+          status: 'completed',
+          value: progressTarget(row),
+          completedLocalDate:
+            event?.date ??
+            (task.completedAt
+              ? dateKey(new Date(task.completedAt))
+              : undefined),
+          completionEventId: event?.id,
+        };
     }
-    return result;
-  });
+    if (!isSuperseded(row, task, day, versions)) result.push(row);
+  }
+  return result;
 }
 
 export async function ensureOccurrence(
@@ -337,8 +378,8 @@ export async function ensureOccurrence(
         'Esta atividade já possui conclusão legada. O registro anterior foi preservado sem nova recompensa.',
       );
     const planned = [
-      ...(await plannedOccurrences(origin, origin)),
-      ...(await currentOccurrences()),
+      ...(await plannedOccurrences(origin, origin, taskId)),
+      ...(await currentOccurrences(dateKey(), taskId)),
     ].find((row) => row.taskId === taskId && row.originDate === origin);
     if (!planned && !reconstructed)
       throw new Error(

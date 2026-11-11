@@ -228,7 +228,13 @@
       await goto('/ocorrencia/' + encodeURIComponent(row.id));
     });
   }
-  function editRoutine(row?: Routine) {
+  async function editRoutine(listed?: Routine) {
+    // Reopening while a save is still running would be closed by that save.
+    if (busy) return;
+    // The list may lag a revision saved a moment ago; open what is stored.
+    const row = listed
+      ? ((await db.routines.get(listed.id)) ?? listed)
+      : undefined;
     routineId = row?.id ?? crypto.randomUUID();
     routineName = row?.name ?? '';
     description = row?.description ?? '';

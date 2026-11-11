@@ -46,7 +46,7 @@
     error = $state(''),
     busy = $state(false);
   let executionBusy = $state(false);
-  let snapshot = $state<JourneySnapshot>();
+  let snapshot = $state.raw<JourneySnapshot>();
   let forceOccurrence = $state(false);
   let detailed = $state(false),
     sequenceOpen = $state(false);
