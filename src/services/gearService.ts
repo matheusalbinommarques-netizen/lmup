@@ -54,7 +54,7 @@ function applyItem(mods: HeroModifiers, item: ShopItem): void {
       mods.taskXpBonusPercent = 15;
       break;
 
-    // ----- AMULETOS: bônus de Gold -----
+    // ----- AMULETOS: bônus de Ouro -----
     case 'gear-amulet-change':
       mods.goldMultiplier *= 1.05; // +5%
       break;

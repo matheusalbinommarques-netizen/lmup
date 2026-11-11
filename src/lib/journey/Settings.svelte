@@ -372,7 +372,7 @@
         {prepared.summary.events} registros de progresso.
       </p>
       <p>
-        XP acumulado: {prepared.backup.data.profile?.totalXpEarned ?? 0} · Gold:
+        XP acumulado: {prepared.backup.data.profile?.totalXpEarned ?? 0} · Ouro:
         {prepared.backup.data.profile?.gold ?? 0} · Comida: {prepared.backup
           .data.profile?.food ?? 0}.
       </p>

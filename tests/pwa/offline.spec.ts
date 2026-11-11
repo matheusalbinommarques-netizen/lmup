@@ -430,7 +430,7 @@ test('abre URLs não visitadas, cria e salva notas com a rede desligada', async 
   });
   await expect(
     preview.getByText(
-      'Prévia visual. Não altera o ambiente ativo, XP ou Gold.',
+      'Prévia visual. Não altera o ambiente ativo, XP ou Ouro.',
       { exact: true },
     ),
   ).toBeVisible();

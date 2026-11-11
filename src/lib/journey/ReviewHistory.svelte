@@ -41,7 +41,7 @@
                           : 'Prática registrada'}</span
                 ><span class="lmu-hint"
                   >Recibo da sessão: +{event.reward.xp} XP · +{event.reward
-                    .gold} Gold · +{event.reward.food} Comida{event.reversedAt
+                    .gold} Ouro · +{event.reward.food} Comida{event.reversedAt
                     ? ' (estornado)'
                     : ''}</span
                 >

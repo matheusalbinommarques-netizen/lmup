@@ -47,11 +47,11 @@ export const SHOP_ITEMS: ShopItem[] = [
     key: 'gear-ring-forest-prosper',
     name: 'Anel da Floresta Próspera',
     description:
-      'Aumenta levemente o bônus de XP do Santuário e o Gold ganho por missão.',
+      'Aumenta levemente o bônus de XP do Santuário e o Ouro ganho por missão.',
     price: 900,
     rarity: 'rare',
     category: 'gear',
-    tag: '+XP & +Gold',
+    tag: '+XP & +Ouro',
     status: 'available',
   },
   {
