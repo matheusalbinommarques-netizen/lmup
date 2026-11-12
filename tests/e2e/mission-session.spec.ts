@@ -68,7 +68,7 @@ async function createSession(page: Page) {
 }
 
 async function detailed(page: Page) {
-  const button = page.getByRole('button', {
+  const button = page.getByRole('tab', {
     name: 'Execução detalhada',
     exact: true,
   });
@@ -120,7 +120,7 @@ for (const removed of ['Primeira', 'Intermediária', 'Última']) {
     await page
       .getByRole('button', { name: 'Pausar sessão', exact: true })
       .click();
-    await page.getByRole('button', { name: 'Todas', exact: true }).click();
+    await page.getByRole('tab', { name: 'Todas', exact: true }).click();
     await expect(
       page.getByRole('link', { name: removed, exact: true }),
     ).toBeVisible();
@@ -149,8 +149,8 @@ test('remover todas as pendentes limpa a sessão e mantém as missões', async (
   await page
     .getByRole('link', { name: 'Ver sessões ativas', exact: true })
     .click();
-  await page.getByRole('button', { name: 'Lista', exact: true }).click();
-  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Lista', exact: true }).click();
+  await page.getByRole('tab', { name: 'Todas', exact: true }).click();
   for (const title of ['Primeira', 'Intermediária', 'Última']) {
     await expect(
       page.getByRole('link', { name: title, exact: true }),
@@ -410,7 +410,7 @@ test('sessão executa missões em sequência, persiste e não gera XP ao pular',
     page.getByText('2 de 2 atividades concluídas.', { exact: true }),
   ).toBeVisible();
   await page.goto('/missoes');
-  await page.getByRole('button', { name: 'Concluídas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Concluídas', exact: true }).click();
   await expect(
     page
       .getByRole('region', { name: 'Histórico de conclusões' })

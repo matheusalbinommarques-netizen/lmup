@@ -50,7 +50,7 @@ async function task(page: Page, title: string) {
     .click();
   await awaitStoredMission(page, title);
   await page.goto('/missoes');
-  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Todas', exact: true }).click();
   await page.getByRole('link', { name: title, exact: true }).click();
   await expect(page).toHaveURL(/\/missao\/\d+$/);
   return Number(page.url().split('/').pop());
@@ -137,7 +137,7 @@ test('rascunho editável: cancelar não cria missão e salvar permite pausar, co
     .click();
   await awaitStoredMission(page, 'Meu rascunho de verdade');
   await page.goto('/missoes');
-  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Todas', exact: true }).click();
   await page
     .getByRole('link', { name: 'Meu rascunho de verdade', exact: true })
     .click();

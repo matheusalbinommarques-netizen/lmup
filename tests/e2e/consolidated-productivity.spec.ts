@@ -144,7 +144,7 @@ test('reagendar atividade parcial preserva recursos e a seleção explica indisp
 }) => {
   await page.clock.setFixedTime(new Date(today + 'T15:00:00-03:00'));
   await create(page, 'Leitura parcial', true);
-  await page.getByRole('button', { name: 'Agenda', exact: true }).click();
+  await page.getByRole('tab', { name: 'Agenda', exact: true }).click();
   await page
     .getByRole('button', { name: 'Executar agora', exact: true })
     .click();
@@ -199,7 +199,7 @@ test('rotina reutiliza sessão, impede execução duplicada e substitui o ciclo 
 }) => {
   await page.clock.setFixedTime(new Date(today + 'T15:00:00-03:00'));
   for (const title of ['Água', 'Alongamento']) await create(page, title);
-  await page.getByRole('button', { name: 'Rotinas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Rotinas', exact: true }).click();
   await page.getByRole('button', { name: 'Nova rotina', exact: true }).click();
   const form = page.locator('.routine-form');
   await form
@@ -238,7 +238,7 @@ test('rotina reutiliza sessão, impede execução duplicada e substitui o ciclo 
     .click();
   await expect(page).toHaveURL(/view=sessions/);
   await page.goto('/missoes');
-  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Todas', exact: true }).click();
   const water = page.locator('.mission-task-row').filter({ hasText: 'Água' });
   await expect(
     water.getByRole('button', { name: 'Concluir Água', exact: true }),

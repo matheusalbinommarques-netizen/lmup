@@ -15,7 +15,7 @@ async function prepare(page: Page) {
       page.getByRole('button', { name: `Editar ${name}`, exact: true }),
     ).toBeVisible();
   }
-  await page.getByRole('button', { name: 'Rotinas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Rotinas', exact: true }).click();
   await page.getByRole('button', { name: 'Nova rotina', exact: true }).click();
   const routine = page.locator('.routine-form');
   await routine
@@ -153,7 +153,7 @@ test('edição de missão vinculada preserva a configuração da sessão iniciad
   await page
     .getByRole('button', { name: 'Pausar sessão', exact: true })
     .click();
-  await page.getByRole('button', { name: 'Rotinas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Rotinas', exact: true }).click();
   await page
     .getByRole('button', { name: 'Editar rotina', exact: true })
     .click();
@@ -184,9 +184,7 @@ test('edição de missão vinculada preserva a configuração da sessão iniciad
   );
   await routine.getByRole('button', { name: 'Cancelar', exact: true }).click();
   await page.goto('/missoes');
-  await page
-    .getByRole('button', { name: 'Sessões ativas', exact: true })
-    .click();
+  await page.getByRole('tab', { name: 'Sessões ativas', exact: true }).click();
   await page.getByRole('button', { name: 'Retomar', exact: true }).click();
   await page
     .getByText('Configuração desta execução preservada', { exact: true })
@@ -200,7 +198,7 @@ test('edição de missão vinculada preserva a configuração da sessão iniciad
     page.getByRole('heading', { name: 'Beber água', exact: true }),
   ).toBeVisible();
   await page
-    .getByRole('button', { name: 'Execução detalhada', exact: true })
+    .getByRole('tab', { name: 'Execução detalhada', exact: true })
     .click();
   await expect(page.locator('.occurrence-execution')).not.toContainText(
     'Beber água com atenção',

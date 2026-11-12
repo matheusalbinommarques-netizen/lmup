@@ -36,6 +36,7 @@
   import { fraction } from '$services/productivityRules';
   import OccurrenceExecution from './OccurrenceExecution.svelte';
   import Button from '$lib/ui/Button.svelte';
+  import Tabs from '$lib/ui/Tabs.svelte';
   import Execution from './Execution.svelte';
   import { dateKey } from '$services/rewardService';
   import { goto } from '$app/navigation';
@@ -461,23 +462,25 @@
               Concluída individualmente, fora desta sessão. A mesma ocorrência
               conta no progresso, sem nova recompensa.
             </p>{/if}
-          <div
+          <Tabs
             class="execution-mode"
-            role="group"
-            aria-label="Modo de execução"
-          >
-            <Button
-              variant="secondary"
-              aria-pressed={!detailed}
-              disabled={busy || executionBusy}
-              onclick={() => (detailed = false)}>Conclusão rápida</Button
-            ><Button
-              variant="secondary"
-              aria-pressed={detailed}
-              disabled={busy || executionBusy}
-              onclick={() => (detailed = true)}>Execução detalhada</Button
-            >
-          </div>
+            layout="grid"
+            label="Modo de execução"
+            items={[
+              {
+                id: 'quick',
+                label: 'Conclusão rápida',
+                disabled: busy || executionBusy,
+              },
+              {
+                id: 'detailed',
+                label: 'Execução detalhada',
+                disabled: busy || executionBusy,
+              },
+            ]}
+            selected={detailed ? 'detailed' : 'quick'}
+            onselect={(id) => (detailed = id === 'detailed')}
+          />
           {#if !detailed}
             <div class="quick-execution" class:eligible={quickEligible}>
               <p>
@@ -838,22 +841,8 @@
     font-size: 0.78rem;
     margin: 0;
   }
-  .execution-mode {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 5px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #8b704534;
-  }
-  .execution-mode :global(.lmu-button) {
-    min-height: 39px;
-    font-size: 0.83rem;
-    padding: 7px;
-  }
-  .execution-mode :global([aria-pressed='true']) {
-    background: linear-gradient(#765725, #352c1c);
-    border-color: #b68a3e;
-    color: #ffe3a6;
+  .saved-sessions :global(.execution-mode) {
+    margin-bottom: 12px;
   }
   .quick-execution {
     display: grid;
@@ -1005,9 +994,6 @@
     }
     .activity-navigation :global(.lmu-button) {
       padding: 6px;
-      font-size: 0.75rem;
-    }
-    .execution-mode :global(.lmu-button) {
       font-size: 0.75rem;
     }
     ol {

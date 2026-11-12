@@ -106,9 +106,9 @@ export async function resolveInvestigation(
   await page
     .getByRole('button', {
       name:
-      resolution === 'route'
-        ? 'Vou preparar uma rota mais segura.'
-        : 'Vou ajudar a recuperar a carga restante.',
+        resolution === 'route'
+          ? 'Vou preparar uma rota mais segura.'
+          : 'Vou ajudar a recuperar a carga restante.',
       exact: false,
     })
     .click();

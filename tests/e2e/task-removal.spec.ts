@@ -99,7 +99,7 @@ test('arquivar conclusão preserva economia, consulta e não aparece em atividad
     page.getByRole('status', { name: 'Recompensa da conclusão' }),
   ).toBeVisible();
   await page.goto('/missoes');
-  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Todas', exact: true }).click();
   const before = await data(page);
   const dialog = await request(page, 'Missão com história', 'Arquivar missão');
   await expect(

@@ -4,7 +4,7 @@ const TITLES = ['Beber água', 'Alongar o corpo', 'Ler um capítulo'];
 
 async function openDraft(page: Page, titles = TITLES) {
   await page.goto('/missoes');
-  await page.getByRole('button', { name: 'Rotinas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Rotinas', exact: true }).click();
   await page.getByRole('button', { name: 'Nova rotina', exact: true }).click();
   await page
     .locator('.routine-form')

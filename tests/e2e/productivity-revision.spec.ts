@@ -188,19 +188,19 @@ test('pendências, conclusões de hoje e histórico usam conjuntos distintos', a
     page.getByText(/Atividades de outros dias|Trazer para hoje/),
   ).toHaveCount(0);
   await page.goto('/missoes');
-  await page.getByRole('button', { name: 'Concluídas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Concluídas', exact: true }).click();
   await expect(
     page
       .getByRole('region', { name: 'Histórico de conclusões' })
       .getByText('Conclusão antiga', { exact: true }),
   ).toHaveCount(0);
-  await page.getByRole('button', { name: 'Pendentes', exact: true }).click();
+  await page.getByRole('tab', { name: 'Pendentes', exact: true }).click();
   await page
     .getByRole('button', { name: 'Concluir Objetivo pendente', exact: true })
     .click();
-  await page.getByRole('button', { name: 'Concluídas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Concluídas', exact: true }).click();
   await expect(page.locator('.history-row')).toContainText('Objetivo pendente');
-  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Todas', exact: true }).click();
   await expect(page.locator('.mission-task-row')).toHaveCount(3);
   await page
     .getByRole('button', { name: 'Ferramentas de missões', exact: true })

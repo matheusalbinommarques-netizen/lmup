@@ -133,7 +133,7 @@ test('criação avançada, parcelas, correção, compensação e persistência e
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await create(page, 'Inglês por 40 minutos', advanced);
-  await page.getByRole('button', { name: 'Agenda', exact: true }).click();
+  await page.getByRole('tab', { name: 'Agenda', exact: true }).click();
   await page.getByRole('button', { name: 'Dia', exact: true }).click();
   await page
     .getByRole('button', { name: 'Executar agora', exact: true })
@@ -179,7 +179,7 @@ test('rotina semanal vira sessão persistente e aceita pausa, retomada e conclus
 }) => {
   await create(page, 'Lavar louça');
   await create(page, 'Ler um livro');
-  await page.getByRole('button', { name: 'Rotinas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Rotinas', exact: true }).click();
   await page.getByRole('button', { name: 'Nova rotina', exact: true }).click();
   await page
     .getByLabel('Nome da rotina', { exact: true })
@@ -234,7 +234,7 @@ test('rotina semanal vira sessão persistente e aceita pausa, retomada e conclus
     .filter({ hasText: 'Ler um livro' })
     .click();
   await page
-    .getByRole('button', { name: 'Execução detalhada', exact: true })
+    .getByRole('tab', { name: 'Execução detalhada', exact: true })
     .click();
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
