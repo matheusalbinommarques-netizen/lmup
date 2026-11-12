@@ -10,6 +10,7 @@
   import Icon from '$lib/ui/Icon.svelte';
   import RpgTrim from '$lib/ui/RpgTrim.svelte';
   import RewardProgress from './RewardProgress.svelte';
+  import RewardBreakdown from './RewardBreakdown.svelte';
   import LevelMilestone from './LevelMilestone.svelte';
   import RefugeMilestone from './RefugeMilestone.svelte';
   import { percentOf, type GoalStatus } from '$services/investmentGoal';
@@ -135,6 +136,7 @@
           </div>
         {/each}
       </div>
+      <RewardBreakdown {event} />
       {#if event.reversedAt}<p>
           {event.reversalPolicy === 'debt'
             ? 'Conclusão corrigida. Seus saldos foram preservados; os ganhos futuros compensam o débito da recompensa ordinária.'
@@ -161,6 +163,7 @@
               ? ` · +${bonus.reward.food} Comida`
               : ''} de bônus
           </p>
+          <RewardBreakdown event={bonus} />
         </div>{/if}
       {#if levels && stages && before !== undefined && after !== undefined}
         {#if leveled}<LevelMilestone

@@ -30,6 +30,7 @@ import { createJourneyBackup, restoreJourneyBackup } from './backupDataService';
 import { addCalendarDays } from './calendar';
 import { ordinaryReward } from './rewardService';
 import { invalidateHeroModifiersCache } from './gearService';
+import { explainReward } from './rewardExplanation';
 
 const SEEDS = [1, 2, 3, 4, 5, 6];
 const STEPS = 60;
@@ -255,8 +256,16 @@ async function play(seed: number) {
     if (found.length)
       return `semente ${seed}, passo ${step} (${op}, ${day}): ${found.join('; ')} · últimas: ${trail.slice(-8).join(', ')}`;
   }
+  // "Por que ganhei isso?": every grant receipt must have an account that closes.
+  for (const event of await db.activityEvents.toArray()) {
+    if (!['task', 'review', 'project'].includes(event.kind)) continue;
+    explained += 1;
+    if (!explainReward(event))
+      return `semente ${seed}: a conta do recibo ${event.id} não fecha`;
+  }
   return null;
 }
+let explained = 0;
 
 it('nenhuma sequência de operações deixa saldo, registro ou débito inconsistente', async () => {
   const failures: string[] = [];
@@ -280,4 +289,5 @@ it('nenhuma sequência de operações deixa saldo, registro ou débito inconsist
     'backup',
   ])
     expect(done[op] ?? 0, op).toBeGreaterThan(0);
+  expect(explained).toBeGreaterThan(0);
 }, 240000);

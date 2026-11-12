@@ -9,6 +9,7 @@
   import Card from '$lib/ui/Card.svelte';
   import Button from '$lib/ui/Button.svelte';
   import ProductivityProgress from './ProductivityProgress.svelte';
+  import RewardBreakdown from './rewards/RewardBreakdown.svelte';
   let data = $state.raw<JourneySnapshot>();
   let error = $state(''),
     range = $state<'7' | '30' | 'all'>('7'),
@@ -258,6 +259,7 @@
                   ? 'Ouro sem valor registrado'
                   : signed(row.gold) + ' Ouro'} · {signed(row.food)} Comida
               </p>
+              {#if row.event}<RewardBreakdown event={row.event} />{/if}
               {#if row.event}<details>
                   <summary>Ver recibo</summary>
                   <p>
