@@ -12,6 +12,7 @@
   import RewardProgress from './RewardProgress.svelte';
   import LevelMilestone from './LevelMilestone.svelte';
   import RefugeMilestone from './RefugeMilestone.svelte';
+  import { percentOf, type GoalStatus } from '$services/investmentGoal';
 
   let {
     title,
@@ -21,6 +22,7 @@
     fresh = false,
     continueLabel = 'Continuar',
     onContinue,
+    goal,
   }: {
     title: string;
     event?: ActivityEvent;
@@ -29,6 +31,7 @@
     fresh?: boolean;
     continueLabel?: string;
     onContinue?: () => void;
+    goal?: GoalStatus | null;
   } = $props();
   let skipped = $state(false);
   const animate = $derived(
@@ -62,6 +65,20 @@
     !!levels && levels.after.level > levels.before.level,
   );
   const evolved = $derived(!!stages && stages.after.id > stages.before.id);
+  // Before = current balance minus what this completion added; only for a
+  // fresh, active receipt, so later purchases never fake past progress.
+  const goalBefore = $derived.by(() => {
+    if (!goal || !fresh || !active || !event || goal.state === 'achieved')
+      return undefined;
+    const gained = (key: 'gold' | 'food') =>
+      event.reward[key] + (bonus?.reward[key] ?? 0);
+    return percentOf(
+      goal.resources.map((row) => ({
+        ...row,
+        have: Math.max(0, row.have - gained(row.key)),
+      })),
+    );
+  });
   const levelText = (state: ReturnType<typeof getLevelStateFromTotalXp>) =>
     state.xpForNext
       ? `Nível ${state.level} · ${state.xpIntoLevel} / ${state.xpForNext} XP`
@@ -182,6 +199,21 @@
         Esta conclusão é anterior ao histórico detalhado. Seu progresso foi
         preservado.
       </p>{/if}
+    {#if goal && active && (goal.state === 'progress' || goal.state === 'ready')}<div
+        class="goal-stack"
+      >
+        <RewardProgress
+          label={`Objetivo · ${goal.title}`}
+          before={goalBefore === undefined
+            ? `${goal.percent}%`
+            : `${goalBefore}% do custo`}
+          after={goal.missing || 'Pronto para investir'}
+          from={goalBefore ?? goal.percent}
+          to={goal.percent}
+          crossed={goal.state === 'ready' && (goalBefore ?? 100) < 100}
+          {animate}
+        />
+      </div>{/if}
     <p class="closing">Pequenas ações constroem grandes jornadas.</p>
     <div class="reward-actions">
       {#if onContinue}<button
@@ -275,6 +307,13 @@
     gap: 1rem;
     margin: 1.2rem 0;
     padding: 1rem;
+    border: 1px solid #a27c433d;
+    border-radius: 0.4rem;
+    background: #020d1170;
+  }
+  .goal-stack {
+    margin: 0 0 1rem;
+    padding: 0.8rem 1rem;
     border: 1px solid #a27c433d;
     border-radius: 0.4rem;
     background: #020d1170;

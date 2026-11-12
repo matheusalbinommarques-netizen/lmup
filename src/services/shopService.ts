@@ -1,4 +1,4 @@
-import { db, type OwnedShopItem } from '$services/db';
+import { db, type InventoryItem, type OwnedShopItem } from '$services/db';
 import { getShopItemById, type ShopItem } from '$lib/shop/types';
 import { invalidateHeroModifiersCache } from './gearService';
 import { spendResources } from './resourceLedger';
@@ -9,6 +9,19 @@ export type BuyResult =
       code:
         'no_funds' | 'profile_missing' | 'unknown' | 'unavailable' | 'capacity';
     };
+/** Collection slots used by purchases and owned visuals; an equipped bag adds 10. */
+export function collectionSpace(
+  owned: OwnedShopItem[],
+  inventory: InventoryItem[],
+) {
+  const visuals = inventory.filter(
+    (row) => row.owned && row.type !== 'gear',
+  ).length;
+  const bag = owned.some(
+    (row) => row.equipped && getShopItemById(row.itemId)?.slot === 'bag',
+  );
+  return { used: owned.length + visuals, limit: 20 + (bag ? 10 : 0) };
+}
 export async function buyItem(input: ShopItem): Promise<BuyResult> {
   const item = getShopItemById(input.id);
   if (!item || item.status !== 'available')
@@ -26,13 +39,8 @@ export async function buyItem(input: ShopItem): Promise<BuyResult> {
       if (owned.some((row) => row.itemId === item.id))
         return { ok: true, code: 'already_owned' };
       if (profile.gold < item.price) return { ok: false, code: 'no_funds' };
-      const visuals = await db.inventory
-        .filter((row) => row.owned && row.type !== 'gear')
-        .count();
-      const bag = owned.some(
-        (row) => row.equipped && getShopItemById(row.itemId)?.slot === 'bag',
-      );
-      if (owned.length + visuals >= 20 + (bag ? 10 : 0) && item.slot !== 'bag')
+      const space = collectionSpace(owned, await db.inventory.toArray());
+      if (space.used >= space.limit && item.slot !== 'bag')
         return { ok: false, code: 'capacity' };
       const row: OwnedShopItem = {
         itemId: item.id,

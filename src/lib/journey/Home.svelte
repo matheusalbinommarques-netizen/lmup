@@ -29,6 +29,7 @@
   import QuickCreate from './QuickCreate.svelte';
   import WorldProgress from './WorldProgress.svelte';
   import HeroIdentity from './HeroIdentity.svelte';
+  import InvestmentGoalCard from './InvestmentGoalCard.svelte';
   import { guardUpdates } from './guardUpdates';
   import {
     readPriority,
@@ -471,6 +472,7 @@
             </div>
           </div>
         </section>
+        <InvestmentGoalCard {data} />
         <section class="rpg-frame upcoming-achievement">
           <ApprovedIcon name="conquista" size={48} />
           <div>

@@ -7,6 +7,7 @@
   let removalOpen = $state(false);
   import { guardUpdates } from './guardUpdates';
   import RewardSummary from './rewards/RewardSummary.svelte';
+  import { evaluateGoal } from '$services/investmentGoal';
   import { isUpdateLocked } from '$services/updateSafety';
   import { storageError } from '$services/storageErrors';
   import { onMount } from 'svelte';
@@ -443,6 +444,7 @@
         fresh={!!event && event.id === freshEventId}
         continueLabel={sessionMode ? 'Próxima missão' : 'Continuar'}
         onContinue={sessionMode ? onSessionContinue : undefined}
+        goal={evaluateGoal(data.profile?.investmentGoal, data)}
       />
     {/key}
     <div class="completion-details">
