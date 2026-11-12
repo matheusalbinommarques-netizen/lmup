@@ -128,7 +128,7 @@
     padding: 16px;
   }
   .gold-label {
-    color: #f0d189;
+    color: var(--d05-label, #f0d189);
     font: 600 1.2rem var(--lmu-display);
     margin: 0 0 3px;
   }
@@ -175,7 +175,7 @@
   .goal-change {
     display: inline-block;
     margin-top: 10px;
-    color: #edcb83;
+    color: var(--d05-link, #edcb83);
     font-size: 0.8rem;
     text-decoration: none;
   }
