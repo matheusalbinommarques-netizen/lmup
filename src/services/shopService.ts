@@ -1,16 +1,13 @@
 import { db, type OwnedShopItem } from '$services/db';
 import { getShopItemById, type ShopItem } from '$lib/shop/types';
 import { invalidateHeroModifiersCache } from './gearService';
+import { spendResources } from './resourceLedger';
 export type BuyResult =
   | { ok: true; code?: 'already_owned' }
   | {
       ok: false;
       code:
-        | 'no_funds'
-        | 'profile_missing'
-        | 'unknown'
-        | 'unavailable'
-        | 'capacity';
+        'no_funds' | 'profile_missing' | 'unknown' | 'unavailable' | 'capacity';
     };
 export async function buyItem(input: ShopItem): Promise<BuyResult> {
   const item = getShopItemById(input.id);
@@ -21,6 +18,7 @@ export async function buyItem(input: ShopItem): Promise<BuyResult> {
     db.profile,
     db.ownedShopItems,
     db.inventory,
+    db.productivityAudit,
     async () => {
       const profile = await db.profile.get(1);
       if (!profile) return { ok: false, code: 'profile_missing' };
@@ -46,7 +44,12 @@ export async function buyItem(input: ShopItem): Promise<BuyResult> {
         equipped: false,
         acquiredAt: new Date().toISOString(),
       };
-      await db.profile.update(1, { gold: profile.gold - item.price });
+      await spendResources({
+        requestId: `shop:${item.id}:${crypto.randomUUID()}`,
+        entityId: `shop-item:${item.id}`,
+        cost: { gold: item.price },
+        details: { itemId: item.id },
+      });
       await db.ownedShopItems.add(row);
       return { ok: true };
     },
