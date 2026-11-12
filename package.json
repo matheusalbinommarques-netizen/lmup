@@ -15,6 +15,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "perf:load": "node scripts/perf/measure.mjs load",
+    "economy:simulate": "node scripts/economy/simulate.mjs",
     "perf:scale": "node scripts/perf/measure.mjs scale",
     "test:e2e": "playwright test",
     "test:capture-isolation": "node scripts/reward-captures.mjs --check",
