@@ -83,7 +83,7 @@ serraria 1 (d1) → campo de caça 1 (d2) → pedreira 1 (d4) → armazém 1 (d7
 
 ## Decisões para o autor
 
-1. **Adotar a V0.2 como base** (ou pedir outro ponto da curva: mais rápido ou mais lento).
+1. **Adotar a V0.2 como base** (ou pedir outro ponto da curva: mais rápido ou mais lento). **Aprovada pelo autor em 12/11/2026.**
 2. **Perfis leves:** os intervalos longos são proporcionais à renda (~100 ouro por dia). Baixar preços para eles faria os perfis intensos terminarem rápido demais. Alternativas que não mexem na curva principal:
    - metas menores entre construções: equipamentos, receitas da forja, encomendas do entreposto;
    - o objetivo visível da Fase 1, mostrando o progresso até a próxima construção.

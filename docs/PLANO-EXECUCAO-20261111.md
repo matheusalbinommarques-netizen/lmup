@@ -58,7 +58,9 @@ Cada linha é um PR. Dentro de uma onda, lotes que não tocam os mesmos arquivos
 
 ### Onda D — caixas de suprimentos (Fase 2)
 
-Teto de 5 por dia, retorno decrescente, escolha do material. **Decidido em 11/11:** depois da 5ª caixa não há mais caixas naquele dia; o XP excedente não acumula para caixas (o XP da missão continua normal). **Depende de:** R1, A12 e números aprovados pelo autor a partir do S1. Estorno de missão estorna progresso de caixa. **Números de base:** a proposta V0.2 de `ECONOMIA-2-0-SIMULACAO.md`, depois de aprovada pelo autor.
+Teto de 5 por dia, retorno decrescente, escolha do material. **Decidido em 11/11:** depois da 5ª caixa não há mais caixas naquele dia; o XP excedente não acumula para caixas (o XP da missão continua normal). **Depende de:** R1, A12 e números aprovados pelo autor a partir do S1. Estorno de missão estorna progresso de caixa. **Números de base:** a proposta V0.2 de `ECONOMIA-2-0-SIMULACAO.md`, **aprovada pelo autor em 12/11/2026**.
+
+**Implementação (12/11):** materiais (`profile.materials`, `profile.materialDebt`) no razão único, com crédito, gasto e estorno por recibo; o backup recusa saldo que não fecha com os recibos. As caixas são derivadas dos recibos de missão (`activityEvents`), sem contador próprio: desfazer ou corrigir uma missão reduz as caixas do dia, e caixa já aberta que deixa de valer é estornada (débito se o material já foi gasto). Abrir uma caixa grava `supply-box:<data>:<caixa>:<tentativa>`. Cartão em Hoje com progresso até a próxima caixa, estoque e escolha do material. Os materiais só passam a ter uso nas construções da Onda E.
 
 ### Onda E — primeiro circuito do acampamento (Fase 3)
 
