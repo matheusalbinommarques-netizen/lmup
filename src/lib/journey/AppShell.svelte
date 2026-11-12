@@ -3,6 +3,8 @@
   import { identity, destinations } from '$lib/content/experience';
   import type { Snippet } from 'svelte';
   import { afterNavigate } from '$app/navigation';
+  import { onMount } from 'svelte';
+  import { runAutomaticFolderBackup } from '$services/folderBackup';
   import Icon, { type IconName } from '$lib/ui/Icon.svelte';
   import Button from '$lib/ui/Button.svelte';
   import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
@@ -10,6 +12,23 @@
   import './visual.css';
   import Dialog from '$lib/ui/Dialog.svelte';
   let { children }: { children: Snippet } = $props();
+  // A15: silent copy to the chosen folder; it never blocks or warns here.
+  onMount(() => {
+    void runAutomaticFolderBackup();
+    const timer = setInterval(
+      () => void runAutomaticFolderBackup(),
+      5 * 60_000,
+    );
+    const hidden = () => {
+      if (document.visibilityState === 'hidden')
+        void runAutomaticFolderBackup();
+    };
+    document.addEventListener('visibilitychange', hidden);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', hidden);
+    };
+  });
   let menu = $state(false);
   const links: { href: string; label: string; icon: IconName }[] = [
     { href: '/', label: destinations.today, icon: 'today' },
@@ -41,8 +60,7 @@
   function active(href: string) {
     const path = page.url.pathname;
     if (href === '/') return path === '/';
-    if (href === '/mundo')
-      return path.startsWith('/mundo');
+    if (href === '/mundo') return path.startsWith('/mundo');
     if (href === '/missoes')
       return (
         path.startsWith('/missoes') ||
