@@ -25,6 +25,7 @@ import {
 import { createDefaultProfile, initializeJourney } from './profileService';
 import { invalidateHeroModifiersCache } from './gearService';
 import { calendarDate } from './calendar';
+import { isInvestmentGoal } from './investmentGoal';
 import { effortDefinition, type Effort } from './effort';
 import {
   validateProductivityBackup,
@@ -177,6 +178,11 @@ export function validateBackup(input: unknown): JourneyBackup {
       !validPersonalDeletions(profile.personalTaskDeletions)
     )
       fail('registro de exclusões pessoais inválido.');
+    if (
+      profile.investmentGoal !== undefined &&
+      !isInvestmentGoal(profile.investmentGoal)
+    )
+      fail('objetivo de investimento inválido.');
     if (profile.world != null) validateWorld(profile.world);
     if (profile.camp != null) {
       validateCampState(profile.camp);

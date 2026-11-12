@@ -34,6 +34,8 @@ export interface Profile {
   /** Optional atomic settlement; no new table/index, compatible with schema 6. */
   camp?: CampState;
   rewardDebt?: Resources;
+  /** Chosen investment pointer; never reserves or moves balances. */
+  investmentGoal?: { id: string; chosenAt: string };
   id?: number;
   name: string;
   title?: string;
