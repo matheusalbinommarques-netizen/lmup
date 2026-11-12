@@ -1,6 +1,7 @@
 import { db, type Profile } from './db';
 import { CAMP_PREVIEW } from '$lib/camp/cinematic/previewMode';
 import { validateCampState } from '$lib/camp/campState';
+import { spendResources } from './resourceLedger';
 import {
   validateCampSettlement,
   type CampSettlementState,
@@ -119,9 +120,20 @@ export async function constructCampSettlement(expected: Expected) {
       profile!.gold < SETTLEMENT_PRICE
     )
       throw Error('Você precisa de 50 ouro para construir o acampamento.');
+    // The receipt keeps its id and shape so existing backups stay valid.
+    const { profile: paid } = await spendResources({
+      requestId: SETTLEMENT_BUILT,
+      entityId: 'camp-settlement',
+      action: 'camp-settlement:build',
+      cost: { gold: SETTLEMENT_PRICE },
+      details: {
+        source: 'purchase',
+        cost: SETTLEMENT_PRICE,
+        buildings: ['residence', 'bestiary', 'garden'],
+      },
+    });
     const updated = {
-      ...profile!,
-      gold: profile!.gold - SETTLEMENT_PRICE,
+      ...paid,
       campSettlement: {
         ...state,
         residenceBuilt: true,
@@ -129,17 +141,6 @@ export async function constructCampSettlement(expected: Expected) {
       },
     };
     await db.profile.put(updated);
-    await audit(
-      SETTLEMENT_BUILT,
-      'camp-settlement:build',
-      { gold: profile!.gold },
-      {
-        gold: updated.gold,
-        source: 'purchase',
-        cost: SETTLEMENT_PRICE,
-        buildings: ['residence', 'bestiary', 'garden'],
-      },
-    );
     return updated;
   });
 }
