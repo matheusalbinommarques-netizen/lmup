@@ -3,6 +3,7 @@ import { isCampCompanionDiscovered } from '$lib/camp/cinematic/state';
 import { companionContent } from '$lib/content/world';
 // src/services/companionService.ts
 import { db, type Companion, type Profile } from '$services/db';
+import { spendResources } from './resourceLedger';
 
 /**
  * Cada estágio de evolução do pet:
@@ -272,92 +273,112 @@ export async function feedCompanion(
       options.expectedInvested < 0)
   )
     throw new Error('Reabra a prévia de cuidado.');
-  return db.transaction('rw', db.profile, db.companions, async () => {
-    const profile = await db.profile.get(1),
-      companion = await db.companions.get(companionId);
-    if (
-      !profile ||
-      !companion ||
-      !companionAvailable(companion, profile.level) ||
-      (CAMP_PREVIEW && !isCampCompanionDiscovered(companion, profile))
-    )
-      throw new Error('Este companheiro ainda não está disponível.');
-    if (
-      options &&
-      companion.careHistory?.some((entry) => entry.id === options.requestId)
-    )
-      return companion;
-    if (options && (companion.foodInvested ?? 0) !== options.expectedInvested)
-      throw new Error(
-        'O investimento mudou em outra aba. Confira a nova prévia antes de alimentar.',
-      );
-    const quote = careQuote(companion, amount);
-    if ((profile.food ?? 0) < quote.cost)
-      throw new Error('Você não tem comida suficiente.');
-    const updated = {
-      ...companion,
-      foodInvested: quote.invested,
-      evolutionStage: quote.stage,
-      careHistory: [
-        ...(companion.careHistory ?? []),
-        {
-          id: options?.requestId ?? crypto.randomUUID(),
-          occurredAt: new Date().toISOString(),
-          amount: quote.cost,
-          fromStage: getCompanionEvolutionState(companion)!.currentStage.stage,
-          toStage: quote.stage,
-        },
-      ],
-    };
-    await db.profile.update(1, {
-      food: (profile.food ?? 0) - quote.cost,
-      updatedAt: new Date().toISOString(),
-    });
-    await db.companions.put(updated);
-    return updated;
-  });
+  return db.transaction(
+    'rw',
+    db.profile,
+    db.companions,
+    db.productivityAudit,
+    async () => {
+      const profile = await db.profile.get(1),
+        companion = await db.companions.get(companionId);
+      if (
+        !profile ||
+        !companion ||
+        !companionAvailable(companion, profile.level) ||
+        (CAMP_PREVIEW && !isCampCompanionDiscovered(companion, profile))
+      )
+        throw new Error('Este companheiro ainda não está disponível.');
+      if (
+        options &&
+        companion.careHistory?.some((entry) => entry.id === options.requestId)
+      )
+        return companion;
+      if (options && (companion.foodInvested ?? 0) !== options.expectedInvested)
+        throw new Error(
+          'O investimento mudou em outra aba. Confira a nova prévia antes de alimentar.',
+        );
+      const quote = careQuote(companion, amount);
+      if ((profile.food ?? 0) < quote.cost)
+        throw new Error('Você não tem comida suficiente.');
+      const careId = options?.requestId ?? crypto.randomUUID();
+      const updated = {
+        ...companion,
+        foodInvested: quote.invested,
+        evolutionStage: quote.stage,
+        careHistory: [
+          ...(companion.careHistory ?? []),
+          {
+            id: careId,
+            occurredAt: new Date().toISOString(),
+            amount: quote.cost,
+            fromStage:
+              getCompanionEvolutionState(companion)!.currentStage.stage,
+            toStage: quote.stage,
+          },
+        ],
+      };
+      if (quote.cost > 0)
+        await spendResources({
+          requestId: `companion-care:${companionId}:${/^[\w-]{1,100}$/.test(careId) ? careId : crypto.randomUUID()}`,
+          entityId: `companion:${companionId}`,
+          cost: { food: quote.cost },
+          details: { careId, toStage: quote.stage },
+        });
+      await db.profile.update(1, { updatedAt: new Date().toISOString() });
+      await db.companions.put(updated);
+      return updated;
+    },
+  );
 }
 
 export async function evolveCompanion(
   companionId: number,
   expectedStage?: number,
 ): Promise<EvolveResult> {
-  return db.transaction('rw', db.profile, db.companions, async () => {
-    const profile = await db.profile.get(1);
-    const companion = await db.companions.get(companionId);
-    if (!profile || !companion) return { ok: false, reason: 'not_found' };
-    const required =
-      companion.requiredLevel ??
-      { 1: 1, 2: 5, 3: 15, 4: 20 }[companionId] ??
-      Infinity;
-    if (
-      profile.level < required ||
-      (CAMP_PREVIEW && !isCampCompanionDiscovered(companion, profile))
-    )
-      return { ok: false, reason: 'locked' };
-    const state = getCompanionEvolutionState(companion);
-    if (!state) return { ok: false, reason: 'no_config' };
-    if (!state.nextStage) return { ok: false, reason: 'max_stage' };
-    if (expectedStage != null && state.currentStage.stage !== expectedStage)
-      throw new Error('A evolução mudou em outra aba. Confira a nova prévia.');
-    const amount = Math.max(
-      0,
-      state.nextStage.totalFoodRequired - (companion.foodInvested ?? 0),
-    );
-    if ((profile.food ?? 0) < amount)
-      return { ok: false, reason: 'not_enough_food' };
-    if (amount > 0) await feedCompanion(companionId, amount);
-    else
-      await db.companions.update(companionId, {
-        evolutionStage: state.nextStage.stage,
-      });
-    return {
-      ok: true,
-      profile: (await db.profile.get(1))!,
-      companion: (await db.companions.get(companionId))!,
-      newStage: state.nextStage.stage,
-    };
-  });
+  return db.transaction(
+    'rw',
+    db.profile,
+    db.companions,
+    db.productivityAudit,
+    async () => {
+      const profile = await db.profile.get(1);
+      const companion = await db.companions.get(companionId);
+      if (!profile || !companion) return { ok: false, reason: 'not_found' };
+      const required =
+        companion.requiredLevel ??
+        { 1: 1, 2: 5, 3: 15, 4: 20 }[companionId] ??
+        Infinity;
+      if (
+        profile.level < required ||
+        (CAMP_PREVIEW && !isCampCompanionDiscovered(companion, profile))
+      )
+        return { ok: false, reason: 'locked' };
+      const state = getCompanionEvolutionState(companion);
+      if (!state) return { ok: false, reason: 'no_config' };
+      if (!state.nextStage) return { ok: false, reason: 'max_stage' };
+      if (expectedStage != null && state.currentStage.stage !== expectedStage)
+        throw new Error(
+          'A evolução mudou em outra aba. Confira a nova prévia.',
+        );
+      const amount = Math.max(
+        0,
+        state.nextStage.totalFoodRequired - (companion.foodInvested ?? 0),
+      );
+      if ((profile.food ?? 0) < amount)
+        return { ok: false, reason: 'not_enough_food' };
+      if (amount > 0) await feedCompanion(companionId, amount);
+      else
+        await db.companions.update(companionId, {
+          evolutionStage: state.nextStage.stage,
+        });
+      return {
+        ok: true,
+        profile: (await db.profile.get(1))!,
+        companion: (await db.companions.get(companionId))!,
+        newStage: state.nextStage.stage,
+      };
+    },
+  );
 }
 
 /**
