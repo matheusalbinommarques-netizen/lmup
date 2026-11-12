@@ -1246,6 +1246,17 @@
   .missions-organizer {
     max-width: none;
     margin: 0;
+    /* D05: gold only for the main action, rewards and progress. */
+    --lmu-border: #6f7f79;
+    --rpg-line: #6b7a7473;
+    --rpg-engraving: #a7b2a740;
+    --d05-heading: #ece4d0;
+    --d05-label: #c3cabd;
+    --d05-link: #d6e2db;
+    --d05-border: #5f6f6a66;
+    --d05-surface-1: #061115f5;
+    --d05-surface-2: #0c1b1e;
+    --d05-surface-3: #15272b;
   }
   .missions-heading {
     background:
@@ -1262,7 +1273,7 @@
   }
   .missions-heading h1 {
     font: 500 2.65rem/1.05 var(--lmu-display);
-    color: #f0ca76;
+    color: var(--d05-heading);
     margin: 6px 0;
   }
   .missions-heading p {
@@ -1272,7 +1283,7 @@
   }
   .missions-heading .lmu-eyebrow {
     font-size: 0.75rem;
-    color: #e4c481;
+    color: var(--d05-label);
     letter-spacing: 0.04em;
   }
   .journey-save-status:empty {
@@ -1299,7 +1310,7 @@
   }
   .mission-session-tools {
     font-size: 0.8rem;
-    color: #dcc79c;
+    color: var(--d05-label);
   }
   .organizer-compact-filters {
     display: grid;
@@ -1335,7 +1346,7 @@
   }
   .extra-filters summary {
     cursor: pointer;
-    color: #d7c497;
+    color: var(--d05-label);
     min-height: 38px;
     display: flex;
     align-items: center;
@@ -1369,14 +1380,14 @@
   .organizer-list {
     padding: 10px 12px;
     margin: 0 0 14px;
-    border-color: #615f3b80;
+    border-color: var(--d05-border);
   }
   .organizer-list > :global(.rpg-trim) {
     display: none;
   }
   .organizer-list h2 {
     font: 500 1.45rem var(--lmu-display);
-    color: #e9ce8c;
+    color: var(--d05-heading);
     margin: 0 0 8px;
   }
   .organizer-list ul {
@@ -1388,7 +1399,7 @@
   }
   .area-group h3 {
     font: 500 1.15rem var(--lmu-display);
-    color: #dfc891;
+    color: var(--d05-heading);
     margin: 6px 0 3px;
   }
   .mission-row {
@@ -1397,10 +1408,13 @@
     gap: 10px;
     padding: 8px 10px;
     min-height: 64px;
-    border: 1px solid #4b624344;
+    border: 1px solid var(--d05-border);
     border-radius: 6px;
-    background: linear-gradient(100deg, #172c2a88, #071316);
+    background: var(--d05-surface-2);
     flex-wrap: wrap;
+  }
+  .mission-row:hover {
+    background: var(--d05-surface-3);
   }
   .mission-copy {
     flex: 1;
@@ -1431,7 +1445,7 @@
     gap: 6px;
     font-size: 0.78rem;
     margin-top: 4px;
-    color: #e0c789;
+    color: var(--d05-label);
   }
   .inline-progress progress {
     width: 84px;
@@ -1451,10 +1465,10 @@
     width: 32px;
     height: 36px;
     flex: 0 0 32px;
-    border: 1px solid #ba9b645c;
+    border: 1px solid var(--d05-border);
     border-radius: 4px;
     background: #071418;
-    color: #c8ad77;
+    color: var(--d05-label);
   }
   .mission-selection input {
     width: 20px;
@@ -1465,8 +1479,8 @@
     cursor: pointer;
   }
   .mission-check:hover {
-    background: #ad87332b;
-    color: #ffe4a4;
+    background: var(--d05-surface-3);
+    color: var(--d05-heading);
   }
   .mission-done .mission-copy > a {
     color: #b9c9bd;
@@ -1574,7 +1588,7 @@
     justify-content: space-between;
     margin: 0 0 18px;
     padding-bottom: 14px;
-    border-bottom: 1px solid #9b7c3e55;
+    border-bottom: 1px solid var(--d05-border);
   }
   .missions-organizer :global(.workspace-tabs) {
     flex: 1;
@@ -1586,7 +1600,7 @@
     gap: 12px;
     padding: 14px 16px;
     background: #0d2021;
-    border: 1px solid #8f78473d;
+    border: 1px solid var(--d05-border);
     border-radius: 8px;
     margin-bottom: 12px;
   }
@@ -1595,7 +1609,7 @@
     min-width: 190px;
   }
   .history-period strong {
-    color: #efdaaa;
+    color: var(--d05-heading);
     font: 500 1.3rem var(--lmu-display);
   }
   .history-period small {
@@ -1614,7 +1628,7 @@
     min-height: 42px;
     margin-top: 6px;
     padding: 8px 10px;
-    border: 1px solid #8f7847;
+    border: 1px solid var(--d05-border);
     border-radius: 6px;
     background: #071416;
     color: #f1e5c9;
@@ -1634,8 +1648,8 @@
   .mission-copy > .session-membership {
     display: inline-block;
     font: 500 0.76rem/1.4 var(--lmu-font);
-    color: #e4c681;
-    border: 1px solid #9b7c4655;
+    color: var(--d05-label);
+    border: 1px solid var(--d05-border);
     border-radius: 5px;
     padding: 2px 6px;
     margin: 4px 0;
