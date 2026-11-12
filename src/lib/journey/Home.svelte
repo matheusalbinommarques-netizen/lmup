@@ -628,7 +628,7 @@
   }
   .today-completions h2 {
     font-family: var(--lmu-display);
-    color: #edce91;
+    color: var(--d05-heading);
     font-size: 1.6rem;
     margin: 0;
   }
@@ -652,7 +652,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 10px;
-    border: 1px solid #8d744a44;
+    border: 1px solid var(--d05-border);
     border-radius: 7px;
   }
   .today-completions li div {
@@ -666,7 +666,7 @@
   }
   .today-secondary summary {
     cursor: pointer;
-    color: #e4c78d;
+    color: var(--d05-label);
   }
   .priority-option {
     display: grid;
@@ -680,7 +680,7 @@
     min-width: 0;
     background: #071416;
     color: #f1e5c9;
-    border: 1px solid #8f7847;
+    border: 1px solid var(--d05-border);
     border-radius: 6px;
     padding: 8px;
   }
@@ -694,6 +694,17 @@
     display: grid;
     gap: 16px;
     min-width: 0;
+    /* D05: gold only for the main action, rewards and progress. */
+    --lmu-border: #6f7f79;
+    --rpg-line: #6b7a7473;
+    --rpg-engraving: #a7b2a740;
+    --d05-heading: #ece4d0;
+    --d05-label: #c3cabd;
+    --d05-link: #d6e2db;
+    --d05-border: #5f6f6a66;
+    --d05-surface-1: #061115f5;
+    --d05-surface-2: #0c1b1e;
+    --d05-surface-3: #15272b;
   }
   .today-hero {
     position: relative;
@@ -707,7 +718,7 @@
     margin: 0;
     overflow: hidden;
     border-radius: 10px;
-    border: 1px solid #927143;
+    border: 1px solid var(--d05-border);
   }
   .today-hero > img {
     position: absolute;
@@ -755,7 +766,7 @@
     align-items: center;
     gap: 0.5rem;
     background: #061115ee;
-    border: 1px solid #9e7b3e;
+    border: 1px solid var(--d05-border);
     border-radius: 6px;
     padding: 0.4rem 0.7rem;
     font-size: 0.8rem;
@@ -809,7 +820,7 @@
     min-width: 0;
   }
   .gold-label {
-    color: #f0d189;
+    color: var(--d05-label);
     font: 600 1.2rem var(--lmu-display);
     margin: 0 0 3px;
   }
@@ -840,7 +851,7 @@
   .day-plan h2,
   .today-aside h2 {
     font: 500 1.55rem var(--lmu-display);
-    color: #f2dda9;
+    color: var(--d05-heading);
   }
   .day-plan h2 small {
     font-size: 0.85rem;
@@ -849,7 +860,7 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    color: #edcb83;
+    color: var(--d05-link);
     text-decoration: none;
     font-size: 0.8rem;
   }
@@ -924,7 +935,7 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     width: 100%;
     gap: 8px;
-    border-top: 1px solid #8d7d4b55;
+    border-top: 1px solid var(--d05-border);
     padding-top: 12px;
   }
   .daily-rewards > span {
@@ -968,7 +979,7 @@
     margin: 5px 0;
   }
   .upcoming-achievement a {
-    color: #efd399;
+    color: var(--d05-link);
     font-size: 0.75rem;
   }
   .world-cards {
@@ -1011,13 +1022,13 @@
     position: absolute;
     right: 12px;
     top: 18px;
-    color: #f1ce82;
+    color: var(--d05-link);
   }
   .day-plan,
   .daily-summary,
   .upcoming-achievement,
   .horizons {
-    --rpg-line: #a18a5b80;
+    --rpg-line: var(--d05-border);
   }
   .upcoming-achievement .gold-label,
   .horizons .gold-label {
@@ -1049,7 +1060,7 @@
   }
   .horizon-title h2 {
     font: 500 1.6rem var(--lmu-display);
-    color: #f4e4b9;
+    color: var(--d05-heading);
   }
   .horizons h3 {
     font: 500 1.4rem var(--lmu-display);
@@ -1062,7 +1073,7 @@
   }
   .horizons a {
     font-size: 0.75rem;
-    color: #edcc86;
+    color: var(--d05-link);
   }
   .horizons :global(progress) {
     width: 100%;
