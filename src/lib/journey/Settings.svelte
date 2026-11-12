@@ -1,6 +1,7 @@
 <script lang="ts">
   import UpdateCenter from './UpdateCenter.svelte';
   import BackupReminder from './BackupReminder.svelte';
+  import FolderBackup from './FolderBackup.svelte';
   import { hasBackupContent } from '$services/backupReminder';
   import { onMount } from 'svelte';
   import {
@@ -253,6 +254,7 @@
         hidden
         aria-label="Arquivo de backup JSON"
       />
+      <FolderBackup />
       {#if data}
         <BackupReminder
           hasContent={hasBackupContent(data)}
