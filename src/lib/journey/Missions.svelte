@@ -596,7 +596,9 @@
       <h1>{workspaceTitle}</h1>
       <p>{workspaceSubtitle}</p>
     </div>
-    <Button onclick={create}><Icon name="plus" size={18} />Nova missão</Button>
+    <Button size="l" onclick={create}
+      ><Icon name="plus" size={18} />Nova missão</Button
+    >
   </header>
   {#if error}<p role="alert" class="journey-error">{error}</p>{/if}
   <p role="status" class="journey-save-status">{notice}</p>
@@ -686,11 +688,13 @@
                   : 'missões selecionadas'}</span
               >
               <Button
+                size="s"
                 disabled={!eligibleSelection.length}
                 onclick={beginSession}>Iniciar sessão</Button
               >
               <Button
                 variant="quiet"
+                size="s"
                 onclick={() => {
                   selecting = false;
                   selected = [];
@@ -699,6 +703,7 @@
             {:else}
               <Button
                 variant="secondary"
+                size="s"
                 onclick={() => {
                   selectionOpen = true;
                 }}
@@ -706,7 +711,7 @@
                 <Icon name="missions" size={18} />Selecionar para sessão
               </Button>
               {#if storedSession}<a
-                  class="lmu-button lmu-button--secondary"
+                  class="lmu-button lmu-button--secondary lmu-button--s"
                   href="/sessao">Retomar sessão do dia</a
                 >{/if}
             {/if}
@@ -1296,8 +1301,7 @@
     gap: 6px;
     margin: 0;
   }
-  .organizer-tabs :global(.lmu-button),
-  .mission-session-tools :global(.lmu-button) {
+  .organizer-tabs :global(.lmu-button) {
     min-height: 36px;
     font-size: 0.8rem;
     padding: 5px 9px;
@@ -1522,10 +1526,6 @@
     }
     .missions-heading p {
       font-size: 0.78rem;
-    }
-    .missions-heading :global(.lmu-button) {
-      font-size: 0.8rem;
-      padding: 6px;
     }
     .organizer-primary-controls {
       gap: 8px;

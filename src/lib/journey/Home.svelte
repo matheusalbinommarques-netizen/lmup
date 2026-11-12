@@ -365,9 +365,12 @@
                 jornada de hoje.
               </p>{/if}
           </div>
-          {#if next}<Button disabled={busy} onclick={() => execute(next)}
-              >Começar missão</Button
-            >{:else}<Button onclick={() => (open = true)}>Nova missão</Button
+          {#if next}<Button
+              size="l"
+              disabled={busy}
+              onclick={() => execute(next)}>Começar missão</Button
+            >{:else}<Button size="l" onclick={() => (open = true)}
+              >Nova missão</Button
             >{/if}
           <ContextMenu
             label={next
@@ -447,7 +450,10 @@
                 : 'Seu dia ainda está livre. Adicione uma missão para montar seu plano.'}
             </p>{/if}
           <div class="day-plan-footer">
-            {#if next}<Button variant="quiet" onclick={() => (open = true)}
+            {#if next}<Button
+                variant="quiet"
+                size="s"
+                onclick={() => (open = true)}
                 ><ApprovedIcon name="criar" size={22} />Nova missão</Button
               >{/if}
             <a href="/missoes">Ver todas as missões</a>
@@ -894,11 +900,6 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-  }
-  .day-plan-footer :global(.lmu-button) {
-    font-size: 0.75rem;
-    min-height: 32px;
-    padding: 0.3rem;
   }
   .empty-plan {
     padding: 18px 0;

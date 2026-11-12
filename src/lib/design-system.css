@@ -25,6 +25,13 @@
   --lmu-font: 'Segoe UI', system-ui, sans-serif;
   --lmu-display: Georgia, 'Times New Roman', serif;
   --lmu-control: 3rem;
+  /* D03: three button sizes. Same family for primary and secondary. */
+  --lmu-button-s: 2.25rem;
+  --lmu-button-m: 2.75rem;
+  --lmu-button-l: 3rem;
+  --lmu-button-font-s: 0.95rem;
+  --lmu-button-font-m: 1.05rem;
+  --lmu-button-font-l: 1.15rem;
   --lmu-motion: 160ms;
   color: var(--lmu-text);
   background: var(--lmu-bg);
@@ -103,6 +110,42 @@
   text-decoration: none;
   transition: background var(--lmu-motion);
   white-space: normal;
+}
+/*
+ * D03 sizes. The class is repeated on purpose: it outranks the theme and
+ * screen overrides (specificity 0,3,0) without !important. Only size and
+ * family live here; color and borders stay with the variant (D05).
+ */
+.lmu-button.lmu-button--s.lmu-button--s.lmu-button--s,
+.lmu-button.lmu-button--m.lmu-button--m.lmu-button--m,
+.lmu-button.lmu-button--l.lmu-button--l.lmu-button--l {
+  font-family: var(--lmu-display);
+  line-height: 1.2;
+  border-radius: 6px;
+}
+.lmu-button.lmu-button--s.lmu-button--s.lmu-button--s {
+  min-height: var(--lmu-button-s, 2.25rem);
+  padding: 0.35rem 0.8rem;
+  gap: 0.4rem;
+  font-size: var(--lmu-button-font-s, 0.95rem);
+}
+.lmu-button.lmu-button--m.lmu-button--m.lmu-button--m {
+  min-height: var(--lmu-button-m, 2.75rem);
+  padding: 0.5rem 1rem;
+  gap: 0.5rem;
+  font-size: var(--lmu-button-font-m, 1.05rem);
+}
+.lmu-button.lmu-button--l.lmu-button--l.lmu-button--l {
+  min-height: var(--lmu-button-l, 3rem);
+  padding: 0.6rem 1.25rem;
+  gap: 0.6rem;
+  font-size: var(--lmu-button-font-l, 1.15rem);
+}
+/* Touch: no control below 44 px. */
+@media (max-width: 760px), (pointer: coarse) {
+  .lmu-button.lmu-button--s.lmu-button--s.lmu-button--s {
+    min-height: var(--lmu-button-m, 2.75rem);
+  }
 }
 .lmu-button--primary {
   background: var(--lmu-action);

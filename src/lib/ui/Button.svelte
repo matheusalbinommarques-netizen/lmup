@@ -3,6 +3,7 @@
   import type { HTMLButtonAttributes } from 'svelte/elements';
   let {
     variant = 'primary',
+    size,
     loading = false,
     disabled = false,
     children,
@@ -10,6 +11,8 @@
     ...rest
   }: HTMLButtonAttributes & {
     variant?: 'primary' | 'secondary' | 'quiet' | 'danger';
+    /** D03 scale; screens not yet migrated keep their own sizing. */
+    size?: 's' | 'm' | 'l';
     loading?: boolean;
     children?: Snippet;
   } = $props();
@@ -18,7 +21,7 @@
 <button
   type="button"
   {...rest}
-  class={`lmu-button lmu-button--${variant} ${className}`}
+  class={`lmu-button lmu-button--${variant}${size ? ` lmu-button--${size}` : ''} ${className}`}
   disabled={disabled || loading}
   aria-busy={loading}
 >
