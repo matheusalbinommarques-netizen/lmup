@@ -256,7 +256,7 @@ test('lista compacta preserva busca, filtros e seleção sem iniciar execução'
   await expect(page.locator('.mission-row')).toHaveCount(2);
   await page.getByText('Mais filtros', { exact: false }).click();
   await expect(
-    page.getByRole('button', { name: 'Áreas', exact: true }),
+    page.getByRole('tab', { name: 'Áreas', exact: true }),
   ).toBeVisible();
   await page.getByLabel('Agrupar por área').check();
   await expect(page.locator('.area-group')).toContainText('Geral');

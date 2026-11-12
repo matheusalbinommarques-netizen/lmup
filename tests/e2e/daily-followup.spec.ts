@@ -85,9 +85,9 @@ test('conclusão recorrente sai de Pendentes, mantém histórico e aparece marca
     .click();
   await expect(row).toHaveCount(0);
   await expect(page).toHaveURL(/\/missoes/);
-  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Todas', exact: true }).click();
   await expect(row).toBeVisible();
-  await page.getByRole('button', { name: 'Concluídas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Concluídas', exact: true }).click();
   await expect(
     page.locator('.history-row').filter({ hasText: 'Fruta diária' }),
   ).toBeVisible();
@@ -122,7 +122,7 @@ test('conclusão recorrente sai de Pendentes, mantém histórico e aparece marca
   await expect(
     page.locator('.history-row').filter({ hasText: 'Fruta diária' }),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Agenda', exact: true }).click();
+  await page.getByRole('tab', { name: 'Agenda', exact: true }).click();
   const agenda = page
     .locator('.occurrence-row')
     .filter({ hasText: 'Fruta diária' });

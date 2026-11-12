@@ -257,7 +257,7 @@ test('conclusão de missão atualiza imediatamente Centro e Jardim já abertos, 
     .click();
   await expect(dialog).not.toBeVisible();
   await mission.goto('/missoes');
-  await mission.getByRole('button', { name: 'Todas', exact: true }).click();
+  await mission.getByRole('tab', { name: 'Todas', exact: true }).click();
   await mission
     .getByRole('link', {
       name: 'Crescer a árvore por XP da jornada',

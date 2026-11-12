@@ -80,7 +80,7 @@ async function createTask(
     .click();
   await expect(dialog).not.toBeVisible();
   await page.goto('/missoes');
-  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Todas', exact: true }).click();
   await page.getByRole('link', { name: title, exact: true }).click();
   await expect(page).toHaveURL(/\/missao\/\d+$/);
   await expect(

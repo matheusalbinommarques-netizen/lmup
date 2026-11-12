@@ -35,7 +35,7 @@ test('A04: recorrência individual não é apresentada como rotina', async ({
 }) => {
   await seedAuditText(page);
   await page.goto('/missoes');
-  await page.getByRole('button', { name: 'Concluídas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Concluídas', exact: true }).click();
   const individual = page
     .locator('.history-row')
     .filter({ hasText: 'Caminhada recorrente sem rotina' });

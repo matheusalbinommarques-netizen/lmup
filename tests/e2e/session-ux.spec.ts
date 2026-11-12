@@ -61,8 +61,8 @@ test('conclusão rápida avança na sessão, pausa e retoma com progresso real e
 }) => {
   await prepare(page);
   await expect(
-    page.getByRole('button', { name: 'Conclusão rápida', exact: true }),
-  ).toHaveAttribute('aria-pressed', 'true');
+    page.getByRole('tab', { name: 'Conclusão rápida', exact: true }),
+  ).toHaveAttribute('aria-selected', 'true');
   const complete = page.getByRole('button', {
     name: 'Concluir missão',
     exact: true,
@@ -81,13 +81,13 @@ test('conclusão rápida avança na sessão, pausa e retoma com progresso real e
   const balance = (await data(page)).profile[0];
   await page.getByRole('button', { name: 'Anterior', exact: true }).click();
   await page
-    .getByRole('button', { name: 'Execução detalhada', exact: true })
+    .getByRole('tab', { name: 'Execução detalhada', exact: true })
     .click();
   await expect(
     page.getByRole('region', { name: 'Resumo da recompensa' }),
   ).toBeVisible();
   await page
-    .getByRole('button', { name: 'Conclusão rápida', exact: true })
+    .getByRole('tab', { name: 'Conclusão rápida', exact: true })
     .click();
   expect((await data(page)).profile[0]).toEqual(balance);
   await page
@@ -148,7 +148,7 @@ test('sequência permite organizar, remover vínculo e registrar progresso no pr
     .click();
   await expect(page.locator('.occurrence-execution')).toBeVisible();
   await page
-    .getByRole('button', { name: 'Conclusão rápida', exact: true })
+    .getByRole('tab', { name: 'Conclusão rápida', exact: true })
     .click();
   await page
     .getByRole('button', {

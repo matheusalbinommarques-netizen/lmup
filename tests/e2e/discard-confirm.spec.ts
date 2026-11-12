@@ -55,7 +55,7 @@ test('descartar a missão dentro do editor de rotina mantém a rotina aberta', a
   page,
 }) => {
   await page.goto('/missoes');
-  await page.getByRole('button', { name: 'Rotinas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Rotinas', exact: true }).click();
   await page.getByRole('button', { name: 'Nova rotina', exact: true }).click();
   const routine = page.locator('.routine-form');
   await routine.getByLabel('Nome da rotina', { exact: true }).fill('Noite');

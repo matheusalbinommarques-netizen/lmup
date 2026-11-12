@@ -152,8 +152,8 @@ test('aba direta, inclusão no fim, pausa e encerramento liberam pendências sem
     .click();
   await expect(page).toHaveURL(/view=sessions/);
   await expect(
-    page.getByRole('button', { name: 'Sessões ativas', exact: true }),
-  ).toHaveAttribute('aria-pressed', 'true');
+    page.getByRole('tab', { name: 'Sessões ativas', exact: true }),
+  ).toHaveAttribute('aria-selected', 'true');
   const card = page.locator('.saved-session-card');
   await expect(card).toContainText('Pausada');
   await capture(page, 'ativas', info.project.name);
@@ -213,9 +213,7 @@ test('última conclusão mostra resumo, encerra de fato e não oferece retomar',
     .getByRole('link', { name: 'Voltar às missões', exact: true })
     .last()
     .click();
-  await page
-    .getByRole('button', { name: 'Sessões ativas', exact: true })
-    .click();
+  await page.getByRole('tab', { name: 'Sessões ativas', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'Nenhuma sessão ativa', exact: true }),
   ).toBeVisible();

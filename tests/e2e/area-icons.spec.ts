@@ -100,7 +100,7 @@ async function assertIcon(page: Page, title: string, key: string) {
   );
 }
 async function manage(page: Page) {
-  await page.getByRole('button', { name: 'Áreas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Áreas', exact: true }).click();
   return page.getByRole('region', { name: 'Gerenciar áreas', exact: true });
 }
 
@@ -134,7 +134,7 @@ test('adoção e conflitos preservam dados e ícones da área atualizam Lista, H
   await edit.getByText('Ícone da área', { exact: true }).click();
   await edit.getByRole('button', { name: 'Exercício', exact: true }).click();
   await edit.getByRole('button', { name: 'Salvar área', exact: true }).click();
-  await page.getByRole('button', { name: 'Lista', exact: true }).click();
+  await page.getByRole('tab', { name: 'Lista', exact: true }).click();
   await assertIcon(page, 'Ler um capítulo', '/exercicio/');
   await assertIcon(page, 'Revisar anotações', '/exercicio/');
   await expect(
@@ -142,7 +142,7 @@ test('adoção e conflitos preservam dados e ícones da área atualizam Lista, H
       .locator('.next-mission .approved-icon img[src*="/exercicio/"]')
       .first(),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Agenda', exact: true }).click();
+  await page.getByRole('tab', { name: 'Agenda', exact: true }).click();
   await page.getByRole('button', { name: 'Dia', exact: true }).click();
   const agendaRow = page
     .locator('.occurrence-row')
@@ -195,7 +195,7 @@ test('editor configura conflitos; criação e edição herdam área sem sobrescr
       fullPage: true,
     });
   }
-  await page.getByRole('button', { name: 'Lista', exact: true }).click();
+  await page.getByRole('tab', { name: 'Lista', exact: true }).click();
   await page.getByRole('button', { name: 'Nova missão', exact: true }).click();
   const form = page.getByRole('dialog', {
     name: 'Uma nova missão',

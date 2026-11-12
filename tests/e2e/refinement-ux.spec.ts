@@ -185,7 +185,7 @@ test('áreas editam descrição e ícone, transferem em lote e excluem preservan
     .getByRole('dialog', { name: 'Remover missão', exact: true })
     .getByRole('button', { name: 'Arquivar missão', exact: true })
     .click();
-  await page.getByRole('button', { name: 'Rotinas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Rotinas', exact: true }).click();
   await page.getByRole('button', { name: 'Nova rotina', exact: true }).click();
   await page.getByLabel('Nome da rotina', { exact: true }).fill('Cuidados');
   await page
@@ -200,7 +200,7 @@ test('áreas editam descrição e ícone, transferem em lote e excluem preservan
   await page
     .getByRole('button', { name: 'Salvar rotina', exact: true })
     .click();
-  await page.getByRole('button', { name: 'Áreas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Áreas', exact: true }).click();
   const before = await stored(page);
   await areas.getByLabel('Buscar área', { exact: true }).fill('Saúde');
   await expect(
@@ -284,7 +284,7 @@ test('execução detalhada prioriza conclusão e recompensa, mantendo notas e a 
     .getByRole('button', { name: 'Iniciar sessão', exact: true })
     .click();
   await page
-    .getByRole('button', { name: 'Execução detalhada', exact: true })
+    .getByRole('tab', { name: 'Execução detalhada', exact: true })
     .click();
   await expect(page.locator('.execution-reward')).toContainText('Ouro');
   await expect(

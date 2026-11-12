@@ -57,7 +57,7 @@ test('primeiro acesso cria perfil; duas abas não duplicam conclusão; estorno p
         .evaluate((button: HTMLButtonElement) => button.click()),
     ),
   );
-  await page.getByRole('button', { name: 'Concluídas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Concluídas', exact: true }).click();
   await expect(
     page.getByRole('button', { name: /^Desfazer Missão concorrente de/ }),
   ).toBeVisible();
@@ -69,7 +69,7 @@ test('primeiro acesso cria perfil; duas abas não duplicam conclusão; estorno p
     food: 2,
   });
   await page.goto('/arquivo/missoes');
-  await page.getByRole('button', { name: 'Concluídas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Concluídas', exact: true }).click();
   await page
     .getByRole('button', { name: /^Desfazer Missão concorrente de/ })
     .click();

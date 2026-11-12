@@ -144,7 +144,7 @@ test('formulário alinha áreas e passos, permite digitar horário e organiza gr
   await capture(page, 'planning');
   await save(form);
   await save(await newMission(page, 'Respirar com calma'));
-  await page.getByRole('button', { name: 'Agenda', exact: true }).click();
+  await page.getByRole('tab', { name: 'Agenda', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'Com horário 1', exact: true }),
   ).toBeVisible();
@@ -153,7 +153,7 @@ test('formulário alinha áreas e passos, permite digitar horário e organiza gr
   ).toBeVisible();
   await expect(page.locator('.timeline')).toContainText('08:30');
   await capture(page, 'agenda');
-  await page.getByRole('button', { name: 'Lista', exact: true }).click();
+  await page.getByRole('tab', { name: 'Lista', exact: true }).click();
   await page
     .getByRole('button', { name: 'Ações para Respirar com calma', exact: true })
     .click();
@@ -261,7 +261,7 @@ test('editor aproveita o espaço e altera o horário da rotina pela Lista sem pe
   const create = await newMission(page, 'Alongar');
   await create.getByLabel('Esforço desta missão').selectOption('micro');
   await save(create);
-  await page.getByRole('button', { name: 'Rotinas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Rotinas', exact: true }).click();
   await page.getByRole('button', { name: 'Nova rotina', exact: true }).click();
   const routine = page.locator('.routine-form');
   await routine
@@ -290,7 +290,7 @@ test('editor aproveita o espaço e altera o horário da rotina pela Lista sem pe
     .click();
   await expect(page).toHaveURL(/\/sessoes$/);
   await page.goto('/missoes');
-  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Todas', exact: true }).click();
   await expect(
     page.getByRole('link', { name: 'Em sessão · Rotina diária', exact: true }),
   ).toBeVisible();

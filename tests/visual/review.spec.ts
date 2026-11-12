@@ -170,7 +170,7 @@ if (core) {
     ).toBeVisible();
     await capture(page, info, '12-a04-progresso');
     await page.goto('/missoes');
-    await page.getByRole('button', { name: 'Concluídas', exact: true }).click();
+    await page.getByRole('tab', { name: 'Concluídas', exact: true }).click();
     await expect(
       page
         .locator('.history-row')

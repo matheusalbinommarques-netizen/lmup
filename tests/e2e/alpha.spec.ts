@@ -33,7 +33,7 @@ async function create(page: Page, title: string, steps = '', projectName = '') {
   // Creation now stays on the organizer; wait for the IndexedDB commit.
   await expect(dialog).not.toBeVisible();
   await page.goto('/missoes');
-  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Todas', exact: true }).click();
   await page.getByRole('link', { name: title, exact: true }).click();
   await expect(page).toHaveURL(/\/missao\/\d+$/);
   await expect(
@@ -407,7 +407,7 @@ test('plano e fixação são explícitos; navegação secundária preserva acess
     .getByRole('button', { name: 'Voltar às missões', exact: true })
     .click();
   await page.goto('/missoes');
-  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Todas', exact: true }).click();
   await page.getByText('⋯', { exact: true }).click();
   await page
     .getByRole('button', { name: 'Tirar de hoje', exact: true })
@@ -426,7 +426,7 @@ test('plano e fixação são explícitos; navegação secundária preserva acess
     page.getByRole('button', { name: 'Desafixar', exact: true }),
   ).toBeVisible();
   await page.reload();
-  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Todas', exact: true }).click();
   await page.getByText('⋯', { exact: true }).click();
   await expect(
     page.getByRole('button', { name: 'Desafixar', exact: true }),

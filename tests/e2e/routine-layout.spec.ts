@@ -38,7 +38,7 @@ test('títulos da rotina continuam legíveis em todas as larguras', async ({
 }) => {
   await page.setViewportSize({ width: 1366, height: 900 });
   await page.goto('/missoes');
-  await page.getByRole('button', { name: 'Rotinas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Rotinas', exact: true }).click();
   await page.getByRole('button', { name: 'Nova rotina', exact: true }).click();
   await page
     .locator('.routine-form')
@@ -77,7 +77,7 @@ test('composição da linha acompanha a largura do editor', async ({
 }) => {
   await page.setViewportSize({ width: 1366, height: 900 });
   await page.goto('/missoes');
-  await page.getByRole('button', { name: 'Rotinas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Rotinas', exact: true }).click();
   await page.getByRole('button', { name: 'Nova rotina', exact: true }).click();
   await page
     .locator('.routine-form')

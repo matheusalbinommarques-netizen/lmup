@@ -19,13 +19,19 @@ async function expectFreeWorld(page: Page) {
   for (const gate of prohibitedGates) expect(content).not.toMatch(gate);
   // Do not accidentally bring back the retired chapter progression.
   await expect(page.locator('.rpg-chapter-state')).toHaveCount(0);
-  await expect(page.getByRole('link', { name: /Piloto experimental de Védria/ })).toHaveCount(0);
+  await expect(
+    page.getByRole('link', { name: /Piloto experimental de Védria/ }),
+  ).toHaveCount(0);
 }
 
 async function expectCampaign(page: Page) {
   await expect(page).toHaveURL(/\/mundo\/campanha$/);
   await expect(
-    page.getByRole('heading', { name: 'Aventura nos Ermos', level: 1, exact: true }),
+    page.getByRole('heading', {
+      name: 'Aventura nos Ermos',
+      level: 1,
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(
     page.getByRole('region', { name: 'Investigação atual', exact: true }),
@@ -33,8 +39,9 @@ async function expectCampaign(page: Page) {
   await expect(
     page.getByRole('heading', { name: 'Diário da campanha', exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Abrir Mundo', exact: true }))
-    .toHaveAttribute('href', '/mundo');
+  await expect(
+    page.getByRole('link', { name: 'Abrir Mundo', exact: true }),
+  ).toHaveAttribute('href', '/mundo');
   await expectFreeWorld(page);
 }
 
@@ -105,8 +112,11 @@ for (const resolution of ['route', 'rescue'] as const) {
     const solved = (await worldData(page)).profile.world;
     expect(solved.quest).toBe('solved');
     expect(solved.resolution).toBe(resolution);
-    expect(solved.journal.some((entry: { id: string }) => entry.id === 'quest:solved'))
-      .toBe(true);
+    expect(
+      solved.journal.some(
+        (entry: { id: string }) => entry.id === 'quest:solved',
+      ),
+    ).toBe(true);
     await expectFreeWorld(page);
 
     // Neither ending nor XP/resources may regress after a further absence.
@@ -151,7 +161,7 @@ test('E01: produtividade funciona sem visitar o Mundo nem depender de sua inicia
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
   await expect(form).not.toBeVisible();
 
-  await page.getByRole('button', { name: 'Rotinas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Rotinas', exact: true }).click();
   await page.getByRole('button', { name: 'Nova rotina', exact: true }).click();
   const routine = page.locator('.routine-form');
   await routine
@@ -180,7 +190,7 @@ test('E01: produtividade funciona sem visitar o Mundo nem depender de sua inicia
     .click();
   await expect(page).toHaveURL(/\/sessoes$/);
   await page
-    .getByRole('button', { name: 'Execução detalhada', exact: true })
+    .getByRole('tab', { name: 'Execução detalhada', exact: true })
     .click();
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })
@@ -198,5 +208,7 @@ test('E01: produtividade funciona sem visitar o Mundo nem depender de sua inicia
   expect(after.profile.world).toBeUndefined();
   expect(await taskCount(page)).toBeGreaterThan(0);
   expect(after.events.length).toBeGreaterThan(before.events.length);
-  expect(after.profile.totalXpEarned).toBeGreaterThan(before.profile.totalXpEarned);
+  expect(after.profile.totalXpEarned).toBeGreaterThan(
+    before.profile.totalXpEarned,
+  );
 });

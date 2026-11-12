@@ -61,7 +61,7 @@ test('concluir na Lista preserva URL, busca, aba e recompensa no contexto', asyn
 }) => {
   await create(page, 'Lista · Beber água');
   await create(page, 'Outra missão');
-  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Todas', exact: true }).click();
   await page
     .getByRole('searchbox', { name: 'Buscar missão', exact: true })
     .fill('Lista');
@@ -71,8 +71,8 @@ test('concluir na Lista preserva URL, busca, aba e recompensa no contexto', asyn
     .click();
   await expect(page).toHaveURL(url);
   await expect(
-    page.getByRole('button', { name: 'Todas', exact: true }),
-  ).toHaveAttribute('aria-pressed', 'true');
+    page.getByRole('tab', { name: 'Todas', exact: true }),
+  ).toHaveAttribute('aria-selected', 'true');
   await expect(
     page.getByRole('searchbox', { name: 'Buscar missão', exact: true }),
   ).toHaveValue('Lista');
@@ -80,7 +80,7 @@ test('concluir na Lista preserva URL, busca, aba e recompensa no contexto', asyn
     page.getByRole('status', { name: 'Recompensa da conclusão' }),
   ).toContainText('+5 Ouro');
   expect((await state(page)).activityEvents).toHaveLength(1);
-  await page.getByRole('button', { name: 'Pendentes', exact: true }).click();
+  await page.getByRole('tab', { name: 'Pendentes', exact: true }).click();
   await expect(page.locator('.mission-task-row')).toHaveCount(0);
   await expect(page).toHaveURL(url);
 });
@@ -104,7 +104,7 @@ for (const archived of [false, true])
         exact: true,
       })
       .click();
-    await page.getByRole('button', { name: 'Todas', exact: true }).click();
+    await page.getByRole('tab', { name: 'Todas', exact: true }).click();
     if (archived) {
       const archive = await action(page, 'Missão pessoal', 'Arquivar missão');
       await archive
@@ -122,7 +122,7 @@ for (const archived of [false, true])
       url = page.url();
     const other = await context.newPage();
     await other.goto('/missoes');
-    await other.getByRole('button', { name: 'Todas', exact: true }).click();
+    await other.getByRole('tab', { name: 'Todas', exact: true }).click();
     const dialog = await action(
       page,
       'Missão pessoal',
@@ -216,7 +216,7 @@ test('restaurar arquivo anterior não ressuscita a missão excluída nem perde o
     .click();
   const old = await readFile((await (await download).path())!);
   await page.goto('/missoes');
-  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Todas', exact: true }).click();
   const dialog = await action(
     page,
     'Missão pessoal',
@@ -238,7 +238,7 @@ test('restaurar arquivo anterior não ressuscita a missão excluída nem perde o
   ).toContainText('continuarão excluídas');
   await confirmBackupImport(page);
   await page.goto('/missoes');
-  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Todas', exact: true }).click();
   await expect(
     page.getByRole('link', { name: 'Missão pessoal', exact: true }),
   ).toHaveCount(0);
@@ -264,7 +264,7 @@ test('execução aberta pela Agenda registra conclusão sem navegação', async 
   await chooseTracking(form, 'percentage');
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
   await expect(form).not.toBeVisible();
-  await page.getByRole('button', { name: 'Agenda', exact: true }).click();
+  await page.getByRole('tab', { name: 'Agenda', exact: true }).click();
   await page
     .getByRole('button', { name: 'Executar agora', exact: true })
     .click();
@@ -288,7 +288,7 @@ test('rotina e sessão permanecem na atividade até o avanço explícito', async
 }) => {
   await create(page, 'Primeira atividade');
   await create(page, 'Segunda atividade');
-  await page.getByRole('button', { name: 'Rotinas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Rotinas', exact: true }).click();
   await page.getByRole('button', { name: 'Nova rotina', exact: true }).click();
   await page
     .getByLabel('Nome da rotina', { exact: true })
@@ -317,7 +317,7 @@ test('rotina e sessão permanecem na atividade até o avanço explícito', async
   await expect(page).toHaveURL(/\/sessoes$/);
   const url = page.url();
   await page
-    .getByRole('button', { name: 'Execução detalhada', exact: true })
+    .getByRole('tab', { name: 'Execução detalhada', exact: true })
     .click();
   await page
     .getByRole('button', { name: 'Concluir missão', exact: true })

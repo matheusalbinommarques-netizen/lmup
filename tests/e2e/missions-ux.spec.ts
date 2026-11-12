@@ -32,15 +32,16 @@ test('navegação principal e ferramentas preservam todos os destinos', async ({
   page,
 }) => {
   await create(page);
-  const nav = page.getByRole('navigation', {
+  const nav = page.getByRole('tablist', {
     name: 'Visualização das missões',
   });
-  await expect(nav.getByRole('button')).toHaveCount(4);
+  await expect(nav.getByRole('tab')).toHaveCount(4);
   for (const name of ['Agenda', 'Rotinas', 'Áreas', 'Lista']) {
-    await nav.getByRole('button', { name, exact: true }).click();
-    await expect(
-      nav.getByRole('button', { name, exact: true }),
-    ).toHaveAttribute('aria-pressed', 'true');
+    await nav.getByRole('tab', { name, exact: true }).click();
+    await expect(nav.getByRole('tab', { name, exact: true })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
     await noOverflow(page);
   }
   for (const name of ['Histórico de missões', 'Arquivadas']) {
@@ -62,14 +63,12 @@ test('navegação principal e ferramentas preservam todos os destinos', async ({
     ).not.toBeVisible();
     await noOverflow(page);
   }
-  await page
-    .getByRole('button', { name: 'Sessões ativas', exact: true })
-    .click();
+  await page.getByRole('tab', { name: 'Sessões ativas', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'Sessões ativas', exact: true }),
   ).toBeVisible();
-  await nav.getByRole('button', { name: 'Lista', exact: true }).click();
-  await page.getByRole('button', { name: 'Pendentes', exact: true }).click();
+  await nav.getByRole('tab', { name: 'Lista', exact: true }).click();
+  await page.getByRole('tab', { name: 'Pendentes', exact: true }).click();
   await page.getByText('Mais filtros', { exact: false }).click();
   await page.getByLabel('Filtrar por data').selectOption('undated');
   await expect(
@@ -266,7 +265,7 @@ test('área criada em diálogo aninhado preserva o rascunho e o ícone herdado',
     form.getByRole('combobox', { name: 'Área', exact: true }),
   ).not.toHaveValue('0');
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
-  await page.getByRole('button', { name: 'Áreas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Áreas', exact: true }).click();
   await expect(
     page.getByRole('region', { name: 'Gerenciar áreas', exact: true }),
   ).toContainText('Casa');
@@ -288,11 +287,11 @@ test('histórico filtra a data realizada e mantém conclusão consultável', asy
   await expect(
     page.getByRole('link', { name: 'Missão de avaliação', exact: true }),
   ).toHaveCount(0);
-  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Todas', exact: true }).click();
   await expect(
     page.getByRole('link', { name: 'Missão de avaliação', exact: true }),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Concluídas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Concluídas', exact: true }).click();
   await expect(
     page.getByRole('region', { name: 'Histórico de conclusões', exact: true }),
   ).toContainText('Missão de avaliação');

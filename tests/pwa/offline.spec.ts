@@ -80,7 +80,7 @@ test('agenda e progresso proporcional persistem offline e entram no backup', asy
   await form.getByLabel('Meta de tempo recompensável (minutos)').fill('40');
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
   await expect(form).not.toBeVisible();
-  await page.getByRole('button', { name: 'Agenda', exact: true }).click();
+  await page.getByRole('tab', { name: 'Agenda', exact: true }).click();
   await page.getByRole('button', { name: 'Dia', exact: true }).click();
   await page
     .getByRole('button', { name: 'Executar agora', exact: true })
@@ -122,7 +122,7 @@ test('agenda e progresso proporcional persistem offline e entram no backup', asy
   await expect(page).toHaveURL(/\/sessoes$/);
   await page.reload();
   await page
-    .getByRole('button', { name: 'Execução detalhada', exact: true })
+    .getByRole('tab', { name: 'Execução detalhada', exact: true })
     .click();
   await expect(
     page.getByText('38% · Parcialmente realizada', { exact: true }),
@@ -218,7 +218,7 @@ async function mission(page: Page, title = 'Uma missão offline') {
     page.getByRole('dialog', { name: 'Uma nova missão' }),
   ).not.toBeVisible();
   await page.goto('/missoes');
-  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Todas', exact: true }).click();
   await page.getByRole('link', { name: title, exact: true }).click();
   await expect(page).toHaveURL(/\/missao\/\d+$/);
   return page.url();

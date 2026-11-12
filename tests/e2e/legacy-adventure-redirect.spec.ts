@@ -26,8 +26,7 @@ async function seedHistoricalPilot(page: Page) {
           const tx = db.transaction('profile', 'readwrite');
           const profile = tx.objectStore('profile');
           const old = profile.get(1);
-          old.onsuccess = () =>
-            profile.put({ ...old.result, rpgPilot: pilot });
+          old.onsuccess = () => profile.put({ ...old.result, rpgPilot: pilot });
           tx.oncomplete = () => {
             db.close();
             resolve();

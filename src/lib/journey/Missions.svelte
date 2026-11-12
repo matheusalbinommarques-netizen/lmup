@@ -47,6 +47,7 @@
   import QuickCreate from './QuickCreate.svelte';
   import AreasDialog from './AreasDialog.svelte';
   import Button from '$lib/ui/Button.svelte';
+  import Tabs from '$lib/ui/Tabs.svelte';
   import Icon from '$lib/ui/Icon.svelte';
   import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
   import { paintings } from '$lib/content/visualAssets';
@@ -363,6 +364,24 @@
           tasks.some((task) => task.id === event.taskId),
       ).length ?? 0,
   });
+  const completedCount = $derived(
+    counts.completed +
+      tasks.filter(
+        (task) =>
+          task.completed && !task.completionEventId && completedToday(task),
+      ).length,
+  );
+  const statusSelected = $derived(
+    workspaceView === 'sessions'
+      ? 'sessions'
+      : workspaceView !== 'list'
+        ? null
+        : ['today', 'upcoming', 'undated', 'pending'].includes(filter)
+          ? 'pending'
+          : ['completed', 'all'].includes(filter)
+            ? filter
+            : null,
+  );
   const visible = $derived(
     (filter === 'archived' ? archivedTasks : tasks)
       .filter(
@@ -545,43 +564,24 @@
   }
 </script>
 
-{#snippet statusTabs()}<nav
+{#snippet statusTabs()}<Tabs
     class="organizer-tabs"
-    aria-label="Agenda de missões"
-  >
-    {#each [{ key: 'pending', label: 'Pendentes' }, { key: 'completed', label: 'Concluídas' }, { key: 'all', label: 'Todas' }] as tab (tab.key)}<Button
-        variant="secondary"
-        aria-label={tab.label}
-        aria-pressed={workspaceView === 'list' &&
-          (filter === tab.key ||
-            (tab.key === 'pending' &&
-              ['today', 'upcoming', 'undated'].includes(filter)))}
-        onclick={() => {
-          filter = tab.key as typeof filter;
-          if (workspaceView !== 'list') changeView('list');
-        }}
-        >{tab.label}<small aria-hidden="true"
-          >{tab.key === 'completed'
-            ? counts.completed +
-              tasks.filter(
-                (task) =>
-                  task.completed &&
-                  !task.completionEventId &&
-                  completedToday(task),
-              ).length
-            : counts[tab.key as 'pending' | 'all']}</small
-        ></Button
-      >
-    {/each}
-    <Button
-      variant="secondary"
-      aria-label="Sessões ativas"
-      aria-pressed={workspaceView === 'sessions'}
-      onclick={() => changeView('sessions')}
-      >Sessões ativas<small aria-hidden="true">{openSessions.length}</small
-      ></Button
-    >
-  </nav>{/snippet}
+    label="Agenda de missões"
+    items={[
+      { id: 'pending', label: 'Pendentes', count: counts.pending },
+      { id: 'completed', label: 'Concluídas', count: completedCount },
+      { id: 'all', label: 'Todas', count: counts.all },
+      { id: 'sessions', label: 'Sessões ativas', count: openSessions.length },
+    ]}
+    selected={statusSelected}
+    onselect={(id) => {
+      if (id === 'sessions') changeView('sessions');
+      else {
+        filter = id as typeof filter;
+        if (workspaceView !== 'list') changeView('list');
+      }
+    }}
+  />{/snippet}
 
 <svelte:head><title>Missões · Level Me Up</title></svelte:head>
 <section class="rpg-theme missions-organizer">
@@ -624,16 +624,19 @@
     </aside>{/if}
   {#if !data}<p>Abrindo suas missões…</p>{:else}
     <div class="workspace-navigation">
-      <nav class="workspace-tabs" aria-label="Visualização das missões">
-        {#each [{ id: 'list', label: 'Lista', icon: 'missions' }, { id: 'agenda', label: 'Agenda', icon: 'agenda' }, { id: 'routines', label: 'Rotinas', icon: 'rotina' }, { id: 'areas', label: 'Áreas', icon: 'mapa' }] as tab (tab.id)}
-          <Button
-            variant="secondary"
-            aria-pressed={workspaceView === tab.id}
-            onclick={() => changeView(tab.id)}
-            ><ApprovedIcon name={tab.icon} size={24} />{tab.label}</Button
-          >
-        {/each}
-      </nav>
+      <Tabs
+        class="workspace-tabs"
+        layout="grid"
+        label="Visualização das missões"
+        items={[
+          { id: 'list', label: 'Lista', icon: 'missions' },
+          { id: 'agenda', label: 'Agenda', icon: 'agenda' },
+          { id: 'routines', label: 'Rotinas', icon: 'rotina' },
+          { id: 'areas', label: 'Áreas', icon: 'mapa' },
+        ]}
+        selected={workspaceView === 'sessions' ? null : workspaceView}
+        onselect={changeView}
+      />
       <ContextMenu
         label="Ferramentas de missões"
         text="Ferramentas"
@@ -1272,12 +1275,6 @@
     color: #e4c481;
     letter-spacing: 0.04em;
   }
-  .organizer-tabs :global([aria-pressed='true']) {
-    border-color: #d8a94c;
-    color: #ffe5af;
-    background: linear-gradient(#956e2b, #392b18);
-    box-shadow: 0 0 9px #d7a04033;
-  }
   .journey-save-status:empty {
     display: none;
   }
@@ -1293,23 +1290,12 @@
     align-items: center;
     flex-wrap: wrap;
   }
-  .organizer-tabs,
   .mission-session-tools {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 6px;
     margin: 0;
-  }
-  .organizer-tabs :global(.lmu-button) {
-    min-height: 36px;
-    font-size: 0.8rem;
-    padding: 5px 9px;
-    gap: 5px;
-  }
-  .organizer-tabs small {
-    font-size: 0.75rem;
-    opacity: 0.8;
   }
   .mission-session-tools {
     font-size: 0.8rem;
@@ -1530,18 +1516,17 @@
     .organizer-primary-controls {
       gap: 8px;
     }
-    .organizer-tabs {
+    .missions-organizer :global(.organizer-tabs) {
       flex-wrap: nowrap;
       overflow-x: auto;
       width: 100%;
-      padding-bottom: 2px;
     }
-    .organizer-tabs :global(.lmu-button) {
+    .missions-organizer :global(.organizer-tabs .lmu-tab) {
       flex: 0 0 auto;
-      padding: 5px 7px;
-      font-size: 0.78rem;
+      padding: 5px 9px;
+      font-size: 0.85rem;
     }
-    .organizer-tabs small {
+    .missions-organizer :global(.organizer-tabs small) {
       display: none;
     }
     .organizer-compact-filters {
@@ -1591,22 +1576,8 @@
     padding-bottom: 14px;
     border-bottom: 1px solid #9b7c3e55;
   }
-  .workspace-tabs {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 7px;
+  .missions-organizer :global(.workspace-tabs) {
     flex: 1;
-  }
-  .workspace-tabs :global(.lmu-button) {
-    min-width: 0;
-    min-height: 42px;
-    padding: 7px 10px;
-    font-size: 0.88rem;
-  }
-  .workspace-tabs :global([aria-pressed='true']) {
-    border-color: #c99b46;
-    background: linear-gradient(#765626, #362b1c);
-    color: #ffe3a1;
   }
   .history-period {
     display: flex;
@@ -1675,18 +1646,15 @@
       gap: 8px;
       margin-bottom: 12px;
     }
-    .workspace-tabs {
+    .missions-organizer :global(.workspace-tabs) {
       flex-basis: 100%;
-      gap: 4px;
     }
-    .workspace-tabs :global(.lmu-button) {
-      font-size: 0.76rem;
-      padding: 6px 3px;
-      gap: 3px;
-    }
-    .workspace-tabs :global(img) {
-      width: 20px;
-      height: 20px;
+    .missions-organizer :global(.workspace-tabs .lmu-tab) {
+      flex-direction: column;
+      gap: 2px;
+      padding: 5px 3px;
+      font-size: 0.8rem;
+      white-space: nowrap;
     }
     .history-period {
       padding: 12px;
@@ -1728,7 +1696,7 @@
       grid-column: 4;
       grid-row: 1/3;
     }
-    .organizer-tabs small {
+    .missions-organizer :global(.organizer-tabs small) {
       display: inline;
     }
   }
@@ -1739,13 +1707,6 @@
   .mission-check:hover :global(svg),
   .mission-check:focus-visible :global(svg) {
     opacity: 1;
-  }
-  @media (max-width: 600px) {
-    .workspace-tabs :global(.lmu-button) {
-      white-space: nowrap;
-      flex-direction: column;
-      gap: 1px;
-    }
   }
 
   .workspace-navigation {

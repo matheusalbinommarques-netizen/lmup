@@ -34,7 +34,7 @@ async function create(
   await configure?.(form);
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
   await expect(form).not.toBeVisible();
-  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Todas', exact: true }).click();
   await page.getByRole('link', { name: title, exact: true }).click();
   await expect(page).toHaveURL(/\/missao\/\d+$/);
   return page.url();
@@ -108,7 +108,7 @@ test('áreas no cadastro, edição, exclusão com transferência e criação ape
     page.getByText('Pessoal · Sem repetição', { exact: false }),
   ).toBeVisible();
   await page.goto('/missoes');
-  await page.getByRole('button', { name: 'Áreas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Áreas', exact: true }).click();
   areas = page.getByRole('region', { name: 'Gerenciar áreas', exact: true });
   await areas.getByRole('button', { name: 'Editar Casa', exact: true }).click();
   await areas.getByLabel('Novo nome de Casa').fill('Meu lar');
@@ -218,7 +218,7 @@ test('rotina persiste por data, impede duplicação entre abas, preserva histór
     page.getByRole('region', { name: 'Resumo da recompensa' }),
   ).toBeVisible();
   await page.goto('/missoes');
-  await page.getByRole('button', { name: 'Concluídas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Concluídas', exact: true }).click();
   await expect(page.locator('.history-row')).toHaveCount(1);
   await page
     .getByRole('button', { name: 'Ferramentas de missões', exact: true })
@@ -337,7 +337,7 @@ test('hoje, amanhã, outra data e dias da semana mostram agenda real em desktop 
   await expect(list).toContainText('Treinar amanhã');
   await expect(list).toContainText('08/12/2026');
   await capture(page, info.project.name, 'proximas');
-  await page.getByRole('button', { name: 'Todas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Todas', exact: true }).click();
   await expect(list.getByRole('link')).toHaveCount(4);
   await page
     .getByLabel('Buscar missão', { exact: true })
