@@ -27,6 +27,7 @@ import { invalidateHeroModifiersCache } from './gearService';
 import { calendarDate } from './calendar';
 import { isInvestmentGoal } from './investmentGoal';
 import { MATERIALS, materialsFromReceipts } from './resourceLedger';
+import { BUILDINGS, validateCampBuildings } from '$lib/camp/buildings';
 import { effortDefinition, type Effort } from './effort';
 import {
   validateProductivityBackup,
@@ -179,6 +180,23 @@ export function validateBackup(input: unknown): JourneyBackup {
       !validPersonalDeletions(profile.personalTaskDeletions)
     )
       fail('registro de exclusões pessoais inválido.');
+    {
+      // Wave E: each level built needs its paid receipt, and vice versa.
+      if (profile.campBuildings !== undefined)
+        validateCampBuildings(profile.campBuildings);
+      for (const def of BUILDINGS) {
+        const level = profile.campBuildings?.[def.id]?.level ?? 0;
+        const paid = lists.productivityAudit
+          .filter((row) => row.id.startsWith(`camp-building:${def.id}:`))
+          .map((row) => Number(row.id.split(':')[2]))
+          .sort((a, b) => a - b);
+        if (
+          paid.length !== level ||
+          paid.some((value, index) => value !== index + 1)
+        )
+          fail('construções diferem dos recibos.');
+      }
+    }
     for (const field of ['materials', 'materialDebt'] as const) {
       const value = profile[field];
       if (value === undefined) continue;

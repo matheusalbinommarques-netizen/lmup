@@ -66,6 +66,8 @@ Teto de 5 por dia, retorno decrescente, escolha do material. **Decidido em 11/11
 
 Serraria, caseiro indica profissional, trabalhador, produção offline até o estoque e uma segunda construção que consome madeira. Inclui **etapa 2 do acampamento antigo:** o perfil pessoal não tem estoque antigo (autor, 11/11), então não há migração de materiais. A lógica antiga sai; backups antigos com `profile.camp` continuam sendo aceitos e o campo é preservado sem uso, para não falhar a restauração. Preços e produção partem da V0.2 (3 níveis por construção, estoque limitado pelo armazém).
 
+**Primeiro lote (12/11, lógica primeiro por decisão do autor; arte depois):** serraria (10 madeira/dia no nível 1, 15 no 2) e campo de caça (4 comida/dia, 6 no 2; pede a serraria e 12 madeira), com preços da V0.2. O nível 3 fica fechado até existir ferro (fundição). Construir e melhorar gastam pelo razão com recibo `camp-building:<id>:<nível>`; coletar credita com `camp-production:<id>:<início>`. A produção acumula offline até 60 por material esperando coleta (sem armazém); a comida limita só o pendente. Estado em `profile.campBuildings`, validado no backup contra os recibos. Painel "Construções" no acampamento, sem mudar a cena. **Pendente:** arte da serraria e do campo de caça, ícones de madeira, pedra e minério, e a etapa 2 do acampamento antigo (lote próprio).
+
 ### Onda F — crônica mínima do acampamento
 
 O app registra sozinho os marcos (construções, projetos concluídos, retomadas) e mostra um resumo do mês, com poucos textos fixos. Só leitura do histórico; nenhuma tarefa pedida pelo jogo. Depende da Onda E.

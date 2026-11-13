@@ -33,6 +33,7 @@ import { invalidateHeroModifiersCache } from './gearService';
 import { explainReward } from './rewardExplanation';
 import { boxDays, openSupplyBox, supplyBoxStatus } from './supplyBoxes';
 import { MATERIALS, materialsFromReceipts } from './resourceLedger';
+import { buildOrUpgrade, collectProduction } from './campBuildingsService';
 
 const SEEDS = [1, 2, 3, 4, 5, 6];
 const STEPS = 60;
@@ -70,9 +71,26 @@ async function violations(baseline: Totals) {
   const residence = profile.campSettlement?.residenceBuilt
     ? SETTLEMENT_PRICE
     : 0;
+  const ledger = await db.productivityAudit.toArray();
+  // Wave E: buildings spend through the ledger; camp production adds food.
+  const builds = ledger.filter((row) => row.id.startsWith('camp-building:'));
+  const produced = ledger.reduce(
+    (sum, row) =>
+      sum + ((row.after as { foodDelta?: number } | null)?.foodDelta ?? 0),
+    0,
+  );
   const spent = {
-    gold: owned.reduce((sum, row) => sum + (row.price ?? 0), 0) + residence,
-    food: companions.reduce((sum, row) => sum + (row.foodInvested ?? 0), 0),
+    gold:
+      owned.reduce((sum, row) => sum + (row.price ?? 0), 0) +
+      residence +
+      builds.reduce(
+        (sum, row) =>
+          sum + ((row.after as { spent?: { gold: number } }).spent?.gold ?? 0),
+        0,
+      ),
+    food:
+      companions.reduce((sum, row) => sum + (row.foodInvested ?? 0), 0) -
+      produced,
   };
   const debt = profile.rewardDebt ?? { xp: 0, gold: 0, food: 0 };
   const owed: Totals = { xp: 0, gold: 0, food: 0 };
@@ -149,6 +167,7 @@ async function violations(baseline: Totals) {
   return found;
 }
 let openedBoxes = 0;
+let builtLevels = 0;
 
 async function play(seed: number) {
   setDay('2026-11-02');
@@ -260,10 +279,18 @@ async function play(seed: number) {
         if (companion) await feedCompanion(companion.id!, 10);
       } else if (pick < 0.8) {
         op = 'residência';
-        const profile = await ensureCampSettlement();
-        await meetCampCaretaker();
-        await constructCampSettlement(profile.campSettlement!);
-      } else if (pick < 0.85) {
+        await ensureCampSettlement();
+        const met = await meetCampCaretaker();
+        await constructCampSettlement(met.campSettlement!);
+      } else if (pick < 0.82) {
+        op = 'construção';
+        const state = (await db.profile.get(1))?.campBuildings;
+        const id = random() < 0.5 ? 'sawmill' : 'hunting';
+        if (random() < 0.5) {
+          await buildOrUpgrade(id, state?.[id]?.level ?? 0);
+          builtLevels += 1;
+        } else if (state?.[id]) await collectProduction(id);
+      } else if (pick < 0.86) {
         op = 'caixa';
         const box = (await supplyBoxStatus(day)).available[0];
         if (box) {
@@ -330,4 +357,5 @@ it('nenhuma sequência de operações deixa saldo, registro ou débito inconsist
     expect(done[op] ?? 0, op).toBeGreaterThan(0);
   expect(explained).toBeGreaterThan(0);
   expect(openedBoxes).toBeGreaterThan(0);
+  expect(builtLevels).toBeGreaterThan(0);
 }, 240000);

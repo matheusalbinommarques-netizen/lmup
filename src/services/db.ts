@@ -34,6 +34,8 @@ export interface Profile {
   /** Optional atomic settlement; no new table/index, compatible with schema 6. */
   camp?: CampState;
   rewardDebt?: Resources;
+  /** Wave E buildings (sawmill, hunting ground); absent means none built. */
+  campBuildings?: import('$lib/camp/buildings').CampBuildings;
   /** Economy 2.0 stock (wave D); absent means zero. */
   materials?: { wood: number; stone: number; ore: number };
   /** Materials owed after a reversal; paid by future credits. */

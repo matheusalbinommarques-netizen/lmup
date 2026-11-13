@@ -246,3 +246,42 @@ export function materialsFromReceipts(rows: { after?: unknown }[]): Materials {
   }
   return total;
 }
+
+export const LEDGER_FOOD_CREDIT = 'ledger:food-credit';
+/**
+ * Credits food produced in the camp. Reward debt is not touched: it belongs
+ * to mission receipts. The receipt carries `foodDelta` for reconciliation.
+ */
+export async function creditFood(input: {
+  requestId: string;
+  entityId: string;
+  amount: number;
+  details?: Record<string, unknown>;
+}): Promise<{ profile: Profile; repeated: boolean }> {
+  const { requestId, entityId, amount } = input;
+  if (!REQUEST_ID.test(requestId))
+    throw Error('Identificador de operação inválido.');
+  if (!Number.isSafeInteger(amount) || amount <= 0)
+    throw Error('Quantidade inválida.');
+  const profile = await db.profile.get(1);
+  if (!profile) throw Error('Abra sua jornada primeiro.');
+  const prior = await db.productivityAudit.get(requestId);
+  if (prior) {
+    if (prior.entityId !== entityId || prior.action !== LEDGER_FOOD_CREDIT)
+      throw Error('Identificador de operação já utilizado.');
+    return { profile, repeated: true };
+  }
+  const before = profile.food ?? 0;
+  const food = before + amount;
+  if (!Number.isSafeInteger(food)) throw Error('Saldo fora do limite seguro.');
+  await db.profile.update(1, { food });
+  await db.productivityAudit.add({
+    id: requestId,
+    entityId,
+    action: LEDGER_FOOD_CREDIT,
+    recordedAt: new Date().toISOString(),
+    before: { food: before },
+    after: { ...input.details, food, foodDelta: amount },
+  });
+  return { profile: { ...profile, food }, repeated: false };
+}

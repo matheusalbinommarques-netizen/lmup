@@ -34,6 +34,7 @@
   import Progress from '$lib/journey/Progress.svelte';
   import Dialog from '$lib/ui/Dialog.svelte';
   import Button from '$lib/ui/Button.svelte';
+  import CampBuildings from '../CampBuildings.svelte';
   import SceneViewport from './SceneViewport.svelte';
   import { campScene, resolveCampScene, type CampSceneId } from './scenes';
   let { initialScene = 'center' }: { initialScene?: CampSceneId } = $props();
@@ -249,6 +250,7 @@
   </div>
   {#if notice}<p class="camp-notice" role="status">{notice}</p>{/if}
   {#if error && !open}<p class="camp-notice error" role="alert">{error}</p>{/if}
+  {#if !CAMP_PREVIEW && built && profile}<CampBuildings {profile} />{/if}
   {#if CAMP_PREVIEW}<details class="simulation-tools">
       <summary>Ferramentas da demonstração · simular árvore</summary>
       <p>
