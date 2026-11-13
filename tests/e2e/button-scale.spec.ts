@@ -42,6 +42,8 @@ test('botões migrados seguem a escala s/m/l, com a mesma família e toque de 44
   for (const path of ['/', '/missoes']) {
     await page.goto(path);
     await expect(page.locator('main .lmu-button--l').first()).toBeVisible();
+    // Each screen has at least one small button once its data has loaded.
+    await expect(page.locator('main .lmu-button--s').first()).toBeVisible();
     const sized = await page.evaluate(() =>
       [
         ...document.querySelectorAll<HTMLElement>(

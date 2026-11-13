@@ -38,6 +38,10 @@ export interface Profile {
   materials?: { wood: number; stone: number; ore: number };
   /** Materials owed after a reversal; paid by future credits. */
   materialDebt?: { wood: number; stone: number; ore: number };
+  /** Domain of the implicit area Geral (ID 0). */
+  generalAreaDomain?: import('$lib/content/domains').DomainKey | null;
+  /** Roda da Vida: optional self-ratings, focus and intentions. */
+  lifeWheel?: import('./lifeWheelService').LifeWheelState;
   /** Chosen investment pointer; never reserves or moves balances. */
   investmentGoal?: { id: string; chosenAt: string };
   id?: number;
@@ -87,6 +91,8 @@ export interface Area {
   /** Optional presentation fields; no index/schema change. Legacy task icons remain intact. */
   iconKey?: string | null;
   iconConflict?: boolean;
+  /** Life domain this area belongs to (optional; Roda da Vida). */
+  domain?: import('$lib/content/domains').DomainKey | null;
   id?: number;
   nome: string;
   descricao?: string;
