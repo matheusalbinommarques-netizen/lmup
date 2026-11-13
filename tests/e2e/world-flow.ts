@@ -3,18 +3,42 @@ export async function worldData(page: Page) {
   return page.evaluate(
     () =>
       new Promise<any>((resolve, reject) => {
-        const r = indexedDB.open('LevelMeUpDB');
-        r.onsuccess = () => {
-          const d = r.result,
-            t = d.transaction(['profile', 'activityEvents'], 'readonly'),
-            p = t.objectStore('profile').get(1),
-            e = t.objectStore('activityEvents').getAll();
-          t.oncomplete = () => {
-            resolve({ profile: p.result, events: e.result });
-            d.close();
+        // The app may not have created the database yet right after goto.
+        // Opening it first would create an empty one (no stores) and block
+        // the app's own upgrade, so never create it here and retry instead.
+        const attempt = (left: number) => {
+          const retry = () =>
+            left > 0
+              ? setTimeout(() => attempt(left - 1), 100)
+              : reject(new Error('LevelMeUpDB não ficou pronto.'));
+          const r = indexedDB.open('LevelMeUpDB');
+          r.onupgradeneeded = () => r.transaction?.abort();
+          r.onerror = (event) => {
+            event.preventDefault();
+            retry();
           };
-          t.onerror = () => reject(t.error);
+          r.onsuccess = () => {
+            const d = r.result;
+            if (!d.objectStoreNames.contains('profile')) {
+              d.close();
+              retry();
+              return;
+            }
+            const t = d.transaction(['profile', 'activityEvents'], 'readonly'),
+              p = t.objectStore('profile').get(1),
+              e = t.objectStore('activityEvents').getAll();
+            t.oncomplete = () => {
+              d.close();
+              if (!p.result) retry();
+              else resolve({ profile: p.result, events: e.result });
+            };
+            t.onerror = () => {
+              d.close();
+              reject(t.error);
+            };
+          };
         };
+        attempt(100);
       }),
   );
 }

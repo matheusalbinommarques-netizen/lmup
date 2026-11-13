@@ -1,3 +1,4 @@
+import { reconcileSupplyBoxes } from './supplyBoxes';
 import { cycleDate, isSuperseded } from './operationalPlanning';
 import { db, type ActivityEvent, type Task } from './db';
 import { isOpenSession, settleCompletedSessions } from './sessionLifecycle';
@@ -532,7 +533,18 @@ export async function previewProgress(input: ProgressInput) {
     };
   });
 }
+/** Progress plus box reconciliation, in one transaction (wave D). */
 export async function recordProgress(
+  input: ProgressInput,
+): Promise<ActivityEvent | null> {
+  return progressTransaction(async () => {
+    const event = await applyProgress(input);
+    // Only a correction can lower recorded XP.
+    if (input.correction) await reconcileSupplyBoxes('correção de execução');
+    return event;
+  });
+}
+async function applyProgress(
   input: ProgressInput,
 ): Promise<ActivityEvent | null> {
   requestKey(input.requestId);

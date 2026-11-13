@@ -26,6 +26,7 @@ import { createDefaultProfile, initializeJourney } from './profileService';
 import { invalidateHeroModifiersCache } from './gearService';
 import { calendarDate } from './calendar';
 import { isInvestmentGoal } from './investmentGoal';
+import { MATERIALS, materialsFromReceipts } from './resourceLedger';
 import { effortDefinition, type Effort } from './effort';
 import {
   validateProductivityBackup,
@@ -178,6 +179,29 @@ export function validateBackup(input: unknown): JourneyBackup {
       !validPersonalDeletions(profile.personalTaskDeletions)
     )
       fail('registro de exclusões pessoais inválido.');
+    for (const field of ['materials', 'materialDebt'] as const) {
+      const value = profile[field];
+      if (value === undefined) continue;
+      const row = object(value, `profile.${field}`);
+      if (
+        !Object.keys(row).every((key) =>
+          (MATERIALS as readonly string[]).includes(key),
+        )
+      )
+        fail('materiais inválidos.');
+      for (const key of MATERIALS)
+        integer(row[key] ?? 0, `profile.${field}.${key}`);
+    }
+    {
+      const implied = materialsFromReceipts(lists.productivityAudit);
+      for (const key of MATERIALS)
+        if (
+          (profile.materials?.[key] ?? 0) -
+            (profile.materialDebt?.[key] ?? 0) !==
+          implied[key]
+        )
+          fail('materiais diferem dos recibos.');
+    }
     if (
       profile.investmentGoal !== undefined &&
       !isInvestmentGoal(profile.investmentGoal)

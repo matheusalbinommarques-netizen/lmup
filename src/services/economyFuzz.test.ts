@@ -31,6 +31,8 @@ import { addCalendarDays } from './calendar';
 import { ordinaryReward } from './rewardService';
 import { invalidateHeroModifiersCache } from './gearService';
 import { explainReward } from './rewardExplanation';
+import { boxDays, openSupplyBox, supplyBoxStatus } from './supplyBoxes';
+import { MATERIALS, materialsFromReceipts } from './resourceLedger';
 
 const SEEDS = [1, 2, 3, 4, 5, 6];
 const STEPS = 60;
@@ -118,8 +120,35 @@ async function violations(baseline: Totals) {
       session.occurrenceIds.some((id) => !ids.has(id))
     )
       found.push('sessão aponta para ocorrência inexistente');
+  // Wave D: materials close with their receipts; never more boxes open than earned.
+  const audit = await db.productivityAudit.toArray();
+  const implied = materialsFromReceipts(audit);
+  for (const key of MATERIALS) {
+    if (
+      (profile.materials?.[key] ?? 0) - (profile.materialDebt?.[key] ?? 0) !==
+      implied[key]
+    )
+      found.push(`materiais ≠ recibos (${key})`);
+    if ((profile.materials?.[key] ?? 0) < 0) found.push('material negativo');
+  }
+  const earned = new Map(boxDays(events).map((row) => [row.date, row.earned]));
+  const reversed = new Set(audit.map((row) => row.id));
+  const open = new Map<string, number>();
+  for (const row of audit)
+    if (
+      row.id.startsWith('supply-box:') &&
+      !row.id.endsWith(':reversal') &&
+      !reversed.has(`${row.id}:reversal`)
+    ) {
+      const date = row.id.split(':')[1];
+      open.set(date, (open.get(date) ?? 0) + 1);
+    }
+  for (const [date, count] of open)
+    if (count > (earned.get(date) ?? 0))
+      found.push(`caixas abertas > ganhas (${date})`);
   return found;
 }
+let openedBoxes = 0;
 
 async function play(seed: number) {
   setDay('2026-11-02');
@@ -234,6 +263,16 @@ async function play(seed: number) {
         const profile = await ensureCampSettlement();
         await meetCampCaretaker();
         await constructCampSettlement(profile.campSettlement!);
+      } else if (pick < 0.85) {
+        op = 'caixa';
+        const box = (await supplyBoxStatus(day)).available[0];
+        if (box) {
+          await openSupplyBox({
+            ...box,
+            material: MATERIALS[Math.floor(random() * MATERIALS.length)],
+          });
+          openedBoxes += 1;
+        }
       } else if (pick < 0.92) {
         op = 'dia seguinte';
         day = addCalendarDays(day, 1);
@@ -290,4 +329,5 @@ it('nenhuma sequência de operações deixa saldo, registro ou débito inconsist
   ])
     expect(done[op] ?? 0, op).toBeGreaterThan(0);
   expect(explained).toBeGreaterThan(0);
+  expect(openedBoxes).toBeGreaterThan(0);
 }, 240000);

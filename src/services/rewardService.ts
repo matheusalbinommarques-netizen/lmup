@@ -1,3 +1,4 @@
+import { reconcileSupplyBoxes } from './supplyBoxes';
 import { db, type ActivityEvent, type ActivityKind, type Profile } from './db';
 import { ECO_STAGES, getEcoStageForTotalXp } from './ecoConfig';
 import { type HeroModifiers, buildHeroModifiersFromOwned } from './gearService';
@@ -247,6 +248,9 @@ export async function revokeRewards(ids: string[]): Promise<Profile> {
     const updated = { ...profile, rewardDebt: debt, updatedAt: new Date() };
     await db.profile.put(updated);
     await refreshCompletionStreak();
+    // Boxes the undone XP no longer pays for are reversed (wave D).
+    if (await reconcileSupplyBoxes('conclusão desfeita'))
+      return (await db.profile.get(1)) ?? updated;
     return updated;
   });
 }
