@@ -36,6 +36,7 @@
     { href: '/mundo', label: 'Mundo', icon: 'world' },
   ];
   const extras = [
+    { href: '/roda', label: 'Roda da vida' },
     { href: '/projetos', label: 'Projetos' },
     { href: '/acampamento', label: 'Acampamento' },
     { href: '/aposentos', label: 'Aposentos' },
@@ -51,6 +52,7 @@
   const homeLinks = [
     { href: '/', label: 'Hoje', icon: 'today' },
     { href: '/missoes', label: 'Missões', icon: 'missions' },
+    { href: '/roda', label: 'Roda da vida', icon: 'progresso' },
     { href: '/mundo', label: 'Mundo', icon: 'mundo' },
     { href: '/acampamento', label: 'Acampamento', icon: 'refugio' },
     { href: '/perfil', label: 'Herói', icon: 'heroi' },

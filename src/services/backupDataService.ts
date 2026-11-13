@@ -26,6 +26,8 @@ import { createDefaultProfile, initializeJourney } from './profileService';
 import { invalidateHeroModifiersCache } from './gearService';
 import { calendarDate } from './calendar';
 import { isInvestmentGoal } from './investmentGoal';
+import { validateLifeWheel } from './lifeWheelService';
+import { isDomainKey } from '$lib/content/domains';
 import { MATERIALS, materialsFromReceipts } from './resourceLedger';
 import { effortDefinition, type Effort } from './effort';
 import {
@@ -202,6 +204,12 @@ export function validateBackup(input: unknown): JourneyBackup {
         )
           fail('materiais diferem dos recibos.');
     }
+    if (profile.lifeWheel !== undefined) validateLifeWheel(profile.lifeWheel);
+    if (
+      profile.generalAreaDomain != null &&
+      !isDomainKey(profile.generalAreaDomain)
+    )
+      fail('domínio de Geral inválido.');
     if (
       profile.investmentGoal !== undefined &&
       !isInvestmentGoal(profile.investmentGoal)
@@ -282,6 +290,8 @@ export function validateBackup(input: unknown): JourneyBackup {
       fail('ícone de área inválido.');
     if (area.iconConflict != null && typeof area.iconConflict !== 'boolean')
       fail('indicação de ícones conflitantes inválida.');
+    if (area.domain != null && !isDomainKey(area.domain))
+      fail('domínio de área inválido.');
   }
   const areaIds = new Set([0, ...lists.areas.map((row) => row.id)]);
   const projectIds = new Set(lists.projects.map((row) => row.id));
