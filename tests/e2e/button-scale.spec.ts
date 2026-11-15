@@ -6,7 +6,7 @@ test('botões migrados seguem a escala s/m/l, com a mesma família e toque de 44
 }, info) => {
   await page.goto('/');
   await expect(
-    page.getByRole('region', { name: 'Seu personagem', exact: true }),
+    page.getByRole('region', { name: 'Hoje', exact: true }),
   ).toBeVisible();
   await page.evaluate(
     () =>

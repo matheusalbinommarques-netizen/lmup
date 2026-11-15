@@ -5,7 +5,7 @@ import { concludeFromDetail } from './execution';
 async function seed(page: Page) {
   await page.goto('/');
   await expect(
-    page.getByRole('region', { name: 'Seu personagem', exact: true }),
+    page.getByRole('region', { name: 'Hoje', exact: true }),
   ).toBeVisible();
   await page.evaluate(
     () =>
@@ -64,6 +64,8 @@ test('escolher objetivo mostra a distância em Hoje e quanto a missão aproximou
   page,
 }) => {
   await seed(page);
+  // Lote 4b: caixas e "No que investir?" moram no Acampamento.
+  await page.goto('/acampamento');
   const card = page.getByRole('region', { name: 'No que investir?' });
   await card.getByRole('button', { name: 'Escolher objetivo' }).click();
   const dialog = page.getByRole('dialog', { name: 'Escolher objetivo' });
@@ -95,7 +97,7 @@ test('escolher objetivo mostra a distância em Hoje e quanto a missão aproximou
   );
   await expect(summary).toContainText('Antes: 50% do custo');
 
-  await page.goto('/');
+  await page.goto('/acampamento');
   await expect(
     page
       .getByRole('region', { name: 'Cota da Rotina' })
@@ -107,6 +109,8 @@ test('trocar e limpar o objetivo; pré-requisito pendente nunca vira "pronto"', 
   page,
 }) => {
   await seed(page);
+  // Lote 4b: caixas e "No que investir?" moram no Acampamento.
+  await page.goto('/acampamento');
   await page
     .getByRole('region', { name: 'No que investir?' })
     .getByRole('button', { name: 'Escolher objetivo' })

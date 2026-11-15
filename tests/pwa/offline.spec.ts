@@ -5,18 +5,18 @@ import { test, expect, type Page } from '@playwright/test';
 import { captureProtocolDiagnostics } from './protocol-diagnostics';
 import { readFile } from 'node:fs/promises';
 
-test('Home RPG mantém cena, personagem e atlas disponíveis sem conexão', async ({
+test('Home RPG mantém cena, cartão Jornada e Mundo disponíveis sem conexão', async ({
   page,
   context,
 }) => {
   await ready(page);
   await expect(
-    page.getByRole('region', { name: 'Seu personagem', exact: true }),
+    page.getByRole('region', { name: 'Hoje', exact: true }),
   ).toBeVisible();
   await context.setOffline(true);
   await page.reload();
   await expect(
-    page.getByRole('region', { name: 'Seu personagem', exact: true }),
+    page.getByRole('region', { name: 'Hoje', exact: true }),
   ).toBeVisible();
   const offlineFonts = await page.evaluate(async () => {
     const faces = await document.fonts.load(
@@ -35,13 +35,15 @@ test('Home RPG mantém cena, personagem e atlas disponíveis sem conexão', asyn
   await expect
     .poll(() => scene.evaluate((el) => (el as HTMLImageElement).naturalWidth))
     .toBeGreaterThan(0);
-  const atlas = page.locator('#home-map > img');
-  await atlas.scrollIntoViewIfNeeded();
-  await expect
-    .poll(() => atlas.evaluate((el) => (el as HTMLImageElement).naturalWidth))
-    .toBeGreaterThan(0);
-  await expect(page.locator('#home-map')).toHaveAttribute('href', '/mundo');
-  await page.locator('#home-map').click();
+  // Lote 4b: o cartão do mapa saiu do Hoje; o Mundo abre pela Jornada.
+  await page
+    .locator('.journey-card')
+    .getByRole('link', { name: 'Abrir Jornada →' })
+    .click();
+  await page
+    .getByRole('navigation', { name: 'Jornada', exact: true })
+    .getByRole('link', { name: 'Mundo', exact: true })
+    .click();
   await expect(
     page.getByRole('heading', { name: 'Mundo', level: 1, exact: true }),
   ).toBeVisible();
@@ -152,7 +154,7 @@ test('busca automática indisponível fica silenciosa e preserva a jornada offli
   await page.clock.setFixedTime(new Date(time + 61000));
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect(
-    page.getByRole('region', { name: 'Seu personagem', exact: true }),
+    page.getByRole('region', { name: 'Hoje', exact: true }),
   ).toBeVisible();
   await expect(
     page.getByText(

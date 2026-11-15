@@ -27,6 +27,7 @@ import { invalidateHeroModifiersCache } from './gearService';
 import { calendarDate } from './calendar';
 import { isInvestmentGoal } from './investmentGoal';
 import { validateLifeWheel } from './lifeWheelService';
+import { isGameLayer } from './gameLayer';
 import { isDomainKey } from '$lib/content/domains';
 import { MATERIALS, materialsFromReceipts } from './resourceLedger';
 import { effortDefinition, type Effort } from './effort';
@@ -205,6 +206,8 @@ export function validateBackup(input: unknown): JourneyBackup {
           fail('materiais diferem dos recibos.');
     }
     if (profile.lifeWheel !== undefined) validateLifeWheel(profile.lifeWheel);
+    if (profile.gameLayer !== undefined && !isGameLayer(profile.gameLayer))
+      fail('camada de jogo inválida.');
     if (
       profile.generalAreaDomain != null &&
       !isDomainKey(profile.generalAreaDomain)

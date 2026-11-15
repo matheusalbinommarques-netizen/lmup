@@ -266,9 +266,10 @@ test('backup antigo abre na nova jornada com saldos preservados e passos legados
   });
   await confirmBackupImport(page);
   await page.goto('/');
-  await expect(
-    page.getByText('Meu herói antigo', { exact: true }),
-  ).toBeVisible();
+  // Lote 4b: o nome aparece no cartão Jornada do Hoje.
+  await expect(page.locator('.journey-card-who')).toContainText(
+    'Meu herói antigo',
+  );
   const original = await backup(page);
   expect(original.data.profile).toMatchObject({
     totalXpEarned: 777,

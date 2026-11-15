@@ -104,9 +104,10 @@ test('Hoje preserva identidade e composição vertical nas larguras suportadas',
       const caption = card
         .querySelector('.day-progress > span:last-child')!
         .getBoundingClientRect();
-      const resources = [...card.querySelectorAll('.daily-rewards > span')].map(
-        (el) => el.getBoundingClientRect().toJSON(),
-      );
+      // Lote 4b: XP, ouro e comida do dia ficam no cartão Jornada.
+      const resources = [
+        ...document.querySelectorAll('.journey-card .daily-rewards > span'),
+      ].map((el) => el.getBoundingClientRect().toJSON());
       const rect = card.getBoundingClientRect();
       return {
         ring: ring.toJSON(),
@@ -133,7 +134,7 @@ test('Hoje preserva identidade e composição vertical nas larguras suportadas',
           geometry.rect.width / 2,
       ),
     ).toBeLessThan(2);
-    expect(geometry.resources[0].y).toBeGreaterThan(geometry.caption.bottom);
+    expect(geometry.resources).toHaveLength(3);
     expect(
       Math.max(...geometry.resources.map((r) => r.y)) -
         Math.min(...geometry.resources.map((r) => r.y)),

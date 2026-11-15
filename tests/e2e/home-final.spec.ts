@@ -5,7 +5,7 @@ import { join } from 'node:path';
 // All fixtures live only in the isolated browser context, never in runtime UI.
 async function setTasks(page: Page, completed: boolean | null) {
   await expect(
-    page.getByRole('region', { name: 'Seu personagem', exact: true }),
+    page.getByRole('region', { name: 'Hoje', exact: true }),
   ).toBeVisible();
   await page.evaluate(
     (done) =>
@@ -53,7 +53,7 @@ async function setTasks(page: Page, completed: boolean | null) {
   );
   await page.reload();
   await expect(
-    page.getByRole('region', { name: 'Seu personagem', exact: true }),
+    page.getByRole('region', { name: 'Hoje', exact: true }),
   ).toBeVisible();
 }
 
@@ -175,7 +175,7 @@ test('Home mantém identidade de todas as companhias e navegação acessível se
   );
   await page.goto('/');
   await expect(
-    page.getByRole('region', { name: 'Seu personagem', exact: true }),
+    page.getByRole('region', { name: 'Hoje', exact: true }),
   ).toBeVisible();
   for (const key of ['wolf', 'dragon', 'lich', 'aberration'])
     for (const stage of [1, 2, 3]) {

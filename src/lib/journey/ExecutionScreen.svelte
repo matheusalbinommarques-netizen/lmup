@@ -530,12 +530,17 @@
         <div class="done-banner" role="status">
           <span class="tick" aria-hidden="true">✓</span>
           <span class="grow"
-            >{done.title} concluída.{#if done.event?.reward?.xp}{` +${done.event.reward.xp} XP`}{/if}</span
+            >{done.title} concluída.{#if done.event?.reward?.xp}<span
+                data-game="xp">{` +${done.event.reward.xp} XP`}</span
+              >{/if}{#if done.event?.reward?.gold}<span data-game="loot"
+                >{` · +${done.event.reward.gold} Ouro`}</span
+              >{/if}</span
           >
           {#if projectDone}<strong class="project-done"
               >Projeto concluído: {projectDone}</strong
             >{/if}
           {#if done.event}<a
+              data-game="xp"
               href={`/missao/${row.taskId}?evento=${encodeURIComponent(done.event.id)}`}
               onclick={() => celebrateReward(done!.event!.id)}>Por quê?</a
             >{/if}

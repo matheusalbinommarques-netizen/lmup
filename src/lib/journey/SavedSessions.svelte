@@ -492,12 +492,15 @@
               </p>
               {#if reward && current.status !== 'completed'}<div
                   class="expected-reward"
+                  data-game="xp"
                 >
                   <span>Recompensa restante na meta</span><strong
                     ><ApprovedIcon name="xp" size={23} />+{reward.xp} XP</strong
-                  ><strong
+                  ><strong data-game="loot"
                     ><ApprovedIcon name="ouro" size={23} />+{reward.gold} Ouro</strong
-                  >{#if reward.food}<small>+{reward.food} Comida</small>{/if}
+                  >{#if reward.food}<small data-game="loot"
+                      >+{reward.food} Comida</small
+                    >{/if}
                 </div>{/if}
               {#if quickEligible}<Button
                   aria-label="Concluir"

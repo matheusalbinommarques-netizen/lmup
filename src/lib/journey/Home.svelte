@@ -17,19 +17,14 @@
   import { dateKey } from '$services/rewardService';
   import { ensureOccurrence } from '$services/occurrenceService';
   import { fraction } from '$services/productivityRules';
-  import { getEcoStageForTotalXp } from '$services/ecoConfig';
-  import { ALL_ACHIEVEMENTS } from '$services/achievementsCatalog';
   import type { Occurrence } from '$services/productivityTypes';
   import { paintings } from '$lib/content/visualAssets';
   import Button from '$lib/ui/Button.svelte';
   import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
   import DayProgress from '$lib/ui/DayProgress.svelte';
-  import RpgTrim from '$lib/ui/RpgTrim.svelte';
   import QuickCreate from './QuickCreate.svelte';
-  import WorldProgress from './WorldProgress.svelte';
-  import HeroIdentity from './HeroIdentity.svelte';
-  import InvestmentGoalCard from './InvestmentGoalCard.svelte';
-  import SupplyBoxesCard from './SupplyBoxesCard.svelte';
+  import { gameLayer } from '$services/gameLayer';
+  import { getLevelStateFromTotalXp } from '$services/progression';
   import { guardUpdates } from './guardUpdates';
   import DayRow from '$lib/ui/DayRow.svelte';
   import { canCompleteInline, inFocus, staleDays } from '$services/dayRow';
@@ -516,6 +511,15 @@
       busy = false;
     }
   }
+  // Camada de jogo (lote 4b): o que o aviso e o lado direito mostram.
+  const lastReward = $derived(
+    lastDone
+      ? data?.events.find((event) => event.id === lastDone!.eventId)?.reward
+      : undefined,
+  );
+  const levelState = $derived(
+    getLevelStateFromTotalXp(data?.profile?.totalXpEarned ?? 0),
+  );
   const received = $derived(
     (data?.events ?? [])
       .filter(
@@ -533,48 +537,6 @@
         { xp: 0, gold: 0, food: 0 },
       ),
   );
-  const earned = $derived(
-    ALL_ACHIEVEMENTS.filter(
-      (item) =>
-        !item.future &&
-        data?.achievementReceipts.some(
-          (receipt) => receipt.id === item.id && !receipt.invalidatedAt,
-        ),
-    ),
-  );
-  const nextAchievement = $derived(
-    ALL_ACHIEVEMENTS.find(
-      (item) =>
-        !item.future &&
-        !earned.some((achievement) => achievement.id === item.id),
-    ),
-  );
-  const stage = $derived(
-    getEcoStageForTotalXp(data?.profile?.totalXpEarned ?? 0),
-  );
-  const cards = [
-    {
-      title: 'Mundo',
-      icon: 'mundo',
-      image: paintings.map,
-      href: '/mundo',
-      copy: 'Explore o mapa, acompanhe a campanha e continue suas aventuras.',
-    },
-    {
-      title: 'Aposentos',
-      icon: 'refugio',
-      image: paintings.refuge,
-      href: '/aposentos',
-      copy: 'Consulte seu espaço pessoal, equipamentos e progresso preservado.',
-    },
-    {
-      title: 'Projetos',
-      icon: 'projetos_navegacao',
-      image: paintings.projects,
-      href: '/projetos',
-      copy: 'Planeje e acompanhe seus projetos de longo prazo.',
-    },
-  ];
   const taskIcon = (row: Occurrence) =>
     areaIconKey(
       data?.tasks.find((task) => task.id === row.taskId),
@@ -619,8 +581,14 @@
   {#if notice}<p class="journey-banner" role="status">{notice}</p>{/if}
   {#if lastDone}<div class="undo-toast" role="status">
       <span aria-hidden="true">✓</span>
-      <span class="undo-text">“{lastDone.title}” concluída.</span>
-      <a href="/progresso">Por que ganhei isso?</a>
+      <span class="undo-text"
+        >“{lastDone.title}” concluída.{#if lastReward && $gameLayer !== 'desligada'}
+          +{lastReward.xp} XP{#if $gameLayer === 'completa'}
+            · +{lastReward.gold} Ouro{/if}{/if}</span
+      >
+      {#if $gameLayer !== 'desligada'}<a href="/progresso"
+          >{$gameLayer === 'completa' ? 'Por que ganhei isso?' : 'Por quê?'}</a
+        >{/if}
       <button type="button" disabled={busy} onclick={undoLast}>Desfazer</button>
       <button
         type="button"
@@ -647,7 +615,7 @@
           { weekday: 'short', day: '2-digit', month: 'short' },
         )}</span
       >
-      <a class="hero-profile" href="/perfil"
+      <a class="hero-profile" href="/perfil" data-game="card"
         >Seu personagem · Nível {data.profile?.level ?? 1}{data.companion
           ? ` · ${data.companion.name}`
           : ''}</a
@@ -936,14 +904,41 @@
         </section>
       </div>
       <aside class="today-aside">
-        <section class="rpg-frame daily-summary">
-          <h2>Progresso do dia</h2>
-          <div>
-            <DayProgress {completed} total={planned.length} noun="missões" />
-            <div class="daily-rewards">
+        <section class="daily-summary" aria-labelledby="summary-title">
+          <h2 id="summary-title">Hoje</h2>
+          <DayProgress {completed} total={planned.length} noun="missões" />
+          {#if $gameLayer === 'discreta'}<p class="game-line">
+              Hoje {received.xp >= 0 ? '+' : ''}{received.xp} XP ·
+              <a href="/progresso">Por que ganhei isso?</a>
+            </p>{/if}
+        </section>
+        {#if $gameLayer === 'completa'}<section
+            class="rpg-frame journey-card"
+            aria-labelledby="journey-card-title"
+          >
+            <h2 id="journey-card-title">
+              <ApprovedIcon name="mundo" size={32} />Jornada · Nível {levelState.level}
+            </h2>
+            <p class="journey-card-who">
+              {data.profile?.name || 'Seu personagem'}{data.companion
+                ? ` e ${data.companion.name}`
+                : ''}
+            </p>
+            {#if levelState.xpForNext}<div class="journey-card-level">
+                <progress
+                  value={levelState.xpIntoLevel}
+                  max={levelState.xpForNext}
+                  aria-label="XP até o próximo nível"
+                ></progress>
+                <small
+                  >{levelState.xpIntoLevel} / {levelState.xpForNext} XP · próximo
+                  nível</small
+                >
+              </div>{/if}
+            <div class="daily-rewards" aria-label="Recebido hoje">
               {#each [{ icon: 'xp', label: 'XP', amount: received.xp }, { icon: 'ouro', label: 'Ouro', amount: received.gold }, { icon: 'alimentacao', label: 'Comida', amount: received.food }] as resource (resource.label)}
                 <span>
-                  <ApprovedIcon name={resource.icon} size={32} />
+                  <ApprovedIcon name={resource.icon} size={28} />
                   <strong
                     >{resource.amount >= 0 ? '+' : ''}{resource.amount}</strong
                   >
@@ -951,21 +946,11 @@
                 </span>
               {/each}
             </div>
-          </div>
-        </section>
-        <InvestmentGoalCard {data} />
-        {#key today}<SupplyBoxesCard {today} />{/key}
-        <section class="rpg-frame upcoming-achievement">
-          <ApprovedIcon name="conquista" size={48} />
-          <div>
-            <p class="gold-label">Próxima conquista</p>
-            <strong>{nextAchievement?.title ?? 'Suas conquistas'}</strong>
-            <p>
-              {nextAchievement?.description ?? 'Veja as marcas da sua jornada.'}
+            <p class="journey-card-links">
+              <a href="/progresso">Por que ganhei isso?</a>
+              <a href="/perfil">Abrir Jornada →</a>
             </p>
-            <a href="/trofeus">Ver conquistas →</a>
-          </div>
-        </section>
+          </section>{/if}
       </aside>
     </div>
     <section class="rpg-frame today-completions" aria-label="Concluídas hoje">
@@ -991,7 +976,11 @@
                       ?.title ??
                     'Atividade concluída'}</strong
                 ><small
-                  >Realizada hoje · +{event.reward.xp} XP · +{event.reward.gold} Ouro</small
+                  >Realizada hoje<span data-game="xp">
+                    · +{event.reward.xp} XP</span
+                  ><span data-game="loot">
+                    · +{event.reward.gold} Ouro</span
+                  ></small
                 >
               </div>
             </li>{/each}{#each view?.legacy ?? [] as task (task.id)}<li>
@@ -1020,43 +1009,6 @@
             </li>{/each}
         </ul>
       </details>{/if}
-    <nav class="world-cards" aria-label="Explore seu mundo">
-      {#each cards as card (card.href + card.title)}<a
-          class="rpg-frame world-card"
-          href={card.href}
-          id={card.title === 'Mundo' ? 'home-map' : undefined}
-          ><img src={card.image} alt="" loading="lazy" />
-          <div>
-            <h2><ApprovedIcon name={card.icon} size={32} />{card.title}</h2>
-            <p>{card.copy}</p>
-            <span class="card-arrow" aria-hidden="true">→</span>
-          </div></a
-        >{/each}
-    </nav>
-    <section class="rpg-frame horizons" aria-label="O caminho adiante">
-      <RpgTrim />
-      <div class="horizon-title">
-        <ApprovedIcon name="evolucao" size={40} />
-        <h2>O caminho adiante</h2>
-        <p>Seu progresso no mundo e na jornada pessoal.</p>
-      </div>
-      <WorldProgress totalXp={data.profile?.totalXpEarned ?? 0} />
-      <div class="horizon-hero">
-        {#if data.profile}<HeroIdentity
-            profile={data.profile}
-            owned={data.owned}
-            achievements={earned.map((item) => item.title)}
-            compact
-          />{/if}
-      </div>
-      <div>
-        <ApprovedIcon name="conquista" size={34} />
-        <p class="gold-label">Suas conquistas</p>
-        <h3>{earned.length} conquistadas</h3>
-        <p>Seu mundo: {stage.label}</p>
-        <a href="/trofeus">Ver conquistas →</a>
-      </div>
-    </section>
     <QuickCreate bind:open snapshot={data} />
   {/if}
 </div>
@@ -1175,9 +1127,9 @@
     --rpg-line: #6b7a7473;
     --rpg-engraving: #a7b2a740;
     --d05-heading: #ece4d0;
-    --d05-label: #c3cabd;
+    --d05-label: var(--lmu-muted);
     --d05-link: #d6e2db;
-    --d05-border: #5f6f6a66;
+    --d05-border: var(--lmu-line);
     --d05-surface-1: #061115f5;
     --d05-surface-2: #0c1b1e;
     --d05-surface-3: #15272b;
@@ -1499,18 +1451,57 @@
     color: #aebfab;
     font-size: 0.85rem;
   }
+  /* Lote 4b: resumo em superfície simples; jogo só no cartão Jornada. */
   .daily-summary {
-    padding: 14px 18px;
-  }
-  .daily-summary > div {
     display: grid;
-    justify-items: center;
-    gap: 14px;
-    margin-top: 12px;
+    gap: 10px;
+    padding: 14px 18px;
+    border: 1px solid var(--lmu-line);
+    border-radius: 10px;
+    background: var(--lmu-surface);
   }
   .daily-summary h2 {
-    text-align: center;
     margin: 0;
+  }
+  .game-line {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--lmu-muted);
+  }
+  .journey-card {
+    display: grid;
+    gap: 10px;
+    padding: 16px 18px;
+  }
+  .journey-card h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    line-height: 1.2;
+  }
+  .journey-card-who {
+    margin: 0;
+    color: var(--lmu-muted);
+  }
+  .journey-card-level {
+    display: grid;
+    gap: 4px;
+  }
+  .journey-card-level progress {
+    width: 100%;
+  }
+  .journey-card-level small {
+    color: var(--lmu-muted);
+    font-size: 0.8125rem;
+  }
+  .journey-card-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0;
+    font-size: 0.875rem;
   }
   .daily-rewards {
     display: grid;
@@ -1541,137 +1532,9 @@
   .today-aside {
     align-content: start;
   }
-  .upcoming-achievement {
-    display: flex;
-    gap: 12px;
-    padding: 16px;
-  }
-  .upcoming-achievement > div {
-    min-width: 0;
-  }
-  .upcoming-achievement strong {
-    display: block;
-    line-height: 1.25;
-    overflow-wrap: anywhere;
-    font: 500 1.3rem/1.25 var(--lmu-display);
-  }
-  .upcoming-achievement p:not(.gold-label) {
-    font-size: 0.75rem;
-    color: #afbfad;
-    margin: 5px 0;
-  }
-  .upcoming-achievement a {
-    color: var(--d05-link);
-    font-size: 0.75rem;
-  }
-  .world-cards {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 16px;
-  }
-  .world-card {
-    overflow: hidden;
-    display: block;
-    text-decoration: none;
-  }
-  .world-card > img {
-    width: 100%;
-    height: 100px;
-    object-fit: cover;
-    object-position: center 48%;
-    display: block;
-  }
-  .world-card > div {
-    position: relative;
-    padding: 10px 14px 14px;
-    min-height: 105px;
-  }
-  .world-card h2 {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font: 500 1.7rem var(--lmu-display);
-    color: #f5e9c9;
-  }
-  .world-card p {
-    font-size: 0.77rem;
-    color: #bdcdbf;
-    line-height: 1.5;
-    max-width: 90%;
-    margin-top: 5px;
-  }
-  .card-arrow {
-    position: absolute;
-    right: 12px;
-    top: 18px;
-    color: var(--d05-link);
-  }
   .day-plan,
-  .daily-summary,
-  .upcoming-achievement,
-  .horizons {
+  .daily-summary {
     --rpg-line: var(--d05-border);
-  }
-  .upcoming-achievement .gold-label,
-  .horizons .gold-label {
-    color: #d6c9a9;
-  }
-  .horizons {
-    display: grid;
-    grid-template-columns: 0.9fr 0.95fr 1.5fr 0.8fr;
-    padding: 18px;
-    gap: 16px;
-  }
-  .horizons > div,
-  .horizons :global(.world-progress) {
-    min-width: 0;
-    border-left: 1px solid #897b4a55;
-    padding-left: 16px;
-  }
-  .horizons > .horizon-title {
-    display: grid;
-    grid-template-columns: 40px minmax(0, 1fr);
-    align-content: start;
-    align-items: center;
-    gap: 6px 10px;
-    border: 0;
-    padding: 0;
-  }
-  .horizon-title > p {
-    grid-column: 1 / -1;
-  }
-  .horizon-title h2 {
-    font: 500 1.6rem var(--lmu-display);
-    color: var(--d05-heading);
-  }
-  .horizons h3 {
-    font: 500 1.4rem var(--lmu-display);
-    color: #eee4c8;
-  }
-  .horizons p:not(.gold-label) {
-    font-size: 0.75rem;
-    color: #afc0ad;
-    margin: 6px 0;
-  }
-  .horizons a {
-    font-size: 0.75rem;
-    color: var(--d05-link);
-  }
-  .horizons :global(progress) {
-    width: 100%;
-    margin: 8px 0;
-  }
-  .horizons :global(.world-progress h2) {
-    font-size: 1.4rem;
-  }
-  .horizons :global(.world-progress .lmu-eyebrow) {
-    font-size: 0.75rem;
-  }
-  .horizons :global(.world-progress a) {
-    min-height: 28px;
-  }
-  .horizons .gold-label {
-    font-size: 0.95rem;
   }
   @media (max-width: 1100px) {
     .today-main {
@@ -1682,15 +1545,6 @@
     }
     .next-mission > :global(.lmu-button) {
       margin-left: auto;
-    }
-    .horizons {
-      grid-template-columns: repeat(2, 1fr);
-    }
-    .world-cards {
-      gap: 10px;
-    }
-    .world-card h2 {
-      font-size: 1.4rem;
     }
   }
   @media (max-width: 760px) {
@@ -1727,14 +1581,8 @@
     .today-aside {
       grid-template-columns: 1fr;
     }
-    .daily-summary > div {
-      gap: 8px;
-    }
     .daily-summary {
       padding: 14px;
-    }
-    .upcoming-achievement {
-      align-items: flex-start;
     }
     .next-copy h2 {
       font-size: 1.8rem;
@@ -1742,18 +1590,6 @@
     .next-mission {
       gap: 10px;
       padding: 16px;
-    }
-    .world-cards {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .horizons {
-      gap: 14px;
-      padding: 16px;
-    }
-    .horizons > div,
-    .horizons :global(.world-progress) {
-      padding-left: 0;
-      border: 0;
     }
     .day-plan > header {
       flex-wrap: wrap;
@@ -1764,16 +1600,6 @@
     }
     .day-plan h2 {
       font-size: 1.35rem;
-    }
-    .world-card > img {
-      height: 110px;
-    }
-    .horizons .horizon-title {
-      grid-column: 1/-1;
-    }
-    .world-card > div {
-      padding: 10px;
-      min-height: 120px;
     }
     .day-plan-footer {
       flex-wrap: wrap;
@@ -1807,38 +1633,6 @@
     }
     .mission-meta {
       font-size: 0.75rem;
-    }
-  }
-  @media (max-width: 360px) {
-    .world-card h2 {
-      font-size: 1.15rem;
-      gap: 6px;
-      white-space: nowrap;
-    }
-    .card-arrow {
-      top: auto;
-      bottom: 10px;
-      right: 8px;
-    }
-  }
-  .horizons .horizon-hero :global(.hero-identity) {
-    gap: 12px;
-    align-items: flex-start;
-  }
-  .horizons .horizon-hero :global(.hero-details) {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .horizons .horizon-hero :global(.hero-resources) {
-    grid-column: 1;
-    grid-row: auto;
-    flex-direction: row;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 0.3rem 0.8rem;
-  }
-  @media (max-width: 760px) {
-    .horizons {
-      grid-template-columns: minmax(0, 1fr);
     }
   }
 </style>

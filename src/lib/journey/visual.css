@@ -1,13 +1,26 @@
 /* Shared presentation for the approved artwork; no data or reward rules. */
+/*
+ * Tokens únicos (lote 4b, "LMUP Sistema" § 1, tema escuro). Esta é a fonte
+ * das cores do app dentro do shell; design-system.css guarda só os valores
+ * de fora do shell. --lmu-border segue dourado (moldura); a borda de campos
+ * e botões secundários é --lmu-control-line. O tema claro vem depois.
+ */
 .visual-shell {
   --lmu-bg: #071114;
   --lmu-surface: #101f23;
   --lmu-raised: #1d302d;
+  --lmu-line: #3b5047;
+  --lmu-control-line: #70868b;
   --lmu-text: #eee9db;
   --lmu-muted: #a6b9a6;
-  --lmu-border: #73694a;
   --lmu-action: #ecc36f;
-  --lmu-line: #3b5047;
+  --lmu-on-action: #172024;
+  --lmu-action-ink: #ecc36f;
+  --lmu-positive: #7bc4b1;
+  --lmu-discovery: #c0afd9;
+  --lmu-danger: #ffb4a9;
+  --lmu-focus: #b8e5dc;
+  --lmu-border: #73694a;
   --lmu-control: 2.5rem;
   --rpg-panel: #091619f5;
   --rpg-depth: 0 4px 14px #0005;
@@ -282,13 +295,13 @@
   min-height: 44px;
   padding: 6px 8px;
   border-radius: 6px;
-  color: #a6b9a6;
+  color: var(--lmu-muted);
   font-size: 0.875rem;
   text-decoration: none;
 }
 .visual-shell .journey-settings-link:hover,
 .visual-shell .journey-settings-link[aria-current='page'] {
-  color: #eee9db;
+  color: var(--lmu-text);
   background-color: #62502c33;
 }
 .visual-shell .journey-mobile-settings {
@@ -304,7 +317,7 @@
   gap: 4px;
   overflow-x: auto;
   margin-bottom: 16px;
-  border-bottom: 1px solid #3b5047;
+  border-bottom: 1px solid var(--lmu-line);
 }
 .visual-shell .journey-tabs a {
   flex: none;
@@ -314,16 +327,16 @@
   padding: 0 14px;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
-  color: #a6b9a6;
+  color: var(--lmu-muted);
   font-weight: 600;
   text-decoration: none;
 }
 .visual-shell .journey-tabs a:hover {
-  color: #eee9db;
+  color: var(--lmu-text);
 }
 .visual-shell .journey-tabs a[aria-current='page'] {
   color: #ffe0a0;
-  border-bottom-color: #ecc36f;
+  border-bottom-color: var(--lmu-action);
 }
 .visual-shell.journey-camp .journey-tabs,
 .visual-shell.journey-adventure .journey-tabs {
@@ -333,4 +346,63 @@
 }
 .visual-shell.journey-adventure .journey-tabs {
   display: none;
+}
+
+/* Lote 4b: camada de jogo. XP, ouro e recibos continuam registrados; isto
+   só decide o que aparece. Marcações: data-game="xp" (some na Desligada),
+   "loot" (ouro e comida; some na Discreta e na Desligada) e "card" (cartão
+   ou moldura de jogo; só na Completa). */
+:root[data-game-layer='desligada'] [data-game='xp'],
+:root[data-game-layer='desligada'] [data-game='loot'],
+:root[data-game-layer='discreta'] [data-game='loot'],
+:root[data-game-layer='discreta'] [data-game='card'],
+:root[data-game-layer='desligada'] [data-game='card'] {
+  display: none !important;
+}
+.visual-shell .journey-more {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  min-height: 56px;
+  padding: 5px;
+  border: 0;
+  background: none;
+  color: var(--lmu-muted);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.visual-shell .journey-more[aria-current='page'] {
+  color: var(--lmu-action);
+}
+.journey-more-links {
+  display: grid;
+  gap: 4px;
+}
+.journey-more-links a {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--lmu-line, #3b5047);
+  color: var(--lmu-text, #eee9db);
+  text-decoration: none;
+}
+/* Fora da camada Completa, produtividade usa superfície simples ("LMUP
+   Sistema" § 6); as telas da Jornada mantêm a moldura ornamentada. */
+:root:is([data-game-layer='discreta'], [data-game-layer='desligada'])
+  .visual-shell:not(.journey-game)
+  .rpg-frame {
+  border-color: var(--lmu-line) !important;
+  border-radius: 10px !important;
+  background: var(--lmu-surface) !important;
+  box-shadow: none !important;
+}
+:root:is([data-game-layer='discreta'], [data-game-layer='desligada'])
+  .visual-shell:not(.journey-game)
+  .rpg-frame::before,
+:root:is([data-game-layer='discreta'], [data-game-layer='desligada'])
+  .visual-shell:not(.journey-game)
+  .rpg-trim {
+  display: none !important;
 }

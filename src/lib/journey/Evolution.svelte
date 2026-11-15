@@ -370,7 +370,7 @@
     gap: 28px;
     max-width: 1180px;
     padding: 12px 16px 40px;
-    color: #eee9db;
+    color: var(--lmu-text);
   }
   .evolution-head h1 {
     margin: 0;
@@ -406,25 +406,25 @@
   }
   .evolution-ruled {
     padding-bottom: 8px;
-    border-bottom: 1px solid #3b5047;
+    border-bottom: 1px solid var(--lmu-line);
   }
   .evolution a {
     color: #d6e2db;
   }
   .evolution a:hover {
-    color: #ecc36f;
+    color: var(--lmu-action);
   }
   .evolution-muted {
-    color: #a6b9a6;
+    color: var(--lmu-muted);
   }
   .evolution-small {
     font-size: 0.75rem;
   }
   .evolution-surface {
     padding: 18px;
-    border: 1px solid #3b5047;
+    border: 1px solid var(--lmu-line);
     border-radius: 10px;
-    background: #101f23;
+    background: var(--lmu-surface);
   }
   .evolution-focus-grid {
     display: grid;
@@ -448,7 +448,7 @@
   .evolution-focus-numbers dt,
   .evolution-progress-grid dt {
     font-size: 0.75rem;
-    color: #a6b9a6;
+    color: var(--lmu-muted);
   }
   .evolution-focus-numbers dd {
     margin: 0;
@@ -466,16 +466,16 @@
   .evolution-strip span {
     height: 10px;
     border-radius: 2px;
-    background: #1d302d;
+    background: var(--lmu-raised);
   }
   .evolution-strip span.on {
-    background: #7bc4b1;
+    background: var(--lmu-positive);
   }
   .evolution-strip-legend {
     display: flex;
     justify-content: space-between;
     font-size: 0.75rem;
-    color: #a6b9a6;
+    color: var(--lmu-muted);
   }
   .evolution-intent {
     margin: 0;
@@ -502,18 +502,18 @@
     align-items: center;
     min-height: 40px;
     padding: 6px 14px;
-    border: 1px solid #70868b;
+    border: 1px solid var(--lmu-control-line);
     border-radius: 6px;
-    background: #101f23;
-    color: #eee9db;
+    background: var(--lmu-surface);
+    color: var(--lmu-text);
     font: 600 0.875rem var(--lmu-font);
     text-decoration: none;
     cursor: pointer;
   }
   .evolution-button:hover:not(:disabled) {
-    background: #1d302d;
-    border-color: #a6b9a6;
-    color: #eee9db;
+    background: var(--lmu-raised);
+    border-color: var(--lmu-muted);
+    color: var(--lmu-text);
   }
   .evolution-button:disabled {
     opacity: 0.6;
@@ -526,7 +526,7 @@
     padding: 6px 12px;
     border: 0;
     background: none;
-    color: #a6b9a6;
+    color: var(--lmu-muted);
     font: 600 0.875rem var(--lmu-font);
     cursor: pointer;
   }
@@ -544,7 +544,7 @@
     align-items: center;
     min-height: 72px;
     padding: 10px 4px;
-    border-bottom: 1px solid #1d302d;
+    border-bottom: 1px solid var(--lmu-raised);
   }
   .evolution-project-name,
   .evolution-project-progress,
@@ -555,7 +555,7 @@
   }
   .evolution-project-name a {
     font-weight: 600;
-    color: #eee9db;
+    color: var(--lmu-text);
     text-decoration: none;
   }
   .evolution-tags {
@@ -567,7 +567,7 @@
   }
   .evolution-tag {
     padding: 0 6px;
-    border: 1px solid #3b5047;
+    border: 1px solid var(--lmu-line);
     border-radius: 4px;
     font-size: 0.75rem;
     font-weight: 600;
@@ -585,13 +585,13 @@
     display: block;
     height: 4px;
     border-radius: 2px;
-    background: #1d302d;
+    background: var(--lmu-raised);
   }
   .evolution-bar span {
     display: block;
     height: 100%;
     border-radius: 2px;
-    background: #7bc4b1;
+    background: var(--lmu-positive);
   }
   .evolution-project-next > span:nth-child(2) {
     font-size: 0.875rem;
@@ -621,7 +621,7 @@
   }
   .evolution-progress-grid > div {
     padding: 4px 16px;
-    border-left: 1px solid #3b5047;
+    border-left: 1px solid var(--lmu-line);
   }
   .evolution-progress-grid dt {
     font-weight: 600;
@@ -650,7 +650,7 @@
     }
     .evolution-section-head h2 {
       font: 600 1.0625rem var(--lmu-font);
-      color: #eee9db;
+      color: var(--lmu-text);
     }
     .evolution-section-head > a {
       min-height: 44px;
@@ -674,7 +674,7 @@
     .evolution-progress-grid > div {
       padding: 8px 0;
       border-left: 0;
-      border-bottom: 1px solid #1d302d;
+      border-bottom: 1px solid var(--lmu-raised);
     }
     .evolution-empty {
       align-items: flex-start;

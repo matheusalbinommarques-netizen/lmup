@@ -5,7 +5,7 @@ import { concludeFromDetail } from './execution';
 async function seed(page: Page) {
   await page.goto('/');
   await expect(
-    page.getByRole('region', { name: 'Seu personagem', exact: true }),
+    page.getByRole('region', { name: 'Hoje', exact: true }),
   ).toBeVisible();
   await page.evaluate(
     () =>
@@ -64,6 +64,8 @@ test('400 XP de missões rendem uma caixa; abrir guarda o material escolhido uma
   page,
 }) => {
   await seed(page);
+  // Lote 4b: caixas e "No que investir?" moram no Acampamento.
+  await page.goto('/acampamento');
   const card = page.getByRole('region', { name: /Caixas de hoje/ });
   await expect(card).toContainText('Caixas de hoje: 0 de 5');
   await expect(card.getByRole('button', { name: /Abrir caixa/ })).toHaveCount(
@@ -76,7 +78,7 @@ test('400 XP de missões rendem uma caixa; abrir guarda o material escolhido uma
       page.getByRole('region', { name: 'Resumo da recompensa' }),
     ).toBeVisible();
   }
-  await page.goto('/');
+  await page.goto('/acampamento');
   await expect(card).toContainText('Caixas de hoje: 1 de 5');
   await expect(
     card.getByRole('progressbar', { name: 'Progresso até a próxima caixa' }),

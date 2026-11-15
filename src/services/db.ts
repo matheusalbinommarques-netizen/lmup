@@ -44,6 +44,8 @@ export interface Profile {
   lifeWheel?: import('./lifeWheelService').LifeWheelState;
   /** Chosen investment pointer; never reserves or moves balances. */
   investmentGoal?: { id: string; chosenAt: string };
+  /** Camada de jogo (lote 4b); ausente = 'completa'. Só muda a exibição. */
+  gameLayer?: import('./gameLayer').GameLayer;
   id?: number;
   name: string;
   title?: string;

@@ -87,7 +87,7 @@
   {:else}
     <h2 id="goal-title">No que investir?</h2>
     <p class="goal-note">
-      Escolha uma construção, item ou evolução e acompanhe aqui quanto falta.
+      Escolha uma construção, item ou melhoria e acompanhe aqui quanto falta.
     </p>
     <button type="button" class="goal-change" onclick={() => (open = true)}
       >Escolher objetivo</button

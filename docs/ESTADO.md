@@ -44,7 +44,7 @@ Execução e pendências do plano de 04/11: [reconciliação de 09/11](AUDITORIA
 - Nomes, artes e lore provisórios não são definitivos. A marca atual e a origem das artes estão em [arte/MARCA.md](arte/MARCA.md).
 - O retrato do Herói é provisório (ícone encapuzado aprovado dentro da moldura rúnica) até a decisão DP3; o retrato enviado pelo usuário sempre vence. `heroi.png` não é o padrão.
 - Hoje e Configurações têm um [lembrete opcional de backup a cada 14 dias](A14-LEMBRETE-BACKUP.md), dispensável por mais 14 dias. Instalação vazia não avisa; sem exportação anterior, a carência começa na primeira visita com conteúdo. Cópia automática em pasta continua fora do escopo.
-- Plano em execução: [Dia único](PLANO-DIA-UNICO.md), 7 lotes. "Parada" = missão avulsa com dia e 14 dias sem ação, igual no Hoje e na Roda. Conclusão pela linha só para missões diretas, sem passos e do dia; desfazer usa o estorno existente (débito compensado por ganhos futuros). Desde o lote 2, Hoje e Agenda seguem a mesma ordem do dia (`dayOrder` na ocorrência). Desde o lote 3, toda execução acontece em `/executar` (dia, bloco ou missão avulsa); a fila é um trecho do Dia e o cronômetro opcional grava `startedAt` e minutos no registro de execução. Desde o lote 4a, a navegação tem quatro destinos iguais no desktop e no mobile (Hoje · Missões · Evolução · Jornada, em `navigation.ts`), Configurações fica no rodapé da lateral e no ⚙ do mobile, e o projeto tem área opcional (`areaId`, 0 = Geral).
+- Plano em execução: [Dia único](PLANO-DIA-UNICO.md), 7 lotes. "Parada" = missão avulsa com dia e 14 dias sem ação, igual no Hoje e na Roda. Conclusão pela linha só para missões diretas, sem passos e do dia; desfazer usa o estorno existente (débito compensado por ganhos futuros). Desde o lote 2, Hoje e Agenda seguem a mesma ordem do dia (`dayOrder` na ocorrência). Desde o lote 3, toda execução acontece em `/executar` (dia, bloco ou missão avulsa); a fila é um trecho do Dia e o cronômetro opcional grava `startedAt` e minutos no registro de execução. Desde o lote 4a, a navegação tem quatro destinos iguais no desktop e no mobile (Hoje · Missões · Evolução · Jornada, em `navigation.ts`), Configurações fica no rodapé da lateral e no ⚙ do mobile, e o projeto tem área opcional (`areaId`, 0 = Geral). Desde o lote 4b, a camada de jogo (`profile.gameLayer`: completa, discreta, desligada; ausente = completa) decide o que aparece, sem mudar registros; caixas e "No que investir?" ficam no Acampamento; os tokens de cor do shell estão num bloco único em `visual.css`.
 
 ## Entregas recentes
 
@@ -71,10 +71,12 @@ Execução e pendências do plano de 04/11: [reconciliação de 09/11](AUDITORIA
 | Lote 2  | Ordem única do dia, hora ≈ e hora fixa editável na linha     | Digitação simulada não preenche `input type=time`; use teclas ou `fill`  |
 | Lote 3  | Uma tela de execução, cronômetro opcional e blocos de rotina | Migrar specs por helper (`tests/e2e/execution.ts`), não trecho a trecho  |
 | Lote 4a | Quatro destinos, página Evolução e área do projeto           | "No dia" é `todayView().planned`; `plannedToday` inclui as sem data      |
+| Lote 4b | Camada de jogo, tokens únicos, caixas no Acampamento         | Prévia com link semeado (`semear.html` no `build/` da worktree)          |
 
 ## Pendências técnicas conhecidas
 
 - `journeyQuery()` é uma fonte compartilhada (`shareReplay`): componentes não podem mutar o snapshot recebido; guarde-o em `$state.raw`. Detalhes em [C03-LEITURA-COMPARTILHADA.md](C03-LEITURA-COMPARTILHADA.md).
 - `tests/e2e/today-shell.spec.ts:81` é ignorado de propósito no mobile (a barra lateral só existe no desktop).
 - `tests/e2e/alpha.spec.ts:165` falha de forma intermitente no mobile sob carga; passa isolado.
+- `tests/e2e/execution-screen.spec.ts:111` (lote 3) falhou 1 vez no desktop na suíte completa do lote 4b (passo "Assistir" desmarcado depois do `reload`) e passou em 5/5 isolado e 18/18 repetido. Hipótese não comprovada: o teste recarrega antes de a gravação do passo terminar. Investigar sem enfraquecer o teste; se falhar na CI, antes do merge.
 - Toda versão publicada baixa o pré-cache inteiro, mesmo sem mudança no app.

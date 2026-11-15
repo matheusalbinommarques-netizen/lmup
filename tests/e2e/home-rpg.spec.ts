@@ -56,17 +56,9 @@ test('Home mantém saudação, planejamento completo, destinos e ações sem rol
   await populateTasks(page);
   // Lote 2: the day lists every planned row, the next and the concluded too.
   await expect(page.locator('.day-plan li')).toHaveCount(32);
-  await expect(page.locator('.world-card')).toHaveCount(3);
-  const boxes = await page
-    .locator('.world-card')
-    .evaluateAll((nodes) =>
-      nodes.map((el) => el.getBoundingClientRect().toJSON()),
-    );
-  if (desktop)
-    expect(
-      Math.max(...boxes.map((b) => b.y)) - Math.min(...boxes.map((b) => b.y)),
-    ).toBeLessThanOrEqual(1);
-  else {
+  // Lote 4b: os cartões de destino saíram do Hoje.
+  await expect(page.locator('.world-card')).toHaveCount(0);
+  if (!desktop) {
     const action = await page
       .getByRole('button', { name: /^(Iniciar dia|Continuar o dia)$/ })
       .boundingBox();
@@ -86,7 +78,7 @@ test('Home mantém saudação, planejamento completo, destinos e ações sem rol
       () => document.documentElement.scrollWidth <= innerWidth + 1,
     ),
   ).toBe(true);
-  await expect(page.locator('#home-map')).toHaveAttribute('href', '/mundo');
+  await expect(page.locator('#home-map')).toHaveCount(0);
   await expect(
     page.getByRole('link', { name: 'Ver todas as missões', exact: true }),
   ).toHaveAttribute('href', '/missoes');
@@ -100,7 +92,7 @@ test('prioridade manual persiste, não duplica e volta ao automático ao conclui
 }) => {
   await page.goto('/');
   await expect(
-    page.getByRole('region', { name: 'Seu personagem', exact: true }),
+    page.getByRole('region', { name: 'Hoje', exact: true }),
   ).toBeVisible();
   await populateTasks(page);
   for (const [id, change] of [
@@ -182,7 +174,7 @@ test('recorrências contam a ocorrência de hoje e não reutilizam etapas antiga
   await page.clock.setFixedTime(new Date('2026-10-31T19:00:00-03:00'));
   await page.goto('/');
   await expect(
-    page.getByRole('region', { name: 'Seu personagem', exact: true }),
+    page.getByRole('region', { name: 'Hoje', exact: true }),
   ).toBeVisible();
   await page.evaluate(
     () =>
