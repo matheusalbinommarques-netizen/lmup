@@ -173,7 +173,7 @@ test('pular fica junto de editar e revisão e preserva os dados da missão', asy
     actions.getByRole('button', { name: 'Configurar revisão', exact: true }),
   ).toHaveCount(0);
   const skip = actions.getByRole('button', {
-    name: 'Pular por agora',
+    name: 'Pular para depois',
     exact: true,
   });
   await expect(skip).toBeVisible();
@@ -203,9 +203,7 @@ test('remoção preserva recompensas, histórico e progresso das outras missões
   page,
 }) => {
   await createSession(page);
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
@@ -340,7 +338,7 @@ test('cadastrar missão não inicia sua execução e permite cadastrar outra', a
   ).not.toContainText('Em andamento');
   await page.getByRole('link', { name: 'Lavar a louça', exact: true }).click();
   await expect(
-    page.getByRole('button', { name: 'Iniciar missão' }),
+    page.getByRole('link', { name: 'Iniciar', exact: true }),
   ).toBeVisible();
   await page.getByRole('link', { name: 'Voltar às missões' }).click();
   await expect(
@@ -384,9 +382,7 @@ test('sessão executa missões em sequência, persiste e não gera XP ao pular',
   ).toBeVisible();
   await detailed(page);
   await expect(page.getByText('0 de 2 concluídas')).toBeVisible();
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
@@ -394,15 +390,13 @@ test('sessão executa missões em sequência, persiste e não gera XP ao pular',
     .getByRole('button', { name: 'Próxima missão', exact: true })
     .click();
   await expect(page.getByText('1 de 2 concluídas')).toBeVisible();
-  await page.getByRole('button', { name: 'Pular por agora' }).click();
+  await page.getByRole('button', { name: 'Pular para depois' }).click();
   await expect(
     page.getByRole('heading', { name: 'Fim da sequência' }),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Revisar pendentes' }).click();
   await detailed(page);
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'Sessão concluída', exact: true }),
   ).toBeVisible();

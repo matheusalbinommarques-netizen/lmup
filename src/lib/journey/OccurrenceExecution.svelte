@@ -387,7 +387,7 @@
         </div>
       {:else}<div class="journey-actions">
           <Button disabled={saving} onclick={prepare}
-            >{correction ? 'Revisar correção' : 'Registrar progresso'}</Button
+            >{correction ? 'Revisar correção' : 'Registrar parte'}</Button
           ><Button
             variant="secondary"
             disabled={saving}
@@ -406,7 +406,7 @@
         </div>{/if}
     {/if}
     {#if !archived && !row.supersededBy && !row.skipped}<details>
-        <summary>Reagendar e organizar</summary>
+        <summary>Remarcar e organizar</summary>
         <div class="execution-fields">
           <label>Nova data<input type="date" bind:value={date} /></label><label
             >Novo início desejado<input
@@ -427,8 +427,8 @@
                   { plannedDate: date, plannedTime: time || null },
                   crypto.randomUUID(),
                 ),
-              'Missão reagendada; histórico preservado.',
-            )}>Reagendar missão</Button
+              'Missão remarcada; histórico preservado.',
+            )}>Remarcar</Button
         >
         {#if row.status === 'discarded'}<Button
             variant="quiet"

@@ -81,9 +81,9 @@ test('Hoje conserva criação e escolha manual com duas missões sem data', asyn
     page.getByRole('button', { name: 'Nova missão', exact: true }),
   ).toBeVisible();
   await page
-    .getByRole('button', { name: 'Começar missão', exact: true })
+    .getByRole('button', { name: /^(Iniciar dia|Continuar o dia)$/ })
     .click();
-  await expect(page).toHaveURL(/\/missao\/\d+$/);
+  await expect(page).toHaveURL(/\/executar\//);
 });
 
 test('Hoje abre execução legada preservando notas e sem criar ocorrência ou recompensa', async ({
@@ -119,9 +119,9 @@ test('Hoje abre execução legada preservando notas e sem criar ocorrência ou r
   await page.reload();
   await expect(page.locator('#next-title')).toHaveText('Rascunho legado');
   await page
-    .getByRole('button', { name: 'Começar missão', exact: true })
+    .getByRole('button', { name: /^(Iniciar dia|Continuar o dia)$/ })
     .click();
-  await expect(page).toHaveURL(new RegExp('/missao/' + id + '$'));
+  await expect(page).toHaveURL(new RegExp('/executar/mission%3A' + id + '%3A'));
   const saved = await page.evaluate(
     (key) =>
       new Promise<any>((resolve, reject) => {

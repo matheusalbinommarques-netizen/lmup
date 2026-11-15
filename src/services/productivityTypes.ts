@@ -95,6 +95,8 @@ export type ExecutionRecord = {
   before: number;
   after: number;
   minutes: number | null;
+  /** Real start measured by the optional timer (lote 3); ISO instant. */
+  startedAt?: string;
   executedAt: string;
   localDate: string;
   localTime: string;

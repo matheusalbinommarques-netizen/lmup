@@ -65,7 +65,7 @@ test('banner de Hoje reaproveita a pintura e mantém a próxima ação na primei
   const box = (await hero.boundingBox())!;
   expect(box.height).toBeLessThanOrEqual(210);
   const next = (await page
-    .getByRole('button', { name: 'Começar missão', exact: true })
+    .getByRole('button', { name: /^(Iniciar dia|Continuar o dia)$/ })
     .boundingBox())!;
   expect(next.y + next.height).toBeLessThan(page.viewportSize()!.height - 62);
   await expect(

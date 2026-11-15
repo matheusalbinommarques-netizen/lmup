@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { concludeFromDetail } from './execution';
 async function edit(page: Page) {
   await page.goto('/perfil');
   await page
@@ -69,12 +70,7 @@ test('salvar após quota mantém rascunho e preserva XP e avatar atualizados na 
   await expect(create).not.toBeVisible();
   await other.goto('/missoes');
   await other.getByRole('link', { name: 'Uma ação real', exact: true }).click();
-  await other
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
-  await expect(
-    other.getByRole('heading', { name: 'Missão concluída!', exact: true }),
-  ).toBeVisible();
+  await concludeFromDetail(other);
   const second = await edit(other);
   await second.getByLabel('Avatar (opcional)', { exact: true }).setInputFiles({
     name: 'avatar.png',

@@ -2,6 +2,7 @@
   import { liveQuery } from 'dexie';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { executionHref } from './dayQueue';
   import {
     plannedOccurrences,
     ensureOccurrence,
@@ -40,7 +41,7 @@
   async function open(row: Occurrence) {
     try {
       await ensureOccurrence(row.taskId, row.originDate);
-      await goto('/ocorrencia/' + encodeURIComponent(row.id));
+      await goto(executionHref(row.id));
     } catch (cause) {
       error =
         cause instanceof Error ? cause.message : 'Não foi possível abrir.';

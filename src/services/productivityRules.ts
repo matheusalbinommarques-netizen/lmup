@@ -149,6 +149,23 @@ export function settleResources(gross: Resources, debt: Resources) {
   }
   return { compensation, net, remaining };
 }
+/** Longest real start accepted before an execution (lote 3 timer). */
+export const MAX_STARTED_BEFORE_MS = 24 * 60 * 60 * 1000;
+/**
+ * Optional real start of an execution, measured by the timer. It must be a
+ * valid instant, not after the execution and at most 24 h before it.
+ */
+export function validStartedAt(startedAt: unknown, executedAt: string) {
+  if (typeof startedAt !== 'string') return false;
+  const start = Date.parse(startedAt);
+  const end = Date.parse(executedAt);
+  return (
+    Number.isFinite(start) &&
+    Number.isFinite(end) &&
+    start <= end &&
+    end - start <= MAX_STARTED_BEFORE_MS
+  );
+}
 export function executionContext(value: string, now = new Date()) {
   const instant = new Date(value);
   if (!Number.isFinite(instant.getTime()) || instant > now)

@@ -1,4 +1,10 @@
 import { test, expect, type Page } from '@playwright/test';
+import {
+  conclude,
+  concludeButton,
+  openReceipt,
+  startFromDetail,
+} from './execution';
 import { fillMissionSteps, chooseTracking } from './mission-form';
 async function mission(page: Page, title: string, area?: string) {
   await page.goto('/missoes');
@@ -91,10 +97,8 @@ test('formulário simplificado, passos adicionáveis e edição preservam o acom
   await page
     .getByRole('link', { name: 'Preparar a semana', exact: true })
     .click();
-  const finish = page.getByRole('button', {
-    name: 'Concluir missão',
-    exact: true,
-  });
+  await startFromDetail(page);
+  const finish = concludeButton(page);
   await expect(finish).toBeDisabled();
   await page
     .getByRole('checkbox', { name: 'Separar materiais', exact: true })
@@ -103,7 +107,8 @@ test('formulário simplificado, passos adicionáveis e edição preservam o acom
     .getByRole('checkbox', { name: 'Planejar horários', exact: true })
     .check();
   await expect(finish).toBeEnabled();
-  await finish.click();
+  await conclude(page);
+  await openReceipt(page);
   await expect(
     page.getByRole('region', { name: 'Resumo da recompensa' }),
   ).toBeVisible();
@@ -294,7 +299,7 @@ test('execução detalhada prioriza conclusão e recompensa, mantendo notas e a 
     }),
   ).toHaveCount(0);
   const complete = page.getByRole('button', {
-    name: 'Concluir missão',
+    name: 'Concluir',
     exact: true,
   });
   await complete.scrollIntoViewIfNeeded();

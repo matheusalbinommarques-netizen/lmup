@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { concludeFromDetail } from './execution';
 
 // Roda da Vida: dados sintéticos em contexto descartável.
 async function seed(page: Page) {
@@ -42,9 +43,7 @@ test('avaliar parte das áreas, ligar área, focar com intenção e criar missã
 }) => {
   await seed(page);
   await page.goto('/missao/970');
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  await concludeFromDetail(page);
   await expect(
     page.getByRole('region', { name: 'Resumo da recompensa' }),
   ).toBeVisible();

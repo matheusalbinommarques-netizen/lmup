@@ -53,3 +53,15 @@ Cada lote: worktree própria a partir de `origin/main`, prévia em porta 5180+, 
 - Concluídas ficam no lugar (riscadas; o círculo desfaz) e podem ser ocultadas.
 - Conflito só quando todo o trecho até a hora fixa tem duração real (design F3); com item sem duração, uma hora ≈ pode passar da ◆ seguinte sem aviso.
 - O cartão "Próxima missão" continua; a mesma missão aparece destacada na lista. Removê-lo fica para decisão do autor.
+
+## Lote 3: o que mudou
+
+- Uma tela de execução em `/executar/<ocorrência>` (`ExecutionScreen.svelte`, design E1–E4): missão avulsa (mostra "Depois"), fila do dia (`?fila=dia`) e bloco (`?fila=bloco`).
+- Fila sem ordem própria (`src/lib/journey/dayQueue.ts`): o dia é a lista do Hoje sem as paradas; bloco = 2+ itens seguidos da mesma rotina. Mover na fila grava a ordem do Dia; "Pular para depois" não muda nada.
+- Hoje: botão principal "Iniciar dia" / "Continuar o dia"; cabeçalho de bloco com "Iniciar bloco"; bloco concluído recolhe. Iniciar/Retomar das linhas, Missões e Agenda levam à tela nova.
+- Cronômetro opcional (`executionTimer.ts`): começa desligado, sobrevive à recarga (localStorage por ocorrência) e só vira dado ao Concluir ou Registrar parte.
+- Dado: `startedAt` opcional no registro de execução (até 24 h antes da execução), validado no backup; minutos do cronômetro somam em `actualMinutes`. Recompensa e saldo não mudam.
+- Depois de concluir: "concluída · +XP · Por quê? · Desfazer" e "A seguir" com Iniciar; nada começa sozinho. "Por quê?" abre o recibo completo (resumo de recompensa) na página da missão.
+- `/missao/<id>` virou o detalhe da missão (definição, notas, histórico, gestão e recibos); `/ocorrencia/<id>` ficou como registro e correção. Missão legada continua sem criar ocorrência ao ser aberta.
+- Verbos fixos: Iniciar, Retomar, Concluir (Ctrl + Enter), Registrar parte, Pausar, Pular para depois, Remarcar, Iniciar/Encerrar bloco.
+- Sessões salvas (`/sessoes`) e a seleção de sessão em Missões continuam até o lote 5 ("sessões salvas viram rotinas"), com os verbos novos.

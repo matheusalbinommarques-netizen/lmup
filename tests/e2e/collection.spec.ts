@@ -2,6 +2,7 @@ import { openMilestones, openCompanions } from './camp-flow';
 import { confirmBackupImport } from './backup-ui';
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { concludeFromDetail } from './execution';
 async function backup(page: Page) {
   await page.goto('/config');
   const pending = page.waitForEvent('download');
@@ -109,9 +110,7 @@ test('compra confirma custo, troca de espaço e prévia coincidem com missão re
   await page
     .getByRole('link', { name: 'Experimentar os novos bônus', exact: true })
     .click();
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  await concludeFromDetail(page);
   await expect(page.getByLabel('Recompensa recebida')).toContainText('+116');
   const saved = await backup(page);
   expect(saved.data.profile.gold).toBe(15050);
@@ -240,12 +239,7 @@ test('transformação preserva o estágio e o prêmio após correção da missã
   // Navigation is client-side; click returning does not guarantee the URL has changed.
   await expect(page).toHaveURL(new RegExp('/missao/[0-9]+$'));
   const url = page.url();
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
-  ).toBeVisible();
+  await concludeFromDetail(page);
   await openMilestones(page);
   await expect(
     page.getByRole('dialog').getByRole('heading', {
@@ -262,7 +256,7 @@ test('transformação preserva o estágio e o prêmio após correção da missã
     .getByRole('button', { name: 'Confirmar correção', exact: true })
     .click();
   await expect(
-    page.getByRole('button', { name: 'Concluir missão', exact: true }),
+    page.getByRole('link', { name: /^(Iniciar|Retomar)$/ }),
   ).toBeVisible();
   await openMilestones(page);
   await expect(

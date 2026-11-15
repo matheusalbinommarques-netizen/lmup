@@ -1,5 +1,6 @@
 import { fillMissionSteps, chooseTracking } from './mission-form';
 import { confirmBackupImport } from './backup-ui';
+import { conclude, concludeButton, startFromDetail } from './execution';
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 
@@ -62,31 +63,22 @@ test('primeira missão real persiste passos e notas, retoma, conclui e desfaz ap
     'Aprender com uma ideia',
     'Escolher referência\nCriar um rascunho',
   );
-  await page
-    .getByRole('button', { name: 'Iniciar missão', exact: true })
-    .click();
-  await expect(
-    page.getByRole('button', { name: 'Concluir missão', exact: true }),
-  ).toBeDisabled();
+  await startFromDetail(page);
+  await expect(concludeButton(page)).toBeDisabled();
   await page
     .getByRole('checkbox', { name: 'Escolher referência', exact: true })
     .check();
   await page
-    .getByLabel('Notas da missão')
+    .getByLabel('Nota (opcional)')
     .fill('Minha descoberta fica guardada.');
-  await expect(page.getByRole('status')).toHaveText(
-    'Tudo salvo neste navegador',
-  );
-  await page
-    .getByRole('button', { name: 'Pausar e voltar', exact: true })
-    .click();
-  await expect(page).toHaveURL(/\/missoes$/);
-  await page.goto('/');
+  await expect(page.getByText('Tudo salvo neste navegador')).toBeVisible();
+  await page.getByRole('link', { name: '← Dia', exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
   await expect(
-    page.getByRole('button', { name: 'Começar missão', exact: true }),
+    page.getByRole('button', { name: 'Iniciar dia', exact: true }),
   ).toBeVisible();
   const contrast = await page
-    .getByRole('button', { name: 'Começar missão', exact: true })
+    .getByRole('button', { name: 'Iniciar dia', exact: true })
     .evaluate((element) => {
       const style = getComputedStyle(element);
       const luminance = (color: string) => {
@@ -106,27 +98,24 @@ test('primeira missão real persiste passos e notas, retoma, conclui e desfaz ap
       return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
     });
   expect(contrast).toBeGreaterThanOrEqual(4.5);
-  await page
-    .getByRole('button', { name: 'Começar missão', exact: true })
-    .click();
-  await expect(page).toHaveURL(url);
+  await page.getByRole('button', { name: 'Iniciar dia', exact: true }).click();
+  await expect(page).toHaveURL(/\/executar\/.+\?fila=dia$/);
   await page.reload();
   await expect(
     page.getByRole('checkbox', { name: 'Escolher referência', exact: true }),
   ).toBeChecked();
-  await expect(page.getByLabel('Notas da missão')).toHaveValue(
+  await expect(page.getByLabel('Nota (opcional)')).toHaveValue(
     'Minha descoberta fica guardada.',
   );
   await page
     .getByRole('checkbox', { name: 'Criar um rascunho', exact: true })
     .check();
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
-  ).toBeVisible();
+  await conclude(page);
   await page.reload();
+  await expect(
+    page.getByText('Esta missão já está concluída.', { exact: false }),
+  ).toBeVisible();
+  await page.goto(url);
   await expect(
     page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
@@ -156,9 +145,8 @@ test('primeira missão real persiste passos e notas, retoma, conclui e desfaz ap
     rewardDebt: { xp: 53, gold: 25, food: 2 },
   });
   await page.goto(url);
-  await expect(
-    page.getByRole('button', { name: 'Concluir missão', exact: true }),
-  ).toBeEnabled();
+  await startFromDetail(page);
+  await expect(concludeButton(page)).toBeEnabled();
   expect(errors).toEqual([]);
 });
 
@@ -191,14 +179,10 @@ test('falha de gravação preserva o rascunho e permite tentar salvar novamente'
   await expect(page.getByLabel('Notas da missão')).toHaveValue(
     'rascunho seguro',
   );
-  await expect(
-    page.getByRole('button', { name: 'Concluir missão', exact: true }),
-  ).toBeDisabled();
   const other = await page.context().newPage();
   await other.goto(page.url());
-  await other
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  await startFromDetail(other);
+  await conclude(other);
   await expect(
     page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
@@ -295,18 +279,14 @@ test('backup antigo abre na nova jornada com saldos preservados e passos legados
   await page.goto('/missao/78');
   await expect(page.getByText(/anterior ao histórico detalhado/)).toBeVisible();
   await page.goto('/missao/77');
+  await startFromDetail(page);
   await page
     .getByRole('checkbox', { name: 'Ler uma página', exact: true })
     .check();
   await page
     .getByRole('checkbox', { name: 'Anotar uma descoberta', exact: true })
     .check();
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
-  ).toBeVisible();
+  await conclude(page);
   const result = await backup(page);
   expect(result.data.profile).toMatchObject({
     totalXpEarned: 830,
@@ -336,18 +316,14 @@ test('conclusão real distingue bônus de projeto e desfaz os dois eventos junto
     '',
     'Minha primeira entrega',
   );
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  await startFromDetail(page);
+  await conclude(page);
   await expect(
-    page.getByRole('heading', { name: 'Projeto concluído', exact: true }),
+    page.getByText('Projeto concluído: Minha primeira entrega', {
+      exact: true,
+    }),
   ).toBeVisible();
-  await page
-    .getByRole('button', { name: 'Desfazer conclusão', exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: 'Confirmar correção', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Desfazer', exact: true }).click();
   await expect(
     page.getByRole('heading', {
       name: 'Entregar uma primeira versão',
@@ -373,22 +349,19 @@ test('duas abas concluem uma missão real uma única vez', async ({
   page,
   context,
 }) => {
-  const url = await create(page, 'Conquista compartilhada entre abas');
+  await create(page, 'Conquista compartilhada entre abas');
+  await startFromDetail(page);
   const other = await context.newPage();
-  await other.goto(url);
-  await expect(
-    other.getByRole('button', { name: 'Concluir missão', exact: true }),
-  ).toBeEnabled();
+  await other.goto(page.url());
+  await expect(concludeButton(other)).toBeEnabled();
   await Promise.all(
     [page, other].map((tab) =>
-      tab
-        .getByRole('button', { name: 'Concluir missão', exact: true })
-        .evaluate((button: HTMLButtonElement) => button.click()),
+      concludeButton(tab).evaluate((button: HTMLButtonElement) =>
+        button.click(),
+      ),
     ),
   );
-  await expect(
-    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText(/concluída\./).first()).toBeVisible();
   const result = await backup(page);
   expect(result.data.activityEvents).toHaveLength(1);
   expect(result.data.profile).toMatchObject({
@@ -403,9 +376,6 @@ test('plano e fixação são explícitos; navegação secundária preserva acess
   isMobile,
 }) => {
   const url = await create(page, 'Escolher meu dia');
-  await page
-    .getByRole('button', { name: 'Voltar às missões', exact: true })
-    .click();
   await page.goto('/missoes');
   await page.getByRole('tab', { name: 'Todas', exact: true }).click();
   await page.getByText('⋯', { exact: true }).click();
@@ -454,12 +424,8 @@ test('plano e fixação são explícitos; navegação secundária preserva acess
     page.getByRole('heading', { name: 'Herói', exact: true }),
   ).toBeVisible();
   await page.goto(url);
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
-  ).toBeVisible();
+  await startFromDetail(page);
+  await conclude(page);
 });
 
 test('execução real funciona em 320x568 com texto ampliado e rota inexistente se explica', async ({
@@ -467,6 +433,7 @@ test('execução real funciona em 320x568 com texto ampliado e rota inexistente 
 }) => {
   await page.setViewportSize({ width: 320, height: 568 });
   const url = await create(page, 'Missão pequena', 'Um passo\nOutro passo');
+  await startFromDetail(page);
   await page.evaluate(() => {
     document.documentElement.style.fontSize = '32px';
   });
@@ -479,12 +446,7 @@ test('execução real funciona em 320x568 com texto ampliado e rota inexistente 
   await page
     .getByRole('checkbox', { name: 'Outro passo', exact: true })
     .check();
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
-  ).toBeVisible();
+  await conclude(page);
   await page.goto('/missao/999999');
   await expect(
     page.getByRole('heading', { name: 'Missão não encontrada', exact: true }),

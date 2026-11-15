@@ -1,4 +1,5 @@
 import { chooseTracking } from './mission-form';
+import { conclude, openReceipt, registerPart } from './execution';
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { confirmBackupImport } from './backup-ui';
@@ -170,18 +171,13 @@ test('execução individual iniciada em Hoje conclui e exclui sem mudar de pági
 }) => {
   await create(page);
   await page.goto('/');
-  await page
-    .getByRole('button', { name: 'Começar missão', exact: true })
-    .click();
-  await expect(page).toHaveURL(/\/missao\/\d+$/);
+  await page.getByRole('button', { name: 'Iniciar dia', exact: true }).click();
+  await expect(page).toHaveURL(/\/executar\//);
   const url = page.url();
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
-  await expect(
-    page.getByRole('region', { name: 'Resumo da recompensa' }),
-  ).toContainText('Missão concluída!');
+  await conclude(page);
   await expect(page).toHaveURL(url);
+  await openReceipt(page);
+  const receipt = page.url();
   await page
     .getByRole('button', { name: 'Excluir definitivamente', exact: true })
     .click();
@@ -195,7 +191,7 @@ test('execução individual iniciada em Hoje conclui e exclui sem mudar de pági
   await expect(
     page.getByRole('heading', { name: 'Missão não encontrada', exact: true }),
   ).toBeVisible();
-  await expect(page).toHaveURL(url);
+  await expect(page).toHaveURL(receipt);
 });
 
 test('restaurar arquivo anterior não ressuscita a missão excluída nem perde outra missão', async ({
@@ -265,20 +261,13 @@ test('execução aberta pela Agenda registra conclusão sem navegação', async 
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
   await expect(form).not.toBeVisible();
   await page.getByRole('tab', { name: 'Agenda', exact: true }).click();
-  await page
-    .getByRole('button', { name: 'Executar agora', exact: true })
-    .click();
-  await expect(page).toHaveURL(/\/ocorrencia\//);
+  await page.getByRole('button', { name: 'Iniciar', exact: true }).click();
+  await expect(page).toHaveURL(/\/executar\//);
   const url = page.url();
-  await page.getByLabel('Porcentagem realizada').fill('100');
-  await page
-    .getByRole('button', { name: 'Registrar progresso', exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: 'Confirmar registro', exact: true })
-    .click();
+  await page.getByLabel('Porcentagem feita até agora').fill('100');
+  await registerPart(page);
   await expect(
-    page.getByText('100% · Concluída', { exact: true }),
+    page.getByText(/Progresso percentual concluída\./),
   ).toBeVisible();
   await expect(page).toHaveURL(url);
 });
@@ -319,9 +308,7 @@ test('rotina e sessão permanecem na atividade até o avanço explícito', async
   await page
     .getByRole('tab', { name: 'Execução detalhada', exact: true })
     .click();
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
   await expect(
     page.getByRole('region', { name: 'Resumo da recompensa' }),
   ).toBeVisible();

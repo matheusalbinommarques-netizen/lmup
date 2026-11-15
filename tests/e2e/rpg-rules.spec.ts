@@ -192,9 +192,8 @@ test('E01: produtividade funciona sem visitar o Mundo nem depender de sua inicia
   await page
     .getByRole('tab', { name: 'Execução detalhada', exact: true })
     .click();
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  // Sessions keep their own execution until lote 5; the verb is "Concluir".
+  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
   // A one-mission session closes automatically and shows a session receipt.
   await expect(
     page.getByRole('heading', { name: 'Sessão concluída', exact: true }),

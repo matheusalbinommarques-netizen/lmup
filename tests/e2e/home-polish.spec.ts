@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { concludeFromDetail } from './execution';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -132,12 +133,7 @@ async function seed(page: Page, state: HomeState) {
   if (state === 'concluidas') {
     for (const id of [501, 502]) {
       await page.goto(`/missao/${id}`);
-      await page
-        .getByRole('button', { name: 'Concluir missão', exact: true })
-        .click();
-      await expect(
-        page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
-      ).toBeVisible();
+      await concludeFromDetail(page);
     }
   }
   await page.goto('/');
@@ -229,7 +225,7 @@ for (const state of states)
         );
       } else {
         await expect(
-          page.getByRole('button', { name: 'Começar missão', exact: true }),
+          page.getByRole('button', { name: /^(Iniciar dia|Continuar o dia)$/ }),
         ).toBeVisible();
         // Lote 2: at 10:00 the untouched 09:00 mission "passou"; unless
         // chosen, the next is the first row of the day still to come.
@@ -335,9 +331,9 @@ for (const state of states)
     }
     if (state === 'prioridade') {
       await page
-        .getByRole('button', { name: 'Começar missão', exact: true })
+        .getByRole('button', { name: /^(Iniciar dia|Continuar o dia)$/ })
         .click();
-      await expect(page).toHaveURL(/\/missao\/501$/);
+      await expect(page).toHaveURL(/\/executar\/mission%3A501%3A/);
     }
     expect(errors).toEqual([]);
   });

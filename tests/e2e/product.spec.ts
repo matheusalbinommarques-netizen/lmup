@@ -2,6 +2,12 @@ import { fillMissionSteps } from './mission-form';
 import { confirmBackupImport } from './backup-ui';
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import {
+  conclude,
+  concludeFromDetail,
+  openReceipt,
+  startFromDetail,
+} from './execution';
 async function createProject(
   page: Page,
   name = 'Projeto com direção',
@@ -110,12 +116,7 @@ test('projeto com objetivo, datas e etapas mantém a próxima missão clara', as
     project: 'Uma primeira entrega',
     stage: 'Explorar',
   });
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
-  ).toBeVisible();
+  await concludeFromDetail(page);
   await page.goto(href);
   await expect(
     page.getByRole('button', { name: 'Reabrir e estornar bônus', exact: true }),
@@ -147,9 +148,7 @@ test('projeto com objetivo, datas e etapas mantém a próxima missão clara', as
     project: 'Uma primeira entrega',
     stage: 'Publicar',
   });
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  await concludeFromDetail(page);
   await expect(
     page.getByRole('heading', { name: 'Projeto concluído', exact: true }),
   ).toBeVisible();
@@ -188,9 +187,7 @@ test('associação, reabertura e arquivamento preservam missões e recibos', asy
   await page
     .getByRole('link', { name: 'Atividade já registrada', exact: true })
     .click();
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  await concludeFromDetail(page);
   await expect(
     page.getByRole('heading', { name: 'Projeto concluído', exact: true }),
   ).toBeVisible();
@@ -244,22 +241,22 @@ test('missão concluída preserva notas e não oferece novas revisões no dia se
   await expect(
     page.getByRole('button', { name: 'Configurar revisão', exact: true }),
   ).toHaveCount(0);
+  await startFromDetail(page);
   await page
     .getByRole('checkbox', { name: 'Explicar de memória', exact: true })
     .check();
   await page
     .getByRole('checkbox', { name: 'Conferir uma referência', exact: true })
     .check();
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  await conclude(page);
+  await openReceipt(page);
   await expect(
     page.getByRole('region', { name: 'Resumo da recompensa' }),
   ).toBeVisible();
   await page.clock.setFixedTime(new Date('2026-10-11T12:00:00-03:00'));
   await page.goto(url);
   await expect(
-    page.getByRole('button', { name: 'Concluir missão', exact: true }),
+    page.getByRole('link', { name: /^(Iniciar|Retomar)$/ }),
   ).not.toBeVisible();
   const result = await backup(page);
   expect(result.data.tasks).toHaveLength(1);
@@ -294,18 +291,13 @@ test('esforço define a recompensa e editar passos não fabrica XP', async ({
   await edit
     .getByRole('button', { name: 'Salvar missão', exact: true })
     .click();
-  await expect(
-    page.getByRole('checkbox', { name: 'Um passo de verdade', exact: true }),
-  ).toBeVisible();
+  await expect(edit).not.toBeVisible();
+  await startFromDetail(page);
   await page
     .getByRole('checkbox', { name: 'Um passo de verdade', exact: true })
     .check();
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
-  ).toBeVisible();
+  await conclude(page);
+  await openReceipt(page);
   const result = await backup(page);
   expect(result.data.tasks[0]).toMatchObject({ effort: 'medium', xp: 100 });
   expect(result.data.profile.totalXpEarned).toBe(105);

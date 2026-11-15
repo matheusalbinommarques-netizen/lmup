@@ -2,6 +2,7 @@ import { calendarDate } from './calendar';
 import {
   occurrenceDue,
   validatePlanning,
+  validStartedAt,
   validateTime,
 } from './productivityRules';
 import type { Occurrence } from './productivityTypes';
@@ -293,6 +294,11 @@ export function validateProductivityBackup(
         Date.parse(row.executedAt) <= Date.parse(row.recordedAt),
       'execução futura ou inválida',
     );
+    if (row.startedAt !== undefined)
+      requireValue(
+        validStartedAt(row.startedAt, row.executedAt),
+        'início real inválido',
+      );
     requireValue(
       row.minutes === null ||
         (Number.isFinite(row.minutes) && (row.minutes >= 0 || row.correction)),

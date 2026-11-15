@@ -93,8 +93,8 @@
             : recovery
               ? 'Recuperar'
               : row.value
-                ? 'Continuar'
-                : 'Executar agora'}</Button
+                ? 'Retomar'
+                : 'Iniciar'}</Button
       >
     </div>
   </div>
@@ -103,7 +103,7 @@
       ><ApprovedIcon name="opcoes" size={24} /></summary
     >
     <div>
-      <Button variant="quiet" onclick={onopen}>Reagendar</Button
+      <Button variant="quiet" onclick={onopen}>Remarcar</Button
       >{#if onedit}<Button variant="quiet" onclick={onedit}
           >Editar futuras</Button
         >{/if}

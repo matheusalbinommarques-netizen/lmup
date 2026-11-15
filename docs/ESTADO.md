@@ -16,7 +16,7 @@ Execução e pendências do plano de 04/11: [reconciliação de 09/11](AUDITORIA
 | ------------ | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | Hoje         | `/`                           | `src/lib/journey/Home.svelte`, `todayView.ts`                                                                                           |
 | Missões      | `/missoes`                    | `Missions.svelte`, `ProductivityWorkspace.svelte`                                                                                       |
-| Execução     | `/missao`, `/ocorrencia`      | `Execution.svelte`, `OccurrenceExecution.svelte`                                                                                        |
+| Execução     | `/executar/<ocorrência>`      | `ExecutionScreen.svelte`, `dayQueue.ts`; `/missao` é o detalhe e `/ocorrencia` o registro e a correção                                  |
 | Sessões      | `/sessoes`                    | `MissionSession.svelte`, `SavedSessions.svelte`                                                                                         |
 | Projetos     | `/projetos`                   | `Projects.svelte`, `ProjectDetail.svelte`                                                                                               |
 | Mundo        | `/mundo`, `/mundo/campanha`   | `src/routes/mundo`, `src/lib/world/WorldExperience.svelte`, `src/services/worldService.ts`                                              |
@@ -43,7 +43,7 @@ Execução e pendências do plano de 04/11: [reconciliação de 09/11](AUDITORIA
 - Nomes, artes e lore provisórios não são definitivos. A marca atual e a origem das artes estão em [arte/MARCA.md](arte/MARCA.md).
 - O retrato do Herói é provisório (ícone encapuzado aprovado dentro da moldura rúnica) até a decisão DP3; o retrato enviado pelo usuário sempre vence. `heroi.png` não é o padrão.
 - Hoje e Configurações têm um [lembrete opcional de backup a cada 14 dias](A14-LEMBRETE-BACKUP.md), dispensável por mais 14 dias. Instalação vazia não avisa; sem exportação anterior, a carência começa na primeira visita com conteúdo. Cópia automática em pasta continua fora do escopo.
-- Plano em execução: [Dia único](PLANO-DIA-UNICO.md), 7 lotes. "Parada" = missão avulsa com dia e 14 dias sem ação, igual no Hoje e na Roda. Conclusão pela linha só para missões diretas, sem passos e do dia; desfazer usa o estorno existente (débito compensado por ganhos futuros). Desde o lote 2, Hoje e Agenda seguem a mesma ordem do dia (`dayOrder` na ocorrência).
+- Plano em execução: [Dia único](PLANO-DIA-UNICO.md), 7 lotes. "Parada" = missão avulsa com dia e 14 dias sem ação, igual no Hoje e na Roda. Conclusão pela linha só para missões diretas, sem passos e do dia; desfazer usa o estorno existente (débito compensado por ganhos futuros). Desde o lote 2, Hoje e Agenda seguem a mesma ordem do dia (`dayOrder` na ocorrência). Desde o lote 3, toda execução acontece em `/executar` (dia, bloco ou missão avulsa); a fila é um trecho do Dia e o cronômetro opcional grava `startedAt` e minutos no registro de execução.
 
 ## Entregas recentes
 
@@ -68,6 +68,7 @@ Execução e pendências do plano de 04/11: [reconciliação de 09/11](AUDITORIA
 | C03     | Leitura compartilhada: concluir com 5 anos em 1,4 s          | Contar leituras antes de otimizar; snapshot em `$state.raw`              |
 | Lote 1  | Linha de Missão no Hoje: um clique, selos e paradas          | Reproduzir a corrida no teste antes de corrigir                          |
 | Lote 2  | Ordem única do dia, hora ≈ e hora fixa editável na linha     | Digitação simulada não preenche `input type=time`; use teclas ou `fill`  |
+| Lote 3  | Uma tela de execução, cronômetro opcional e blocos de rotina | Migrar specs por helper (`tests/e2e/execution.ts`), não trecho a trecho  |
 
 ## Pendências técnicas conhecidas
 

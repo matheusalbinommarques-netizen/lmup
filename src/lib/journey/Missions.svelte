@@ -18,6 +18,7 @@
   import TaskRemovalDialog from './TaskRemovalDialog.svelte';
   import '$lib/rpg-theme.css';
   import { onMount, tick } from 'svelte';
+  import { executionHref } from './dayQueue';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { journeyQuery, type JourneySnapshot } from '$services/journeyQuery';
@@ -286,7 +287,7 @@
     }
     if (row && row.originDate < today && row.status !== 'completed') {
       await ensureOccurrence(task.id!, row.originDate);
-      await goto('/ocorrencia/' + encodeURIComponent(row.id));
+      await goto(executionHref(row.id));
       return;
     }
     await goto('/missao/' + task.id);
@@ -1064,8 +1065,7 @@
                     >
                       <summary>{todayRows.length} ocorrências hoje</summary
                       >{#each todayRows as occurrence (occurrence.id)}<a
-                          href={'/ocorrencia/' +
-                            encodeURIComponent(occurrence.id)}
+                          href={executionHref(occurrence.id)}
                           onclick={async (event) => {
                             event.preventDefault();
                             await act('open:' + occurrence.id, async () => {
@@ -1073,21 +1073,17 @@
                                 occurrence.taskId,
                                 occurrence.originDate,
                               );
-                              await goto(
-                                '/ocorrencia/' +
-                                  encodeURIComponent(occurrence.id),
-                              );
+                              await goto(executionHref(occurrence.id));
                             });
                           }}
                           >Origem {occurrence.originDate} · {Math.round(
                             fraction(occurrence) * 100,
-                          )}% · Executar ocorrência →</a
+                          )}% · Iniciar →</a
                         >{/each}
                     </details>
                   {:else if todayRows[0]?.value > 0 && !done}<a
                       class="inline-progress"
-                      href={'/ocorrencia/' +
-                        encodeURIComponent(todayRows[0].id)}
+                      href={executionHref(todayRows[0].id)}
                       ><progress
                         max="100"
                         value={fraction(todayRows[0]) * 100}

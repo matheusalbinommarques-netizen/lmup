@@ -1,4 +1,10 @@
 import { expect, test, type Page, type Locator } from '@playwright/test';
+import {
+  concludeButton,
+  concludeFromDetail,
+  openReceipt,
+  startFromDetail,
+} from './execution';
 import { mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { confirmBackupImport } from './backup-ui';
@@ -143,8 +149,8 @@ test('áreas no cadastro, edição, exclusão com transferência e criação ape
   ).toBeVisible();
   await create(page, 'Uma ideia simples');
   await expect(
-    page.getByRole('button', { name: 'Concluir missão', exact: true }),
-  ).toBeEnabled();
+    page.getByRole('link', { name: /^(Iniciar|Retomar)$/ }),
+  ).toBeVisible();
   await page
     .getByRole('button', { name: 'Editar missão', exact: true })
     .click();
@@ -179,24 +185,34 @@ test('rotina persiste por data, impede duplicação entre abas, preserva histór
       .getByRole('combobox', { name: 'Recorrência', exact: true })
       .selectOption('daily');
   });
+  await startFromDetail(page);
   const other = await context.newPage();
   await other.clock.setFixedTime(new Date('2026-11-02T10:00:00-03:00'));
-  await other.goto(url);
+  await other.goto(page.url());
   for (const tab of [page, other])
-    await expect(
-      tab.getByRole('button', { name: 'Concluir missão', exact: true }),
-    ).toBeEnabled();
+    await expect(concludeButton(tab)).toBeEnabled();
   await Promise.all(
     [page, other].map((tab) =>
-      tab
-        .getByRole('button', { name: 'Concluir missão', exact: true })
-        .evaluate((button: HTMLButtonElement) => button.click()),
+      concludeButton(tab).evaluate((button: HTMLButtonElement) =>
+        button.click(),
+      ),
     ),
   );
+  for (const tab of [page, other])
+    await expect(tab.getByText(/concluída\./).first()).toBeVisible();
+  // Only the tab that won the race holds the receipt ("Por quê?").
+  const receipts = await Promise.all(
+    [page, other].map((tab) =>
+      tab.getByRole('link', { name: 'Por quê?', exact: true }).count(),
+    ),
+  );
+  expect(receipts[0] + receipts[1]).toBe(1);
+  const winner = receipts[0] ? page : other;
+  await openReceipt(winner);
   await expect(
-    page.getByRole('region', { name: 'Resumo da recompensa' }),
+    winner.getByRole('region', { name: 'Resumo da recompensa' }),
   ).toBeVisible();
-  await capture(page, info.project.name, 'recompensa');
+  await capture(winner, info.project.name, 'recompensa');
   const first = await backup(page);
   expect(
     first.data.activityEvents.filter(
@@ -208,12 +224,7 @@ test('rotina persiste por data, impede duplicação entre abas, preserva histór
   await expect(page.locator('#next-title')).toContainText('Lavar a louça');
   await capture(page, info.project.name, 'home-novo-dia');
   await page.goto(url);
-  await expect(
-    page.getByRole('button', { name: 'Concluir missão', exact: true }),
-  ).toBeEnabled();
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  await concludeFromDetail(page);
   await expect(
     page.getByRole('region', { name: 'Resumo da recompensa' }),
   ).toBeVisible();

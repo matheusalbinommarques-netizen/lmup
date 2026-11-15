@@ -39,11 +39,12 @@
   let undoOpen = $state(false),
     undoImpact = $state<Resources>();
   let correctionNotice = $state('');
-  import { ensureOccurrence } from '$services/occurrenceService';
+  import { ensureOccurrence, occurrenceId } from '$services/occurrenceService';
   import Button from '$lib/ui/Button.svelte';
   import Card from '$lib/ui/Card.svelte';
   import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
   import Icon from '$lib/ui/Icon.svelte';
+  import { executionHref } from './dayQueue';
   let {
     id,
     sessionMode = false,
@@ -342,12 +343,37 @@
         task.recurrence ? today : (task.plannedDate ?? today),
       );
       busy = false;
-      await goto('/ocorrencia/' + encodeURIComponent(row.id));
+      // Correction keeps the detailed record page; new progress goes to the
+      // single execution screen (lote 3).
+      await goto(
+        finished
+          ? '/ocorrencia/' + encodeURIComponent(row.id)
+          : executionHref(row.id),
+      );
     } catch (cause) {
       error =
         cause instanceof Error
           ? cause.message
           : 'Não foi possível abrir o progresso.';
+    } finally {
+      busy = false;
+    }
+  }
+  async function openExecution() {
+    if (!task) return;
+    busy = true;
+    error = '';
+    try {
+      const origin = task.recurrence ? today : (task.plannedDate ?? today);
+      // Legacy missions are executed on the projection (no occurrence).
+      const id = task.productivityVersion
+        ? (await ensureOccurrence(task.id!, origin)).id
+        : occurrenceId(task, origin);
+      busy = false;
+      await goto(executionHref(id));
+    } catch (cause) {
+      error =
+        cause instanceof Error ? cause.message : 'Não foi possível iniciar.';
     } finally {
       busy = false;
     }
@@ -487,22 +513,39 @@
         </div>
       </header>
     </details>
-    {#if canExecute && !['active', 'paused'].includes(task.executionState ?? '')}<div
+    {#if !sessionMode && canExecute}
+      <!-- Lote 3: execution happens only on the single execution screen. -->
+      {@const planned = data.plannedToday.find((row) => row.taskId === task.id)}
+      <div class="journey-actions">
+        {#if planned}<a
+            class="lmu-button lmu-button--primary"
+            href={executionHref(planned.id)}
+            >{planned.value > 0 ||
+            ['active', 'paused'].includes(task.executionState ?? '')
+              ? 'Retomar'
+              : 'Iniciar'}</a
+          >{:else}<Button
+            variant="secondary"
+            disabled={busy}
+            onclick={openExecution}>Iniciar</Button
+          >{/if}
+        <p class="lmu-hint">Consultar a missão não inicia sua execução.</p>
+      </div>
+    {:else if canExecute && !['active', 'paused'].includes(task.executionState ?? '')}<div
         class="journey-actions"
       >
         <Button
           variant="secondary"
           disabled={starting > 0 || busy}
-          onclick={() => startCurrent(task)}>Iniciar missão</Button
+          onclick={() => startCurrent(task)}>Iniciar</Button
         >
-        <p class="lmu-hint">Consultar a missão não inicia sua execução.</p>
       </div>{:else if canExecute && task.executionState === 'paused'}<div
         class="journey-actions"
       >
         <Button
           variant="secondary"
           disabled={starting > 0 || busy}
-          onclick={() => startCurrent(task)}>Retomar missão</Button
+          onclick={() => startCurrent(task)}>Retomar</Button
         >
       </div>{/if}
     {#if !canExecute}<p class="journey-banner">
@@ -511,7 +554,7 @@
           : task.recurrence
             ? 'Esta rotina não está prevista para hoje. Você pode editar seu planejamento.'
             : 'Esta missão está planejada para uma data futura.'}
-      </p>{:else}<Card
+      </p>{:else if sessionMode}<Card
         >{#if steps.length}<p class="lmu-muted">
             {steps.filter((step) => checkedSteps.includes(step.index)).length} de
             {steps.length} passos
@@ -567,11 +610,12 @@
             dirty ||
             starting > 0 ||
             !canExecute}
-          onclick={conclude}
-          >Concluir missão<Icon name="check" size={18} /></Button
+          onclick={conclude}>Concluir<Icon name="check" size={18} /></Button
         >
       </div>
       {#if !ready}<p class="lmu-hint">Marque os passos para concluir.</p>{/if}
+    {/if}
+    {#if canExecute}
       {#if !task.reviewEnabled || revealNotes || dirty || noteError}
         <details class="journey-notes" bind:open={notesExpanded}>
           <summary>Notas da missão</summary>
@@ -644,9 +688,7 @@
         {#if task.productivityVersion && !task.reviewEnabled}<Button
             disabled={busy || saves > 0 || dirty}
             onclick={openProgress}
-            >{finished
-              ? 'Corrigir progresso'
-              : 'Registrar progresso parcial'}</Button
+            >{finished ? 'Corrigir progresso' : 'Registrar parte'}</Button
           >{/if}
         <Button
           variant="secondary"
@@ -660,7 +702,7 @@
             variant="quiet"
             disabled={busy || saves > 0 || dirty || starting > 0 || !!noteError}
             onclick={onSessionSkip}
-            >Pular por agora <Icon name="arrow" size={16} /></Button
+            >Pular para depois <Icon name="arrow" size={16} /></Button
           >
         {/if}
       </div>

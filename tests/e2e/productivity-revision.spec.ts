@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { registerPart } from './execution';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 const day = '2026-11-02';
@@ -416,17 +417,13 @@ test('pontual pode recomeçar com compensação e sem apagar sua execução parc
     .getByRole('link', { name: 'Objetivo parcial', exact: true })
     .click();
   await page
-    .getByRole('button', { name: 'Registrar progresso parcial', exact: true })
+    .getByRole('button', { name: 'Registrar parte', exact: true })
     .click();
+  await expect(page).toHaveURL(/\/executar\//);
   await page
-    .getByRole('spinbutton', { name: 'Minutos acumulados realizados' })
+    .getByRole('spinbutton', { name: 'Minutos feitos até agora' })
     .fill('20');
-  await page
-    .getByRole('button', { name: 'Registrar progresso', exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: 'Confirmar registro', exact: true })
-    .click();
+  await registerPart(page);
   await expect
     .poll(
       async () =>
