@@ -89,10 +89,10 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/');
   await expect(
-    page.getByRole('region', { name: 'Seu personagem', exact: true }),
+    page.getByRole('region', { name: 'Hoje', exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole('progressbar', { name: 'Evolução do ambiente' }),
+    page.getByRole('progressbar', { name: 'XP até o próximo nível' }),
   ).toHaveAttribute('value', '0');
   await expect(page.getByRole('button', { name: 'Nova missão' })).toBeVisible();
   await noOverflow(page);
@@ -165,7 +165,7 @@ test('Home mostra perfil, equipamento, ambiente e preserva dados históricos do 
   );
   await page.goto('/');
   await expect(
-    page.getByRole('region', { name: 'Seu personagem' }),
+    page.getByRole('region', { name: 'Hoje', exact: true }),
   ).toBeVisible();
   // Only disposable test contexts are seeded; no runtime fixture or sample data.
   await page.evaluate(
@@ -222,24 +222,20 @@ test('Home mostra perfil, equipamento, ambiente e preserva dados históricos do 
       }),
   );
   await page.reload();
-  await expect(
-    page.getByRole('heading', { name: 'Helena da Aurora', exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: 'Árvore Jovem', exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByText('Faltam 4000 XP para Floresta Anciã.', { exact: true }),
-  ).toBeVisible();
-  await expect(page.getByText('735 Ouro', { exact: true })).toBeVisible();
-  await expect(
-    page.getByRole('link', { name: 'Equipado: Cota da Rotina' }),
-  ).toBeVisible();
-  await expect(page.locator('.world-card[href="/mundo"]')).toBeVisible();
-  await expect(
-    page.getByRole('progressbar', { name: 'Experiência do personagem' }),
-  ).toHaveAttribute('value', '1484');
-  await page.locator('.world-card[href="/projetos"]').click();
+  // Lote 4b: no Hoje fica o cartão Jornada; Herói, saldo e equipamento
+  // continuam na Jornada.
+  await expect(page.locator('.journey-card-who')).toContainText(
+    'Helena da Aurora',
+  );
+  await expect(page.locator('.world-card')).toHaveCount(0);
+  await page
+    .locator('.journey-card')
+    .getByRole('link', { name: 'Abrir Jornada →' })
+    .click();
+  await expect(page).toHaveURL(/\/perfil$/);
+  await expect(page.getByText('Helena da Aurora').first()).toBeVisible();
+  await expect(page.getByText('Cota da Rotina').first()).toBeVisible();
+  await page.goto('/projetos');
   await expect(
     page.getByRole('heading', { name: 'Preparar o portfólio', exact: true }),
   ).toBeVisible();
@@ -279,8 +275,9 @@ test('Home em 320px, tablet, texto 200%, teclado e arte ausente mantém ações'
     document.documentElement.style.fontSize = '200%';
   });
   await noOverflow(page);
+  // Lote 4b: o título do cartão Jornada substitui o nome do Herói no Hoje.
   const titleLayout = await page
-    .getByRole('heading', { name: 'Herói sem nome', exact: true })
+    .locator('.journey-card h2')
     .evaluate((element) => ({
       height: element.getBoundingClientRect().height,
       lineHeight: Number.parseFloat(getComputedStyle(element).lineHeight),

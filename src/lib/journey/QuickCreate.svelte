@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { gameLayer } from '$services/gameLayer';
   import '$lib/rpg-theme.css';
   import { guardUpdates } from './guardUpdates';
   import type { MissionStarter } from '$lib/content/experience';
@@ -384,17 +385,22 @@
                     >Manter recompensa anterior ({editTask.xp} XP base)</option
                   >{/if}{#each EFFORTS as item (item.key)}<option
                     value={item.key}
-                    >{item.label} · {item.xp} XP / {Math.floor(item.xp * 0.5)} Ouro
-                    base</option
+                    >{item.label}{$gameLayer === 'completa'
+                      ? ` · ${item.xp} XP / ${Math.floor(item.xp * 0.5)} Ouro base`
+                      : $gameLayer === 'discreta'
+                        ? ` · ${item.xp} XP base`
+                        : ''}</option
                   >{/each}</select
               ></label
             >
-            {#if preview}<p class="reward-preview">
+            {#if preview}<p class="reward-preview" data-game="xp">
                 <ApprovedIcon name="xp" size={24} /><span
                   >Prévia com seus bônus atuais<br /><strong
-                    >+{preview.xp} XP <span>·</span> +{preview.gold} Ouro
-                    <span>·</span>
-                    +{preview.food} Comida</strong
+                    >+{preview.xp} XP<span data-game="loot">
+                      <span>·</span> +{preview.gold} Ouro
+                      <span>·</span>
+                      +{preview.food} Comida</span
+                    ></strong
                   ></span
                 >
               </p>{/if}

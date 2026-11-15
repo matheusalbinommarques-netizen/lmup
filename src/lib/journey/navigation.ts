@@ -3,6 +3,8 @@
  * e no mobile. Rotas antigas continuam existindo; aqui só se decide qual
  * destino fica marcado e qual aba da Jornada está ativa.
  */
+import type { GameLayer } from '$services/gameLayer';
+
 export type Destination = {
   href: string;
   label: string;
@@ -15,6 +17,17 @@ export const primaryDestinations: Destination[] = [
   { href: '/evolucao', label: 'Evolução', icon: 'evolucao' },
   { href: '/perfil', label: 'Jornada', icon: 'mundo' },
 ];
+
+/**
+ * Destinos da barra por camada de jogo (design "LMUP Hoje" D1–D3): a
+ * Jornada só fica na barra na camada Completa. Na Discreta ela vai para o
+ * rodapé da lateral e para "Mais" no mobile; na Desligada some do menu.
+ */
+export function destinationsFor(layer: GameLayer): Destination[] {
+  return layer === 'completa'
+    ? primaryDestinations
+    : primaryDestinations.filter((item) => item.href !== '/perfil');
+}
 
 export const journeyTabs: { href: string; label: string }[] = [
   { href: '/perfil', label: 'Herói' },

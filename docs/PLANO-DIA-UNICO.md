@@ -77,3 +77,14 @@ O lote 4 foi dividido: 4a (navegação, Evolução, área do projeto) e 4b (cama
 - Projeto "parado": 14 dias sem conclusão ou registro de execução em missões do projeto, contados desde a criação; pausado não é parado.
 - Dado: `areaId` opcional no projeto (null = sem área; 0 = Geral), validado no backup; excluir a área leva os projetos à área de destino, com auditoria.
 - Worker: `/evolucao` e `/roda` abrem offline sem visita prévia.
+
+## Lote 4b: o que mudou
+
+- Camada de jogo em Configurações (`src/services/gameLayer.ts`, `profile.gameLayer`). Ausente = Completa: usuários atuais não mudam. Discreta como padrão de quem pula o primeiro uso entra com o lote 7; até lá ninguém muda sozinho.
+- Completa: Hoje · Missões · Evolução · Jornada; no Hoje, um cartão "Jornada" (nível, XP até o próximo nível, ganhos do dia, companheiro). Discreta: três destinos, Jornada no rodapé da lateral e em "Mais" no mobile, e a linha "Hoje +N XP · Por que ganhei isso?". Desligada: três destinos e nada de XP, ouro ou comida nas telas de produtividade.
+- Em qualquer camada XP, ouro, comida e recibos continuam sendo registrados; trocar de camada só grava a preferência. Avisos de estorno e débito continuam mostrando valores, porque descrevem consequência.
+- Fora da Completa, molduras ornamentadas viram superfície simples na produtividade; as telas da Jornada mantêm a moldura.
+- Saíram do Hoje: "No que investir?" e Suprimentos (agora abaixo da cena do Acampamento), "Próxima conquista", cartões Mundo/Aposentos/Projetos e "O caminho adiante" (Herói, conquistas e Mundo continuam na Jornada).
+- Marcações `data-game="xp" | "loot" | "card"` escondem valores por camada em Missões, criação rápida, detalhe da missão, projeto, sessões salvas e aviso pós-execução.
+- Tokens: bloco único de 13 tokens no `.visual-shell` (`visual.css`), com `--lmu-control-line` para bordas de campo; `--d05-label` e `--d05-border` apontam para eles. A troca dos cinzas soltos e o tema claro ficam para a consolidação depois dos 7 lotes.
+- Texto: "construção, item ou melhoria".

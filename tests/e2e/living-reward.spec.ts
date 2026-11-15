@@ -7,7 +7,7 @@ import { concludeFromDetail } from './execution';
 async function seed(page: Page, total: number, xp = 50, project = false) {
   await page.goto('/');
   await expect(
-    page.getByRole('region', { name: 'Seu personagem', exact: true }),
+    page.getByRole('region', { name: 'Hoje', exact: true }),
   ).toBeVisible();
   await page.evaluate(
     ({ total, xp, project }) =>
@@ -169,9 +169,10 @@ for (const state of [
       .press('Enter');
     await expect(page).toHaveURL('/missoes');
     await page.goto('/');
-    await expect(
-      page.getByRole('region', { name: 'Seu personagem', exact: true }),
-    ).toContainText(String(granted.gold));
+    // Lote 4b: o Hoje mostra o recebido no dia no cartão Jornada.
+    await expect(page.locator('.journey-card')).toContainText(
+      String(granted.gold),
+    );
     expect(await receipt(page)).toEqual(granted);
     await capture(page, `${info.project.name}-${state.name}-home`);
     await page.goto('/missao/800');

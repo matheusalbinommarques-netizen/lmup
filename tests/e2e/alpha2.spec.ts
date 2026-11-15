@@ -259,9 +259,10 @@ test('importação permite conferir e cancelar, valida erro e atualiza sem recar
   expect((await backup(page)).data).toEqual(original.data);
   await restore(page, incoming);
   await page.goto('/');
-  await expect(
-    page.getByText('Jornada restaurada', { exact: true }),
-  ).toBeVisible();
+  // Lote 4b: o nome aparece no cartão Jornada do Hoje.
+  await expect(page.locator('.journey-card-who')).toContainText(
+    'Jornada restaurada',
+  );
   await page.goto('/config');
   await expect(
     page.getByText(/Última exportação iniciada neste navegador:/),

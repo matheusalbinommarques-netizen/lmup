@@ -611,10 +611,13 @@
       <ApprovedIcon name="concluida" size={28} />
       <div>
         <strong>{completion.title}</strong><span
-          >Concluída · +{completion.event.reward.xp} XP · +{completion.event
-            .reward.gold} Ouro{completion.event.reward.food
-            ? ` · +${completion.event.reward.food} Comida`
-            : ''}</span
+          >Concluída<span data-game="xp">
+            · +{completion.event.reward.xp} XP</span
+          ><span data-game="loot">
+            · +{completion.event.reward.gold} Ouro{completion.event.reward.food
+              ? ` · +${completion.event.reward.food} Comida`
+              : ''}</span
+          ></span
         >
       </div>
       <button
@@ -895,10 +898,10 @@
                             : 'Concluída'}</small
                     >
                   </div>
-                  <div class="mission-reward">
+                  <div class="mission-reward" data-game="xp">
                     <span
                       >{event.reversedAt ? '−' : '+'}{event.reward.xp} XP</span
-                    ><small
+                    ><small data-game="loot"
                       >{event.reversedAt ? '−' : '+'}{event.reward.gold} Ouro{event
                         .reward.food
                         ? ` · ${event.reversedAt ? '−' : '+'}${event.reward.food} Comida`
@@ -1092,8 +1095,8 @@
                       Continuar</a
                     >{/if}
                 </div>
-                {#if reward}<div class="mission-reward">
-                    <span>+{reward.xp} XP</span><small
+                {#if reward}<div class="mission-reward" data-game="xp">
+                    <span>+{reward.xp} XP</span><small data-game="loot"
                       >+{reward.gold} Ouro</small
                     >
                   </div>{/if}
@@ -1247,9 +1250,9 @@
     --rpg-line: #6b7a7473;
     --rpg-engraving: #a7b2a740;
     --d05-heading: #ece4d0;
-    --d05-label: #c3cabd;
+    --d05-label: var(--lmu-muted);
     --d05-link: #d6e2db;
-    --d05-border: #5f6f6a66;
+    --d05-border: var(--lmu-line);
     --d05-surface-1: #061115f5;
     --d05-surface-2: #0c1b1e;
     --d05-surface-3: #15272b;

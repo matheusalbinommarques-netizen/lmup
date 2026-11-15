@@ -200,11 +200,11 @@
             onclick={() => status('concluido')}>Concluir projeto</Button
           >{/if}{/if}
     </div>
-    {#if bonusEvent}<p class="journey-status">
+    {#if bonusEvent}<p class="journey-status" data-game="xp">
         Recibo do projeto: +{bonusEvent.reward.xp} XP · +{bonusEvent.reward
           .gold} Ouro · +{bonusEvent.reward.food} Comida.
       </p>{/if}
-    {#if bonus}<p class="lmu-hint">
+    {#if bonus}<p class="lmu-hint" data-game="xp">
         {project.rewardGranted
           ? 'Bônus já registrado.'
           : 'Prévia do próximo bônus:'}

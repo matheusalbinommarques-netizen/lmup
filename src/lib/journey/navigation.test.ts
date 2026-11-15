@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  destinationsFor,
   activeDestination,
   journeyTab,
   primaryDestinations,
@@ -47,5 +48,18 @@ describe('navegação de quatro destinos', () => {
     ['/roda', null],
   ])('aba da Jornada de %s é %s', (path, expected) => {
     expect(journeyTab(path)).toBe(expected);
+  });
+
+  it('a Jornada só fica na barra na camada Completa', () => {
+    const labels = (layer: Parameters<typeof destinationsFor>[0]) =>
+      destinationsFor(layer).map((item) => item.label);
+    expect(labels('completa')).toEqual([
+      'Hoje',
+      'Missões',
+      'Evolução',
+      'Jornada',
+    ]);
+    expect(labels('discreta')).toEqual(['Hoje', 'Missões', 'Evolução']);
+    expect(labels('desligada')).toEqual(['Hoje', 'Missões', 'Evolução']);
   });
 });

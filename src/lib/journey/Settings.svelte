@@ -25,11 +25,33 @@
     type JourneyBackup,
   } from '$services/backupDataService';
   import { protectMutation } from './protectMutation';
+  import {
+    GAME_LAYERS,
+    gameLayer,
+    gameLayerLabels,
+    setGameLayer,
+    type GameLayer,
+  } from '$services/gameLayer';
   import Card from '$lib/ui/Card.svelte';
   import Button from '$lib/ui/Button.svelte';
   import Field from '$lib/ui/Field.svelte';
   import Dialog from '$lib/ui/Dialog.svelte';
   let data = $state<SettingsSnapshot>();
+  let layerNotice = $state(''),
+    layerError = $state('');
+  async function chooseLayer(layer: GameLayer) {
+    layerError = '';
+    layerNotice = '';
+    try {
+      await setGameLayer(layer);
+      layerNotice = `Camada de jogo: ${gameLayerLabels[layer].title}. Nada do seu progresso mudou.`;
+    } catch (cause) {
+      layerError =
+        cause instanceof Error
+          ? cause.message
+          : 'Não foi possível mudar a camada de jogo.';
+    }
+  }
   let error = $state(''),
     notice = $state(''),
     busy = $state(false),
@@ -280,6 +302,34 @@
   >
   <UpdateCenter />
   <Card
+    ><fieldset class="journey-stack settings-layer">
+      <legend><h2>Camada de jogo</h2></legend>
+      <p class="lmu-muted">
+        Quanto do jogo aparece nas telas. XP, ouro, comida e recibos continuam
+        sendo registrados em qualquer opção, então ligar o jogo depois não perde
+        nada.
+      </p>
+      {#each GAME_LAYERS as layer (layer)}<label class="settings-preference"
+          ><div>
+            <strong>{gameLayerLabels[layer].title}</strong>
+            <p class="lmu-hint">{gameLayerLabels[layer].description}</p>
+          </div>
+          <input
+            type="radio"
+            name="game-layer"
+            value={layer}
+            checked={$gameLayer === layer}
+            onchange={() => chooseLayer(layer)}
+            aria-label={gameLayerLabels[layer].title}
+          /></label
+        >{/each}
+      {#if layerError}<p role="alert" class="journey-error">
+          {layerError}
+        </p>{/if}
+      <p role="status" class="journey-save-status">{layerNotice}</p>
+    </fieldset></Card
+  >
+  <Card
     ><div class="journey-stack">
       <div>
         <h2>Conforto e leitura</h2>
@@ -441,3 +491,17 @@
     </footer>
   </div></Dialog
 >
+
+<style>
+  .settings-layer {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  .settings-layer legend {
+    padding: 0;
+  }
+  .settings-layer legend h2 {
+    margin: 0;
+  }
+</style>

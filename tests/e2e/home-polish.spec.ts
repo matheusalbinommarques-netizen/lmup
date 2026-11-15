@@ -16,7 +16,7 @@ const today = '2026-11-02';
 
 async function seed(page: Page, state: HomeState) {
   await page.goto('/');
-  await expect(page.locator('.horizons')).toBeVisible();
+  await expect(page.locator('.daily-summary')).toBeVisible();
   if (state === 'novo') return;
   await page.evaluate(
     async ({ state, today }) => {
@@ -137,7 +137,7 @@ async function seed(page: Page, state: HomeState) {
     }
   }
   await page.goto('/');
-  await expect(page.locator('.horizons')).toBeVisible();
+  await expect(page.locator('.daily-summary')).toBeVisible();
 }
 
 for (const state of states)
@@ -177,39 +177,27 @@ for (const state of states)
         ).toBe(true);
       }
 
-      await expect(page.locator('.world-card')).toHaveCount(3);
-      for (const heading of await page.locator('.world-card h2').all())
-        expect(
-          await heading.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
-        ).toBe(true);
-      for (const heading of await page.locator('.world-card h2').all())
-        expect(
-          await heading.evaluate((el) => {
-            const text = Array.from(el.childNodes).find(
-              (node) =>
-                node.nodeType === Node.TEXT_NODE && node.textContent?.trim(),
-            )!;
-            const range = document.createRange();
-            range.selectNodeContents(text);
-            return range.getClientRects().length;
-          }),
-        ).toBe(1);
+      // Lote 4b: cartões Mundo/Aposentos/Projetos e "O caminho adiante"
+      // saíram do Hoje; na camada Completa fica um cartão Jornada.
+      await expect(page.locator('.world-card, .horizons')).toHaveCount(0);
+      expect(
+        await page
+          .locator('.journey-card h2')
+          .evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+      ).toBe(true);
 
       await expect(
-        page.getByRole('region', { name: 'Seu personagem', exact: true }),
+        page.getByRole('region', { name: 'Hoje', exact: true }),
       ).toBeVisible();
       await expect(
-        page.getByRole('progressbar', { name: 'Evolução do ambiente' }),
-      ).toBeVisible();
-      await expect(
-        page.getByRole('progressbar', { name: 'Experiência do personagem' }),
+        page.getByRole('progressbar', { name: 'XP até o próximo nível' }),
       ).toBeVisible();
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
       ).toBe(true);
-      for (const selector of ['.next-mission', '.day-plan', '.horizons'])
+      for (const selector of ['.next-mission', '.day-plan', '.journey-card'])
         expect(
           await page
             .locator(selector)
@@ -256,37 +244,9 @@ for (const state of states)
         await expect(page.locator('.daily-rewards')).toContainText('+50 Ouro');
       }
       if (state === 'progresso') {
-        await expect(page.locator('.horizon-hero')).toContainText(
+        await expect(page.locator('.journey-card-who')).toContainText(
           'Helena da Aurora',
         );
-        await expect(page.locator('.horizon-hero')).toContainText('735 Ouro');
-        await expect(page.locator('.horizon-hero')).toContainText('24 Comida');
-        const earned = await page.evaluate(
-          () =>
-            new Promise<number>((resolve, reject) => {
-              const request = indexedDB.open('LevelMeUpDB');
-              request.onerror = () => reject(request.error);
-              request.onsuccess = () => {
-                const database = request.result,
-                  tx = database.transaction('achievementReceipts', 'readonly');
-                const rows = tx.objectStore('achievementReceipts').getAll();
-                tx.oncomplete = () => {
-                  database.close();
-                  resolve(
-                    rows.result.filter((row) => !row.invalidatedAt).length,
-                  );
-                };
-                tx.onerror = () => reject(tx.error);
-              };
-            }),
-        );
-        expect(earned).toBeGreaterThan(0);
-        await expect(page.locator('.horizons')).toContainText(
-          `${earned} conquistadas`,
-        );
-        await expect(
-          page.getByRole('link', { name: 'Equipado: Cota da Rotina' }),
-        ).toBeVisible();
       }
       if (process.env.LMU_HOME_POLISH_CAPTURE_DIR) {
         const folder = process.env.LMU_HOME_POLISH_CAPTURE_DIR;
@@ -302,7 +262,7 @@ for (const state of states)
           JSON.stringify(
             await page.evaluate(() =>
               Object.fromEntries(
-                ['.next-mission', '.horizons', '.horizon-hero'].map(
+                ['.next-mission', '.daily-summary', '.journey-card'].map(
                   (selector) => [
                     selector,
                     document
@@ -318,6 +278,12 @@ for (const state of states)
           ),
         );
       }
+    }
+    if (state === 'progresso') {
+      // Saldos, conquistas e equipamento continuam na Jornada (Herói).
+      await page.goto('/perfil');
+      await expect(page.getByText('Helena da Aurora').first()).toBeVisible();
+      await expect(page.getByText('Cota da Rotina').first()).toBeVisible();
     }
     if (state === 'novo') {
       await page

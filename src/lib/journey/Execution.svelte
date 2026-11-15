@@ -447,9 +447,11 @@
       <ul>
         {#each data.events.filter((row) => row.taskId === task.id) as record (record.id)}<li
           >
-            {record.date} · {record.reward.xp} XP · {record.reward.gold} Ouro{record.reversedAt
-              ? ' · Estornado'
-              : ''}
+            {record.date}<span data-game="xp">
+              · {record.reward.xp} XP</span
+            ><span data-game="loot">
+              · {record.reward.gold} Ouro</span
+            >{record.reversedAt ? ' · Estornado' : ''}
           </li>{/each}
       </ul>
       {#each data.occurrences.filter((row) => row.taskId === task.id && row.value > 0) as occurrence (occurrence.id)}<a
@@ -585,12 +587,13 @@
             <p>Conclua quando terminar esta atividade.</p>
           </div>{/if}</Card
       >
-      {#if reward}<div class="execution-reward">
+      {#if reward}<div class="execution-reward" data-game="xp">
           <span>Recompensa prevista</span><strong
             ><ApprovedIcon name="xp" size={23} />+{reward.xp} XP</strong
-          ><strong
+          ><strong data-game="loot"
             ><ApprovedIcon name="ouro" size={23} />+{reward.gold} Ouro</strong
-          >{#if reward.food}<small>+{reward.food} Comida</small>{/if}
+          >{#if reward.food}<small data-game="loot">+{reward.food} Comida</small
+            >{/if}
         </div>{/if}
       <div class="journey-actions completion-actions">
         <Button

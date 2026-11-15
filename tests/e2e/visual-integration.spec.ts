@@ -224,7 +224,7 @@ test('dia vazio tem saudação neutra sem renomear o perfil e uma única criaç�
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
     /^(Bom dia|Boa tarde|Boa noite)\.$/,
   );
-  const card = page.locator('.upcoming-achievement');
+  const card = page.locator('.journey-card');
   const box = await card.boundingBox();
   if (page.viewportSize()!.width < 700) expect(box!.width).toBeGreaterThan(330);
 });

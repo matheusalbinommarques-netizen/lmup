@@ -40,7 +40,7 @@ test('copia para a pasta, substitui o arquivo e a cópia restaura a jornada', as
 }) => {
   await page.goto('/');
   await expect(
-    page.getByRole('region', { name: 'Seu personagem', exact: true }),
+    page.getByRole('region', { name: 'Hoje', exact: true }),
   ).toBeVisible();
   await page.evaluate(
     () =>

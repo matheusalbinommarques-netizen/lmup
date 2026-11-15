@@ -14,7 +14,7 @@ const historicalPilot = {
 async function seedHistoricalPilot(page: Page) {
   await page.goto('/');
   await expect(
-    page.getByRole('region', { name: 'Seu personagem', exact: true }),
+    page.getByRole('region', { name: 'Hoje', exact: true }),
   ).toBeVisible();
   await page.evaluate(
     (pilot) =>
