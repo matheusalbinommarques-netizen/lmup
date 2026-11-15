@@ -2,9 +2,13 @@ import type { Occurrence } from '$services/productivityTypes';
 import type { JourneySnapshot } from '$services/journeyQuery';
 import { makeOccurrence } from '$services/occurrenceService';
 import { dateKey } from '$services/rewardService';
-import { comparePlannedTime } from './homePriority';
+import { orderDay } from '$services/dayOrder';
 
-export function todayView(data: JourneySnapshot, day: string) {
+export function todayView(
+  data: JourneySnapshot,
+  day: string,
+  now: Date = new Date(),
+) {
   const byTask = new Map(data.tasks.map((task) => [task.id, task]));
   const all = new Map(data.plannedToday.map((row) => [row.taskId, row]));
   const completions = data.events.filter(
@@ -67,7 +71,13 @@ export function todayView(data: JourneySnapshot, day: string) {
       !removed.includes(row) &&
       (row.status !== 'completed' || completedIds.has(row.taskId)),
   );
-  const ordered = [...current].sort(comparePlannedTime);
+  const ordered = orderDay(
+    current,
+    day,
+    dateKey(now) === day
+      ? `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+      : undefined,
+  );
   const planned = ordered.filter((row) => {
     const task = byTask.get(row.taskId)!;
     return (

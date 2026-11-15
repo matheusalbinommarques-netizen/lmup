@@ -54,7 +54,8 @@ test('Home mantém saudação, planejamento completo, destinos e ações sem rol
     page.getByRole('heading', { name: 'Boa noite.', exact: true }),
   ).toBeVisible();
   await populateTasks(page);
-  await expect(page.locator('.day-plan li')).toHaveCount(23);
+  // Lote 2: the day lists every planned row, the next and the concluded too.
+  await expect(page.locator('.day-plan li')).toHaveCount(32);
   await expect(page.locator('.world-card')).toHaveCount(3);
   const boxes = await page
     .locator('.world-card')
@@ -115,11 +116,8 @@ test('prioridade manual persiste, não duplica e volta ao automático ao conclui
     await expect(page.locator('.next-mission')).toContainText(
       'Escolhida por você',
     );
-    await expect(
-      page
-        .locator('.day-plan')
-        .getByRole('button', { name: title, exact: true }),
-    ).toHaveCount(0);
+    // Lote 2: the chosen mission stays in its place in the day, marked next.
+    await expect(page.locator('.day-plan .day-row.next')).toContainText(title);
     await page.reload();
     await expect(page.locator('#next-title')).toHaveText(title);
     expect(
@@ -244,7 +242,8 @@ test('recorrências contam a ocorrência de hoje e não reutilizam etapas antiga
   await expect(page.locator('.daily-summary')).toContainText('1 de 2 missões');
   await expect(page.locator('#next-title')).toHaveText('Rotina pausada');
   await expect(page.locator('.today-plan')).not.toContainText('Missão futura');
-  await expect(page.locator('.day-plan li')).toHaveCount(0);
+  // Lote 2: concluded and next rows stay in the day.
+  await expect(page.locator('.day-plan li')).toHaveCount(2);
   await expect
     .poll(() =>
       page.evaluate(() => localStorage.getItem('lmup.home-priority.v1')),

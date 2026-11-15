@@ -12,10 +12,17 @@ export function comparePlannedTime(
   return (a.plannedTime ?? '99:99').localeCompare(b.plannedTime ?? '99:99');
 }
 
+/**
+ * Next mission: the chosen one, then one in progress, then the first by
+ * time. With `keepOrder` the rows already follow the single day order and
+ * that order replaces the time criterion.
+ */
 export function selectNextOccurrence(
   rows: Occurrence[],
   pinnedTaskId: number | null = null,
+  keepOrder = false,
 ) {
+  const position = new Map(rows.map((row, index) => [row.id, index]));
   return (
     rows
       .filter(
@@ -29,8 +36,9 @@ export function selectNextOccurrence(
             Number(a.taskId === pinnedTaskId) ||
           Number(['active', 'paused', 'partial'].includes(b.status)) -
             Number(['active', 'paused', 'partial'].includes(a.status)) ||
-          comparePlannedTime(a, b) ||
-          a.id.localeCompare(b.id),
+          (keepOrder
+            ? position.get(a.id)! - position.get(b.id)!
+            : comparePlannedTime(a, b) || a.id.localeCompare(b.id)),
       )[0] ?? null
   );
 }

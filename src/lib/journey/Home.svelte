@@ -36,6 +36,15 @@
   import { canCompleteInline, inFocus, staleDays } from '$services/dayRow';
   import { completeTask, undoTask } from '$services/taskService';
   import {
+    dayTimeline,
+    moveId,
+    orderDay,
+    saveDayOrder,
+    setRowTime,
+    type TimeScope,
+  } from '$services/dayOrder';
+  import { tick } from 'svelte';
+  import {
     readPriority,
     savePriority,
     PRIORITY_KEY,
@@ -90,7 +99,7 @@
       ? ''
       : profileName,
   );
-  const view = $derived(data ? todayView(data, today) : undefined);
+  const view = $derived(data ? todayView(data, today, now) : undefined);
   const todayRows = $derived([
     ...(view?.planned ?? []),
     ...(view?.flexible ?? []),
@@ -178,7 +187,12 @@
         (row) => row.taskId === chosen && row.status !== 'completed',
       )
       ? selectNextOccurrence(todayRows, chosen)
-      : (selectNextOccurrence(view?.planned ?? []) ??
+      : (selectNextOccurrence(
+          dayList.filter((row) => slots.get(row.id)?.kind !== 'missed'),
+          null,
+          true,
+        ) ??
+          selectNextOccurrence(view?.planned ?? [], null, true) ??
           selectNextOccurrence(view?.flexible ?? []));
   });
   const completed = $derived(
@@ -193,7 +207,7 @@
         : `${completed} de ${planned.length} feitos${next ? ` · próxima: ${next.title}` : ''}`,
   );
   const remaining = $derived(
-    planned.filter((row) => row.id !== next?.id && row.status !== 'completed'),
+    planned.filter((row) => row.status !== 'completed'),
   );
   type RowInfo = {
     stale: number | null;
@@ -226,7 +240,7 @@
     };
   }
   const rowInfos = $derived(
-    new Map(remaining.map((row) => [row.id, rowInfo(row)])),
+    new Map(planned.map((row) => [row.id, rowInfo(row)])),
   );
   // Long-stalled missions are grouped at the end of the plan, oldest first.
   const stalled = $derived(
@@ -237,9 +251,174 @@
           (rowInfos.get(b.id)?.stale ?? 0) - (rowInfos.get(a.id)?.stale ?? 0),
       ),
   );
-  const regular = $derived(
-    remaining.filter((row) => !rowInfos.get(row.id)?.stale),
+  // Single order of the day (lote 2): everything planned except the stalled
+  // group, concluded rows kept in place. A move shows at once (localOrder)
+  // and is replaced by the stored order on the next snapshot.
+  let localOrder = $state<string[] | null>(null);
+  $effect(() => {
+    if (!localOrder) return;
+    const stored = orderDay(
+      planned.filter((row) => !rowInfos.get(row.id)?.stale),
+      today,
+    ).map((row) => row.id);
+    const wanted = localOrder.filter((id) => stored.includes(id));
+    if (
+      wanted.length === stored.length &&
+      wanted.every((id, i) => id === stored[i])
+    )
+      localOrder = null;
+  });
+  const dayList = $derived.by(() => {
+    const rows = planned.filter((row) => !rowInfos.get(row.id)?.stale);
+    if (!localOrder) return rows;
+    const at = new Map(localOrder.map((id, index) => [id, index]));
+    return orderDay(
+      rows.map((row) =>
+        at.has(row.id)
+          ? { ...row, dayOrder: { day: today, rank: at.get(row.id)! + 1 } }
+          : row,
+      ),
+      today,
+    );
+  });
+  let hideDone = $state(false),
+    reorder = $state(false),
+    dragId = $state<string | null>(null),
+    moved = $state('');
+  const doneCount = $derived(
+    dayList.filter((row) => row.status === 'completed').length,
   );
+  const visibleDay = $derived(
+    hideDone ? dayList.filter((row) => row.status !== 'completed') : dayList,
+  );
+  const timeline = $derived(dayTimeline(dayList, now));
+  const slots = $derived(
+    new Map(timeline.slots.map((slot) => [slot.id, slot])),
+  );
+  const conflictBefore = $derived(
+    new Map(timeline.conflicts.map((item) => [item.anchorId, item])),
+  );
+  const withoutDuration = $derived(
+    dayList.filter((row) => row.status !== 'completed' && !row.estimatedMinutes)
+      .length,
+  );
+  const titleOf = (id: string) =>
+    dayList.find((row) => row.id === id)?.title ?? '';
+  async function reorderTo(ids: string[], focusId: string, label: string) {
+    if (busy) return;
+    const byId = new Map(dayList.map((row) => [row.id, row]));
+    localOrder = ids;
+    busy = true;
+    try {
+      await saveDayOrder(today, ids.map((id) => byId.get(id)!).filter(Boolean));
+      moved = label;
+    } catch (cause) {
+      localOrder = null;
+      error =
+        cause instanceof Error
+          ? cause.message
+          : 'Não foi possível guardar a nova ordem.';
+    } finally {
+      busy = false;
+    }
+    await tick();
+    const row = document.querySelector<HTMLElement>(
+      `[data-day-row="${CSS.escape(focusId)}"]`,
+    );
+    (
+      row?.querySelector<HTMLElement>('.move button:not(:disabled)') ??
+      row?.querySelector<HTMLElement>('.title')
+    )?.focus();
+  }
+  // Moves among the visible rows; hidden concluded rows keep their place.
+  function move(id: string, delta: number) {
+    const visible = visibleDay.map((row) => row.id);
+    const neighbour = visible[visible.indexOf(id) + delta];
+    if (!neighbour) return;
+    const all = dayList.map((row) => row.id);
+    const ids = moveId(all, id, all.indexOf(neighbour) - all.indexOf(id));
+    const position = ids.filter((item) => visible.includes(item)).indexOf(id);
+    void reorderTo(
+      ids,
+      id,
+      `${titleOf(id)}: posição ${position + 1} de ${visible.length}.`,
+    );
+  }
+  function dropOn(targetId: string) {
+    const id = dragId;
+    dragId = null;
+    if (!id || id === targetId) return;
+    const all = dayList.map((row) => row.id);
+    const ids = moveId(all, id, all.indexOf(targetId) - all.indexOf(id));
+    void reorderTo(ids, id, `${titleOf(id)} mudou de posição.`);
+  }
+  async function changeTime(
+    row: Occurrence,
+    time: string | null,
+    scope: TimeScope,
+  ) {
+    if (busy) return;
+    busy = true;
+    error = '';
+    try {
+      await setRowTime(row, time, scope);
+      // A fixed time takes the row to where that time falls in the day.
+      if (time && dayList.some((item) => item.id === row.id)) {
+        const others = dayList.filter((item) => item.id !== row.id);
+        const at = others.findIndex((item) => {
+          const slot = slots.get(item.id);
+          return (
+            !!slot?.time &&
+            (slot.kind === 'anchor' || slot.kind === 'computed') &&
+            slot.time > time
+          );
+        });
+        const ordered = [...others];
+        ordered.splice(at < 0 ? ordered.length : at, 0, row);
+        localOrder = ordered.map((item) => item.id);
+        await saveDayOrder(today, ordered);
+      }
+      notice = time
+        ? `Hora de “${row.title}” fixada em ${time}${
+            rowInfos.get(row.id)?.recurring
+              ? scope === 'today'
+                ? ', só hoje'
+                : ', daqui para frente'
+              : ''
+          }.`
+        : `“${row.title}” sem hora fixa; a hora segue a ordem do dia.`;
+    } catch (cause) {
+      error =
+        cause instanceof Error
+          ? cause.message
+          : 'Não foi possível mudar a hora.';
+    } finally {
+      busy = false;
+    }
+    await tick();
+    document
+      .querySelector<HTMLElement>(
+        `[data-day-row="${CSS.escape(row.id)}"] .time-button`,
+      )
+      ?.focus();
+  }
+  const completionOf = (row: Occurrence) =>
+    view?.completedEvents.find((event) => event.taskId === row.taskId);
+  async function undoRow(row: Occurrence) {
+    const event = completionOf(row);
+    if (busy || !event) return;
+    busy = true;
+    try {
+      await undoTask(row.taskId, event.id);
+      notice = `Conclusão de “${row.title}” desfeita.`;
+      if (lastDone?.eventId === event.id) lastDone = undefined;
+    } catch (cause) {
+      error =
+        cause instanceof Error ? cause.message : 'Não foi possível desfazer.';
+    } finally {
+      busy = false;
+    }
+  }
   let showAllStalled = $state(false);
   const visibleStalled = $derived(
     showAllStalled ? stalled : stalled.slice(0, 3),
@@ -513,12 +692,53 @@
               ><ApprovedIcon name="agenda" size={24} />Ver agenda →</a
             >
           </header>
-          {#snippet planRow(row: Occurrence)}
+          {#if dayList.length}<div class="day-tools">
+              <p class="day-legend">
+                <span class="legend-anchor" aria-hidden="true"></span> hora fixa
+                · ≈ hora calculada pela ordem e pela duração{#if withoutDuration}{` · ${countLabel(withoutDuration, 'item', 'itens')} sem duração (contam 15 min)`}{/if}
+              </p>
+              {#if doneCount}<Button
+                  variant="quiet"
+                  size="s"
+                  aria-pressed={hideDone}
+                  onclick={() => (hideDone = !hideDone)}
+                  >{hideDone
+                    ? `Mostrar concluídas (${doneCount})`
+                    : `Ocultar concluídas (${doneCount})`}</Button
+                >{/if}
+              {#if visibleDay.length > 1}<Button
+                  variant="quiet"
+                  size="s"
+                  aria-pressed={reorder}
+                  onclick={() => (reorder = !reorder)}
+                  >{reorder ? 'Pronto' : 'Reordenar'}</Button
+                >{/if}
+            </div>{/if}
+          <p class="sr-only" role="status" aria-live="polite">{moved}</p>
+          {#snippet planRow(row: Occurrence, ordered = false)}
             {@const info = rowInfos.get(row.id)}
-            <li>
+            {@const slot = ordered ? slots.get(row.id) : undefined}
+            {@const index = ordered ? visibleDay.indexOf(row) : -1}
+            {@const isDone = row.status === 'completed'}
+            {@const conflict = ordered ? conflictBefore.get(row.id) : undefined}
+            {#if conflict}<li class="day-conflict" role="note">
+                {`${titleOf(conflict.id)} termina às ${conflict.end} e invade ${row.title} (${row.plannedTime}) em ${conflict.minutes} min.`}
+              </li>{/if}
+            <li
+              data-day-row={row.id}
+              ondragover={(event) => {
+                if (dragId && ordered) event.preventDefault();
+              }}
+              ondrop={(event) => {
+                event.preventDefault();
+                dropOn(row.id);
+              }}
+            >
               <DayRow
                 title={row.title}
-                time={row.plannedTime}
+                time={slot ? slot.time : row.plannedTime}
+                timeKind={slot?.kind}
+                defaultDuration={slot?.defaultDuration}
                 support={info?.support}
                 icon={taskIcon(row)}
                 progress={row.value > 0 ? fraction(row) : 0}
@@ -529,35 +749,66 @@
                 staleDays={info?.stale}
                 focus={info?.focus}
                 recurring={info?.recurring}
+                state={isDone
+                  ? 'done'
+                  : row.id === next?.id
+                    ? 'next'
+                    : 'normal'}
+                primary={false}
                 canComplete={info?.canComplete}
+                canUndo={isDone && !!completionOf(row)}
                 {busy}
+                reorder={ordered && reorder}
+                canMoveUp={ordered && index > 0}
+                canMoveDown={ordered &&
+                  index >= 0 &&
+                  index < visibleDay.length - 1}
+                dragging={dragId === row.id}
                 oncomplete={() => quickComplete(row)}
+                onundo={() => undoRow(row)}
                 onopen={() => execute(row)}
+                onmove={ordered ? (delta) => move(row.id, delta) : undefined}
+                ontime={isDone
+                  ? undefined
+                  : (time, scope) => changeTime(row, time, scope)}
+                onreschedule={() => chooseAction(row, 'reschedule')}
+                ondragstart={ordered && !isDone
+                  ? (event) => {
+                      dragId = row.id;
+                      event.dataTransfer?.setData('text/plain', row.title);
+                      if (event.dataTransfer)
+                        event.dataTransfer.effectAllowed = 'move';
+                    }
+                  : undefined}
+                ondragend={() => (dragId = null)}
               >
-                {#snippet menu()}<ContextMenu
-                    label={`Ações de hoje para ${row.title}`}
-                    ><Button
-                      variant="quiet"
-                      disabled={busy}
-                      onclick={() => execute(row)}
-                      >{row.value > 0 ? 'Retomar' : 'Iniciar'}</Button
-                    ><Button
-                      variant="quiet"
-                      disabled={busy}
-                      onclick={() => chooseAction(row, 'remove')}
-                      >Remover de hoje</Button
-                    ><Button
-                      variant="quiet"
-                      disabled={busy}
-                      onclick={() => chooseAction(row, 'reschedule')}
-                      >Remarcar</Button
-                    ></ContextMenu
-                  >{/snippet}
+                {#snippet menu()}{#if !isDone}<ContextMenu
+                      label={`Mais ações para ${row.title}`}
+                      ><Button
+                        variant="quiet"
+                        disabled={busy}
+                        onclick={() => execute(row)}
+                        >{row.value > 0 ? 'Retomar' : 'Iniciar'}</Button
+                      ><Button
+                        variant="quiet"
+                        disabled={busy}
+                        onclick={() => chooseAction(row, 'remove')}
+                        >Remover de hoje</Button
+                      ><Button
+                        variant="quiet"
+                        disabled={busy}
+                        onclick={() => chooseAction(row, 'reschedule')}
+                        >Remarcar</Button
+                      ></ContextMenu
+                    >{/if}{/snippet}
               </DayRow>
             </li>
           {/snippet}
-          {#if remaining.length}<ul>
-              {#each regular as row (row.id)}{@render planRow(row)}{/each}
+          {#if dayList.length || stalled.length}<ul class="day-list">
+              {#each visibleDay as row (row.id)}{@render planRow(
+                  row,
+                  true,
+                )}{/each}
             </ul>
             {#if stalled.length}<div
                 class="stalled"
@@ -585,7 +836,7 @@
               </div>{/if}
           {:else}<p class="empty-plan">
               {planned.length
-                ? 'Nenhuma outra missão pendente. Seu progresso está registrado.'
+                ? 'Nenhuma missão pendente. Seu progresso está registrado.'
                 : 'Seu dia ainda está livre. Adicione uma missão para montar seu plano.'}
             </p>{/if}
           <div class="day-plan-footer">
@@ -1018,6 +1269,44 @@
     min-height: 36px;
     min-width: 36px;
     padding: 4px;
+  }
+  .day-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    padding: 8px 0 4px;
+  }
+  .day-legend {
+    flex: 1 1 260px;
+    margin: 0;
+    font-size: 0.8rem;
+    color: #a6b9a6;
+  }
+  .legend-anchor {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin: 0 2px 1px;
+    background: #eee9db;
+    transform: rotate(45deg);
+  }
+  .day-plan li.day-conflict {
+    margin: 4px 0;
+    padding: 8px 12px;
+    border: 1px solid #e08a6f88;
+    border-radius: 8px;
+    background: #e08a6f14;
+    color: #f2c4b3;
+    font-size: 0.85rem;
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
   .stalled {
     margin-top: 14px;

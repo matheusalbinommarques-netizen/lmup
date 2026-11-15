@@ -94,7 +94,8 @@ test('Home final mantém navegação inteira e estados claros nas cinco resoluç
       page.getByRole('button', { name: 'Nova missão', exact: true }),
     ).toHaveCount(1);
     await setTasks(page, false);
-    await expect(page.locator('.day-plan li')).toHaveCount(1);
+    // Lote 2: the next mission is also a row of the day.
+    await expect(page.locator('.day-plan li')).toHaveCount(2);
     const geometry = await page.evaluate(() => ({
       width: innerWidth,
       overflow: document.documentElement.scrollWidth > innerWidth,
@@ -133,7 +134,8 @@ test('Home final mantém navegação inteira e estados claros nas cinco resoluç
     await expect(page.locator('.daily-summary')).toContainText(
       '2 de 2 missões',
     );
-    await expect(page.locator('.day-plan li')).toHaveCount(0);
+    // Lote 2: concluded rows stay in their place.
+    await expect(page.locator('.day-plan li')).toHaveCount(2);
     await expect(
       page.getByRole('button', { name: 'Nova missão', exact: true }),
     ).toHaveCount(1);

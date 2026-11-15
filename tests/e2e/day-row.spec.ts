@@ -108,9 +108,12 @@ test('linha de missão mostra selos, agrupa paradas e conclui com um clique', as
     .click();
   const toast = page.locator('.undo-toast');
   await expect(toast).toContainText('“Ligar para a família” concluída.');
+  // Lote 2: the concluded row stays in its place in the day.
   await expect(
-    plan.locator('.day-row', { hasText: 'Ligar para a família' }),
-  ).toHaveCount(0);
+    plan.getByRole('button', {
+      name: 'Desfazer conclusão de Ligar para a família',
+    }),
+  ).toBeVisible();
   await expect(page.locator('.hero-copy')).toContainText('1 de 3 feitos');
 
   await toast.getByRole('button', { name: 'Desfazer' }).click();
@@ -118,8 +121,8 @@ test('linha de missão mostra selos, agrupa paradas e conclui com um clique', as
     page.getByRole('status').filter({ hasText: 'desfeita' }),
   ).toBeVisible();
   await expect(
-    plan.locator('.day-row', { hasText: 'Ligar para a família' }),
-  ).toHaveCount(1);
+    plan.getByRole('button', { name: 'Concluir Ligar para a família' }),
+  ).toBeVisible();
   await expect(page.locator('.hero-copy')).toContainText('0 de 3 feitos');
 });
 
