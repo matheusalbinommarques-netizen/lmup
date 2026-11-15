@@ -252,43 +252,43 @@ test('rotina reutiliza sessão, impede execução duplicada e substitui o ciclo 
     page.locator('.saved-session-card').filter({ hasText: 'Em andamento' }),
   ).toHaveCount(1);
 });
-test('navegação principal concentra exploração em Mundo e mantém destinos acessíveis por Mais', async ({
+test('navegação tem os mesmos quatro destinos no desktop e no mobile; Projetos fica na Evolução e Aposentos na Jornada', async ({
   page,
 }) => {
   await page.goto('/');
-  const desktop = page.getByRole('navigation', {
-    name: 'Navegação principal',
+  const nav = page.getByRole('navigation', {
+    name:
+      page.viewportSize()!.width > 1000
+        ? 'Navegação principal'
+        : 'Navegação móvel',
     exact: true,
   });
-  if (page.viewportSize()!.width > 1000) {
-    await expect(
-      desktop.getByRole('link', { name: 'Mapa', exact: true }),
-    ).toHaveCount(0);
-    await expect(
-      desktop.getByRole('link', { name: 'Aventura', exact: true }),
-    ).toHaveCount(0);
-    await page
-      .getByRole('button', { name: 'Perfil e mais', exact: true })
-      .click();
-  } else {
-    const mobile = page.getByRole('navigation', {
-      name: 'Navegação móvel',
-      exact: true,
-    });
-    await expect(mobile.getByRole('link')).toHaveCount(3);
-    await expect(
-      mobile.getByRole('link', { name: 'Projetos', exact: true }),
-    ).toHaveCount(0);
-    await mobile.getByRole('button', { name: 'Mais', exact: true }).click();
-  }
-  const more = page.getByRole('dialog', { name: 'Seu espaço', exact: true });
-  for (const title of ['Projetos', 'Herói e equipamentos', 'Aposentos'])
-    await expect(
-      more.getByRole('link', { name: title, exact: true }),
-    ).toBeVisible();
-  await more
-    .getByRole('button', { name: 'Fechar diálogo', exact: true })
-    .click();
+  await expect(nav.getByRole('link')).toHaveText([
+    'Hoje',
+    'Missões',
+    'Evolução',
+    'Jornada',
+  ]);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await nav.getByRole('link', { name: 'Evolução', exact: true }).click();
+  await page.getByRole('link', { name: 'Todos os projetos →' }).click();
+  await expect(page).toHaveURL(/\/projetos$/);
+  await expect(nav.getByRole('link', { name: 'Evolução' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+  await page.goto('/aposentos');
+  // No mobile o Acampamento esconde a barra inferior; as abas ficam visíveis.
+  if (page.viewportSize()!.width > 1000)
+    await expect(nav.getByRole('link', { name: 'Jornada' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Jornada', exact: true })
+      .getByRole('link', { name: 'Acampamento', exact: true }),
+  ).toHaveAttribute('aria-current', 'page');
   await page.goto('/mundo');
   await expect(page).toHaveURL(/\/mundo$/);
   expect(

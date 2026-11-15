@@ -118,12 +118,12 @@ test('Home final mantém navegação inteira e estados claros nas cinco resoluç
         exact: true,
       });
       await expect(
-        nav.getByRole('link', { name: 'Acampamento', exact: true }),
+        nav.getByRole('link', { name: 'Jornada', exact: true }),
       ).toBeInViewport();
       await expect(
         page
           .locator('.journey-sidebar')
-          .getByRole('button', { name: 'Perfil e mais', exact: true }),
+          .getByRole('link', { name: 'Configurações', exact: true }),
       ).toBeInViewport();
     }
     await capture(page, `${size.width}x${size.height}-pendentes`);
@@ -231,23 +231,20 @@ test('Home mantém identidade de todas as companhias e navegação acessível se
     page.getByRole('button', { name: 'Nova missão', exact: true }),
   ).toBeVisible();
   if (info.project.name === 'desktop') {
-    const camp = page
+    const journey = page
       .getByRole('navigation', { name: 'Navegação principal', exact: true })
-      .getByRole('link', { name: 'Acampamento', exact: true });
+      .getByRole('link', { name: 'Jornada', exact: true });
+    await journey.focus();
+    await expect(journey).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/perfil$/);
+    const tabs = page.getByRole('navigation', { name: 'Jornada', exact: true });
+    const camp = tabs.getByRole('link', { name: 'Acampamento', exact: true });
     await camp.focus();
-    await expect(camp).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/\/acampamento$/);
     await expect(page.getByTestId('point-caretaker')).toBeAttached();
-    const more = page.getByRole('button', {
-      name: 'Perfil e mais',
-      exact: true,
-    });
-    await more.focus();
-    await page.keyboard.press('Enter');
-    const shop = page
-      .getByRole('dialog', { name: 'Seu espaço', exact: true })
-      .getByRole('link', { name: 'Loja', exact: true });
+    const shop = tabs.getByRole('link', { name: 'Loja', exact: true });
     await shop.focus();
     await expect(shop).toBeFocused();
     await page.keyboard.press('Enter');

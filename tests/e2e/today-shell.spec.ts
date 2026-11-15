@@ -112,10 +112,11 @@ test('sidebar permanece acessível ao rolar Hoje e Missões, com rolagem própri
       )
       .toBeLessThanOrEqual(1);
     await expect(
-      side.getByRole('button', { name: 'Perfil e mais', exact: true }),
+      side.getByRole('link', { name: 'Configurações', exact: true }),
     ).toBeInViewport();
   }
-  await page.setViewportSize({ width: 1280, height: 400 });
+  // Lote 4: quatro destinos; 300 px de altura ainda força a lateral a rolar.
+  await page.setViewportSize({ width: 1280, height: 300 });
   await page.goto('/');
   await expect(side).toBeVisible();
   expect(await side.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(
@@ -124,18 +125,19 @@ test('sidebar permanece acessível ao rolar Hoje e Missões, com rolagem própri
   await side.getByRole('link', { name: 'Hoje', exact: true }).focus();
   const links = await side.getByRole('navigation').getByRole('link').count();
   for (let i = 0; i < links; i++) await page.keyboard.press('Tab');
-  const more = side.getByRole('button', { name: 'Perfil e mais', exact: true });
-  await expect(more).toBeFocused();
-  await expect(more).toBeInViewport();
+  const settings = side.getByRole('link', {
+    name: 'Configurações',
+    exact: true,
+  });
+  await expect(settings).toBeFocused();
+  await expect(settings).toBeInViewport();
   expect(await side.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
   expect(await page.evaluate(() => scrollY)).toBe(0);
   await page.keyboard.press('Enter');
-  await expect(
-    page.getByRole('dialog', { name: 'Seu espaço', exact: true }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(/\/config$/);
 });
 
-test('banner aceita texto ampliado e mobile conserva Hoje, Missões, Mundo e Mais', async ({
+test('banner aceita texto ampliado e mobile conserva Hoje, Missões, Evolução e Jornada', async ({
   page,
   isMobile,
 }) => {
@@ -164,13 +166,13 @@ test('banner aceita texto ampliado e mobile conserva Hoje, Missões, Mundo e Mai
       name: 'Navegação móvel',
       exact: true,
     });
-    for (const name of ['Hoje', 'Missões', 'Mundo'])
+    for (const name of ['Hoje', 'Missões', 'Evolução', 'Jornada'])
       await expect(
         nav.getByRole('link', { name, exact: true }),
       ).toBeInViewport();
-    await nav.getByRole('button', { name: 'Mais', exact: true }).click();
-    await expect(
-      page.getByRole('dialog', { name: 'Seu espaço', exact: true }),
-    ).toBeVisible();
+    await page
+      .getByRole('link', { name: 'Configurações', exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/config$/);
   }
 });

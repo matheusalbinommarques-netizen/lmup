@@ -429,6 +429,8 @@ export function validateBackup(input: unknown): JourneyBackup {
       fail('status de projeto inválido.');
     date(project.targetDate, 'projects.targetDate', true);
     calendar(project.targetDate, 'projects.targetDate');
+    if (project.areaId != null && !areaIds.has(project.areaId))
+      fail('área de projeto inexistente.');
     if (project.revision != null)
       integer(project.revision, 'projects.revision');
     if (project.rewardPolicy != null && project.rewardPolicy !== 'effort-v1')

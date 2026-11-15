@@ -65,3 +65,15 @@ Cada lote: worktree própria a partir de `origin/main`, prévia em porta 5180+, 
 - `/missao/<id>` virou o detalhe da missão (definição, notas, histórico, gestão e recibos); `/ocorrencia/<id>` ficou como registro e correção. Missão legada continua sem criar ocorrência ao ser aberta.
 - Verbos fixos: Iniciar, Retomar, Concluir (Ctrl + Enter), Registrar parte, Pausar, Pular para depois, Remarcar, Iniciar/Encerrar bloco.
 - Sessões salvas (`/sessoes`) e a seleção de sessão em Missões continuam até o lote 5 ("sessões salvas viram rotinas"), com os verbos novos.
+
+## Lote 4a: o que mudou
+
+O lote 4 foi dividido: 4a (navegação, Evolução, área do projeto) e 4b (camada de jogo, tokens únicos, caixas e "No que investir?" no Acampamento).
+
+- `src/lib/journey/navigation.ts`: quatro destinos iguais no desktop e no mobile; Evolução marca `/roda`, `/projetos` e `/progresso`; Jornada marca Herói, Acampamento, Mundo e Loja (e as rotas antigas de cada um).
+- O menu "Seu espaço" e o botão "Mais" saíram. Configurações fica no rodapé da lateral e no ⚙ do cabeçalho mobile. Clã, `/sessao` e `/laboratorio` saem do menu; as rotas continuam.
+- Jornada: abas Herói · Acampamento · Mundo · Loja no topo dessas telas; o destino abre em Herói. Até o 4b, a Jornada aparece para todos (usuários atuais estão na camada Completa).
+- `/evolucao` (design E1/E2/E4): focos da Roda com sentimento, dias com ação e faixa de 30 dias; projetos ativos com progresso, próxima ação e "Pôr no dia" (`planTask`); Meu progresso em 30 dias (esforço, progresso, resultado). A revisão semanal entra no lote 6.
+- Projeto "parado": 14 dias sem conclusão ou registro de execução em missões do projeto, contados desde a criação; pausado não é parado.
+- Dado: `areaId` opcional no projeto (null = sem área; 0 = Geral), validado no backup; excluir a área leva os projetos à área de destino, com auditoria.
+- Worker: `/evolucao` e `/roda` abrem offline sem visita prévia.

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { guardUpdates } from './guardUpdates';
   import { untrack } from 'svelte';
-  import type { HeroProject } from '$services/db';
+  import { db, type Area, type HeroProject } from '$services/db';
   import { saveHeroProject } from '$services/projectService';
   import { calendarDate } from '$services/calendar';
   import Dialog from '$lib/ui/Dialog.svelte';
@@ -22,6 +22,9 @@
     error = $state(''),
     busy = $state(false);
   let stages = $state<{ id: string; title: string }[]>([]);
+  // Área opcional (lote 4): '' = sem área; '0' = Geral.
+  let area = $state(''),
+    areas = $state.raw<Area[]>([]);
   let revision = 0,
     requestId = '';
   guardUpdates(() => open || busy);
@@ -36,6 +39,17 @@
           target = '';
         }
         stages = (project?.stages ?? []).map((stage) => ({ ...stage }));
+        area = project?.areaId == null ? '' : String(project.areaId);
+        void db.areas
+          .filter(
+            (row) =>
+              !row.archived ||
+              (row.id !== undefined && row.id === project?.areaId),
+          )
+          .toArray()
+          .then((rows) => {
+            areas = rows;
+          });
         revision = project?.revision ?? 0;
         requestId = crypto.randomUUID();
         error = '';
@@ -48,7 +62,14 @@
     error = '';
     try {
       const id = await saveHeroProject(
-        { name, vision, targetDate: target, stages, requestId },
+        {
+          name,
+          vision,
+          targetDate: target,
+          stages,
+          areaId: area === '' ? null : Number(area),
+          requestId,
+        },
         project?.id,
         revision,
       );
@@ -84,6 +105,15 @@
         placeholder="Como vou saber que este projeto deu certo?"
       ></textarea></label
     ><Field label="Data desejada (opcional)" type="date" bind:value={target} />
+    <label class="journey-label"
+      >Área (opcional)<select bind:value={area}>
+        <option value="">Sem área</option>
+        <option value="0">Geral</option>
+        {#each areas as row (row.id)}<option value={String(row.id)}
+            >{row.nome}{row.archived ? ' (arquivada)' : ''}</option
+          >{/each}
+      </select></label
+    >
     <fieldset>
       <legend>Etapas (opcional)</legend>
       <div class="journey-stack">

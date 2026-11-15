@@ -107,6 +107,7 @@ export async function deleteArea(id: number, destination = 0) {
     db.areas,
     db.tasks,
     db.routines,
+    db.projects,
     db.productivityAudit,
     async () => {
       const previous = await db.areas.get(id);
@@ -141,6 +142,15 @@ export async function deleteArea(id: number, destination = 0) {
           routine.defaultAreaId = destination;
           routine.revision++;
         });
+      const linkedProjects = await db.projects
+        .filter((project) => project.areaId === id)
+        .toArray();
+      await db.projects
+        .filter((project) => project.areaId === id)
+        .modify((project) => {
+          project.areaId = destination;
+          project.revision = (project.revision ?? 0) + 1;
+        });
       // XP logs and event receipts are immutable historical records.
       await db.areas.delete(id);
       await db.productivityAudit.add({
@@ -152,6 +162,7 @@ export async function deleteArea(id: number, destination = 0) {
           area: previous,
           taskIds: linkedTasks.map((task) => task.id),
           routineIds: linkedRoutines.map((routine) => routine.id),
+          projectIds: linkedProjects.map((project) => project.id),
         },
         after: { destination },
       });
