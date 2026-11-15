@@ -18,6 +18,8 @@ export type CreateHeroProjectInput = {
   color?: string | null;
   icon?: string | null;
   stages?: { id: string; title: string }[];
+  /** Área opcional: 0 = Geral; null = sem área; ausente = não muda. */
+  areaId?: number | null;
   requestId?: string;
 };
 export async function saveHeroProject(
@@ -53,6 +55,16 @@ export async function saveHeroProject(
       throw new Error(
         'O projeto mudou em outra aba. Reabra a edição para comparar suas alterações.',
       );
+    const areaId = input.areaId === undefined ? current?.areaId : input.areaId;
+    if (areaId != null && areaId !== current?.areaId) {
+      const area = areaId === 0 ? true : await db.areas.get(areaId);
+      if (
+        !Number.isSafeInteger(areaId) ||
+        !area ||
+        (area !== true && area.archived)
+      )
+        throw new Error('A área escolhida não está mais disponível.');
+    }
     if (!id && input.requestId) {
       const prior = await db.projects
         .filter((project) => project.creationKey === input.requestId)
@@ -76,6 +88,7 @@ export async function saveHeroProject(
         vision,
         targetDate,
         stages,
+        areaId: areaId ?? null,
         updatedAt: new Date(),
         revision: (current.revision ?? 0) + 1,
       });
@@ -86,6 +99,7 @@ export async function saveHeroProject(
       vision,
       targetDate,
       stages,
+      areaId: areaId ?? null,
       status: 'planejando',
       createdAt: new Date(),
       updatedAt: new Date(),

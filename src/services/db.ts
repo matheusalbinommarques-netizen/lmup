@@ -338,6 +338,8 @@ export interface HeroProject {
 
   color?: string | null;
   icon?: string | null;
+  /** Área opcional (lote 4); 0 = Geral; null ou ausente = sem área. */
+  areaId?: number | null;
 
   // pra Fase 4 (bônus de XP)
   rewardGranted?: boolean;

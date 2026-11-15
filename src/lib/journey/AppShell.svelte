@@ -1,16 +1,18 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { identity, destinations } from '$lib/content/experience';
+  import { identity } from '$lib/content/experience';
   import type { Snippet } from 'svelte';
-  import { afterNavigate } from '$app/navigation';
   import { onMount } from 'svelte';
   import { runAutomaticFolderBackup } from '$services/folderBackup';
-  import Icon, { type IconName } from '$lib/ui/Icon.svelte';
-  import Button from '$lib/ui/Button.svelte';
   import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
   import '$lib/rpg-theme.css';
   import './visual.css';
-  import Dialog from '$lib/ui/Dialog.svelte';
+  import {
+    activeDestination,
+    journeyTab,
+    journeyTabs,
+    primaryDestinations,
+  } from './navigation';
   let { children }: { children: Snippet } = $props();
   // A15: silent copy to the chosen folder; it never blocks or warns here.
   onMount(() => {
@@ -29,60 +31,10 @@
       document.removeEventListener('visibilitychange', hidden);
     };
   });
-  let menu = $state(false);
-  const links: { href: string; label: string; icon: IconName }[] = [
-    { href: '/', label: destinations.today, icon: 'today' },
-    { href: '/missoes', label: destinations.missions, icon: 'missions' },
-    { href: '/mundo', label: 'Mundo', icon: 'world' },
-  ];
-  const extras = [
-    { href: '/roda', label: 'Roda da vida' },
-    { href: '/projetos', label: 'Projetos' },
-    { href: '/acampamento', label: 'Acampamento' },
-    { href: '/aposentos', label: 'Aposentos' },
-    { href: '/mundo', label: 'Mundo, mapa e aventuras' },
-    { href: '/progresso', label: 'Meu progresso' },
-    { href: '/perfil', label: 'Herói e equipamentos' },
-    { href: '/config', label: 'Configurações e backup' },
-    { href: '/loja', label: 'Loja' },
-    { href: '/inventario', label: 'Inventário' },
-    { href: '/trofeus', label: destinations.achievements },
-    { href: '/cla', label: 'Clã (demonstração)' },
-  ];
-  const homeLinks = [
-    { href: '/', label: 'Hoje', icon: 'today' },
-    { href: '/missoes', label: 'Missões', icon: 'missions' },
-    { href: '/roda', label: 'Roda da vida', icon: 'progresso' },
-    { href: '/mundo', label: 'Mundo', icon: 'mundo' },
-    { href: '/acampamento', label: 'Acampamento', icon: 'refugio' },
-    { href: '/perfil', label: 'Herói', icon: 'heroi' },
-    { href: '/loja', label: 'Loja', icon: 'ouro' },
-    { href: '/projetos', label: 'Projetos', icon: 'projetos_navegacao' },
-  ];
-  function active(href: string) {
-    const path = page.url.pathname;
-    if (href === '/') return path === '/';
-    if (href === '/mundo') return path.startsWith('/mundo');
-    if (href === '/missoes')
-      return (
-        path.startsWith('/missoes') ||
-        path.startsWith('/arquivo/missoes') ||
-        path === '/revisoes' ||
-        path === '/sessoes' ||
-        path === '/sessao' ||
-        path.startsWith('/missao/') ||
-        path.startsWith('/executar/') ||
-        path.startsWith('/ocorrencia/')
-      );
-    if (href === '/acampamento')
-      return ['/acampamento', '/aposentos'].includes(path);
-    if (href === '/aposentos')
-      return ['/aposentos', '/loja', '/inventario', '/trofeus'].includes(path);
-    return href !== '/mundo#mapa' && path.startsWith(href.split('?')[0]);
-  }
-  afterNavigate(() => {
-    menu = false;
-  });
+  const links = primaryDestinations;
+  const path = $derived(page.url.pathname);
+  const current = $derived(activeDestination(path));
+  const tab = $derived(journeyTab(path));
 </script>
 
 <div
@@ -107,26 +59,24 @@
       /></a
     >
     <nav aria-label="Navegação principal">
-      {#each homeLinks as link (link.href)}<a
+      {#each links as link (link.href)}<a
           href={link.href}
           aria-label={link.label}
           title={link.label}
-          aria-current={active(link.href) ? 'page' : undefined}
+          aria-current={current === link.href ? 'page' : undefined}
           ><ApprovedIcon name={link.icon} size={32} /><span
             class="journey-nav-label">{link.label}</span
           ></a
         >{/each}
     </nav>
     <div class="journey-sidebar-bottom">
-      <Button
-        variant="quiet"
-        aria-label="Perfil e mais"
-        onclick={() => {
-          menu = true;
-        }}
-        ><ApprovedIcon name="perfil" size={28} /><span class="journey-nav-label"
-          >Perfil e mais</span
-        ></Button
+      <a
+        href="/config"
+        class="journey-settings-link"
+        aria-current={path === '/config' ? 'page' : undefined}
+        ><ApprovedIcon name="opcoes" size={24} /><span class="journey-nav-label"
+          >Configurações</span
+        ></a
       >
     </div>
   </aside>
@@ -140,16 +90,23 @@
           height="32"
           alt=""
         />{identity.name}</a
-      ><Button
-        variant="quiet"
-        aria-label="Perfil e mais"
-        onclick={() => {
-          menu = true;
-        }}><Icon name="settings" /></Button
+      ><a
+        href="/config"
+        class="journey-mobile-settings"
+        aria-label="Configurações"
+        aria-current={path === '/config' ? 'page' : undefined}
+        ><ApprovedIcon name="opcoes" size={26} /></a
       >
     </header>
     <main id="journey-main" tabindex="-1">
-      {#if page.url.pathname === '/cla'}<p class="journey-banner">
+      {#if tab}<nav class="journey-tabs" aria-label="Jornada">
+          {#each journeyTabs as item (item.href)}<a
+              href={item.href}
+              aria-current={tab === item.href ? 'page' : undefined}
+              >{item.label}</a
+            >{/each}
+        </nav>{/if}
+      {#if path === '/cla'}<p class="journey-banner">
           Esta tela demonstra uma ideia de Clã. Os participantes e dados são
           exemplos; não há conexão social ativa.
         </p>{/if}{@render children()}
@@ -158,51 +115,8 @@
   <nav class="journey-bottom-nav" aria-label="Navegação móvel">
     {#each links as link (link.href)}<a
         href={link.href}
-        aria-current={active(link.href) ? 'page' : undefined}
-        ><ApprovedIcon
-          name={link.icon === 'projects'
-            ? 'projetos_navegacao'
-            : link.icon === 'world'
-              ? 'mundo'
-              : link.icon}
-          size={28}
-        /><span>{link.label}</span></a
+        aria-current={current === link.href ? 'page' : undefined}
+        ><ApprovedIcon name={link.icon} size={28} /><span>{link.label}</span></a
       >{/each}
-    <button
-      type="button"
-      class="mobile-more"
-      aria-label="Mais"
-      aria-expanded={menu}
-      onclick={() => (menu = true)}
-      ><ApprovedIcon name="perfil" size={28} /><span>Mais</span></button
-    >
   </nav>
-  <Dialog bind:open={menu} title="Seu espaço"
-    ><nav class="journey-extra-links" aria-label="Perfil e ferramentas">
-      {#each extras as link (link.href)}<a href={link.href}
-          >{link.label}<Icon name="arrow" size={18} /></a
-        >{/each}
-    </nav></Dialog
-  >
 </div>
-
-<style>
-  .mobile-more {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    min-height: 56px;
-    background: none;
-    border: 0;
-    color: inherit;
-    font: inherit;
-    font-size: 0.75rem;
-    cursor: pointer;
-  }
-  .mobile-more:focus-visible {
-    outline: 2px solid #e0b45b;
-    outline-offset: -3px;
-  }
-</style>

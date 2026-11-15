@@ -183,6 +183,8 @@ export type DomainView = {
   activeDays: number;
   /** Same measure for the 30 days before that. */
   previousActiveDays: number;
+  /** The days counted in `activeDays`, oldest first (Evolução, lote 4). */
+  activeDates: string[];
   routines: string[];
   pending: { id: number; title: string; stalled: boolean }[];
 };
@@ -260,6 +262,7 @@ export function wheelView(input: WheelInput, today: string) {
       })),
       activeDays: days.get(key)?.now.size ?? 0,
       previousActiveDays: days.get(key)?.before.size ?? 0,
+      activeDates: [...(days.get(key)?.now ?? [])].sort(),
       // A routine counts for a domain through its default area or any of
       // its missions' areas.
       routines: input.routines

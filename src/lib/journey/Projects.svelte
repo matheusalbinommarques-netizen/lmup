@@ -113,7 +113,13 @@
           {project.vision || 'Um resultado para construir, passo a passo.'}
         </p>
         <p class="lmu-hint">
-          {formatCalendar(project.targetDate)} · {done}/{tasks.length} missões ·
+          {project.areaId == null
+            ? 'Sem área'
+            : project.areaId === 0
+              ? 'Geral'
+              : (data.areas.find((area) => area.id === project.areaId)?.nome ??
+                'Sem área')} · {formatCalendar(project.targetDate)} · {done}/{tasks.length}
+          missões ·
           {project.stages?.length ?? 0} etapas
         </p>
         <progress

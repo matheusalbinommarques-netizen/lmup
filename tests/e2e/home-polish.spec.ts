@@ -155,7 +155,7 @@ for (const state of states)
         const sidebar = page.locator('.journey-sidebar');
         for (const label of [
           sidebar
-            .getByRole('link', { name: 'Acampamento', exact: true })
+            .getByRole('link', { name: 'Evolução', exact: true })
             .locator('.journey-nav-label'),
         ]) {
           expect(
@@ -172,7 +172,7 @@ for (const state of states)
         }
         expect(
           await sidebar
-            .getByRole('link', { name: 'Acampamento', exact: true })
+            .getByRole('link', { name: 'Evolução', exact: true })
             .evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
         ).toBe(true);
       }

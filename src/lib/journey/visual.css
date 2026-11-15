@@ -273,3 +273,64 @@
   padding: 0;
   margin: 0;
 }
+
+/* Lote 4: Configurações no rodapé da lateral e no cabeçalho mobile. */
+.visual-shell .journey-settings-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: #a6b9a6;
+  font-size: 0.875rem;
+  text-decoration: none;
+}
+.visual-shell .journey-settings-link:hover,
+.visual-shell .journey-settings-link[aria-current='page'] {
+  color: #eee9db;
+  background-color: #62502c33;
+}
+.visual-shell .journey-mobile-settings {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+}
+
+/* Lote 4: abas da Jornada (Herói · Acampamento · Mundo · Loja). */
+.visual-shell .journey-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #3b5047;
+}
+.visual-shell .journey-tabs a {
+  flex: none;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: #a6b9a6;
+  font-weight: 600;
+  text-decoration: none;
+}
+.visual-shell .journey-tabs a:hover {
+  color: #eee9db;
+}
+.visual-shell .journey-tabs a[aria-current='page'] {
+  color: #ffe0a0;
+  border-bottom-color: #ecc36f;
+}
+.visual-shell.journey-camp .journey-tabs,
+.visual-shell.journey-adventure .journey-tabs {
+  margin: 0;
+  padding: 0 16px;
+  background: #061114;
+}
+.visual-shell.journey-adventure .journey-tabs {
+  display: none;
+}

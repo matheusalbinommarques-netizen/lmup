@@ -397,6 +397,8 @@ test('abre URLs não visitadas, cria e salva notas com a rede desligada', async 
   ).toBeVisible();
   for (const [route, title] of [
     ['/progresso', 'Meu progresso'],
+    ['/evolucao', 'Evolução'],
+    ['/roda', 'Roda da Vida'],
     ['/config', 'Configurações'],
   ]) {
     await page.goto(route);
