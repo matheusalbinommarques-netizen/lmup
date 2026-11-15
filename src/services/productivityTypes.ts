@@ -17,6 +17,8 @@ export type Occurrence = Planning & {
   supersededBy?: string;
   skipped?: boolean;
   removedFromDays?: string[];
+  /** Position in the single order of `day` (Hoje, lote 2). */
+  dayOrder?: { day: string; rank: number };
   id: string;
   taskId: number;
   originDate: string;

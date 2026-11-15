@@ -223,13 +223,20 @@ for (const state of states)
         await expect(
           page.getByRole('button', { name: 'Nova missão', exact: true }),
         ).toHaveCount(1);
-        await expect(page.locator('.day-plan li')).toHaveCount(0);
+        // Lote 2: concluded rows stay in their place in the day.
+        await expect(page.locator('.day-plan li')).toHaveCount(
+          state === 'concluidas' ? 2 : 0,
+        );
       } else {
         await expect(
           page.getByRole('button', { name: 'Começar missão', exact: true }),
         ).toBeVisible();
+        // Lote 2: at 10:00 the untouched 09:00 mission "passou"; unless
+        // chosen, the next is the first row of the day still to come.
         await expect(page.locator('#next-title')).toHaveText(
-          'Preparar uma proposta para o próximo projeto',
+          state === 'prioridade'
+            ? 'Preparar uma proposta para o próximo projeto'
+            : 'Revisar anotações e organizar referências',
         );
       }
       if (state === 'prioridade')
@@ -237,9 +244,9 @@ for (const state of states)
           'Escolhida por você',
         );
       if (state === 'planejadas')
-        await expect(page.locator('.day-plan li')).toHaveCount(4);
+        await expect(page.locator('.day-plan li')).toHaveCount(5);
       if (state === 'rotina') {
-        await expect(page.locator('.mission-meta')).toContainText('09:00');
+        await expect(page.locator('.mission-meta')).toContainText('11:00');
         await expect(page.locator('.day-plan .day-row .time')).toContainText([
           '11:00',
           '13:00',

@@ -191,11 +191,11 @@ test('rascunho editável: cancelar não cria missão e salvar permite pausar, co
   await expect(
     page.getByRole('heading', { name: 'Seu plano está em dia', exact: true }),
   ).toBeVisible();
+  // Lote 2: the concluded mission stays in its place in the day.
   await expect(
-    page.getByText(
-      'Nenhuma outra missão pendente. Seu progresso está registrado.',
-      { exact: true },
-    ),
+    page.getByRole('button', {
+      name: 'Desfazer conclusão de Meu rascunho de verdade',
+    }),
   ).toBeVisible();
   await capture(page, 'sem-pendencias', info.project.name);
   await page.goto('/config');

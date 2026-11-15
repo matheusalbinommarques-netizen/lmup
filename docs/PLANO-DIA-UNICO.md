@@ -41,3 +41,15 @@ Cada lote: worktree própria a partir de `origin/main`, prévia em porta 5180+, 
 - Hoje: linhas novas, grupo "Paradas há mais tempo" (3 visíveis, "Ver as N paradas"), aviso "concluída · Desfazer", frase "N de M feitos · próxima: …", menu com "Iniciar/Retomar" e "Remarcar".
 - `QuickCreate.svelte`: o título é capturado antes de salvar; o que se digita durante o salvamento não se perde nem se mistura.
 - Desfazer usa o estorno existente (`undoTask`): o saldo fica como débito compensado por ganhos futuros, como na Lista.
+
+## Lote 2: o que mudou
+
+- `src/services/dayOrder.ts`: `orderDay` (ordem única), `dayTimeline` (◆ fixa, ≈ calculada, 15 min sem duração, conflito), `saveDayOrder`, `setRowTime`.
+- Dado: `dayOrder: { day, rank }` opcional na ocorrência, validado no backup; gravar a ordem não muda progresso, recompensa nem revisão.
+- Sem ordem manual: horas fixas por horário; item sem hora entra antes da próxima hora fixa ainda por vir, para a hora ≈ começar agora.
+- Hoje e Agenda usam a mesma ordem; a próxima é a primeira pendente da ordem. Hora fixa que passou sem início não é a próxima e oferece Remarcar.
+- Linha: hora editável (clique ou F2; Enter/Esc), "Só hoje" / "Daqui para frente" em rotina; fixar a hora leva a linha ao lugar dessa hora.
+- Mover: arrastar pela alça (desktop), "Reordenar" com ▲▼ (44 px no mobile), Alt + ↑/↓; foco preservado e posição anunciada.
+- Concluídas ficam no lugar (riscadas; o círculo desfaz) e podem ser ocultadas.
+- Conflito só quando todo o trecho até a hora fixa tem duração real (design F3); com item sem duração, uma hora ≈ pode passar da ◆ seguinte sem aviso.
+- O cartão "Próxima missão" continua; a mesma missão aparece destacada na lista. Removê-lo fica para decisão do autor.

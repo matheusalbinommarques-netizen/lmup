@@ -63,6 +63,15 @@ export function validateProductivityBackup(
           ),
         'retiradas do dia inválidas',
       );
+    if (row.dayOrder !== undefined)
+      requireValue(
+        !!row.dayOrder &&
+          typeof row.dayOrder.day === 'string' &&
+          calendarDate(row.dayOrder.day) === row.dayOrder.day &&
+          Number.isSafeInteger(row.dayOrder.rank) &&
+          row.dayOrder.rank > 0,
+        'ordem do dia inválida',
+      );
     requireValue(
       calendarDate(row.originDate) && calendarDate(row.plannedDate),
       'data de ocorrência inválida',

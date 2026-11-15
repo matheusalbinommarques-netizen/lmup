@@ -1,6 +1,6 @@
 <script lang="ts">
   import { todayView } from './todayView';
-  import { comparePlannedTime } from './homePriority';
+  import { orderDay } from '$services/dayOrder';
   import MergeDialog from './MergeDialog.svelte';
   import MissionActions from './MissionActions.svelte';
   import { operationalRow } from '$services/operationalPlanning';
@@ -100,14 +100,15 @@
   const dayRows = $derived(
     day === dateKey()
       ? todayView(snapshot, day).planned
-      : rows
-          .filter(
+      : orderDay(
+          rows.filter(
             (row) =>
               row.plannedDate === day &&
               !row.skipped &&
               !['discarded', 'excused'].includes(row.status),
-          )
-          .sort(comparePlannedTime),
+          ),
+          day,
+        ),
   );
   const completedDay = $derived(
     dayRows.filter((row) => row.status === 'completed').length,
