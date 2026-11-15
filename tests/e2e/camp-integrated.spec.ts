@@ -10,6 +10,7 @@ import {
   campBack,
   campCapture,
 } from './camp-flow';
+import { concludeFromDetail } from './execution';
 test.beforeEach(async ({ page }) => {
   await page.goto('/acampamento');
   await campReady(page);
@@ -264,12 +265,7 @@ test('conclusão de missão atualiza imediatamente Centro e Jardim já abertos, 
       exact: true,
     })
     .click();
-  await mission
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
-  await expect(
-    mission.getByRole('heading', { name: 'Missão concluída!', exact: true }),
-  ).toBeVisible();
+  await concludeFromDetail(mission);
   await expect(page.getByTestId('layered-scene')).toHaveAttribute(
     'data-scene',
     'center-built-2',

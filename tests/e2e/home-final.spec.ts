@@ -144,10 +144,10 @@ test('Home final mantém navegação inteira e estados claros nas cinco resoluç
     ).toHaveAttribute('href', '/missoes');
     await setTasks(page, false);
     await page
-      .getByRole('button', { name: 'Começar missão', exact: true })
+      .getByRole('button', { name: /^(Iniciar dia|Continuar o dia)$/ })
       .focus();
     await page.keyboard.press('Enter');
-    await expect(page).toHaveURL(/\/missao\/100$/);
+    await expect(page).toHaveURL(/\/executar\/mission%3A100%3A/);
     await expect(
       page.getByRole('heading', {
         name: 'Estudar por 30 minutos',

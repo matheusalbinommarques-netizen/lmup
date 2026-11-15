@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { registerPart } from './execution';
 import { chooseTracking } from './mission-form';
 const today = '2026-11-02';
 async function create(
@@ -93,19 +94,9 @@ test('Hoje separa atividades antigas, conclusões realizadas e retirada persiste
   await page
     .getByRole('link', { name: 'Atividade antiga', exact: true })
     .click();
-  await expect(page).toHaveURL(/\/ocorrencia\//);
-  await page
-    .getByRole('combobox', { name: 'Conclusão', exact: true })
-    .selectOption('1');
-  await page
-    .getByRole('button', { name: 'Registrar progresso', exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: 'Confirmar registro', exact: true })
-    .click();
-  await expect(
-    page.getByText('100% · Concluída', { exact: true }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(/\/executar\//);
+  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
+  await expect(page.getByText(/Atividade antiga concluída\./)).toBeVisible();
   await page.goto('/');
   await expect(
     page.getByRole('region', { name: 'Concluídas hoje', exact: true }),
@@ -145,22 +136,16 @@ test('reagendar atividade parcial preserva recursos e a seleção explica indisp
   await page.clock.setFixedTime(new Date(today + 'T15:00:00-03:00'));
   await create(page, 'Leitura parcial', true);
   await page.getByRole('tab', { name: 'Agenda', exact: true }).click();
-  await page
-    .getByRole('button', { name: 'Executar agora', exact: true })
-    .click();
-  await page.getByLabel('Minutos acumulados realizados').fill('10');
-  await page
-    .getByRole('button', { name: 'Registrar progresso', exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: 'Confirmar registro', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Iniciar', exact: true }).click();
+  await expect(page).toHaveURL(/\/executar\//);
+  await page.getByLabel('Minutos feitos até agora').fill('10');
+  await registerPart(page);
   await expect(
-    page.getByText('25% · Parcialmente realizada', { exact: true }),
+    page.getByText('Parte registrada: 10 de 40 min.', { exact: true }),
   ).toBeVisible();
   const before = await state(page);
   await page.goto('/');
-  await homeAction(page, 'Leitura parcial', 'Reagendar');
+  await homeAction(page, 'Leitura parcial', 'Remarcar');
   const dialog = page.getByRole('dialog', {
     name: 'Reagendar ocorrência',
     exact: true,
@@ -245,9 +230,7 @@ test('rotina reutiliza sessão, impede execução duplicada e substitui o ciclo 
   ).toHaveCount(0);
   await water.getByRole('link', { name: /^Em sessão ·/ }).click();
   await expect(page).toHaveURL(/\/sessoes$/);
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
   await expect(
     page.getByRole('region', { name: 'Resumo da sessão', exact: true }),
   ).toContainText('1 concluídas');

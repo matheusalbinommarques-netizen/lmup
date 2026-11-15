@@ -3,6 +3,6 @@
   import OccurrenceExecution from '$lib/journey/OccurrenceExecution.svelte';
 </script>
 
-<svelte:head><title>Executar ocorrência · Level Me Up</title></svelte:head>
-<a class="journey-link" href="/missoes">← Voltar às missões</a>
+<svelte:head><title>Registro da ocorrência · Level Me Up</title></svelte:head>
+<a class="journey-link" href="/">← Dia</a>
 {#key page.params.id}<OccurrenceExecution id={page.params.id!} />{/key}

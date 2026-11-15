@@ -145,6 +145,9 @@ export async function completeTask(
     reviewOutcome?: 'recalled' | 'partial' | 'again';
     occurrenceDate?: string;
     sessionId?: string;
+    /** Optional timer measurement (lote 3); stored on the execution record. */
+    minutes?: number | null;
+    startedAt?: string;
   } = {},
 ): Promise<ActivityEvent | null> {
   return progressTransaction(async () => {
@@ -195,6 +198,8 @@ export async function completeTask(
         );
       return recordProgress({
         sessionId: options.sessionId,
+        minutes: options.minutes ?? null,
+        ...(options.startedAt ? { startedAt: options.startedAt } : {}),
         requestId: `complete:${occurrence.id}:${occurrence.revision}`,
         occurrenceId: occurrence.id,
         expectedRevision: occurrence.revision,

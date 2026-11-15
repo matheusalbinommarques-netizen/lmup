@@ -1,4 +1,10 @@
 import { fillMissionSteps, chooseTracking } from './mission-form';
+import {
+  conclude,
+  concludeButton,
+  registerPart,
+  startFromDetail,
+} from './execution';
 import { test, expect, type Page, type Locator } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
@@ -43,7 +49,7 @@ async function saveTime(page: Page, value: number, correction = false) {
     .setChecked(correction);
   await page
     .getByRole('button', {
-      name: correction ? 'Revisar correção' : 'Registrar progresso',
+      name: correction ? 'Revisar correção' : 'Registrar parte',
       exact: true,
     })
     .click();
@@ -106,18 +112,12 @@ test('conclusão direta mantém passos auxiliares sem exigir sua marcação', as
   await page
     .getByRole('link', { name: 'Uma entrega direta', exact: true })
     .click();
+  await startFromDetail(page);
   await expect(
     page.getByRole('checkbox', { name: 'Referência opcional', exact: true }),
   ).not.toBeChecked();
-  await expect(
-    page.getByRole('button', { name: 'Concluir missão', exact: true }),
-  ).toBeEnabled();
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
-  ).toBeVisible();
+  await expect(concludeButton(page)).toBeEnabled();
+  await conclude(page);
   const copy = await stored(page);
   expect(copy.occurrences[0]).toMatchObject({
     status: 'completed',
@@ -135,9 +135,10 @@ test('criação avançada, parcelas, correção, compensação e persistência e
   await create(page, 'Inglês por 40 minutos', advanced);
   await page.getByRole('tab', { name: 'Agenda', exact: true }).click();
   await page.getByRole('button', { name: 'Dia', exact: true }).click();
-  await page
-    .getByRole('button', { name: 'Executar agora', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Iniciar', exact: true }).click();
+  await expect(page).toHaveURL(/\/executar\//);
+  // Corrections live on the record page of the occurrence.
+  await page.goto(page.url().replace('/executar/', '/ocorrencia/'));
   await saveTime(page, 10);
   await expect(
     page.getByText('25% · Parcialmente realizada', { exact: true }),
@@ -236,9 +237,7 @@ test('rotina semanal vira sessão persistente e aceita pausa, retomada e conclus
   await page
     .getByRole('tab', { name: 'Execução detalhada', exact: true })
     .click();
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
   ).toBeVisible();
@@ -269,10 +268,10 @@ test('nova recorrência substitui a pendência anterior e concede somente a reco
   await create(page, 'Praticar inglês', advanced);
   await page.clock.setFixedTime(new Date('2026-11-03T15:00:00-03:00'));
   await page.goto('/');
-  await page
-    .getByRole('button', { name: 'Começar missão', exact: true })
-    .click();
-  await saveTime(page, 40);
+  await page.getByRole('button', { name: 'Iniciar dia', exact: true }).click();
+  await page.getByLabel('Minutos feitos até agora').fill('40');
+  await registerPart(page);
+  await expect(page.getByText(/Praticar inglês concluída\./)).toBeVisible();
   const result = await stored(page);
   expect(
     result.occurrences.filter((row) => row.status === 'completed'),

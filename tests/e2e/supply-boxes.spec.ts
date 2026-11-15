@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { concludeFromDetail } from './execution';
 
 // Onda D: caixas de suprimentos. Dados sintéticos em contexto descartável.
 async function seed(page: Page) {
@@ -70,9 +71,7 @@ test('400 XP de missões rendem uma caixa; abrir guarda o material escolhido uma
   );
   for (const id of [950, 951]) {
     await page.goto(`/missao/${id}`);
-    await page
-      .getByRole('button', { name: 'Concluir missão', exact: true })
-      .click();
+    await concludeFromDetail(page);
     await expect(
       page.getByRole('region', { name: 'Resumo da recompensa' }),
     ).toBeVisible();

@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { worldData } from './world-flow';
+import { conclude, openReceipt } from './execution';
 
 async function capture(page: Page, name: string) {
   if (!process.env.LMU_HOME_CAPTURE_DIR) return;
@@ -64,8 +65,8 @@ async function createMission(page: Page, title: string) {
     page.getByRole('heading', { name: title, exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Concluir missão', exact: true }),
-  ).toBeEnabled();
+    page.getByRole('link', { name: /^(Iniciar|Retomar)$/ }),
+  ).toBeVisible();
 }
 
 async function noOverflow(page: Page) {
@@ -112,11 +113,11 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Começar missão', exact: true }),
+    page.getByRole('button', { name: 'Iniciar dia', exact: true }),
   ).toBeVisible();
   if (info.project.name === 'mobile') {
     const action = await page
-      .getByRole('button', { name: 'Começar missão', exact: true })
+      .getByRole('button', { name: 'Iniciar dia', exact: true })
       .boundingBox();
     const navigation = await page
       .getByRole('navigation', { name: 'Navegação móvel', exact: true })
@@ -124,45 +125,19 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
     expect(action!.y + action!.height).toBeLessThan(navigation!.y);
   }
   await capture(page, info.project.name + '-pendentes');
-  await page
-    .getByRole('button', { name: 'Começar missão', exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: 'Iniciar missão', exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: 'Pausar e voltar', exact: true })
-    .click();
-  await expect(page).toHaveURL(new RegExp('/missoes$'));
-  await page.goto('/');
-  await expect(
-    page.getByRole('button', { name: 'Começar missão', exact: true }),
-  ).toBeVisible();
-  await page
-    .getByRole('button', { name: 'Começar missão', exact: true })
-    .click();
-  await expect(page).toHaveURL(new RegExp('/missao/[0-9]+$'));
-  const resume = page.getByRole('button', {
-    name: 'Retomar missão',
-    exact: true,
-  });
-  await resume.click();
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
-  ).toBeVisible();
+  await page.getByRole('button', { name: 'Iniciar dia', exact: true }).click();
+  await expect(page).toHaveURL(/\/executar\/.+\?fila=dia$/);
+  await page.getByRole('link', { name: '← Dia', exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await page.getByRole('button', { name: 'Iniciar dia', exact: true }).click();
+  await conclude(page);
+  await openReceipt(page);
   await page.goto('/');
   await page
-    .getByRole('button', { name: 'Começar missão', exact: true })
+    .getByRole('button', { name: 'Continuar o dia', exact: true })
     .click();
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
-  ).toBeVisible();
+  await conclude(page);
+  await openReceipt(page);
   await page.goto('/');
   await expect(
     page.getByRole('heading', { name: 'Seu plano está em dia', exact: true }),

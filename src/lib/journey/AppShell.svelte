@@ -71,6 +71,7 @@
         path === '/sessoes' ||
         path === '/sessao' ||
         path.startsWith('/missao/') ||
+        path.startsWith('/executar/') ||
         path.startsWith('/ocorrencia/')
       );
     if (href === '/acampamento')
@@ -88,6 +89,7 @@
   class="lmu-design journey-shell rpg-theme visual-shell"
   class:journey-adventure={page.url.pathname === '/mundo/campanha'}
   class:journey-home={page.url.pathname === '/'}
+  class:journey-focus={page.url.pathname.startsWith('/executar/')}
   class:journey-camp={['/acampamento', '/aposentos'].includes(
     page.url.pathname,
   )}

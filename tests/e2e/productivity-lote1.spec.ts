@@ -85,8 +85,7 @@ test('Hoje preserva identidade e composição vertical nas larguras suportadas',
   ).toHaveCount(0);
   await expect(page.locator('.hero-copy .lmu-eyebrow')).toHaveCount(0);
   const start = page.getByRole('button', {
-    name: 'Começar missão',
-    exact: true,
+    name: /^(Iniciar dia|Continuar o dia)$/,
   });
   await expect(start).toBeVisible();
   await expect(start.locator('img')).toHaveCount(0);
@@ -146,7 +145,7 @@ test('Hoje preserva identidade e composição vertical nas larguras suportadas',
     await capture(page, `hoje-${width}`);
   }
   await start.click();
-  await expect(page).toHaveURL(/\/missao\/501$/);
+  await expect(page).toHaveURL(/\/executar\/mission%3A501%3A/);
 });
 
 test('Geral persiste seu ícone e campos de área permanecem compactos', async ({

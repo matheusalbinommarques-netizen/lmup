@@ -1,4 +1,5 @@
 import { fillMissionSteps } from './mission-form';
+import { conclude, openReceipt, startFromDetail } from './execution';
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 async function capture(page: Page, name: string, project: string) {
@@ -148,39 +149,30 @@ test('rascunho editável: cancelar não cria missão e salvar permite pausar, co
       exact: true,
     }),
   ).toBeVisible();
+  await startFromDetail(page);
   await page
     .getByRole('checkbox', { name: 'Escolher uma parte', exact: true })
     .check();
   await page
-    .getByLabel('Notas da missão')
+    .getByLabel('Nota (opcional)')
     .fill('Ainda posso mudar esta ideia.');
   await expect(
     page.getByText('Tudo salvo neste navegador', { exact: true }),
   ).toBeVisible();
-  await page
-    .getByRole('button', { name: 'Pausar e voltar', exact: true })
-    .click();
+  await page.getByRole('link', { name: '← Dia', exact: true }).click();
   await page.goto('/');
   await expect(page.locator('.next-mission')).toContainText(
     'Meu rascunho de verdade',
   );
   await capture(page, 'retomada', info.project.name);
   await page
-    .getByRole('button', { name: 'Começar missão', exact: true })
+    .getByRole('button', { name: /^(Iniciar dia|Continuar o dia)$/ })
     .click();
   await page
     .getByRole('checkbox', { name: 'Fazer um rascunho', exact: true })
     .check();
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
-  await expect(
-    page.getByRole('heading', {
-      name: 'Missão concluída!',
-      level: 1,
-      exact: true,
-    }),
-  ).toBeVisible();
+  await conclude(page);
+  await openReceipt(page);
   await capture(page, 'conclusao', info.project.name);
   const missionUrl = page.url();
   await page
@@ -219,8 +211,8 @@ test('rascunho editável: cancelar não cria missão e salvar permite pausar, co
     .getByRole('button', { name: 'Confirmar correção', exact: true })
     .click();
   await expect(
-    page.getByRole('button', { name: 'Concluir missão', exact: true }),
-  ).toBeEnabled();
+    page.getByRole('link', { name: /^(Iniciar|Retomar)$/ }),
+  ).toBeVisible();
   await page.reload();
   await expect(page.getByLabel('Notas da missão')).toHaveValue(
     'Ainda posso mudar esta ideia.',
@@ -265,7 +257,7 @@ test('missão arquivada fica fora de Hoje e revisão futura é desativada sem pe
     'Uma missão guardada',
   );
   await expect(
-    page.getByRole('button', { name: 'Começar missão', exact: true }),
+    page.getByRole('button', { name: /^(Iniciar dia|Continuar o dia)$/ }),
   ).toBeVisible();
   await expect
     .poll(() =>

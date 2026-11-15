@@ -2,6 +2,7 @@ import { openMilestones } from './camp-flow';
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { confirmBackupImport } from './backup-ui';
+import { concludeFromDetail } from './execution';
 async function backup(page: Page) {
   await page.goto('/config');
   const pending = page.waitForEvent('download');
@@ -74,12 +75,7 @@ async function cross(page: Page) {
     .click();
   await expect(page).toHaveURL(/\/missao\/\d+$/);
   const url = page.url();
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
-  ).toBeVisible();
+  await concludeFromDetail(page);
   return url;
 }
 
@@ -146,7 +142,7 @@ test('marco recebido preserva paisagem, recursos e recibo após correção da mi
     .getByRole('button', { name: 'Confirmar correção', exact: true })
     .click();
   await expect(
-    page.getByRole('button', { name: 'Concluir missão', exact: true }),
+    page.getByRole('link', { name: /^(Iniciar|Retomar)$/ }),
   ).toBeVisible();
   await openMilestones(page);
   await expect(

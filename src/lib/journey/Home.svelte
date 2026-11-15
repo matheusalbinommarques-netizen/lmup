@@ -16,7 +16,6 @@
   import { journeyQuery, type JourneySnapshot } from '$services/journeyQuery';
   import { dateKey } from '$services/rewardService';
   import { ensureOccurrence } from '$services/occurrenceService';
-  import { saveSession } from '$services/savedSessionService';
   import { fraction } from '$services/productivityRules';
   import { getEcoStageForTotalXp } from '$services/ecoConfig';
   import { ALL_ACHIEVEMENTS } from '$services/achievementsCatalog';
@@ -36,7 +35,9 @@
   import { canCompleteInline, inFocus, staleDays } from '$services/dayRow';
   import { completeTask, undoTask } from '$services/taskService';
   import {
+    clock,
     dayTimeline,
+    DEFAULT_MINUTES,
     moveId,
     orderDay,
     saveDayOrder,
@@ -49,8 +50,14 @@
     savePriority,
     PRIORITY_KEY,
     selectNextOccurrence,
-    usesTaskExecution,
   } from './homePriority';
+  import {
+    dayBlocks,
+    dayStartLabel,
+    executionHref,
+    isPending,
+    type QueueKind,
+  } from './dayQueue';
   let data = $state.raw<JourneySnapshot>();
   let error = $state(''),
     busy = $state(false),
@@ -295,6 +302,55 @@
   const slots = $derived(
     new Map(timeline.slots.map((slot) => [slot.id, slot])),
   );
+  // Blocks (lote 3): 2+ consecutive rows of a routine in the Dia get a
+  // header with "Iniciar bloco"; a concluded block folds until opened.
+  let openBlocks = $state<string[]>([]);
+  const blocks = $derived(
+    dayBlocks(dayList).map((block) => {
+      const rows = dayList.filter((row) => block.ids.includes(row.id));
+      const done = rows.filter((row) => row.status === 'completed').length;
+      const first = slots.get(rows[0].id);
+      const last = rows.at(-1)!;
+      const lastSlot = slots.get(last.id);
+      const end = lastSlot?.time
+        ? clock(
+            Number(lastSlot.time.slice(0, 2)) * 60 +
+              Number(lastSlot.time.slice(3, 5)) +
+              (last.estimatedMinutes || DEFAULT_MINUTES),
+          )
+        : '';
+      return {
+        ...block,
+        key: block.ids[0],
+        name:
+          data?.routines.find((routine) => routine.id === block.routineId)
+            ?.name ?? 'Rotina',
+        done,
+        complete: done === rows.length,
+        first: rows.find(isPending),
+        range:
+          first?.time && end
+            ? `${first.kind === 'anchor' ? '◆ ' : '≈ '}${first.time}–${end}`
+            : '',
+      };
+    }),
+  );
+  const blockStarts = $derived.by(() => {
+    const visible = new Set(visibleDay.map((row) => row.id));
+    return new Map(
+      blocks.flatMap((block) => {
+        const head = block.ids.find((id) => visible.has(id));
+        return head ? [[head, block] as const] : [];
+      }),
+    );
+  });
+  const foldedRows = $derived(
+    new Set(
+      blocks
+        .filter((block) => block.complete && !openBlocks.includes(block.key))
+        .flatMap((block) => block.ids),
+    ),
+  );
   const conflictBefore = $derived(
     new Map(timeline.conflicts.map((item) => [item.anchorId, item])),
   );
@@ -525,26 +581,19 @@
       data?.areas ?? [],
       data?.profile?.generalAreaIconKey,
     );
-  async function execute(row: Occurrence) {
+  // Every start goes to the single execution screen (lote 3). A row that
+  // only exists as a projection is stored first, as before.
+  async function execute(row: Occurrence, kind?: QueueKind) {
     if (busy) return;
     busy = true;
     try {
-      const session = data?.sessions.find(
-        (session) =>
-          session.status !== 'ended' && session.occurrenceIds.includes(row.id),
-      );
-      if (session) {
-        await saveSession({ ...session, status: 'active' }, session.revision);
-        await goto('/sessoes');
-        return;
-      }
-      const task = data?.tasks.find((task) => task.id === row.taskId);
-      if (task && usesTaskExecution(task, row, today)) {
-        await goto('/missao/' + row.taskId);
-        return;
-      }
-      await ensureOccurrence(row.taskId, row.originDate, row.reconstructed);
-      await goto('/ocorrencia/' + encodeURIComponent(row.id));
+      // Legacy missions run on the projection, as before: opening them
+      // never creates an occurrence.
+      const task = data?.tasks.find((item) => item.id === row.taskId);
+      if (task?.productivityVersion)
+        await ensureOccurrence(row.taskId, row.originDate, row.reconstructed);
+      busy = false;
+      await goto(executionHref(row.id, kind));
     } catch (cause) {
       error =
         cause instanceof Error
@@ -650,7 +699,13 @@
           {#if next}<Button
               size="l"
               disabled={busy}
-              onclick={() => execute(next)}>Começar missão</Button
+              onclick={() =>
+                execute(
+                  next!,
+                  dayList.some((row) => row.id === next!.id)
+                    ? 'dia'
+                    : undefined,
+                )}>{dayStartLabel(dayList)}</Button
             >{:else}<Button size="l" onclick={() => (open = true)}
               >Nova missão</Button
             >{/if}
@@ -667,7 +722,7 @@
                 variant="quiet"
                 disabled={busy}
                 onclick={() => chooseAction(next!, 'reschedule')}
-                >Reagendar</Button
+                >Remarcar</Button
               >{/if}<label class="priority-option"
               >Manter em destaque<select
                 value={pinned ?? ''}
@@ -805,10 +860,40 @@
             </li>
           {/snippet}
           {#if dayList.length || stalled.length}<ul class="day-list">
-              {#each visibleDay as row (row.id)}{@render planRow(
-                  row,
-                  true,
-                )}{/each}
+              {#each visibleDay as row (row.id)}
+                {@const block = blockStarts.get(row.id)}
+                {#if block}<li
+                    class="block-head"
+                    class:block-done={block.complete}
+                  >
+                    <span class="block-name"
+                      ><strong>{block.name}</strong>
+                      <small
+                        >{block.range ? `${block.range} · ` : ''}{block.done} de
+                        {block.ids.length}</small
+                      ></span
+                    >
+                    {#if block.complete}<Button
+                        variant="quiet"
+                        size="s"
+                        aria-expanded={openBlocks.includes(block.key)}
+                        onclick={() =>
+                          (openBlocks = openBlocks.includes(block.key)
+                            ? openBlocks.filter((key) => key !== block.key)
+                            : [...openBlocks, block.key])}
+                        >Bloco concluído {openBlocks.includes(block.key)
+                          ? '▴'
+                          : '▾'}</Button
+                      >{:else}<Button
+                        variant="secondary"
+                        size="s"
+                        disabled={busy}
+                        onclick={() => execute(block.first!, 'bloco')}
+                        >Iniciar bloco</Button
+                      >{/if}
+                  </li>{/if}
+                {#if !foldedRows.has(row.id)}{@render planRow(row, true)}{/if}
+              {/each}
             </ul>
             {#if stalled.length}<div
                 class="stalled"
@@ -1307,6 +1392,33 @@
     overflow: hidden;
     clip: rect(0 0 0 0);
     white-space: nowrap;
+  }
+  .day-plan li.block-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 8px 6px 6px 18px;
+    border-top: 1px solid #3b5047;
+  }
+  .day-plan li.block-head :global(.lmu-button) {
+    padding: 4px 12px;
+  }
+  .block-name {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+    color: #eee9db;
+  }
+  .block-name small {
+    color: #a6b9a6;
+    font-variant-numeric: tabular-nums;
+  }
+  .block-done .block-name strong {
+    color: #a6b9a6;
   }
   .stalled {
     margin-top: 14px;

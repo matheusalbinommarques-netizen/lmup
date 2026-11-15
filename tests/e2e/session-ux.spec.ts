@@ -64,7 +64,7 @@ test('conclusão rápida avança na sessão, pausa e retoma com progresso real e
     page.getByRole('tab', { name: 'Conclusão rápida', exact: true }),
   ).toHaveAttribute('aria-selected', 'true');
   const complete = page.getByRole('button', {
-    name: 'Concluir missão',
+    name: 'Concluir',
     exact: true,
   });
   const box = await complete.boundingBox();
@@ -102,9 +102,7 @@ test('conclusão rápida avança na sessão, pausa e retoma com progresso real e
   await page
     .getByRole('button', { name: 'Próxima atividade', exact: true })
     .click();
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'Sessão concluída', exact: true }),
   ).toBeVisible();

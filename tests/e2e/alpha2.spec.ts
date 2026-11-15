@@ -2,6 +2,7 @@ import { openCompanions } from './camp-flow';
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { confirmBackupImport } from './backup-ui';
+import { concludeFromDetail } from './execution';
 async function backup(page: Page) {
   await page.goto('/config');
   const pending = page.waitForEvent('download');
@@ -42,12 +43,7 @@ async function mission(page: Page, title = 'Um passo registrado') {
   return page.url();
 }
 async function complete(page: Page) {
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
-  ).toBeVisible();
+  await concludeFromDetail(page);
 }
 function metric(page: Page, label: string) {
   return page
@@ -75,7 +71,7 @@ test('histórico mantém concessão e correção sem criar sessões de revisão'
     .getByRole('button', { name: 'Confirmar correção', exact: true })
     .click();
   await expect(
-    page.getByRole('button', { name: 'Concluir missão', exact: true }),
+    page.getByRole('link', { name: /^(Iniciar|Retomar)$/ }),
   ).toBeVisible();
   await page.goto('/progresso');
   await expect(metric(page, 'XP líquido no período')).toHaveText('+53');

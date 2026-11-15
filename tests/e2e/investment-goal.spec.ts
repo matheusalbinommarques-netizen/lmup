@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { concludeFromDetail } from './execution';
 
 // Fase 1 — objetivo visível. Dados sintéticos em contexto descartável.
 async function seed(page: Page) {
@@ -81,9 +82,7 @@ test('escolher objetivo mostra a distância em Hoje e quanto a missão aproximou
   expect(await gold(page)).toBe(250);
 
   await page.goto('/missao/810');
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  await concludeFromDetail(page);
   const summary = page.getByRole('region', { name: 'Resumo da recompensa' });
   const after = await gold(page);
   expect(after).toBeGreaterThan(250);

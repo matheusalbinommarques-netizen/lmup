@@ -20,6 +20,7 @@
   import { guardUpdates } from './guardUpdates';
   import { liveQuery } from 'dexie';
   import { goto } from '$app/navigation';
+  import { executionHref } from './dayQueue';
   import { db } from '$services/db';
   import { dateKey } from '$services/rewardService';
   import { addCalendarDays } from '$services/calendar';
@@ -231,7 +232,13 @@
   async function open(row: Occurrence) {
     await run(async () => {
       await ensureOccurrence(row.taskId, row.originDate, row.reconstructed);
-      await goto('/ocorrencia/' + encodeURIComponent(row.id));
+      // Completed or past history keeps the record page; the rest is executed
+      // on the single execution screen (lote 3).
+      await goto(
+        row.status === 'completed' || row.supersededBy || row.skipped
+          ? '/ocorrencia/' + encodeURIComponent(row.id)
+          : executionHref(row.id),
+      );
     });
   }
   async function editRoutine(listed?: Routine) {

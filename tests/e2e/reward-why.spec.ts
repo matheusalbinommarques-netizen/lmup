@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { concludeFromDetail } from './execution';
 
 // "Por que ganhei isso?" — dados sintéticos em contexto descartável.
 async function seed(page: Page) {
@@ -43,9 +44,7 @@ test('a conta da recompensa aparece na conclusão e no histórico e fecha com o 
 }) => {
   await seed(page);
   await page.goto('/missao/820');
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  await concludeFromDetail(page);
   const summary = page.getByRole('region', { name: 'Resumo da recompensa' });
   const received = summary.getByLabel('Recompensa recebida');
   await expect(received).toBeVisible();

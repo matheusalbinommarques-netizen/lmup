@@ -102,9 +102,7 @@ test('aba direta, inclusão no fim, pausa e encerramento liberam pendências sem
     await create(page, name);
   await capture(page, 'lista', info.project.name);
   await start(page, ['Primeira', 'Segunda']);
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
   await expect(page.locator('.session-progress')).toContainText(
     '1 de 2 concluídas',
   );
@@ -193,9 +191,7 @@ test('última conclusão mostra resumo, encerra de fato e não oferece retomar',
 }, info) => {
   await create(page, 'Final');
   await start(page, ['Final']);
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'Sessão concluída', exact: true }),
   ).toBeVisible();

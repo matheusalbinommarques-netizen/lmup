@@ -16,6 +16,7 @@ import { ensureProfile } from './profileService';
 import { scheduledOn } from './recurrence';
 import {
   executionContext,
+  validStartedAt,
   occurrenceDue,
   progressTarget,
   validatePlanning,
@@ -401,6 +402,8 @@ export type ProgressInput = {
   value: number;
   executedAt: string;
   minutes?: number | null;
+  /** Real start from the optional timer; stored only on the record. */
+  startedAt?: string;
   checkedSteps?: number[];
   correction?: boolean;
   expectedDue?: Resources;
@@ -592,6 +595,11 @@ async function applyProgress(
         !Number.isSafeInteger(Math.round(minutes * 1000)))
     )
       throw new Error('Tempo realizado inválido.');
+    if (
+      input.startedAt !== undefined &&
+      !validStartedAt(input.startedAt, context.executedAt)
+    )
+      throw new Error('Início real inválido.');
     const { candidate, due, delta, debt, projectDebt } =
       await previewProgress(input);
     if (
@@ -742,6 +750,9 @@ async function applyProgress(
       before: current.value,
       after: input.value,
       minutes: actualMinutes - priorMinutes,
+      ...(input.startedAt !== undefined
+        ? { startedAt: new Date(input.startedAt).toISOString() }
+        : {}),
       method: candidate.tracking?.method ?? 'direct',
       ...context,
       recordedAt: now,

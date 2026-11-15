@@ -500,10 +500,10 @@
                   >{#if reward.food}<small>+{reward.food} Comida</small>{/if}
                 </div>{/if}
               {#if quickEligible}<Button
-                  aria-label="Concluir missão"
+                  aria-label="Concluir"
                   disabled={busy || executionBusy}
                   loading={busy}
-                  onclick={quickComplete}>✓ Concluir missão</Button
+                  onclick={quickComplete}>✓ Concluir</Button
                 >{:else if current.status !== 'completed'}<Button
                   variant="secondary"
                   onclick={() => (detailed = true)}
@@ -521,7 +521,7 @@
               ><Button
                 variant="quiet"
                 disabled={busy || executionBusy}
-                onclick={skip}>Pular por agora</Button
+                onclick={skip}>Pular para depois</Button
               ><Button
                 variant="secondary"
                 disabled={busy || executionBusy || session.cursor >= total - 1}

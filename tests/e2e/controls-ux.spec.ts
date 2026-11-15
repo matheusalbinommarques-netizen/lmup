@@ -229,7 +229,7 @@ test('gestão fica após a execução e exclusão continua exigindo confirmaçã
     exact: true,
   });
   const completeBox = (await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
+    .getByRole('link', { name: /^(Iniciar|Retomar)$/ })
     .boundingBox())!;
   const manageBox = (await management.boundingBox())!;
   expect(manageBox.y).toBeGreaterThan(completeBox.y + completeBox.height);

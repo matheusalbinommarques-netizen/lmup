@@ -68,7 +68,7 @@ test('Home mantém saudação, planejamento completo, destinos e ações sem rol
     ).toBeLessThanOrEqual(1);
   else {
     const action = await page
-      .getByRole('button', { name: 'Começar missão', exact: true })
+      .getByRole('button', { name: /^(Iniciar dia|Continuar o dia)$/ })
       .boundingBox();
     const nav = await page
       .getByRole('navigation', { name: 'Navegação móvel', exact: true })
@@ -250,12 +250,9 @@ test('recorrências contam a ocorrência de hoje e não reutilizam etapas antiga
     )
     .toBeNull();
   await page
-    .getByRole('button', { name: 'Começar missão', exact: true })
+    .getByRole('button', { name: /^(Iniciar dia|Continuar o dia)$/ })
     .click();
-  await expect(page).toHaveURL(/\/missao\/202$/);
-  await page
-    .getByRole('button', { name: /^(Iniciar|Retomar) missão$/ })
-    .click();
+  await expect(page).toHaveURL(/\/executar\/mission%3A202%3A/);
   await expect(
     page.getByRole('checkbox', { name: 'Primeiro passo', exact: true }),
   ).not.toBeChecked();

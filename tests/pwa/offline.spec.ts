@@ -1,5 +1,6 @@
 import { openMilestones, openCompanions } from '../e2e/camp-flow';
 import { chooseTracking } from '../e2e/mission-form';
+import { concludeFromDetail, registerPart } from '../e2e/execution';
 import { test, expect, type Page } from '@playwright/test';
 import { captureProtocolDiagnostics } from './protocol-diagnostics';
 import { readFile } from 'node:fs/promises';
@@ -82,23 +83,15 @@ test('agenda e progresso proporcional persistem offline e entram no backup', asy
   await expect(form).not.toBeVisible();
   await page.getByRole('tab', { name: 'Agenda', exact: true }).click();
   await page.getByRole('button', { name: 'Dia', exact: true }).click();
-  await page
-    .getByRole('button', { name: 'Executar agora', exact: true })
-    .click();
-  await page.getByLabel('Minutos acumulados realizados').fill('15');
-  await page
-    .getByRole('button', { name: 'Registrar progresso', exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: 'Confirmar registro', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Iniciar', exact: true }).click();
+  await expect(page).toHaveURL(/\/executar\//);
+  await page.getByLabel('Minutos feitos até agora').fill('15');
+  await registerPart(page);
   await expect(
-    page.getByText('38% · Parcialmente realizada', { exact: true }),
+    page.getByText('Parte registrada: 15 de 40 min.', { exact: true }),
   ).toBeVisible();
   await page.reload();
-  await expect(
-    page.getByText('38% · Parcialmente realizada', { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText(/38% registrado/)).toBeVisible();
   const copy = await backup(page);
   expect(copy.meta.formatVersion).toBe(4);
   expect(copy.data.occurrences[0]).toMatchObject({
@@ -265,9 +258,7 @@ test('organizador cria área e rotina offline, vira o dia e preserva ocorrência
     .click();
   await expect(page).toHaveURL(/\/missao\/\d+$/);
   const url = page.url();
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  await concludeFromDetail(page);
   await expect(
     page.getByRole('region', { name: 'Resumo da recompensa' }),
   ).toBeVisible();
@@ -277,9 +268,7 @@ test('organizador cria área e rotina offline, vira o dia e preserva ocorrência
     'Cuidar da casa sem conexão',
   );
   await page.goto(url);
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  await concludeFromDetail(page);
   await expect(
     page.getByRole('region', { name: 'Resumo da recompensa' }),
   ).toBeVisible();
@@ -327,9 +316,7 @@ test('Recompensa Viva conclui, compara estágios e estorna inteiramente offline'
   await page.reload();
   await request.post('/__network', { data: 'offline' });
   await context.setOffline(true);
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  await concludeFromDetail(page);
   const summary = page.getByRole('region', { name: 'Resumo da recompensa' });
   await expect(
     summary.getByRole('heading', { name: 'Refúgio evoluiu!', exact: true }),
@@ -491,12 +478,7 @@ test('abre URLs não visitadas, cria e salva notas com a rede desligada', async 
   await expect(page.getByLabel('Notas da missão')).toHaveValue(
     'Este texto foi salvo sem internet.',
   );
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
-  ).toBeVisible();
+  await concludeFromDetail(page);
   const saved = await backup(page);
   expect(saved.data.profile.totalXpEarned).toBe(53);
   expect(saved.data.tasks[0].executionNotes).toBe(
@@ -510,7 +492,7 @@ test('abre URLs não visitadas, cria e salva notas com a rede desligada', async 
     .getByRole('button', { name: 'Confirmar correção', exact: true })
     .click();
   await expect(
-    page.getByRole('button', { name: 'Concluir missão', exact: true }),
+    page.getByRole('link', { name: /^(Iniciar|Retomar)$/ }),
   ).toBeVisible();
   await page.reload();
   await expect(page.getByLabel('Notas da missão')).toHaveValue(
@@ -757,12 +739,7 @@ test('falha ao preparar cache não impede a jornada online nem cria falsa pronti
     page.getByText(/Não foi possível preparar o uso offline/),
   ).toBeVisible();
   await mission(page, 'Posso continuar online');
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Missão concluída!', exact: true }),
-  ).toBeVisible();
+  await concludeFromDetail(page);
 });
 
 test('aba antiga sem protocolo impede a ativação até ser fechada', async ({

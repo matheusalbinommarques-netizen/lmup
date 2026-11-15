@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { concludeFromDetail } from './execution';
 
 // Synthetic data in disposable contexts; never use the user's 5174 origin.
 async function seed(page: Page, total: number, xp = 50, project = false) {
@@ -61,8 +62,8 @@ async function seed(page: Page, total: number, xp = 50, project = false) {
   );
   await page.goto('/missao/800');
   await expect(
-    page.getByRole('button', { name: 'Concluir missão', exact: true }),
-  ).toBeEnabled();
+    page.getByRole('link', { name: /^(Iniciar|Retomar)$/ }),
+  ).toBeVisible();
 }
 
 async function receipt(page: Page) {
@@ -120,9 +121,7 @@ for (const state of [
     page,
   }, info) => {
     await seed(page, state.total);
-    await page
-      .getByRole('button', { name: 'Concluir missão', exact: true })
-      .click();
+    await concludeFromDetail(page);
     const summary = page.getByRole('region', { name: 'Resumo da recompensa' });
     await expect(
       summary.getByRole('heading', { name: 'Missão concluída!', exact: true }),
@@ -210,9 +209,7 @@ test('movimento reduzido, marcos simultâneos e saída imediata', async ({
 }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await seed(page, 2400, 250);
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  await concludeFromDetail(page);
   const summary = page.getByRole('region', { name: 'Resumo da recompensa' });
   await expect(
     summary.getByRole('heading', { name: 'Novo nível!', exact: true }),
@@ -243,9 +240,7 @@ test('bônus de projeto participa do progresso e conclusões antigas não fabric
   page,
 }) => {
   await seed(page, 200, 50, true);
-  await page
-    .getByRole('button', { name: 'Concluir missão', exact: true })
-    .click();
+  await concludeFromDetail(page);
   const summary = page.getByRole('region', { name: 'Resumo da recompensa' });
   await expect(summary).toContainText('Caderno de estudos');
   await expect(
