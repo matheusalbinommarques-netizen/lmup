@@ -198,12 +198,21 @@ test('rotina persiste por data, impede duplicação entre abas, preserva histór
       ),
     ),
   );
-  await expect(page.getByText(/concluída\./).first()).toBeVisible();
-  await openReceipt(page);
+  for (const tab of [page, other])
+    await expect(tab.getByText(/concluída\./).first()).toBeVisible();
+  // Only the tab that won the race holds the receipt ("Por quê?").
+  const receipts = await Promise.all(
+    [page, other].map((tab) =>
+      tab.getByRole('link', { name: 'Por quê?', exact: true }).count(),
+    ),
+  );
+  expect(receipts[0] + receipts[1]).toBe(1);
+  const winner = receipts[0] ? page : other;
+  await openReceipt(winner);
   await expect(
-    page.getByRole('region', { name: 'Resumo da recompensa' }),
+    winner.getByRole('region', { name: 'Resumo da recompensa' }),
   ).toBeVisible();
-  await capture(page, info.project.name, 'recompensa');
+  await capture(winner, info.project.name, 'recompensa');
   const first = await backup(page);
   expect(
     first.data.activityEvents.filter(
