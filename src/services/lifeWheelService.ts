@@ -2,6 +2,7 @@ import { db, type ActivityEvent, type Area, type Task } from './db';
 import type { Occurrence, Routine } from './productivityTypes';
 import { DOMAINS, isDomainKey, type DomainKey } from '$lib/content/domains';
 import { addCalendarDays } from './calendar';
+import { staleDays } from './dayRow';
 
 /**
  * Roda da Vida (13/11/2026). Two measures that are never mixed:
@@ -199,12 +200,11 @@ export type WheelInput = {
   occurrences?: Occurrence[];
 };
 
-const DAY = 86_400_000;
 /**
  * Pure read model for the screen. `today` is a local calendar date
  * (yyyy-mm-dd); the windows are the 30 days ending today and the 30 before.
  */
-export function wheelView(input: WheelInput, today: string, now = Date.now()) {
+export function wheelView(input: WheelInput, today: string) {
   const wheel = input.profile?.lifeWheel ?? EMPTY;
   const areaDomain = new Map<number, DomainKey>();
   for (const area of input.areas)
@@ -284,7 +284,8 @@ export function wheelView(input: WheelInput, today: string, now = Date.now()) {
         .map((task) => ({
           id: task.id!,
           title: task.title,
-          stalled: now - Date.parse(String(task.createdAt ?? now)) > 30 * DAY,
+          // Same rule as the Hoje: dated one-off missions, 14+ days still.
+          stalled: staleDays(task, today, input.occurrences ?? [], []) !== null,
         }))
         .sort((a, b) => Number(b.stalled) - Number(a.stalled)),
     };

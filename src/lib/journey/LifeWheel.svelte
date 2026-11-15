@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { countLabel } from '$lib/plural';
   import { onMount } from 'svelte';
   import { journeyQuery, type JourneySnapshot } from '$services/journeyQuery';
   import { dateKey } from '$services/rewardService';
@@ -300,7 +301,7 @@
               Pendentes: {row.pending.length}{row.pending.some(
                 (task) => task.stalled,
               )
-                ? ` · ${row.pending.filter((task) => task.stalled).length} parada(s) há mais de 30 dias`
+                ? ` · ${countLabel(row.pending.filter((task) => task.stalled).length, 'parada', 'paradas')} há 14 dias ou mais`
                 : ''} · próxima:
               <a href={'/missao/' + row.pending[0].id}>{row.pending[0].title}</a
               >

@@ -43,6 +43,7 @@ Execução e pendências do plano de 04/11: [reconciliação de 09/11](AUDITORIA
 - Nomes, artes e lore provisórios não são definitivos. A marca atual e a origem das artes estão em [arte/MARCA.md](arte/MARCA.md).
 - O retrato do Herói é provisório (ícone encapuzado aprovado dentro da moldura rúnica) até a decisão DP3; o retrato enviado pelo usuário sempre vence. `heroi.png` não é o padrão.
 - Hoje e Configurações têm um [lembrete opcional de backup a cada 14 dias](A14-LEMBRETE-BACKUP.md), dispensável por mais 14 dias. Instalação vazia não avisa; sem exportação anterior, a carência começa na primeira visita com conteúdo. Cópia automática em pasta continua fora do escopo.
+- Plano em execução: [Dia único](PLANO-DIA-UNICO.md), 7 lotes. "Parada" = missão avulsa com dia e 14 dias sem ação, igual no Hoje e na Roda. Conclusão pela linha só para missões diretas, sem passos e do dia; desfazer usa o estorno existente (débito compensado por ganhos futuros).
 
 ## Entregas recentes
 
@@ -65,6 +66,7 @@ Execução e pendências do plano de 04/11: [reconciliação de 09/11](AUDITORIA
 | #80     | Fundo lateral com compressão A aprovada                      | Menos bytes de imagem não reduz pixels decodificados nem pré-cache total |
 | #56     | Testes não alteram capturas versionadas                      | Reproduzir o defeito antes de corrigir e testar o próprio verificador    |
 | C03     | Leitura compartilhada: concluir com 5 anos em 1,4 s          | Contar leituras antes de otimizar; snapshot em `$state.raw`              |
+| Lote 1  | Linha de Missão no Hoje: um clique, selos e paradas          | Reproduzir a corrida no teste antes de corrigir                          |
 
 ## Pendências técnicas conhecidas
 

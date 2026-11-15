@@ -77,12 +77,9 @@ test('Hoje preserva identidade e composição vertical nas larguras suportadas',
   page,
 }, info) => {
   await seed(page);
-  await expect(
-    page.getByText(
-      'Suas missões te aguardam, e seu futuro depende apenas de você!',
-      { exact: true },
-    ),
-  ).toBeVisible();
+  // The hero describes the day instead of pushing (lote 1, Dia único).
+  await expect(page.locator('.hero-copy p')).toContainText(/\d+ de \d+ feitos/);
+  await expect(page.locator('.hero-copy')).not.toContainText('seu futuro');
   await expect(
     page.getByText('Seu plano de hoje, em um só lugar.', { exact: true }),
   ).toHaveCount(0);

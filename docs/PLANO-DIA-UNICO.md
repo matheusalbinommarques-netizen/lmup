@@ -1,0 +1,43 @@
+# Plano "Dia único" (15/11/2026)
+
+Origem: dogfooding de 14/11/2026 e proposta do Claude Design (projeto "LMUP Revisão e Proposta": Hoje, Linha de Missão, Fluxos, Planejamento, Evolução, Sistema, Revisão). Decisões aprovadas pelo autor em 15/11/2026.
+
+## Problema
+
+O mesmo dia existe em quatro versões que não concordam: Plano do dia (Hoje), Agenda (ordem por horário), Sessão (fila própria, sem horário) e Rotina (ordem que a Agenda ignora). Há três telas de execução (`/missao`, `/ocorrencia`, `/sessoes`) e três critérios de "próxima missão". O Hoje não hierarquiza: pendências paradas e importância alta não aparecem.
+
+## Lotes
+
+Cada lote: worktree própria a partir de `origin/main`, prévia em porta 5180+, PR só depois da aprovação da prévia, merge só com autorização.
+
+| Lote | Entrega                                                                                                                                                                                                                    | Dados                                        |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| 1    | Linha de Missão no Hoje: concluir com um clique e desfazer, selos (importância alta, parada há 14 dias ou mais, em foco), grupo "Paradas há mais tempo", frase de status no lugar da que cobra, correção da criação rápida | Sem mudança                                  |
+| 2    | Ordem única do dia, hora editável na linha ("só hoje" / "daqui para frente"), hora calculada (≈) com 15 min padrão, âncoras e aviso de conflito, arrastar com ▲▼ e teclado, concluídas no lugar                            | Campo opcional de ordem na ocorrência        |
+| 3    | Uma tela de execução com cronômetro opcional; verbos fixos; "Iniciar dia / Continuar o dia / Iniciar bloco"; fila sem ordem própria                                                                                        | Início real opcional no registro de execução |
+| 4    | Navegação Hoje · Missões · Evolução · Jornada; página Evolução; área opcional do projeto; camada de jogo (completa, discreta, desligada); tokens únicos; caixas e "No que investir?" para o Acampamento                    | Área do projeto; preferência de camada       |
+| 5    | Semana, aba "Sem dia" (caixa de entrada + algum dia), captura em linguagem natural com destino visível, inserir bloco, sessões salvas viram rotinas                                                                        | Marcação "algum dia"                         |
+| 6    | Revisão semanal em 3 passos; sugestões de duração (mediana, 3+ medições) e horário (6+ em 21 dias, início real)                                                                                                            | Lê dados dos lotes 2 e 3                     |
+| 7    | Primeiro uso opcional (áreas, início e fim do dia, camada de jogo)                                                                                                                                                         | Preferências                                 |
+
+## Decisões fechadas
+
+- Destinos: Hoje · Missões · Evolução · Jornada, iguais no desktop e no mobile.
+- Camada de jogo padrão para quem pula o primeiro uso: Discreta; usuários atuais continuam em Completa.
+- "Parada" = 14 dias sem ação, só em missão avulsa com dia; sem dia vai para a triagem semanal.
+- Duração: esforço é dificuldade, não tempo; sem duração conta 15 min, sinalizado ("15 min*").
+- Importância alta em dourado-tinta; coral só para conflito e erro.
+- Ícones de linha (Lucide, ISC) na produtividade, empacotados; pintados na navegação, na Jornada e nos estados vazios.
+- Cormorant só de 22 px para cima; interface na fonte do sistema.
+- Clã, `/cla`, `/sessao`, `/laboratorio` saem do menu; as rotas continuam.
+- "Revisões" atuais passam a "Repetições".
+- Sem notificações: lembretes de revisão viram bloco opcional no Dia.
+- Consolidação do design system fica para depois dos 7 lotes.
+
+## Lote 1: o que mudou
+
+- `src/services/dayRow.ts`: `staleDays` (parada), `inFocus` (área em foco na Roda), `canCompleteInline` (conclusão sem tela de execução).
+- `src/lib/ui/DayRow.svelte` e `LineIcon.svelte`; ícones em `src/lib/content/lineIcons.ts` (licença em `LUCIDE-LICENSE.txt`).
+- Hoje: linhas novas, grupo "Paradas há mais tempo" (3 visíveis, "Ver as N paradas"), aviso "concluída · Desfazer", frase "N de M feitos · próxima: …", menu com "Iniciar/Retomar" e "Remarcar".
+- `QuickCreate.svelte`: o título é capturado antes de salvar; o que se digita durante o salvamento não se perde nem se mistura.
+- Desfazer usa o estorno existente (`undoTask`): o saldo fica como débito compensado por ganhos futuros, como na Lista.
