@@ -221,13 +221,23 @@
     }
     busy = true;
     error = '';
+    // Snapshot what is being saved: with "save and create another" the user
+    // may keep typing the next title while this one is still being written.
+    const savedTitle = title.trim();
+    const savedStepsDescription = { steps, description };
+    const continuing = !editTask && saveAnother;
+    if (continuing) {
+      title = '';
+      steps = [];
+      description = '';
+    }
     try {
       const id = await createQuickTask({
         ...planning,
-        title,
+        title: savedTitle,
         requestId,
-        steps: steps.map((step) => step.label),
-        description,
+        steps: savedStepsDescription.steps.map((step) => step.label),
+        description: savedStepsDescription.description,
         projectId: project ? Number(project) : null,
         projectStageId: projectStage || null,
         areaId: Number(area),
@@ -247,22 +257,29 @@
         expectedRevision: definitionRevision,
       });
       await oncreated?.(id, planning.plannedTime ?? null);
-      if (!editTask && saveAnother) {
-        // Preserve area, effort and schedule for fast planning of several missions.
-        savedNotice = `Missão “${title.trim()}” criada. Pronta para a próxima.`;
+      if (continuing) {
+        // Preserve area, effort and schedule for fast planning of several
+        // missions; whatever was typed meanwhile stays in the field.
+        savedNotice = `Missão “${savedTitle}” criada. Pronta para a próxima.`;
         section = 'general';
+        requestId = crypto.randomUUID();
+        saveAnother = false;
+        const typed = { title, steps, description };
         title = '';
         steps = [];
         description = '';
-        requestId = crypto.randomUUID();
-        saveAnother = false;
         initialGroups = groups();
+        ({ title, steps, description } = typed);
         await tick();
         document.getElementById(`${uid}-title`)?.focus();
       } else {
         open = false;
       }
     } catch (cause) {
+      if (continuing && !title.trim() && !steps.length && !description) {
+        title = savedTitle;
+        ({ steps, description } = savedStepsDescription);
+      }
       error =
         cause instanceof Error
           ? cause.message

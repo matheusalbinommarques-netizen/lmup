@@ -32,6 +32,9 @@
   import InvestmentGoalCard from './InvestmentGoalCard.svelte';
   import SupplyBoxesCard from './SupplyBoxesCard.svelte';
   import { guardUpdates } from './guardUpdates';
+  import DayRow from '$lib/ui/DayRow.svelte';
+  import { canCompleteInline, inFocus, staleDays } from '$services/dayRow';
+  import { completeTask, undoTask } from '$services/taskService';
   import {
     readPriority,
     savePriority,
@@ -181,16 +184,103 @@
   const completed = $derived(
     planned.filter((row) => row.status === 'completed').length,
   );
+  // Describes the day; never pushes (design: "o app descreve, não cobra").
   const heroLine = $derived(
     planned.length === 0
       ? 'Seu dia está livre. Um passo pequeno já conta como começo.'
       : completed === planned.length
         ? 'Plano de hoje cumprido. Seu progresso está registrado.'
-        : 'Suas missões te aguardam, e seu futuro depende apenas de você!',
+        : `${completed} de ${planned.length} feitos${next ? ` · próxima: ${next.title}` : ''}`,
   );
   const remaining = $derived(
     planned.filter((row) => row.id !== next?.id && row.status !== 'completed'),
   );
+  type RowInfo = {
+    stale: number | null;
+    focus: boolean;
+    important: boolean;
+    recurring: boolean;
+    canComplete: boolean;
+    support: string;
+  };
+  function rowInfo(row: Occurrence): RowInfo {
+    const task = data?.tasks.find((item) => item.id === row.taskId);
+    const area =
+      data?.areas.find((item) => item.id === row.areaId)?.nome ?? 'Geral';
+    return {
+      stale: task
+        ? staleDays(
+            task,
+            today,
+            data?.occurrences ?? [],
+            data?.executionRecords ?? [],
+          )
+        : null,
+      focus: inFocus(row.areaId, data?.areas ?? [], data?.profile),
+      important: (row.importance ?? task?.importance) === 'high',
+      recurring: !!task?.recurrence,
+      canComplete: canCompleteInline(task, row, today),
+      support: [row.estimatedMinutes ? `${row.estimatedMinutes} min` : '', area]
+        .filter(Boolean)
+        .join(' · '),
+    };
+  }
+  const rowInfos = $derived(
+    new Map(remaining.map((row) => [row.id, rowInfo(row)])),
+  );
+  // Long-stalled missions are grouped at the end of the plan, oldest first.
+  const stalled = $derived(
+    remaining
+      .filter((row) => rowInfos.get(row.id)?.stale)
+      .sort(
+        (a, b) =>
+          (rowInfos.get(b.id)?.stale ?? 0) - (rowInfos.get(a.id)?.stale ?? 0),
+      ),
+  );
+  const regular = $derived(
+    remaining.filter((row) => !rowInfos.get(row.id)?.stale),
+  );
+  let showAllStalled = $state(false);
+  const visibleStalled = $derived(
+    showAllStalled ? stalled : stalled.slice(0, 3),
+  );
+  let lastDone = $state<{ title: string; taskId: number; eventId: string }>();
+  async function quickComplete(row: Occurrence) {
+    if (busy) return;
+    busy = true;
+    error = '';
+    try {
+      const task = data?.tasks.find((item) => item.id === row.taskId);
+      const event = await completeTask(row.taskId, {
+        occurrenceDate: task?.recurrence ? today : undefined,
+      });
+      lastDone = event
+        ? { title: row.title, taskId: row.taskId, eventId: event.id }
+        : undefined;
+      notice = event
+        ? ''
+        : 'Esta missão já estava concluída. Sua recompensa foi preservada.';
+    } catch (cause) {
+      error =
+        cause instanceof Error ? cause.message : 'Não foi possível concluir.';
+    } finally {
+      busy = false;
+    }
+  }
+  async function undoLast() {
+    if (busy || !lastDone) return;
+    busy = true;
+    try {
+      await undoTask(lastDone.taskId, lastDone.eventId);
+      notice = `Conclusão de “${lastDone.title}” desfeita.`;
+      lastDone = undefined;
+    } catch (cause) {
+      error =
+        cause instanceof Error ? cause.message : 'Não foi possível desfazer.';
+    } finally {
+      busy = false;
+    }
+  }
   const received = $derived(
     (data?.events ?? [])
       .filter(
@@ -299,6 +389,18 @@
       {error} <a href="/" data-sveltekit-reload>Tentar novamente</a>
     </p>{/if}
   {#if notice}<p class="journey-banner" role="status">{notice}</p>{/if}
+  {#if lastDone}<div class="undo-toast" role="status">
+      <span aria-hidden="true">✓</span>
+      <span class="undo-text">“{lastDone.title}” concluída.</span>
+      <a href="/progresso">Por que ganhei isso?</a>
+      <button type="button" disabled={busy} onclick={undoLast}>Desfazer</button>
+      <button
+        type="button"
+        class="undo-close"
+        aria-label="Fechar aviso"
+        onclick={() => (lastDone = undefined)}>✕</button
+      >
+    </div>{/if}
   {#if actionError}<p class="journey-error" role="alert">{actionError}</p>{/if}
   {#if !data}<p role="status">Abrindo sua jornada…</p>{:else}
     <header class="journey-heading today-hero">
@@ -411,27 +513,34 @@
               ><ApprovedIcon name="agenda" size={24} />Ver agenda →</a
             >
           </header>
-          {#if remaining.length}<ul>
-              {#each remaining as row (row.id)}<li>
-                  <span class="time-chip">{row.plannedTime ?? 'Flex.'}</span
-                  ><ApprovedIcon name={taskIcon(row)} size={32} />
-                  <div>
-                    <button class="text-action" onclick={() => execute(row)}
-                      >{row.title}</button
-                    ><small
-                      >{row.estimatedMinutes
-                        ? `${row.estimatedMinutes} min · `
-                        : ''}{data.areas.find((area) => area.id === row.areaId)
-                        ?.nome ?? 'Geral'}{row.value > 0
-                        ? ` · ${Math.round(fraction(row) * 100)}%`
-                        : ''}</small
-                    >
-                  </div>
-                  <ContextMenu label={`Ações de hoje para ${row.title}`}
+          {#snippet planRow(row: Occurrence)}
+            {@const info = rowInfos.get(row.id)}
+            <li>
+              <DayRow
+                title={row.title}
+                time={row.plannedTime}
+                support={info?.support}
+                icon={taskIcon(row)}
+                progress={row.value > 0 ? fraction(row) : 0}
+                progressLabel={row.value > 0
+                  ? `${Math.round(fraction(row) * 100)}% feito`
+                  : ''}
+                important={info?.important}
+                staleDays={info?.stale}
+                focus={info?.focus}
+                recurring={info?.recurring}
+                canComplete={info?.canComplete}
+                {busy}
+                oncomplete={() => quickComplete(row)}
+                onopen={() => execute(row)}
+              >
+                {#snippet menu()}<ContextMenu
+                    label={`Ações de hoje para ${row.title}`}
                     ><Button
                       variant="quiet"
                       disabled={busy}
-                      onclick={() => execute(row)}>Executar atividade</Button
+                      onclick={() => execute(row)}
+                      >{row.value > 0 ? 'Retomar' : 'Iniciar'}</Button
                     ><Button
                       variant="quiet"
                       disabled={busy}
@@ -441,11 +550,40 @@
                       variant="quiet"
                       disabled={busy}
                       onclick={() => chooseAction(row, 'reschedule')}
-                      >Reagendar</Button
+                      >Remarcar</Button
                     ></ContextMenu
-                  >
-                </li>{/each}
-            </ul>{:else}<p class="empty-plan">
+                  >{/snippet}
+              </DayRow>
+            </li>
+          {/snippet}
+          {#if remaining.length}<ul>
+              {#each regular as row (row.id)}{@render planRow(row)}{/each}
+            </ul>
+            {#if stalled.length}<div
+                class="stalled"
+                aria-labelledby="stalled-title"
+              >
+                <h3 id="stalled-title">
+                  Paradas há mais tempo <small>({stalled.length})</small>
+                </h3>
+                <p class="lmu-hint">
+                  Nada aqui vence. Se uma couber hoje, comece por ela.
+                </p>
+                <ul>
+                  {#each visibleStalled as row (row.id)}{@render planRow(
+                      row,
+                    )}{/each}
+                </ul>
+                {#if stalled.length > 3}<Button
+                    variant="quiet"
+                    size="s"
+                    onclick={() => (showAllStalled = !showAllStalled)}
+                    >{showAllStalled
+                      ? 'Mostrar menos'
+                      : `Ver as ${stalled.length} paradas`}</Button
+                  >{/if}
+              </div>{/if}
+          {:else}<p class="empty-plan">
               {planned.length
                 ? 'Nenhuma outra missão pendente. Seu progresso está registrado.'
                 : 'Seu dia ainda está livre. Adicione uma missão para montar seu plano.'}
@@ -872,42 +1010,83 @@
     padding: 0;
   }
   .day-plan li {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    border-bottom: 1px solid #55624e55;
-    padding: 7px 0;
-  }
-  .day-plan li > div {
-    flex: 1;
-    min-width: 0;
-  }
-  .day-plan li small {
     display: block;
-    font-size: 0.75rem;
-    color: #a7b9ab;
-  }
-  .time-chip {
-    background: #26342b66;
-    border: 1px solid #5c6b5144;
-    border-radius: 6px;
-    padding: 0.3rem 0.5rem;
-    font-size: 0.82rem;
-    min-width: 58px;
-    text-align: center;
-  }
-  .text-action {
-    border: 0;
-    background: none;
-    color: #efecdf;
-    font: 600 1.1rem var(--lmu-display);
-    padding: 0;
-    text-align: left;
+    border-bottom: 1px solid #55624e55;
+    padding: 2px 0;
   }
   .day-plan li :global(.lmu-button) {
-    min-height: 34px;
-    min-width: 34px;
+    min-height: 36px;
+    min-width: 36px;
     padding: 4px;
+  }
+  .stalled {
+    margin-top: 14px;
+    display: grid;
+    gap: 4px;
+  }
+  .stalled h3 {
+    margin: 0;
+    font: 600 1rem var(--lmu-font);
+    color: #eee9db;
+  }
+  .stalled h3 small {
+    color: #a6b9a6;
+    font-weight: 400;
+  }
+  .stalled .lmu-hint {
+    margin: 0 0 4px;
+    font-size: 0.8rem;
+  }
+  .undo-toast {
+    position: fixed;
+    z-index: 30;
+    left: 50%;
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+    max-width: min(560px, calc(100vw - 32px));
+    padding: 10px 14px;
+    border: 1px solid #3b5047;
+    border-radius: 8px;
+    background: #101f23;
+    color: #eee9db;
+    box-shadow: 0 8px 24px #0009;
+    font: 400 0.9rem var(--lmu-font);
+  }
+  .undo-toast > span:first-child {
+    color: #9fd6c8;
+    font-weight: 700;
+  }
+  .undo-text {
+    flex: 1 1 160px;
+  }
+  .undo-toast a {
+    color: #d6e2db;
+    font-size: 0.85rem;
+  }
+  .undo-toast button {
+    min-height: 36px;
+    padding: 4px 12px;
+    border: 1px solid #70868b;
+    border-radius: 6px;
+    background: #071114;
+    color: #eee9db;
+    font: 600 0.85rem var(--lmu-font);
+    cursor: pointer;
+  }
+  .undo-toast .undo-close {
+    border: 0;
+    background: none;
+    color: #a6b9a6;
+    min-width: 36px;
+  }
+  @media (min-width: 1024px) {
+    .undo-toast {
+      bottom: 24px;
+    }
   }
   .day-plan-footer {
     display: flex;
@@ -1178,8 +1357,9 @@
     .day-plan > header {
       flex-wrap: wrap;
     }
-    .day-plan li {
-      gap: 8px;
+    .day-plan li :global(.lmu-button) {
+      min-height: 44px;
+      min-width: 44px;
     }
     .day-plan h2 {
       font-size: 1.35rem;

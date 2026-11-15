@@ -240,7 +240,10 @@ for (const state of states)
         await expect(page.locator('.day-plan li')).toHaveCount(4);
       if (state === 'rotina') {
         await expect(page.locator('.mission-meta')).toContainText('09:00');
-        await expect(page.locator('.time-chip')).toHaveText(['11:00', '13:00']);
+        await expect(page.locator('.day-plan .day-row .time')).toContainText([
+          '11:00',
+          '13:00',
+        ]);
       }
       if (state === 'concluidas') {
         await expect(page.locator('.daily-summary')).toContainText(
