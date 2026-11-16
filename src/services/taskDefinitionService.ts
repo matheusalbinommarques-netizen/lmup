@@ -19,6 +19,8 @@ export type TaskDefinitionInput = Planning & {
   areaId?: number;
   planToday?: boolean;
   plannedDate?: string | null;
+  /** "Algum dia"; vale só sem dia e sem recorrência. Ausente mantém o atual. */
+  someday?: boolean;
   recurrence?: TaskRecurrence | null;
   pinned?: boolean;
   heroName?: string;
@@ -139,6 +141,14 @@ export async function saveTaskDefinition(
           : 1,
       title,
       plannedDate,
+      // Ter dia, rotina ou recorrência tira a missão do Algum dia.
+      someday:
+        !plannedDate &&
+        !recurrence &&
+        !current?.reviewEnabled &&
+        (input.someday ?? current?.someday)
+          ? true
+          : undefined,
       recurrence,
       ...(input.recurrence !== undefined
         ? { occurrenceOverride: null, skippedDate: null }

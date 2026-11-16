@@ -35,7 +35,14 @@ test('navegação principal e ferramentas preservam todos os destinos', async ({
   const nav = page.getByRole('tablist', {
     name: 'Visualização das missões',
   });
-  await expect(nav.getByRole('tab')).toHaveCount(4);
+  await expect(nav.getByRole('tab')).toHaveCount(5);
+  // Lote 5a: aba Sem dia (o nome inclui a contagem).
+  await nav.getByRole('tab', { name: /^Sem dia/ }).click();
+  await expect(nav.getByRole('tab', { name: /^Sem dia/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await noOverflow(page);
   for (const name of ['Agenda', 'Rotinas', 'Áreas', 'Lista']) {
     await nav.getByRole('tab', { name, exact: true }).click();
     await expect(nav.getByRole('tab', { name, exact: true })).toHaveAttribute(

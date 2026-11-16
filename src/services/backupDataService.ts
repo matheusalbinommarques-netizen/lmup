@@ -389,6 +389,12 @@ export function validateBackup(input: unknown): JourneyBackup {
     )
       fail('data do plano inválida.');
     if (
+      task.someday != null &&
+      (typeof task.someday !== 'boolean' ||
+        (task.someday && (task.plannedDate != null || task.recurrence != null)))
+    )
+      fail('marcação "algum dia" inválida.');
+    if (
       task.creationKey != null &&
       (typeof task.creationKey !== 'string' ||
         !task.creationKey ||

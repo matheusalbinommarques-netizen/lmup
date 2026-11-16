@@ -23,6 +23,7 @@
   import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
   import DayProgress from '$lib/ui/DayProgress.svelte';
   import QuickCreate from './QuickCreate.svelte';
+  import CaptureField from './CaptureField.svelte';
   import { gameLayer } from '$services/gameLayer';
   import { getLevelStateFromTotalXp } from '$services/progression';
   import { guardUpdates } from './guardUpdates';
@@ -102,10 +103,8 @@
       : profileName,
   );
   const view = $derived(data ? todayView(data, today, now) : undefined);
-  const todayRows = $derived([
-    ...(view?.planned ?? []),
-    ...(view?.flexible ?? []),
-  ]);
+  // Sem dia não entra no Hoje (lote 5a): fica na caixa de entrada.
+  const todayRows = $derived(view?.planned ?? []);
   let actionOpen = $state(false);
   let dayAction = $state<{
     row: Occurrence;
@@ -193,9 +192,7 @@
           dayList.filter((row) => slots.get(row.id)?.kind !== 'missed'),
           null,
           true,
-        ) ??
-          selectNextOccurrence(view?.planned ?? [], null, true) ??
-          selectNextOccurrence(view?.flexible ?? []));
+        ) ?? selectNextOccurrence(view?.planned ?? [], null, true));
   });
   const completed = $derived(
     planned.filter((row) => row.status === 'completed').length,
@@ -892,6 +889,11 @@
                 ? 'Nenhuma missão pendente. Seu progresso está registrado.'
                 : 'Seu dia ainda está livre. Adicione uma missão para montar seu plano.'}
             </p>{/if}
+          <CaptureField
+            fallback="today"
+            label="Adicionar ao dia"
+            placeholder="Ex.: Pagar a conta de luz 15min"
+          />
           <div class="day-plan-footer">
             {#if next}<Button
                 variant="quiet"

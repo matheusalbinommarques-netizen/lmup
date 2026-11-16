@@ -13,6 +13,8 @@
   import { makeOccurrence } from '$services/occurrenceService';
   import type { Occurrence } from '$services/productivityTypes';
   import SessionSelection from './SessionSelection.svelte';
+  import Undated from './Undated.svelte';
+  import { inboxView } from '$services/inbox';
   import { areaIconKey } from '$services/areaIcons';
   import ContextMenu from '$lib/ui/ContextMenu.svelte';
   import TaskRemovalDialog from './TaskRemovalDialog.svelte';
@@ -100,13 +102,14 @@
   }
   let selectionOpen = $state(false);
   let workspaceView = $state<
-    'list' | 'agenda' | 'routines' | 'areas' | 'sessions'
+    'list' | 'semdia' | 'agenda' | 'routines' | 'areas' | 'sessions'
   >('list');
   $effect(() => {
     const value = page.url.searchParams.get('view');
     if (value === 'history' || value === 'recovery') filter = 'history';
     workspaceView =
-      value && ['agenda', 'routines', 'areas', 'sessions'].includes(value)
+      value &&
+      ['semdia', 'agenda', 'routines', 'areas', 'sessions'].includes(value)
         ? (value as typeof workspaceView)
         : 'list';
   });
@@ -119,6 +122,7 @@
   const workspaceTitle = $derived(
     {
       list: 'Lista de Missões',
+      semdia: 'Sem dia',
       agenda:
         page.url.searchParams.get('mode') === 'week'
           ? 'Agenda — Semana'
@@ -131,6 +135,7 @@
   const workspaceSubtitle = $derived(
     {
       list: 'Veja, filtre e gerencie todas as suas missões.',
+      semdia: 'O que ainda não tem dia: a caixa de entrada e o algum dia.',
       agenda: 'Organize seu tempo e mantenha o foco.',
       routines: 'Organize suas sequências e mantenha a constância.',
       sessions: 'Retome suas atividades com o progresso preservado.',
@@ -336,6 +341,11 @@
     return !task.recurrence && !task.reviewEnabled && !task.completed;
   };
   const openSessions = $derived(data?.sessions.filter(isOpenSession) ?? []);
+  const undatedCount = $derived.by(() => {
+    if (!data) return 0;
+    const result = inboxView(data, today);
+    return result.inbox.length + result.someday.length;
+  });
   const counts = $derived({
     pending: tasks.filter(hasPendingWork).length,
     today: tasks.filter((task) => scheduledToday(task)).length,
@@ -634,6 +644,12 @@
         label="Visualização das missões"
         items={[
           { id: 'list', label: 'Lista', icon: 'missions' },
+          {
+            id: 'semdia',
+            label: 'Sem dia',
+            icon: 'pendente',
+            count: undatedCount,
+          },
           { id: 'agenda', label: 'Agenda', icon: 'agenda' },
           { id: 'routines', label: 'Rotinas', icon: 'rotina' },
           { id: 'areas', label: 'Áreas', icon: 'mapa' },
@@ -676,6 +692,8 @@
           changeView('list');
         }}
       />
+    {:else if workspaceView === 'semdia'}
+      <Undated snapshot={data} />
     {:else if workspaceView === 'sessions'}
       <div class="organizer-toolbar">{@render statusTabs()}</div>
       <ProductivityWorkspace view="sessions" snapshot={data} />

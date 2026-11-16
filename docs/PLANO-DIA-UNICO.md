@@ -88,3 +88,13 @@ O lote 4 foi dividido: 4a (navegação, Evolução, área do projeto) e 4b (cama
 - Marcações `data-game="xp" | "loot" | "card"` escondem valores por camada em Missões, criação rápida, detalhe da missão, projeto, sessões salvas e aviso pós-execução.
 - Tokens: bloco único de 13 tokens no `.visual-shell` (`visual.css`), com `--lmu-control-line` para bordas de campo; `--d05-label` e `--d05-border` apontam para eles. A troca dos cinzas soltos e o tema claro ficam para a consolidação depois dos 7 lotes.
 - Texto: "construção, item ou melhoria".
+
+## Lote 5a: o que mudou
+
+O lote 5 foi dividido: 5a (Sem dia e captura), 5b (Semana) e 5c (inserir bloco, sessões salvas viram rotinas).
+
+- Missões › Sem dia (`Undated.svelte`, design P2): Caixa de entrada (capturadas sem dia, com idade; 14 dias ou mais = "entra na triagem da revisão semanal") e Algum dia (5 visíveis, "Ver as N"). Ações: Hoje, Escolher dia (próximos 7 dias com contagem, ou outro dia), Algum dia, Trazer para a semana, Voltar para a caixa.
+- Dado: `someday` opcional na missão, só sem dia e sem recorrência, validado no backup; ganhar dia, rotina ou recorrência o remove. `setTaskDay` (`inbox.ts`) muda só o plano, com auditoria e idempotência por requisição; missão com progresso é recusada (remarca-se pelo Dia).
+- Sem dia não entra no Hoje (nem como próxima sugerida) e não ganha selo de parada.
+- Captura em linguagem natural (`capture.ts`, `CaptureField.svelte`): hoje, amanhã, depois de amanhã, dia da semana (o próprio dia = hoje; "ter" sozinho é verbo, vale "terça"), 20/11, "dia 20", "às 14h", 14:30, 9h (a partir das 5h é hora), 30min, 1h30 (até 4h é duração), "algum dia". Hora sem dia vale para hoje. "Usar só o texto" desliga a leitura.
+- A mesma captura fica no Hoje ("Adicionar ao dia"); sem data, entra no Dia de hoje.

@@ -131,6 +131,8 @@ export interface Task extends Planning {
   completionEventId?: string | null;
   creationKey?: string;
   plannedDate?: string | null;
+  /** "Algum dia" (lote 5a): sem dia, fora da caixa de entrada e do Hoje. Só com plannedDate vazio. */
+  someday?: boolean;
   recurrence?: TaskRecurrence | null;
   occurrenceSession?: string;
   lastOccurrenceDate?: string | null;

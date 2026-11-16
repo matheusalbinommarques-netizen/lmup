@@ -147,7 +147,8 @@ test('prioridade manual persiste, não duplica e volta ao automático ao conclui
       .toBeNull();
   }
   await page.locator('.next-mission .context-trigger').click();
-  await page.getByLabel('Manter em destaque').selectOption('102');
+  // Lote 5a: sem dia não entra no Hoje; 115 é uma missão de hoje.
+  await page.getByLabel('Manter em destaque').selectOption('115');
   await expect(page.locator('.next-mission')).toContainText(
     'Escolhida por você',
   );
