@@ -9,6 +9,8 @@ test('endereços antigos do Refúgio, Santuário e Bestiário abrem o Acampament
   await request.post('/__network', { data: 'online' });
   await request.post('/__release', { data: 'a' });
   await page.goto('/acampamento');
+  // O Dexie do app cria o banco depois do load; semear antes cria um banco vazio.
+  await campReady(page);
   await campSeed(page, { gold: 321, food: 12, totalXpEarned: 500 });
   await campReady(page);
   await page.evaluate(() => navigator.serviceWorker.ready);

@@ -123,8 +123,7 @@
     error = '';
     notice = '';
     await goto('/acampamento' + (id === 'center' ? '' : '?scene=' + id), {
-      keepFocus: true,
-      noScroll: true,
+      reset: false,
     });
   }
   async function interact(id: string) {

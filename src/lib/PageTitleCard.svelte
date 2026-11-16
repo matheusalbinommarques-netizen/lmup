@@ -8,13 +8,13 @@
     iconSrc = '',
     iconAlt = '',
     align = 'left',
-  } = $props<{
+  }: {
     title: string;
     subtitle?: string;
     iconSrc?: string;
     iconAlt?: string;
     align?: Align;
-  }>();
+  } = $props();
 </script>
 
 <section class="w-full mb-6 flex justify-center">

@@ -63,7 +63,7 @@ Os seis registros baixos restantes são `deepmerge`, `@rollup/plugin-node-resolv
 ## Evidências e limites
 
 - `src/routes/+layout.ts`: renderização pessoal no navegador e shell pré-renderizado; sem backend de dados do usuário.
-- `svelte.config.js`: adapter estático. A saída de servidor do compilador não é a distribuição servida.
+- `vite.config.js` (plugin `sveltekit`, que substituiu o `svelte.config.js` no SvelteKit 3): adapter estático. A saída de servidor do compilador não é a distribuição servida.
 - `scripts/static-server.mjs` e seus helpers: dependem de módulos nativos do Node; não carregam ESLint, glob, minimatch, cookie ou deepmerge para tratar requisições.
 - `scripts/build-pwa.mjs`: Workbox é usado apenas para listar arquivos; o service worker é gerado do código próprio em `pwa/worker.js`. Não é distribuído `workbox-build` ao navegador.
 - Busca no código não encontrou `use:enhance`, `$app/forms`, `setHeaders` ou uso de cookies de servidor.

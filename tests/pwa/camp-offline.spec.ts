@@ -15,6 +15,8 @@ test('primeira visita offline ao Centro permite construir e conserva as cenas, s
   await request.post('/__network', { data: 'online' });
   await request.post('/__release', { data: 'a' });
   await page.goto('/acampamento');
+  // O Dexie do app cria o banco depois do load; semear antes cria um banco vazio.
+  await campReady(page);
   await campSeed(page, { gold: 100, food: 83, totalXpEarned: 12000 });
   await page.evaluate(() => navigator.serviceWorker.ready);
   await expect

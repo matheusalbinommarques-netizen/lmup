@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   onMount(() => {
-    void goto('/missoes?view=history', { replaceState: true });
+    void goto('/missoes?view=history', { replace: true });
   });
 </script>
 

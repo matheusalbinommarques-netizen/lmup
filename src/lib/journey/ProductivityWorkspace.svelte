@@ -132,11 +132,11 @@
     ),
   );
   function navigate(date: string, mode = week ? 'week' : 'day') {
-    const url = new URL(page.url);
+    const url = new URL(page.url.href);
     url.searchParams.set('view', 'agenda');
     url.searchParams.set('date', date);
     url.searchParams.set('mode', mode);
-    void goto(url.pathname + url.search, { noScroll: true, keepFocus: true });
+    void goto(url.pathname + url.search, { reset: false });
   }
   function addedMission(id: number, time: string | null = null) {
     if (creatingForRoutine && !entries.some((entry) => entry.taskId === id)) {
