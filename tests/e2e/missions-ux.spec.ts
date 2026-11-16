@@ -43,7 +43,7 @@ test('navegação principal e ferramentas preservam todos os destinos', async ({
     'true',
   );
   await noOverflow(page);
-  for (const name of ['Agenda', 'Rotinas', 'Áreas', 'Lista']) {
+  for (const name of ['Semana', 'Rotinas', 'Áreas', 'Lista']) {
     await nav.getByRole('tab', { name, exact: true }).click();
     await expect(nav.getByRole('tab', { name, exact: true })).toHaveAttribute(
       'aria-selected',

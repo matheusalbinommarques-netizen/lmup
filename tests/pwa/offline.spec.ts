@@ -83,8 +83,8 @@ test('agenda e progresso proporcional persistem offline e entram no backup', asy
   await form.getByLabel('Meta de tempo recompensável (minutos)').fill('40');
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
   await expect(form).not.toBeVisible();
-  await page.getByRole('tab', { name: 'Agenda', exact: true }).click();
-  await page.getByRole('button', { name: 'Dia', exact: true }).click();
+  // Lote 5b: a aba virou Semana; o dia fica em mode=day.
+  await page.goto('/missoes?view=agenda&mode=day');
   await page.getByRole('button', { name: 'Iniciar', exact: true }).click();
   await expect(page).toHaveURL(/\/executar\//);
   await page.getByLabel('Minutos feitos até agora').fill('15');

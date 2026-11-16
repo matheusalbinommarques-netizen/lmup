@@ -135,7 +135,8 @@ test('reagendar atividade parcial preserva recursos e a seleção explica indisp
 }) => {
   await page.clock.setFixedTime(new Date(today + 'T15:00:00-03:00'));
   await create(page, 'Leitura parcial', true);
-  await page.getByRole('tab', { name: 'Agenda', exact: true }).click();
+  // Lote 5b: a aba virou Semana; o dia fica em mode=day.
+  await page.goto('/missoes?view=agenda&mode=day');
   await page.getByRole('button', { name: 'Iniciar', exact: true }).click();
   await expect(page).toHaveURL(/\/executar\//);
   await page.getByLabel('Minutos feitos até agora').fill('10');

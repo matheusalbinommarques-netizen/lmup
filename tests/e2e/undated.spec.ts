@@ -152,7 +152,8 @@ test('mover da caixa para hoje, para um dia e para algum dia', async ({
   await page.getByRole('button', { name: /Terça, 17 nov\./ }).click();
   await expect(
     page.getByRole('status').filter({ hasText: 'foi para' }),
-  ).toContainText('Terça, 17 nov.');
+    // Sem ponto dobrado depois de "nov." (corrigido no lote 5b).
+  ).toHaveText('Comprar presente da Ana foi para Terça, 17 nov.');
   await expect(inbox.getByRole('listitem')).toHaveCount(0);
 
   await someday

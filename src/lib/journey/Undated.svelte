@@ -9,7 +9,7 @@
     TRIAGE_DAYS,
     type DayTarget,
   } from '$services/inbox';
-  import { dayLabel, minutesLabel } from '$services/capture';
+  import { dayLabel, minutesLabel, sentence } from '$services/capture';
   import { dateKey } from '$services/rewardService';
   import ContextMenu from '$lib/ui/ContextMenu.svelte';
   import Button from '$lib/ui/Button.svelte';
@@ -57,7 +57,7 @@
           : target === 'inbox'
             ? 'a Caixa de entrada'
             : dayLabel(target.day, dateKey());
-      notice = `${task.title} foi para ${where}.`;
+      notice = sentence(`${task.title} foi para ${where}`);
       // A linha sai da lista: o foco volta ao título da seção.
       await tick();
       (from === 'inbox' ? inboxHeading : somedayHeading)?.focus();

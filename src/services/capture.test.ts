@@ -4,6 +4,7 @@ import {
   destinationLabel,
   minutesLabel,
   parseCapture,
+  sentence,
 } from './capture';
 
 // Sábado, 14 de novembro de 2026 (dia do design P2).
@@ -142,5 +143,7 @@ describe('labels', () => {
     expect(minutesLabel(30)).toBe('30 min');
     expect(minutesLabel(60)).toBe('1 h');
     expect(minutesLabel(90)).toBe('1h30');
+    expect(sentence('Foi para Sexta, 20 nov.')).toBe('Foi para Sexta, 20 nov.');
+    expect(sentence('Foi para Hoje')).toBe('Foi para Hoje.');
   });
 });

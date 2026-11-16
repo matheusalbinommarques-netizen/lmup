@@ -156,18 +156,13 @@ test('edição mantém ícone e navegação por data/aba funciona com Voltar e m
     )?.iconKey,
   ).toBeUndefined();
   await page.goto('/missoes?view=agenda&mode=week&date=2026-11-01');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    'Agenda — Semana',
-  );
-  await page
-    .getByRole('button', { name: 'Abrir dia 2026-11-01', exact: true })
-    .click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Semana');
+  // Desktop: o nome do dia; celular: "Abrir o dia" do dia aberto (lote 5b).
+  await page.getByRole('link', { name: /^(Dom 1|Abrir o dia →)$/ }).click();
   await expect(page).toHaveURL(/mode=day/);
   await expect(page.getByLabel('Data da agenda')).toHaveValue('2026-11-01');
   await page.goBack();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    'Agenda — Semana',
-  );
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Semana');
   await page
     .getByRole('button', { name: 'Ferramentas de missões', exact: true })
     .click();

@@ -144,7 +144,8 @@ test('formulário alinha áreas e passos, permite digitar horário e organiza gr
   await capture(page, 'planning');
   await save(form);
   await save(await newMission(page, 'Respirar com calma'));
-  await page.getByRole('tab', { name: 'Agenda', exact: true }).click();
+  // Lote 5b: a aba virou Semana; o dia fica em mode=day.
+  await page.goto('/missoes?view=agenda&mode=day');
   await expect(
     page.getByRole('heading', { name: 'Com horário 1', exact: true }),
   ).toBeVisible();

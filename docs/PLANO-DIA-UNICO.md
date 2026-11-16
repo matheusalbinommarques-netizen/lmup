@@ -98,3 +98,14 @@ O lote 5 foi dividido: 5a (Sem dia e captura), 5b (Semana) e 5c (inserir bloco, 
 - Sem dia não entra no Hoje (nem como próxima sugerida) e não ganha selo de parada.
 - Captura em linguagem natural (`capture.ts`, `CaptureField.svelte`): hoje, amanhã, depois de amanhã, dia da semana (o próprio dia = hoje; "ter" sozinho é verbo, vale "terça"), 20/11, "dia 20", "às 14h", 14:30, 9h (a partir das 5h é hora), 30min, 1h30 (até 4h é duração), "algum dia". Hora sem dia vale para hoje. "Usar só o texto" desliga a leitura.
 - A mesma captura fica no Hoje ("Adicionar ao dia"); sem data, entra no Dia de hoje.
+
+## Lote 5b: o que mudou
+
+- A aba Agenda virou Semana (decisão do autor, 16/11): abre o planejador do design P1/S1 (`WeekPlanner.svelte`, `week.ts`). A visão de dia da Agenda continua em `?view=agenda&mode=day`, aberta pelo nome do dia (desktop) ou "Abrir o dia" (celular), e volta por "Ver a semana". O resumo semanal antigo saiu.
+- Sete dias a partir de hoje ("Próximos 7 dias"); ‹ › andam de 7 em 7 e "Hoje" volta. Cada dia mostra as missões avulsas na ordem única (hoje = a mesma lista do Hoje), com ◆ hora fixa ou "sem hora" e duração ou "15 min*". O resumo soma só durações reais ("2 pendentes · 1 h com duração · 1 sem").
+- Rotinas e recorrentes ficam num chip por dia ("↻ 2 rotinas · 5 recorrentes"); "Mostrar rotinas" abre os blocos das rotinas e as recorrentes.
+- Layout pela largura disponível: com 1150 px ou mais, coluna Sem dia com 4 itens da caixa e "Escolher dia"; abaixo disso, um cartão "Sem dia" no topo; abaixo de 760 px, um dia aberto por vez (design S1) e "Reordenar" com ▲▼ de 44 px.
+- Mover: arrastar entre dias (desktop), ⋯ com os 7 dias, outro dia, "Sem dia" e "Editar", ou Alt + ←/→. Ordem: arrastar no mesmo dia, Alt + ↑/↓ ou ▲▼; muda só dentro da lista visível. Não leva para dias passados.
+- `moveToDay` (`week.ts`): avulsa sem progresso muda o próprio dia (`setTaskDay`); repetição, rotina ou avulsa com progresso remarca só a ocorrência (`changeOccurrence`), preservando progresso e recompensas. Recusa concluída, dia passado e ocorrência em sessão iniciada; idempotente por requisição.
+- Item sem hora movido para um dia futuro entra no fim; para hoje, segue a regra do lote 2 (antes da próxima hora fixa ainda por vir).
+- Avisos com data não dobram mais o ponto ("20 nov.."), também no Sem dia do 5a (`sentence` em `capture.ts`).

@@ -260,7 +260,8 @@ test('execução aberta pela Agenda registra conclusão sem navegação', async 
   await chooseTracking(form, 'percentage');
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
   await expect(form).not.toBeVisible();
-  await page.getByRole('tab', { name: 'Agenda', exact: true }).click();
+  // Lote 5b: a aba virou Semana; o dia fica em mode=day.
+  await page.goto('/missoes?view=agenda&mode=day');
   await page.getByRole('button', { name: 'Iniciar', exact: true }).click();
   await expect(page).toHaveURL(/\/executar\//);
   const url = page.url();

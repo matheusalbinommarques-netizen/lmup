@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import ContextMenu from '$lib/ui/ContextMenu.svelte';
   import type { Task } from '$services/db';
   import { dayCounts } from '$services/inbox';
@@ -10,12 +11,18 @@
     tasks,
     title,
     text = 'Escolher dia ▾',
+    label,
+    extra,
     onchoose,
   }: {
     tasks: Task[];
     /** Missão, para o nome acessível do menu. */
     title: string;
     text?: string;
+    /** Nome acessível do menu; padrão "Escolher dia para <missão>". */
+    label?: string;
+    /** Ações depois dos dias (o ⋯ da Semana). */
+    extra?: Snippet;
     onchoose: (day: string) => void;
   } = $props();
   const uid = $props.id();
@@ -24,7 +31,7 @@
   let other = $state('');
 </script>
 
-<ContextMenu label={`Escolher dia para ${title}`} {text}>
+<ContextMenu label={label ?? `Escolher dia para ${title}`} {text}>
   <div class="day-picker">
     {#each counts as [day, count] (day)}<button
         type="button"
@@ -48,6 +55,7 @@
         onclick={() => onchoose(other)}>Levar</button
       >
     </div>
+    {#if extra}<div class="day-extra">{@render extra()}</div>{/if}
   </div>
 </ContextMenu>
 
@@ -109,6 +117,13 @@
     justify-content: center;
     min-width: 64px;
     border: 1px solid var(--lmu-control-line, #70868b);
+  }
+  .day-extra {
+    display: grid;
+    gap: 2px;
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px solid var(--lmu-line, #3b5047);
   }
   .day-go:disabled {
     opacity: 0.5;

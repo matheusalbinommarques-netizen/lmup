@@ -133,8 +133,8 @@ test('criação avançada, parcelas, correção, compensação e persistência e
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await create(page, 'Inglês por 40 minutos', advanced);
-  await page.getByRole('tab', { name: 'Agenda', exact: true }).click();
-  await page.getByRole('button', { name: 'Dia', exact: true }).click();
+  // Lote 5b: a aba virou Semana; o dia fica em mode=day.
+  await page.goto('/missoes?view=agenda&mode=day');
   await page.getByRole('button', { name: 'Iniciar', exact: true }).click();
   await expect(page).toHaveURL(/\/executar\//);
   // Corrections live on the record page of the occurrence.

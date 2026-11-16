@@ -142,8 +142,8 @@ test('adoção e conflitos preservam dados e ícones da área atualizam Lista, H
       .locator('.next-mission .approved-icon img[src*="/exercicio/"]')
       .first(),
   ).toBeVisible();
-  await page.getByRole('tab', { name: 'Agenda', exact: true }).click();
-  await page.getByRole('button', { name: 'Dia', exact: true }).click();
+  // Lote 5b: a aba virou Semana; o dia fica em mode=day.
+  await page.goto('/missoes?view=agenda&mode=day');
   const agendaRow = page
     .locator('.occurrence-row')
     .filter({ hasText: 'Ler um capítulo' });

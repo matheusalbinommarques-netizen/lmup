@@ -14,6 +14,7 @@
   import type { Occurrence } from '$services/productivityTypes';
   import SessionSelection from './SessionSelection.svelte';
   import Undated from './Undated.svelte';
+  import WeekPlanner from './WeekPlanner.svelte';
   import { inboxView } from '$services/inbox';
   import { areaIconKey } from '$services/areaIcons';
   import ContextMenu from '$lib/ui/ContextMenu.svelte';
@@ -117,16 +118,16 @@
     completion = undefined;
     const url = new URL(page.url);
     url.searchParams.set('view', view);
+    // Mode e data só valem dentro da Semana.
+    url.searchParams.delete('mode');
+    url.searchParams.delete('date');
     void goto(url.pathname + url.search, { noScroll: true, keepFocus: true });
   }
   const workspaceTitle = $derived(
     {
       list: 'Lista de Missões',
       semdia: 'Sem dia',
-      agenda:
-        page.url.searchParams.get('mode') === 'week'
-          ? 'Agenda — Semana'
-          : 'Agenda',
+      agenda: page.url.searchParams.get('mode') === 'day' ? 'Dia' : 'Semana',
       routines: 'Rotinas',
       sessions: 'Lista de Missões',
       areas: 'Áreas',
@@ -136,7 +137,10 @@
     {
       list: 'Veja, filtre e gerencie todas as suas missões.',
       semdia: 'O que ainda não tem dia: a caixa de entrada e o algum dia.',
-      agenda: 'Organize seu tempo e mantenha o foco.',
+      agenda:
+        page.url.searchParams.get('mode') === 'day'
+          ? 'Um dia por vez: o que foi feito e o que falta.'
+          : 'Os próximos dias e o que entra em cada um.',
       routines: 'Organize suas sequências e mantenha a constância.',
       sessions: 'Retome suas atividades com o progresso preservado.',
       areas: 'Cuide das áreas que organizam suas missões.',
@@ -650,7 +654,7 @@
             icon: 'pendente',
             count: undatedCount,
           },
-          { id: 'agenda', label: 'Agenda', icon: 'agenda' },
+          { id: 'agenda', label: 'Semana', icon: 'semana' },
           { id: 'routines', label: 'Rotinas', icon: 'rotina' },
           { id: 'areas', label: 'Áreas', icon: 'mapa' },
         ]}
@@ -694,6 +698,8 @@
       />
     {:else if workspaceView === 'semdia'}
       <Undated snapshot={data} />
+    {:else if workspaceView === 'agenda' && page.url.searchParams.get('mode') !== 'day'}
+      <WeekPlanner snapshot={data} />
     {:else if workspaceView === 'sessions'}
       <div class="organizer-toolbar">{@render statusTabs()}</div>
       <ProductivityWorkspace view="sessions" snapshot={data} />

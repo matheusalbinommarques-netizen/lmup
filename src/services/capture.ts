@@ -308,3 +308,7 @@ export function minutesLabel(minutes: number): string {
   const rest = minutes % 60;
   return rest ? `${hours}h${pad(rest)}` : `${hours} h`;
 }
+
+/** Fecha a frase sem dobrar o ponto de "20 nov.". */
+export const sentence = (text: string) =>
+  text.endsWith('.') ? text : `${text}.`;

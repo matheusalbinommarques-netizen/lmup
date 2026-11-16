@@ -54,7 +54,6 @@
     snapshot: JourneySnapshot;
   } = $props();
   let day = $state(dateKey()),
-    week = $state(false),
     rows = $state<Occurrence[]>([]),
     contextRows = $state<Occurrence[]>([]),
     routines = $state<Routine[]>([]);
@@ -93,11 +92,7 @@
     const date = page.url.searchParams.get('date');
     if (!date) day = dateKey();
     if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) day = date;
-    week = page.url.searchParams.get('mode') === 'week';
   });
-  const weekStart = $derived(
-    addCalendarDays(day, -((new Date(day + 'T12:00:00').getDay() + 6) % 7)),
-  );
   const dayRows = $derived(
     day === dateKey()
       ? todayView(snapshot, day).planned
@@ -131,11 +126,12 @@
           .includes(routineSearch.toLocaleLowerCase('pt-BR')),
     ),
   );
-  function navigate(date: string, mode = week ? 'week' : 'day') {
+  // A semana é o planejador da Semana (lote 5b); aqui fica só o dia.
+  function navigate(date: string) {
     const url = new URL(page.url);
     url.searchParams.set('view', 'agenda');
     url.searchParams.set('date', date);
-    url.searchParams.set('mode', mode);
+    url.searchParams.set('mode', 'day');
     void goto(url.pathname + url.search, { noScroll: true, keepFocus: true });
   }
   function addedMission(id: number, time: string | null = null) {
@@ -164,8 +160,8 @@
   let timer: ReturnType<typeof setInterval>;
   let now = $state(new Date());
   $effect(() => {
-    const from = view === 'agenda' && week ? weekStart : day;
-    const to = view === 'agenda' && week ? addCalendarDays(weekStart, 6) : day;
+    const from = day;
+    const to = day;
     const sub = liveQuery(async () => ({
       rows: await plannedOccurrences(addCalendarDays(from, -7), to),
       routines: await db.routines.toArray(),
@@ -205,11 +201,6 @@
     timer = setInterval(() => (now = new Date()), 30000);
     return () => clearInterval(timer);
   });
-  const agendaDays = $derived(
-    Array.from({ length: week ? 7 : 1 }, (_, index) =>
-      addCalendarDays(weekStart, index),
-    ),
-  );
   const tips = $derived(
     recommendations(day === dateKey() ? dayRows : contextRows, now).filter(
       (tip) => !dismiss.includes(tip.id),
@@ -382,7 +373,7 @@
       <Button
         variant="secondary"
         aria-label="Período anterior"
-        onclick={() => navigate(addCalendarDays(day, week ? -7 : -1))}>‹</Button
+        onclick={() => navigate(addCalendarDays(day, -1))}>‹</Button
       >
       <label
         >Data da agenda<input
@@ -394,121 +385,72 @@
       <Button
         variant="secondary"
         aria-label="Próximo período"
-        onclick={() => navigate(addCalendarDays(day, week ? 7 : 1))}>›</Button
+        onclick={() => navigate(addCalendarDays(day, 1))}>›</Button
       >
       <Button variant="quiet" onclick={() => navigate(dateKey())}>Hoje</Button>
-      <div class="view-switch">
-        <Button
-          variant="secondary"
-          aria-pressed={!week}
-          onclick={() => navigate(day, 'day')}>Dia</Button
-        ><Button
-          variant="secondary"
-          aria-pressed={week}
-          onclick={() => navigate(day, 'week')}>Semana</Button
+      <Button
+        variant="secondary"
+        onclick={() =>
+          goto('/missoes?view=agenda', { noScroll: true, keepFocus: true })}
+        >Ver a semana</Button
+      >
+    </div>
+    <div class="daily-agenda">
+      <aside class="agenda-summary rpg-frame">
+        <h2>Progresso do dia</h2>
+        <DayProgress completed={completedDay} total={dayRows.length} />
+        <p>
+          {new Date(day + 'T12:00:00').toLocaleDateString('pt-BR', {
+            weekday: 'long',
+            day: '2-digit',
+            month: 'long',
+          })}
+        </p>
+        <small
+          >Horários são inícios desejados. Seu progresso permanece na missão.</small
         >
+      </aside>
+      <div class="timeline">
+        {#if selected.length}<Button
+            disabled={busy}
+            onclick={() =>
+              startSession(dayRows.filter((row) => selected.includes(row.id)))}
+            >Executar seleção como sessão ({selected.length})</Button
+          >{/if}
+        {#each ['timed', 'flexible'] as group (group)}
+          {@const groupRows = dayRows.filter((row) =>
+            group === 'timed' ? !!row.plannedTime : !row.plannedTime,
+          )}
+          {#if groupRows.length}
+            <h2 class="timeline-label">
+              <ApprovedIcon name="agenda" size={18} />{group === 'timed'
+                ? 'Com horário'
+                : 'Horário flexível'}<span>{groupRows.length}</span>
+            </h2>
+            {#each groupRows as row (row.id)}
+              <div class="timeline-entry">
+                <OccurrenceRow
+                  {row}
+                  iconKey={iconKey(row)}
+                  area={areaName(row)}
+                  {busy}
+                  checked={selected.includes(row.id)}
+                  onselect={(checked) =>
+                    (selected = checked
+                      ? [...selected, row.id]
+                      : selected.filter((id) => id !== row.id))}
+                  onopen={() => open(row)}
+                  onedit={() => editFuture(row)}
+                />
+              </div>
+            {/each}
+          {/if}
+        {/each}
+        {#if !dayRows.length}<p class="workspace-empty">
+            Sem compromissos neste dia. Sua agenda está livre para planejar.
+          </p>{/if}
       </div>
     </div>
-    {#if week}
-      <div class="week-grid" aria-label="Resumo da semana">
-        {#each agendaDays as date (date)}
-          {@const activities = rows.filter(
-            (row) =>
-              row.plannedDate === date &&
-              !['discarded', 'excused'].includes(row.status),
-          )}
-          {@const done = activities.filter(
-            (row) => row.status === 'completed',
-          ).length}
-          <button
-            class="week-day rpg-frame"
-            class:today={date === dateKey()}
-            onclick={() => navigate(date, 'day')}
-            aria-label={`Abrir dia ${date}`}
-          >
-            <span class="week-date"
-              >{new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', {
-                weekday: 'short',
-                day: '2-digit',
-                month: '2-digit',
-              })}</span
-            >
-            <DayProgress completed={done} total={activities.length} compact />
-            <span class="week-activities"
-              >{#each activities.slice(0, 3) as row (row.id)}<span
-                  ><ApprovedIcon
-                    name={row.status === 'completed'
-                      ? 'concluida'
-                      : iconKey(row)}
-                    size={22}
-                  /><span>{row.title}</span></span
-                >{/each}{#if activities.length > 3}<small
-                  >+ {activities.length - 3} atividades</small
-                >{/if}{#if !activities.length}<small>Dia livre</small
-                >{/if}</span
-            ><span class="day-link">Ver dia →</span>
-          </button>
-        {/each}
-      </div>
-    {:else}
-      <div class="daily-agenda">
-        <aside class="agenda-summary rpg-frame">
-          <h2>Progresso do dia</h2>
-          <DayProgress completed={completedDay} total={dayRows.length} />
-          <p>
-            {new Date(day + 'T12:00:00').toLocaleDateString('pt-BR', {
-              weekday: 'long',
-              day: '2-digit',
-              month: 'long',
-            })}
-          </p>
-          <small
-            >Horários são inícios desejados. Seu progresso permanece na missão.</small
-          >
-        </aside>
-        <div class="timeline">
-          {#if selected.length}<Button
-              disabled={busy}
-              onclick={() =>
-                startSession(
-                  dayRows.filter((row) => selected.includes(row.id)),
-                )}>Executar seleção como sessão ({selected.length})</Button
-            >{/if}
-          {#each ['timed', 'flexible'] as group (group)}
-            {@const groupRows = dayRows.filter((row) =>
-              group === 'timed' ? !!row.plannedTime : !row.plannedTime,
-            )}
-            {#if groupRows.length}
-              <h2 class="timeline-label">
-                <ApprovedIcon name="agenda" size={18} />{group === 'timed'
-                  ? 'Com horário'
-                  : 'Horário flexível'}<span>{groupRows.length}</span>
-              </h2>
-              {#each groupRows as row (row.id)}
-                <div class="timeline-entry">
-                  <OccurrenceRow
-                    {row}
-                    iconKey={iconKey(row)}
-                    area={areaName(row)}
-                    {busy}
-                    checked={selected.includes(row.id)}
-                    onselect={(checked) =>
-                      (selected = checked
-                        ? [...selected, row.id]
-                        : selected.filter((id) => id !== row.id))}
-                    onopen={() => open(row)}
-                    onedit={() => editFuture(row)}
-                  />
-                </div>
-              {/each}
-            {/if}
-          {/each}
-          {#if !dayRows.length}<p class="workspace-empty">
-              Sem compromissos neste dia. Sua agenda está livre para planejar.
-            </p>{/if}
-        </div>
-      </div>
-    {/if}
     <details class="secondary-tools">
       <summary>Sugestões de planejamento</summary>
       {#each tips as tip (tip.id)}<p>
@@ -1135,11 +1077,6 @@
     color: #ecd498;
     margin-right: auto;
   }
-  .view-switch {
-    display: flex;
-    gap: 6px;
-    margin-left: auto;
-  }
   .date-navigation label {
     display: flex;
     align-items: center;
@@ -1217,56 +1154,6 @@
     border-left: 1px solid #8d744a66;
     color: #bccbbd;
     font-size: 0.75rem;
-  }
-  .week-grid {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 8px;
-    align-items: start;
-  }
-  .week-day {
-    color: #e8e2cb;
-    text-align: left;
-    padding: 12px 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    min-width: 0;
-  }
-  .week-day.today {
-    border-color: #e7ba52;
-  }
-  .week-date {
-    text-transform: capitalize;
-    font-size: 0.8rem;
-    min-height: 32px;
-    text-align: center;
-    font-size: 0.85rem;
-  }
-  .week-activities {
-    display: grid;
-    gap: 10px;
-    margin: 8px 0;
-    width: 100%;
-  }
-  .week-activities > span {
-    overflow-wrap: anywhere;
-    display: flex;
-    align-items: start;
-    gap: 4px;
-    font-size: 0.8rem;
-    line-height: 1.4;
-    min-width: 0;
-  }
-  .week-activities small {
-    font-size: 0.78rem;
-    color: #a6b99e;
-  }
-  .day-link {
-    font-size: 0.78rem;
-    color: #edd19a;
-    border-top: 1px solid #6d704955;
-    padding-top: 8px;
   }
   .secondary-tools {
     font-size: 0.8rem;
@@ -1553,12 +1440,6 @@
     .routine-list {
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     }
-    .week-grid {
-      gap: 4px;
-    }
-    .week-day {
-      padding: 12px 7px;
-    }
     .daily-agenda {
       grid-template-columns: 150px minmax(0, 1fr);
       gap: 12px;
@@ -1586,32 +1467,6 @@
     }
     .timeline-entry::before {
       left: -19px;
-    }
-    .week-grid {
-      grid-template-columns: 1fr;
-      gap: 8px;
-    }
-    .week-day {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 110px;
-      gap: 8px 18px;
-      padding: 14px;
-    }
-    .week-date {
-      min-height: 0;
-      text-align: left;
-      align-self: center;
-    }
-    .week-activities {
-      grid-column: 1/-1;
-      gap: 6px;
-      margin: 0;
-    }
-    .day-link {
-      grid-column: 1/-1;
-    }
-    .view-switch {
-      margin-left: 0;
     }
     .date-navigation {
       gap: 7px;
