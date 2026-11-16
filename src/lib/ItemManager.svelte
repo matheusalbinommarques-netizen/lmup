@@ -2,11 +2,11 @@
 <script lang="ts">
   import { db, type Task } from '$services/db';
   import { liveQuery } from 'dexie';
-  import { browser } from '$app/environment';
+  import { browser } from '$app/env';
   import { xpService } from '$services/xpService';
 
   // props
-  let { areaId } = $props<{ areaId: number }>();
+  let { areaId }: { areaId: number } = $props();
 
   // Representação simplificada só pra UI
   type LegacyItem = {

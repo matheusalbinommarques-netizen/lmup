@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   onMount(() => {
-    void goto('/missoes' + window.location.search, { replaceState: true });
+    void goto('/missoes' + window.location.search, { replace: true });
   });
 </script>
 

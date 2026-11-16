@@ -5,9 +5,11 @@
   import { saveArea, deleteArea } from '$services/areaService';
 
   // --- Props ---
-  let { selectedId = $bindable('all') } = $props<{
+  let {
+    selectedId = $bindable('all'),
+  }: {
     selectedId: 'all' | number;
-  }>();
+  } = $props();
 
   // --- Estado Local ---
   let areas = $state<Area[]>([]);

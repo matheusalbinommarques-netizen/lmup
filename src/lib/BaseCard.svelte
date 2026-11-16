@@ -1,11 +1,11 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
 
-  const props = $props<{
+  const props: {
     title?: string;
     class?: string;
     children?: Snippet;
-  }>();
+  } = $props();
 </script>
 
 <section

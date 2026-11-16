@@ -11,7 +11,7 @@
       : '/mundo',
   );
   onMount(() => {
-    void goto(destination, { replaceState: true });
+    void goto(destination, { replace: true });
   });
 </script>
 
