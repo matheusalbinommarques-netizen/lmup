@@ -74,7 +74,8 @@ test('Plano do dia e Agenda seguem a ordem dos horários', async ({ page }) => {
   await expect(plan.getByText('Ler às dez', { exact: true })).toBeVisible();
   expect(await visualOrder(plan, BY_TIME)).toEqual(BY_TIME);
 
-  await page.goto('/missoes?view=agenda');
+  // Lote 5b: a aba virou Semana; o dia fica em mode=day.
+  await page.goto('/missoes?view=agenda&mode=day');
   const timeline = page.locator('.timeline');
   await expect(
     timeline.getByText('Ler às dez', { exact: true }).first(),

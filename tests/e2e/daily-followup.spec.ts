@@ -122,7 +122,8 @@ test('conclusão recorrente sai de Pendentes, mantém histórico e aparece marca
   await expect(
     page.locator('.history-row').filter({ hasText: 'Fruta diária' }),
   ).toBeVisible();
-  await page.getByRole('tab', { name: 'Agenda', exact: true }).click();
+  // Lote 5b: a aba virou Semana; o dia fica em mode=day.
+  await page.goto('/missoes?view=agenda&mode=day');
   const agenda = page
     .locator('.occurrence-row')
     .filter({ hasText: 'Fruta diária' });
