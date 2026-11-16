@@ -2,15 +2,15 @@
   import type { Snippet } from 'svelte';
 
   // Variantes aceitas
-  export type Variant = 'primary' | 'secondary' | 'success' | 'danger';
+  type Variant = 'primary' | 'secondary' | 'success' | 'danger';
 
-  const props = $props<{
+  const props: {
     variant?: Variant;
     disabled?: boolean;
     type?: 'button' | 'submit' | 'reset';
     onclick?: (event: MouseEvent) => void;
     children?: Snippet;
-  }>();
+  } = $props();
 
   const variants: Record<Variant, string> = {
     primary: 'bg-primary hover:bg-primary/90 text-white',

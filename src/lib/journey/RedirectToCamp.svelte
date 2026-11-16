@@ -3,7 +3,7 @@
   import { goto } from '$app/navigation';
   // Endereços antigos (Refúgio, Santuário) seguem para o Acampamento.
   onMount(() => {
-    void goto('/acampamento', { replaceState: true });
+    void goto('/acampamento', { replace: true });
   });
 </script>
 

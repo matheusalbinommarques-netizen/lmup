@@ -1,4 +1,4 @@
-import { dev } from '$app/environment';
+import { dev } from '$app/env';
 import { writable, get } from 'svelte/store';
 import { unsafeToUpdate, updateLocked } from './updateSafety';
 export const APP_SCHEMA = 6,

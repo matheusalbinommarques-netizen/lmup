@@ -7,7 +7,7 @@
   import Dialog from '$lib/ui/Dialog.svelte';
   import Field from '$lib/ui/Field.svelte';
   import Button from '$lib/ui/Button.svelte';
-  let { profile, close } = $props<{ profile: Profile; close: () => void }>();
+  let { profile, close }: { profile: Profile; close: () => void } = $props();
   // A draft snapshots identity once. Live profile changes must not overwrite typing.
   const original = untrack(() => ({
     name: profile.name,

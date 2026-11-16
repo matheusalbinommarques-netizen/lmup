@@ -128,11 +128,11 @@
   );
   // A semana é o planejador da Semana (lote 5b); aqui fica só o dia.
   function navigate(date: string) {
-    const url = new URL(page.url);
+    const url = new URL(page.url.href);
     url.searchParams.set('view', 'agenda');
     url.searchParams.set('date', date);
     url.searchParams.set('mode', 'day');
-    void goto(url.pathname + url.search, { noScroll: true, keepFocus: true });
+    void goto(url.pathname + url.search, { reset: false });
   }
   function addedMission(id: number, time: string | null = null) {
     if (creatingForRoutine && !entries.some((entry) => entry.taskId === id)) {
@@ -390,8 +390,7 @@
       <Button variant="quiet" onclick={() => navigate(dateKey())}>Hoje</Button>
       <Button
         variant="secondary"
-        onclick={() =>
-          goto('/missoes?view=agenda', { noScroll: true, keepFocus: true })}
+        onclick={() => goto('/missoes?view=agenda', { reset: false })}
         >Ver a semana</Button
       >
     </div>

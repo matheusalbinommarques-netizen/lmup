@@ -321,7 +321,7 @@
       freshEventId = '';
       correctionNotice = `Conclusão desfeita. Débito a compensar: ${undoImpact?.xp ?? 0} XP · ${undoImpact?.gold ?? 0} Ouro · ${undoImpact?.food ?? 0} Comida.`;
       busy = false;
-      if (requestedReceipt) await goto(`/missao/${id}`, { replaceState: true });
+      if (requestedReceipt) await goto(`/missao/${id}`, { replace: true });
     } catch (cause) {
       error =
         cause instanceof Error ? cause.message : 'Não foi possível desfazer.';

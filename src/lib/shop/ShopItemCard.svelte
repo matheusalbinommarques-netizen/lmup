@@ -10,7 +10,7 @@
     canAfford = true,
     onBuy = () => {},
     onEquip = () => {},
-  } = $props<{
+  }: {
     item: ShopItem;
     owned?: boolean;
     equipped?: boolean;
@@ -18,7 +18,7 @@
     canAfford?: boolean;
     onBuy?: () => void;
     onEquip?: () => void; // toggle equip/desequipar
-  }>();
+  } = $props();
 
   type RarityConfig = {
     label: string;

@@ -116,12 +116,12 @@
   });
   function changeView(view: string) {
     completion = undefined;
-    const url = new URL(page.url);
+    const url = new URL(page.url.href);
     url.searchParams.set('view', view);
     // Mode e data só valem dentro da Semana.
     url.searchParams.delete('mode');
     url.searchParams.delete('date');
-    void goto(url.pathname + url.search, { noScroll: true, keepFocus: true });
+    void goto(url.pathname + url.search, { reset: false });
   }
   const workspaceTitle = $derived(
     {

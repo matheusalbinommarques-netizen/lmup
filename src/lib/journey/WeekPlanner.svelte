@@ -115,12 +115,12 @@
   });
 
   function navigate(date: string | null) {
-    const url = new URL(page.url);
+    const url = new URL(page.url.href);
     url.searchParams.set('view', 'agenda');
     url.searchParams.delete('mode');
     if (date && date !== today) url.searchParams.set('date', date);
     else url.searchParams.delete('date');
-    void goto(url.pathname + url.search, { noScroll: true, keepFocus: true });
+    void goto(url.pathname + url.search, { reset: false });
   }
   const dayHref = (date: string) =>
     `/missoes?view=agenda&mode=day&date=${date}`;

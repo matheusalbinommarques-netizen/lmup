@@ -1,10 +1,14 @@
 {
-  "extends": "./.svelte-kit/tsconfig.json",
+  "extends": "$app/tsconfig",
   "compilerOptions": {
     "moduleResolution": "bundler",
-    "types": ["svelte", "vite/client", "vitest/globals"],
+    "types": ["$app/types", "svelte", "vite/client", "vitest/globals"],
     "strict": true,
     "skipLibCheck": true,
-    "esModuleInterop": true
-  }
+    "esModuleInterop": true,
+    "allowJs": false,
+    "checkJs": false
+  },
+  "include": ["src", "tests", "vite.config.js"],
+  "exclude": ["src/service-worker"]
 }

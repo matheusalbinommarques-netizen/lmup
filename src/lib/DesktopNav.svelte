@@ -1,20 +1,9 @@
 <!-- src/lib/DesktopNav.svelte -->
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
 
-  // Rota atual (mantida em state; atualizada via subscribe ao store `page`)
-  let pathname = $state('/');
-
-  let unsub: (() => void) | null = null;
-  onMount(() => {
-    unsub = page.subscribe((p) => {
-      pathname = p.url.pathname;
-    });
-  });
-  onDestroy(() => {
-    unsub?.();
-  });
+  // Rota atual (reativa via `$app/state`; `$app/stores` saiu no SvelteKit 3)
+  const pathname = $derived(page.url.pathname);
 
   type NavLink = {
     href: string;
