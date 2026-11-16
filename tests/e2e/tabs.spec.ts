@@ -15,6 +15,11 @@ test('abas de Missões têm papel de aba, setas do teclado e visual distinto da 
 
   await list.focus();
   await page.keyboard.press('ArrowRight');
+  // Lote 5a: Sem dia fica entre Lista e Agenda.
+  const undated = views.getByRole('tab', { name: /^Sem dia/ });
+  await expect(undated).toBeFocused();
+  await expect(page).toHaveURL(/view=semdia/);
+  await page.keyboard.press('ArrowRight');
   const agenda = views.getByRole('tab', { name: 'Agenda', exact: true });
   await expect(agenda).toBeFocused();
   await expect(agenda).toHaveAttribute('aria-selected', 'true');

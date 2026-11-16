@@ -53,23 +53,35 @@ test('seis telas finais carregam artes e ações sem erros ou transbordamento', 
   expect(errors).toEqual([]);
 });
 
-test('Hoje conserva criação e escolha manual com duas missões sem data', async ({
+test('Hoje conserva criação e escolha manual com duas missões sem hora', async ({
   page,
 }) => {
   await page.goto('/');
-  for (const title of ['Uma ideia flexível', 'Outra ideia flexível']) {
+  // Lote 5a: "Sem data" vai para Missões › Sem dia e não entra no Hoje.
+  for (const [title, undated] of [
+    ['Ideia guardada', true],
+    ['Uma ideia flexível', false],
+    ['Outra ideia flexível', false],
+  ] as const) {
     await page
       .getByRole('button', { name: 'Nova missão', exact: true })
       .click();
     const form = page.getByRole('dialog', { name: 'Uma nova missão' });
     await form.getByLabel('O que você quer fazer?').fill(title);
-    await form.getByRole('tab', { name: 'Planejamento', exact: true }).click();
-    await form.getByRole('button', { name: 'Sem data', exact: true }).click();
+    if (undated) {
+      await form
+        .getByRole('tab', { name: 'Planejamento', exact: true })
+        .click();
+      await form.getByRole('button', { name: 'Sem data', exact: true }).click();
+    }
     await form
       .getByRole('button', { name: 'Criar missão', exact: true })
       .click();
     await expect(form).not.toBeVisible();
   }
+  await expect(
+    page.locator('.day-plan').getByText('Ideia guardada'),
+  ).toHaveCount(0);
   await page.locator('.next-mission .context-trigger').click();
   await page
     .getByLabel('Manter em destaque')
