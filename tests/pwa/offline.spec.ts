@@ -393,6 +393,11 @@ test('abre URLs não visitadas, cria e salva notas com a rede desligada', async 
       page.getByRole('heading', { name: title, level: 1, exact: true }),
     ).toBeVisible();
   }
+  // Revisão semanal (lote 6a): o título traz a semana da vez.
+  await page.goto('/revisao-semanal');
+  await expect(
+    page.getByRole('heading', { name: /^A semana de /, level: 1 }),
+  ).toBeVisible();
   await openMilestones(page);
   await page
     .getByRole('button', {
