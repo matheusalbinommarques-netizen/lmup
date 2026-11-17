@@ -20,10 +20,10 @@
     "test:e2e": "playwright test",
     "test:capture-isolation": "node scripts/reward-captures.mjs --check",
     "capture:recompensa": "node scripts/reward-captures.mjs --regenerate",
-    "audit:security": "npm audit --audit-level=moderate",
+    "audit:security": "node scripts/audit-security.mjs",
     "lint": "eslint .",
     "check": "svelte-kit sync && svelte-check",
-    "verify": "npm run lint && npm run check && npm run test:run && npm run test:publication && npm run build",
+    "verify": "npm run lint && npm run check && npm run test:run && npm run test:publication && npm run test:audit && npm run build",
     "test:pwa": "playwright test --config playwright.pwa.config.ts",
     "package:beta": "node scripts/package-release.mjs",
     "verify:package": "node scripts/verify-package.mjs",
@@ -39,7 +39,8 @@
     "dev:camp": "node scripts/camp-preview.mjs dev",
     "build:camp": "node scripts/camp-preview.mjs build",
     "preview:camp": "node scripts/camp-preview.mjs serve",
-    "test:camp": "playwright test --config playwright.camp-modular.config.ts"
+    "test:camp": "playwright test --config playwright.camp-modular.config.ts",
+    "test:audit": "node --test scripts/audit-policy.test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",
