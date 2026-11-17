@@ -41,7 +41,7 @@ São 9 entradas de severidade baixa, várias propagadas a partir das mesmas depe
 | `deepmerge`                     | Dependência de ferramentas de build/configuração; não é usada pelo aplicativo para mesclar entradas do usuário           | Não aceitar configuração de terceiros não confiáveis. Reavaliar nas atualizações do conjunto de build |
 | Plugins, adaptador, Workbox/PWA | Entradas propagadas pelas dependências acima                                                                             | Não forçar downgrade/migração principal sugerido genericamente pelo audit                             |
 
-Não há alegação de risco zero. Uma mudança de arquitetura ou novo aviso exige nova avaliação. `npm run audit:security` falha se aparecer aviso moderado, alto ou crítico. A auditoria consulta a base atual do npm e seu resultado pode mudar sem alteração no lockfile.
+Não há alegação de risco zero. Uma mudança de arquitetura ou novo aviso exige nova avaliação. `npm run audit:security` falha se aparecer aviso moderado, alto ou crítico, salvo exceção temporária por advisory registrada conforme [AUDITORIA-SEGURANCA](AUDITORIA-SEGURANCA.md). A auditoria consulta a base atual do npm e seu resultado pode mudar sem alteração no lockfile.
 
 Referências: [redirecionamento em enhanced forms](https://github.com/advisories/GHSA-pfhg-q3qv-9q6r), [cache-control em prerender](https://github.com/advisories/GHSA-27mw-82g8-phjj), [cookie](https://github.com/advisories/GHSA-pxg6-pf52-xh8x), [deepmerge](https://github.com/advisories/GHSA-gcqx-w48m-w2h4).
 
