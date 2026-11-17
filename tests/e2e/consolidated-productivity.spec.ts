@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { registerPart } from './execution';
 import { chooseTracking } from './mission-form';
+import { legacySession } from './legacy-session';
 const today = '2026-11-02';
 async function create(
   page: Page,
@@ -168,19 +169,21 @@ test('reagendar atividade parcial preserva recursos e a seleção explica indisp
   });
   await page.goto('/missoes');
   await page
-    .getByRole('button', { name: 'Selecionar para sessão', exact: true })
+    .getByRole('button', { name: 'Selecionar para executar', exact: true })
     .click();
   const selection = page.getByRole('dialog', {
-    name: 'Montar sessão',
+    name: 'Executar uma seleção',
     exact: true,
   });
   await expect(
-    selection.getByLabel('Incluir Leitura parcial na sessão', { exact: true }),
+    selection.getByLabel('Incluir Leitura parcial na seleção', {
+      exact: true,
+    }),
   ).toBeDisabled();
   await expect(selection).toContainText('Planejada para outra data');
   expect((await state(page)).occurrences).toEqual(after.occurrences);
 });
-test('rotina reutiliza sessão, impede execução duplicada e substitui o ciclo no dia seguinte', async ({
+test('rotina abre a fila da seleção sem criar sessão; sessão antiga substitui o ciclo no dia seguinte', async ({
   page,
 }) => {
   await page.clock.setFixedTime(new Date(today + 'T15:00:00-03:00'));
@@ -214,11 +217,15 @@ test('rotina reutiliza sessão, impede execução duplicada e substitui o ciclo 
     await page
       .getByRole('button', { name: 'Executar rotina', exact: true })
       .click();
-    await expect(page).toHaveURL(/\/sessoes$/);
+    await expect(page).toHaveURL(/\/executar\/[^?]+\?fila=selecao&ids=/);
   };
   await run();
+  await expect(page.locator('.context')).toContainText('Seleção · 1 de 2');
   await run();
-  expect((await state(page)).savedMissionSessions).toHaveLength(1);
+  // Lote 5c: executing a routine opens its queue; no saved session is created.
+  expect((await state(page)).savedMissionSessions).toHaveLength(0);
+  // A session saved before keeps working and is replaced the next day.
+  await legacySession(page, ['Água', 'Alongamento'], 'Rotina diária');
   await page
     .getByRole('button', { name: 'Pausar sessão', exact: true })
     .click();
@@ -243,15 +250,11 @@ test('rotina reutiliza sessão, impede execução duplicada e substitui o ciclo 
     .toBe('ended');
   expect((await state(page)).savedMissionSessions[0].occurrenceIds).toEqual([]);
   await run();
-  expect((await state(page)).savedMissionSessions).toHaveLength(2);
   await run();
-  expect((await state(page)).savedMissionSessions).toHaveLength(2);
+  expect((await state(page)).savedMissionSessions).toHaveLength(1);
   expect((await state(page)).profile).toEqual(before.profile);
   await page.goto('/missoes?view=sessions');
-  await expect(page.locator('.saved-session-card')).toHaveCount(1);
-  await expect(
-    page.locator('.saved-session-card').filter({ hasText: 'Em andamento' }),
-  ).toHaveCount(1);
+  await expect(page.locator('.saved-session-card')).toHaveCount(0);
 });
 test('navegação tem os mesmos quatro destinos no desktop e no mobile; Projetos fica na Evolução e Aposentos na Jornada', async ({
   page,

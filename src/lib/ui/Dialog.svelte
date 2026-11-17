@@ -11,6 +11,7 @@
     wide = false,
     portal = false,
     scenePanel = false,
+    side = false,
     onrequestclose,
   }: {
     open?: boolean;
@@ -21,6 +22,8 @@
     wide?: boolean;
     portal?: boolean;
     scenePanel?: boolean;
+    /** Panel docked to the right edge (full width on narrow screens). */
+    side?: boolean;
     /** Esc and ✕ ask the owner instead of closing (e.g. to protect a draft). */
     onrequestclose?: () => void;
   } = $props();
@@ -83,6 +86,7 @@
   class="lmu-dialog"
   class:wide
   class:scene-panel={scenePanel}
+  class:side
   aria-labelledby={`${uid}-title`}
   aria-describedby={description ? `${uid}-description` : undefined}
   oncancel={(event) => {
@@ -117,6 +121,14 @@
 <style>
   .wide {
     width: min(840px, calc(100% - 24px));
+  }
+  .lmu-dialog.side {
+    margin: 0 0 0 auto;
+    width: min(440px, 100%);
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    overflow-y: auto;
   }
   .scene-panel.wide {
     width: min(1000px, 94vw);

@@ -24,6 +24,7 @@
   import DayProgress from '$lib/ui/DayProgress.svelte';
   import QuickCreate from './QuickCreate.svelte';
   import CaptureField from './CaptureField.svelte';
+  import InsertBlock from './InsertBlock.svelte';
   import { gameLayer } from '$services/gameLayer';
   import { getLevelStateFromTotalXp } from '$services/progression';
   import { guardUpdates } from './guardUpdates';
@@ -58,6 +59,13 @@
   let error = $state(''),
     busy = $state(false),
     open = $state(false);
+  // "Inserir bloco" (lote 5c): from the plan footer or a row's ⋯.
+  let blockOpen = $state(false),
+    blockAfter = $state<string | null>(null);
+  function openBlock(afterId: string | null = null) {
+    blockAfter = afterId;
+    blockOpen = true;
+  }
   let now = $state(new Date()),
     pinned = $state<number | null>(null);
   const today = $derived(dateKey(now));
@@ -349,6 +357,11 @@
   const withoutDuration = $derived(
     dayList.filter((row) => row.status !== 'completed' && !row.estimatedMinutes)
       .length,
+  );
+  const hasRoutines = $derived(
+    !!data?.routines.some(
+      (routine) => routine.status === 'active' && routine.entries.length,
+    ),
   );
   const titleOf = (id: string) =>
     dayList.find((row) => row.id === id)?.title ?? '';
@@ -819,7 +832,12 @@
                         disabled={busy}
                         onclick={() => chooseAction(row, 'reschedule')}
                         >Remarcar</Button
-                      ></ContextMenu
+                      >{#if ordered && hasRoutines}<Button
+                          variant="quiet"
+                          disabled={busy}
+                          onclick={() => openBlock(row.id)}
+                          >Inserir bloco depois desta</Button
+                        >{/if}</ContextMenu
                     >{/if}{/snippet}
               </DayRow>
             </li>
@@ -900,6 +918,12 @@
                 size="s"
                 onclick={() => (open = true)}
                 ><ApprovedIcon name="criar" size={22} />Nova missão</Button
+              >{/if}
+            {#if hasRoutines}<Button
+                variant="quiet"
+                size="s"
+                onclick={() => openBlock()}
+                ><ApprovedIcon name="rotina" size={22} />Inserir bloco de rotina</Button
               >{/if}
             <a href="/missoes">Ver todas as missões</a>
           </div>
@@ -1012,6 +1036,15 @@
         </ul>
       </details>{/if}
     <QuickCreate bind:open snapshot={data} />
+    <InsertBlock
+      bind:open={blockOpen}
+      snapshot={data}
+      {today}
+      {now}
+      {dayList}
+      afterId={blockAfter}
+      oninserted={(message) => (notice = message)}
+    />
   {/if}
 </div>
 

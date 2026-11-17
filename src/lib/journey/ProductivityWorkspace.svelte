@@ -20,7 +20,7 @@
   import { guardUpdates } from './guardUpdates';
   import { liveQuery } from 'dexie';
   import { goto } from '$app/navigation';
-  import { executionHref } from './dayQueue';
+  import { executionHref, selectionHref } from './dayQueue';
   import { db } from '$services/db';
   import { dateKey } from '$services/rewardService';
   import { addCalendarDays } from '$services/calendar';
@@ -29,11 +29,9 @@
     ensureOccurrence,
   } from '$services/occurrenceService';
   import SessionSummary from './SessionSummary.svelte';
-  import {
-    startOrResumeSession,
-    saveSession,
-  } from '$services/savedSessionService';
+  import { saveSession } from '$services/savedSessionService';
   import { saveRoutine, setRoutineStatus } from '$services/routineService';
+  import { routineDraftFromSession } from '$services/routineBlocks';
   import { discardDraftMissions } from '$services/taskRemoval';
   import { WEEKDAYS, routineRecurrenceLabel } from '$services/recurrence';
   import { freeSlot, recommendations } from '$services/productivityInsights';
@@ -259,26 +257,58 @@
     draftMissions = [];
     editing = true;
   }
-  async function startSession(
+  // A selection opens the execution screen with its own queue (lote 5c);
+  // saved sessions only come from before and can become routines.
+  async function executeSelection(
     occurrences: Occurrence[],
-    name = 'Minha sessão',
+    empty = 'Nada pendente nesta seleção.',
   ) {
     await run(async () => {
-      const ids = [];
-      for (const row of occurrences)
-        ids.push(
-          (
-            await ensureOccurrence(
-              row.taskId,
-              row.originDate,
-              row.reconstructed,
-            )
-          ).id,
-        );
-      await startOrResumeSession(name, ids, dateKey(), true);
-      await goto('/sessoes');
+      const href = await selectionHref(occurrences);
+      if (!href) throw new Error(empty);
+      await goto(href);
     });
   }
+  // "Salvar como rotina" (lote 5c): the editor opens with the session's
+  // missions, without time; nothing is saved until the routine is.
+  let fromSession = $state(''),
+    leftOut = $state<{ title: string; reason: string }[]>([]);
+  async function routineFromSession(id: string) {
+    const session = await db.savedMissionSessions.get(id);
+    if (!session) {
+      error = 'Esta sessão não está mais disponível.';
+      return;
+    }
+    const occurrences = (
+      await db.occurrences.bulkGet(session.occurrenceIds)
+    ).filter((row): row is Occurrence => !!row);
+    const draft = routineDraftFromSession(
+      session,
+      occurrences,
+      snapshot.tasks,
+      snapshot.routines,
+    );
+    await editRoutine();
+    routineName = draft.name;
+    entries = draft.entries;
+    leftOut = draft.left;
+    fromSession = session.name;
+  }
+  let sessionDraftRead = '';
+  $effect(() => {
+    const id = page.url.searchParams.get('deSessao');
+    if (view !== 'routines' || !id || id === sessionDraftRead || !snapshot)
+      return;
+    sessionDraftRead = id;
+    void routineFromSession(id).then(() => {
+      const url = new URL(page.url.href);
+      url.searchParams.delete('deSessao');
+      void goto(url.pathname + url.search, {
+        replace: true,
+        reset: false,
+      });
+    });
+  });
   async function saveRoutineForm(event: SubmitEvent) {
     event.preventDefault();
     await run(async () => {
@@ -302,10 +332,14 @@
       );
       draftMissions = [];
       editing = false;
+      fromSession = '';
+      leftOut = [];
     }, 'Rotina salva. Ocorrências iniciadas e histórico foram preservados.');
   }
   async function cancelRoutineForm() {
     if (busy) return;
+    fromSession = '';
+    leftOut = [];
     if (!draftMissions.length) {
       editing = false;
       return;
@@ -413,8 +447,9 @@
         {#if selected.length}<Button
             disabled={busy}
             onclick={() =>
-              startSession(dayRows.filter((row) => selected.includes(row.id)))}
-            >Executar seleção como sessão ({selected.length})</Button
+              executeSelection(
+                dayRows.filter((row) => selected.includes(row.id)),
+              )}>Executar seleção ({selected.length})</Button
           >{/if}
         {#each ['timed', 'flexible'] as group (group)}
           {@const groupRows = dayRows.filter((row) =>
@@ -591,7 +626,7 @@
                 disabled={busy}
                 onclick={async () => {
                   const candidates = await currentOccurrences();
-                  await startSession(
+                  await executeSelection(
                     candidates.filter(
                       (row) =>
                         row.routineId === routine.id &&
@@ -604,7 +639,7 @@
                           dateKey(),
                         ),
                     ),
-                    routine.name,
+                    'Nada desta rotina para hoje.',
                   );
                 }}>Executar rotina</Button
               ><Button
@@ -631,6 +666,17 @@
           onsubmit={saveRoutineForm}
         >
           <h2>{routineRevision ? 'Editar rotina' : 'Montar rotina'}</h2>
+          {#if fromSession}<div class="from-session" role="status">
+              <p>
+                Missões da sessão “{fromSession}”, sem horário. Escolha os dias
+                da rotina; a sessão continua no histórico.
+              </p>
+              {#if leftOut.length}<p>
+                  Ficaram de fora: {leftOut
+                    .map((item) => `${item.title} (${item.reason})`)
+                    .join('; ')}.
+                </p>{/if}
+            </div>{/if}
           <div class="routine-fields">
             <label
               >Nome da rotina<input
@@ -941,6 +987,14 @@
               addOpen = true;
             }}>+ Adicionar missões</Button
           >
+          <Button
+            variant="secondary"
+            disabled={busy}
+            onclick={() =>
+              goto(
+                `/missoes?view=routines&deSessao=${encodeURIComponent(session.id)}`,
+              )}>Salvar como rotina</Button
+          >
           <EndSessionButton
             {session}
             disabled={busy}
@@ -962,8 +1016,8 @@
     {#if !orderedSessions.length}<div class="workspace-empty">
         <h3>Nenhuma sessão ativa</h3>
         <p>
-          Monte uma sessão com suas missões pendentes. Sessões concluídas e
-          encerradas não ficam nesta lista.
+          Sessões salvas antes ficam aqui até serem concluídas ou encerradas.
+          Para executar várias missões, selecione-as na Lista.
         </p>
         <a class="lmu-button lmu-button--secondary" href="/missoes"
           >Ver missões pendentes</a
@@ -1227,6 +1281,17 @@
     font-size: 0.78rem;
     color: #a9b99e;
     margin-top: 8px;
+  }
+  .from-session {
+    display: grid;
+    gap: 0.4rem;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--lmu-line);
+    border-radius: 8px;
+    font-size: 0.9rem;
+  }
+  .from-session p {
+    margin: 0;
   }
   .routine-form {
     padding: 16px;

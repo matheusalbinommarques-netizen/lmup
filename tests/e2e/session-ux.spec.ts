@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { legacySession } from './legacy-session';
 async function prepare(page: Page) {
   await page.goto('/missoes');
   for (const title of ['Beber água', 'Comer uma fruta']) {
@@ -16,17 +17,8 @@ async function prepare(page: Page) {
       .click();
     await expect(form).not.toBeVisible();
   }
-  await page
-    .getByRole('button', { name: 'Selecionar para sessão', exact: true })
-    .click();
-  for (const title of ['Beber água', 'Comer uma fruta'])
-    await page
-      .getByLabel(`Incluir ${title} na sessão`, { exact: true })
-      .check();
-  await page
-    .getByRole('button', { name: 'Iniciar sessão', exact: true })
-    .click();
-  await expect(page).toHaveURL(/\/sessoes$/);
+  // Lote 5c: a session saved before (selections no longer create one).
+  await legacySession(page, ['Beber água', 'Comer uma fruta']);
 }
 async function data(page: Page) {
   return page.evaluate(

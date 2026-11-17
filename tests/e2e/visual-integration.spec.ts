@@ -257,19 +257,19 @@ test('lista compacta preserva busca, filtros e seleção sem iniciar execução'
   await expect(page.locator('.area-group')).toContainText('Geral');
   await page.getByText('Mais filtros', { exact: false }).click();
   await page
-    .getByRole('button', { name: 'Selecionar para sessão', exact: true })
+    .getByRole('button', { name: 'Selecionar para executar', exact: true })
     .click();
   await expect(
-    page.getByRole('button', { name: 'Iniciar sessão', exact: true }),
+    page.getByRole('button', { name: 'Executar seleção', exact: true }),
   ).toBeDisabled();
   await page
     .getByRole('checkbox', {
-      name: 'Incluir Estudar idioma na sessão',
+      name: 'Incluir Estudar idioma na seleção',
       exact: true,
     })
     .check();
   await expect(
-    page.getByRole('button', { name: 'Iniciar sessão', exact: true }),
+    page.getByRole('button', { name: 'Executar seleção', exact: true }),
   ).toBeEnabled();
   await page
     .getByRole('button', { name: 'Cancelar seleção', exact: true })

@@ -109,3 +109,11 @@ O lote 5 foi dividido: 5a (Sem dia e captura), 5b (Semana) e 5c (inserir bloco, 
 - `moveToDay` (`week.ts`): avulsa sem progresso muda o próprio dia (`setTaskDay`); repetição, rotina ou avulsa com progresso remarca só a ocorrência (`changeOccurrence`), preservando progresso e recompensas. Recusa concluída, dia passado e ocorrência em sessão iniciada; idempotente por requisição.
 - Item sem hora movido para um dia futuro entra no fim; para hoje, segue a regra do lote 2 (antes da próxima hora fixa ainda por vir).
 - Avisos com data não dobram mais o ponto ("20 nov.."), também no Sem dia do 5a (`sentence` em `capture.ts`).
+
+## Lote 5c: o que mudou
+
+- Inserir bloco (design P3, `InsertBlock.svelte`, `routineBlocks.ts`): pelo "Inserir bloco de rotina" do Plano do dia ou pelo ⋯ de uma linha ("Inserir bloco depois desta"). Painel lateral: rotina, itens (desmarcáveis só para hoje; os que já estão no Dia aparecem como "já no Dia"), onde (depois de uma missão, em hora fixa ou no fim do dia) e a prévia "Começa ≈ … e termina ≈ …; fica antes de …" calculada pela linha do tempo do Dia.
+- `insertBlock` vale só para hoje: cada missão ganha a ocorrência do dia pelo mesmo desvio de um dia de "Pôr no dia" (`occurrenceOverride`); a rotina, seus dias e a repetição das missões não mudam, nem progresso, recompensa ou eventos. Hora fixa muda só a ocorrência de hoje do primeiro item. Idempotente por requisição e auditado (`routine-insert`); desfaz-se com "Remover de hoje". Recusa rotina pausada ou arquivada e outro dia; pula o que já está no Dia, foi resolvido hoje ou foi remarcado.
+- Seleções viram fila de execução (decisão do autor, 16/11): "Selecionar para executar" na Lista, "Executar seleção" na visão de dia e "Executar rotina" abrem `/executar/<ocorrência>?fila=selecao&ids=…`, com a fila na ordem do Dia. Não criam mais sessões salvas.
+- Sessões salvas antes continuam em `/sessoes` e em Missões › Sessões ativas, com o histórico. "Salvar como rotina" abre o editor de rotina com as missões da sessão, na ordem dela e sem horário; o autor escolhe os dias. Ficam de fora, com o motivo, missões arquivadas, repetições, já em outra rotina ou avulsas concluídas. Nada é gravado até salvar a rotina.
+- `Dialog` ganhou a variante `side` (painel à direita; largura total no celular).

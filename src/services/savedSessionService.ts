@@ -114,7 +114,7 @@ export async function saveSession(
     const current = await db.savedMissionSessions.get(input.id);
     if (current && !isOpenSession(current))
       throw new Error(
-        'Esta sessão foi encerrada. Monte uma nova sessão com as atividades pendentes.',
+        'Esta sessão foi encerrada. Selecione as atividades pendentes na Lista para executá-las.',
       );
     if (current && current.revision !== expectedRevision)
       throw new Error('A sessão mudou em outra aba. Reabra para comparar.');
@@ -313,7 +313,9 @@ export async function appendSessionOccurrences(
   return progressTransaction(async () => {
     const session = await db.savedMissionSessions.get(id);
     if (!session || !isOpenSession(session))
-      throw new Error('Esta sessão foi encerrada. Monte uma nova sessão.');
+      throw new Error(
+        'Esta sessão foi encerrada. Selecione as atividades na Lista para executá-las.',
+      );
     if (session.revision !== expectedRevision)
       throw new Error('A sessão mudou em outra aba. Atualize a seleção.');
     if (

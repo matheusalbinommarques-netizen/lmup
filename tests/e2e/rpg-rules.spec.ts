@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { investigate, resolveInvestigation, worldData } from './world-flow';
+import { conclude } from './execution';
 
 // E01 protects the playable Oásis investigation. These checks are deliberately
 // scoped to current content; they do not certify unwritten future chapters.
@@ -188,19 +189,9 @@ test('E01: produtividade funciona sem visitar o Mundo nem depender de sua inicia
   await page
     .getByRole('button', { name: 'Executar rotina', exact: true })
     .click();
-  await expect(page).toHaveURL(/\/sessoes$/);
-  await page
-    .getByRole('tab', { name: 'Execução detalhada', exact: true })
-    .click();
-  // Sessions keep their own execution until lote 5; the verb is "Concluir".
-  await page.getByRole('button', { name: 'Concluir', exact: true }).click();
-  // A one-mission session closes automatically and shows a session receipt.
-  await expect(
-    page.getByRole('heading', { name: 'Sessão concluída', exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('region', { name: 'Resumo da sessão', exact: true }),
-  ).toContainText('1 concluídas');
+  // Lote 5c: the routine opens on the execution screen, without a session.
+  await expect(page).toHaveURL(/\/executar\/[^?]+\?fila=selecao&ids=/);
+  await conclude(page);
 
   await page.goto('/missoes');
   const after = await worldData(page);

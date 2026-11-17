@@ -56,7 +56,11 @@
     type TimerState,
   } from './executionTimer';
 
-  let { id, kind }: { id: string; kind?: QueueKind } = $props();
+  let {
+    id,
+    kind,
+    ids = [],
+  }: { id: string; kind?: QueueKind; ids?: string[] } = $props();
 
   let data = $state.raw<JourneySnapshot>();
   let today = $state(dateKey());
@@ -149,7 +153,7 @@
 
   // Queue of this screen: a slice of the Dia, in the Dia's order.
   const queue = $derived(
-    kind && row ? executionQueue(projected, kind, id) : [],
+    kind && row ? executionQueue(projected, kind, id, ids) : [],
   );
   const position = $derived(queue.findIndex((item) => item.id === id));
   // Without a queue (mission on its own, design E2) the next row of the Dia
@@ -459,7 +463,7 @@
   function skip() {
     if (!next) return;
     if (timer?.runningSince) setTimer(pauseTimer(timer, new Date()));
-    void goto(executionHref(next.id, kind));
+    void goto(executionHref(next.id, kind, ids));
   }
 
   async function moveInQueue(itemId: string, delta: number) {
@@ -486,12 +490,18 @@
       ? 'Bloco'
       : kind === 'dia' && queue.length
         ? 'Dia'
-        : task?.recurrence
-          ? 'Rotina'
-          : 'Missão avulsa',
+        : kind === 'selecao' && queue.length
+          ? 'Seleção'
+          : task?.recurrence
+            ? 'Rotina'
+            : 'Missão avulsa',
   );
   const queueTitle = $derived(
-    kind === 'bloco' ? 'Fila deste bloco' : 'Fila do dia',
+    kind === 'bloco'
+      ? 'Fila deste bloco'
+      : kind === 'selecao'
+        ? 'Fila da seleção'
+        : 'Fila do dia',
   );
 </script>
 
@@ -570,7 +580,7 @@
           <div class="actions">
             <a
               class="lmu-button lmu-button--primary big"
-              href={executionHref(next.id, kind)}>Iniciar</a
+              href={executionHref(next.id, kind, ids)}>Iniciar</a
             >
             <a class="quiet-link big" href="/">Voltar ao Dia</a>
           </div>
@@ -580,7 +590,9 @@
               ? 'Bloco concluído'
               : kind === 'dia'
                 ? 'Fila do dia concluída'
-                : 'Concluída'}
+                : kind === 'selecao'
+                  ? 'Seleção concluída'
+                  : 'Concluída'}
           </h1>
           <p class="muted">Seu progresso está registrado.</p>
           <div class="actions">
@@ -613,7 +625,7 @@
           <div class="actions">
             {#if next}<a
                 class="lmu-button lmu-button--primary big"
-                href={executionHref(next.id, kind)}>Iniciar a próxima</a
+                href={executionHref(next.id, kind, ids)}>Iniciar a próxima</a
               >{/if}
             <a class="quiet-link big" href="/">Voltar ao Dia</a>
           </div>
@@ -810,7 +822,7 @@
                     ><strong>{item.title}</strong></span
                   ><span class="q-now">agora</span>{:else}<a
                     class="q-title"
-                    href={executionHref(item.id, kind)}>{item.title}</a
+                    href={executionHref(item.id, kind, ids)}>{item.title}</a
                   >{/if}
                 {#if !finished && !isCurrent}<span class="q-move">
                     <button
