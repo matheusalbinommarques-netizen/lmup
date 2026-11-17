@@ -9,7 +9,7 @@
 - O relatório é lido com a cadeia transitiva: cada entrada moderada ou acima precisa chegar só a advisories com exceção. Outro advisory no mesmo pacote, ou um advisory próprio de um pacote que também está na cadeia, reprova.
 - A exceção só cobre o advisory se o pacote e o intervalo do relatório forem os registrados. Intervalo diferente reprova (pode indicar correção).
 - Reprova quando a exceção vence (vale até a data, inclusive; data em UTC), mesmo que o advisory já não apareça.
-- Reprova quando surge correção publicada, verificada em duas fontes que não dependem do relatório:
+- Reprova quando surge correção publicada, para toda exceção cadastrada, mesmo a que já não aparece no relatório. A verificação usa duas fontes que não dependem do relatório:
   - base de advisories do GitHub (`first_patched_version`, intervalo afetado, advisory retirado);
   - versões do pacote no registro do npm: qualquer versão acima do intervalo registrado reprova até a revisão.
 - O campo `fixAvailable` do `npm audit` não é usado: ele indica outra resolução da árvore, muitas vezes um rebaixamento incompatível, e não prova que existe versão segura.

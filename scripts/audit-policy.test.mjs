@@ -127,20 +127,72 @@ test('aprova só o advisory da exceção, com a cadeia transitiva, e diz isso no
     result.lines[0],
     /Cobre 4 entradas: @sveltejs\/kit, picomatch, tinyglobby, vite/,
   );
-  assert.match(result.lines[1], /Correção publicada: nenhuma .* 4\.0\.7/);
+  assert.match(
+    result.lines[1],
+    /Correção publicada para GHSA-fc5q-39xc-vjpf: nenhuma .* 4\.0\.7/,
+  );
+});
+
+const emptyReport = () => ({
+  auditReportVersion: 2,
+  vulnerabilities: {},
+  metadata: { vulnerabilities: { high: 0, total: 0 } },
 });
 
 test('sem alertas aprova; exceção sem uso aparece no log para ser removida', () => {
-  const empty = {
-    auditReportVersion: 2,
-    vulnerabilities: {},
-    metadata: { vulnerabilities: { high: 0, total: 0 } },
-  };
-  const result = evaluateCiAudit(
-    input({ report: empty, exitCode: 0, upstream: {} }),
-  );
+  const result = evaluateCiAudit(input({ report: emptyReport(), exitCode: 0 }));
   assert.deepEqual(result.used, []);
-  assert.match(result.lines.join('\n'), /Exceção sem uso: GHSA-fc5q-39xc-vjpf/);
+  const log = result.lines.join(' | ');
+  assert.match(log, /Exceção sem uso: GHSA-fc5q-39xc-vjpf/);
+  assert.match(log, /Correção publicada para GHSA-fc5q-39xc-vjpf: nenhuma/);
+  assert.doesNotMatch(log, /EXCEÇÃO TEMPORÁRIA EM USO/);
+});
+
+test('exceção sem uso também reprova com correção publicada ou consulta que falha', () => {
+  const unused = (extra) =>
+    input({ report: emptyReport(), exitCode: 0, ...extra });
+  rejects(
+    unused({
+      upstream: upstream({
+        vulnerabilities: [
+          {
+            package: { ecosystem: 'npm', name: 'picomatch' },
+            vulnerable_version_range: '<= 4.0.7',
+            first_patched_version: { identifier: '4.0.8' },
+          },
+        ],
+      }),
+    }),
+    /informa correção em picomatch 4\.0\.8/,
+  );
+  rejects(
+    unused({ upstream: upstream({}, ['4.0.7', '4.0.8']) }),
+    /4\.0\.8 foi publicado/,
+  );
+  rejects(
+    unused({ upstream: upstream({ withdrawn_at: '2026-11-20T00:00:00Z' }) }),
+    /retirado/,
+  );
+  rejects(unused({ upstream: {} }), /Não foi possível consultar/);
+  rejects(
+    unused({
+      upstream: {
+        [ID]: { github: { error: 'HTTP 503' }, versions: ['4.0.7'] },
+      },
+    }),
+    /HTTP 503/,
+  );
+  rejects(
+    unused({
+      upstream: {
+        [ID]: {
+          github: upstream()[ID].github,
+          versions: { error: 'npm view picomatch' },
+        },
+      },
+    }),
+    /registro do npm/,
+  );
 });
 
 test('reprova qualquer outro advisory moderado, alto ou crítico, inclusive no picomatch e na mesma cadeia', () => {

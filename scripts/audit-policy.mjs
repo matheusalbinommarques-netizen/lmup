@@ -253,21 +253,25 @@ export function evaluateCiAudit({
     fail(
       `Alertas moderados ou acima sem exceção:\n- ${[...new Set(problems)].join('\n- ')}`,
     );
+  // Toda exceção cadastrada passa pela verificação externa, mesmo sem uso:
+  // correção publicada ou consulta falha reprova e força a revisão.
   const lines = [];
-  for (const [id, names] of used) {
-    const item = byId.get(id);
-    const { latest } = checkUpstream(item, upstream[id]);
-    const unique = [...new Set(names)].sort();
-    lines.push(
-      `EXCEÇÃO TEMPORÁRIA EM USO: ${id} (${item.package} ${item.range}), aprovada por ${item.approvedBy} em ${item.approvedAt}, válida até ${item.expires}. Cobre ${unique.length} entradas: ${unique.join(', ')}.`,
-      `Correção publicada: nenhuma (GitHub sem first_patched_version; última ${item.package} no npm: ${latest}).`,
-    );
-  }
-  for (const item of exceptions)
-    if (!used.has(item.id))
+  for (const item of exceptions) {
+    const { latest } = checkUpstream(item, upstream[item.id]);
+    const names = used.get(item.id);
+    if (names) {
+      const unique = [...new Set(names)].sort();
+      lines.push(
+        `EXCEÇÃO TEMPORÁRIA EM USO: ${item.id} (${item.package} ${item.range}), aprovada por ${item.approvedBy} em ${item.approvedAt}, válida até ${item.expires}. Cobre ${unique.length} entradas: ${unique.join(', ')}.`,
+      );
+    } else
       lines.push(
         `Exceção sem uso: ${item.id} não aparece mais no relatório; remova-a de scripts/audit-exceptions.json.`,
       );
+    lines.push(
+      `Correção publicada para ${item.id}: nenhuma (GitHub sem first_patched_version; última ${item.package} no npm: ${latest}).`,
+    );
+  }
   lines.push('Nenhum outro alerta moderado, alto ou crítico.');
   return { ok: true, used: [...used.keys()], lines };
 }
