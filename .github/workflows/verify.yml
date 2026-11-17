@@ -53,8 +53,12 @@ jobs:
       - if: matrix.node == 24
         run: npm run test:package
       # Keep the strict audit mandatory; run functional checks before it so
-      # pre-existing advisories cannot hide unrelated regressions.
+      # pre-existing advisories cannot hide unrelated regressions. Moderate or
+      # higher advisories fail unless listed in scripts/audit-exceptions.json;
+      # the token only reads the public GitHub advisory database.
       - run: npm run audit:security
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       # Even after a failed test, detect accidental modifications to tracked files.
       - name: Ensure tests did not modify versioned files
         if: ${{ !cancelled() }}

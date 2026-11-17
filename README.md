@@ -43,7 +43,7 @@ npm run verify
 npm run audit:security
 ```
 
-`verify` executa lint, checagem de tipos/Svelte, testes sem modo de observação, testes da publicação local e build. Para rodar separadamente:
+`verify` executa lint, checagem de tipos/Svelte, testes sem modo de observação, testes da publicação local, testes da política de auditoria (`test:audit`) e build. Para rodar separadamente:
 
 ```sh
 npm run lint
@@ -108,7 +108,7 @@ O banco atual se chama `LevelMeUpDB`, versão 6. Migrações aditivas preservam 
 
 As cinco recuperações recentes e a cópia da migração ficam no próprio navegador. Apagar dados do site remove essas cópias; exporte um backup externo. Exportações podem conter nomes, notas e histórico pessoal; mantenha seus backups em local confiável.
 
-Os avisos de dependências restantes e seu alcance estão documentados em [E1](docs/E1-base-reproduzivel.md). Não use `npm audit fix --force` sem revisar as migrações propostas e repetir as verificações pertinentes.
+Os avisos de dependências restantes e seu alcance estão documentados em [E1](docs/E1-base-reproduzivel.md). A política da auditoria da CI e as exceções temporárias vigentes estão em [AUDITORIA-SEGURANCA](docs/AUDITORIA-SEGURANCA.md). Não use `npm audit fix --force` sem revisar as migrações propostas e repetir as verificações pertinentes.
 
 ## Offline e instalação
 
