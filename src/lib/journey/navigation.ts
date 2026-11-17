@@ -69,7 +69,15 @@ export function activeDestination(path: string): string | null {
     ])
   )
     return '/missoes';
-  if (under(path, ['/evolucao', '/roda', '/projetos', '/progresso']))
+  if (
+    under(path, [
+      '/evolucao',
+      '/roda',
+      '/projetos',
+      '/progresso',
+      '/revisao-semanal',
+    ])
+  )
     return '/evolucao';
   if (journeyTab(path)) return '/perfil';
   return null;

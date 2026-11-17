@@ -27,6 +27,7 @@ describe('navegação de quatro destinos', () => {
     ['/projetos', '/evolucao'],
     ['/projetos/3', '/evolucao'],
     ['/progresso', '/evolucao'],
+    ['/revisao-semanal', '/evolucao'],
     ['/perfil', '/perfil'],
     ['/inventario', '/perfil'],
     ['/aposentos', '/perfil'],

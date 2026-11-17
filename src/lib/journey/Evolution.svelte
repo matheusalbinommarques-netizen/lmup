@@ -9,9 +9,10 @@
   import { todayView } from './todayView';
   import ApprovedIcon from '$lib/ui/ApprovedIcon.svelte';
   import ProjectForm from './ProjectForm.svelte';
+  import WeeklyReviewCard from './WeeklyReviewCard.svelte';
 
   // Evolução (lote 4): o hub do método. Superfície simples, sem cartões de
-  // jogo; a revisão semanal entra no lote 6.
+  // jogo; a revisão semanal (lote 6a) fica ao lado de "Meu progresso".
   const INVITE_KEY = 'lmup.evolucao.convite-roda';
   let data = $state.raw<JourneySnapshot>();
   let error = $state(''),
@@ -290,71 +291,76 @@
         </div>{/if}
     </section>
 
-    <section
-      class="evolution-surface evolution-progress"
-      aria-labelledby="evolution-progress"
-    >
-      <div class="evolution-section-head">
-        <h2 id="evolution-progress">Meu progresso</h2>
-        <span class="evolution-muted">últimos 30 dias</span>
-        <a href="/progresso">Ver extrato de XP →</a>
-      </div>
-      {#if !view.progress.missions && !view.progress.finished.length}<div>
-          <strong>Ainda pouco registrado</strong>
-          <p class="evolution-muted">
-            Esforço, progresso e resultado aparecem aqui conforme você conclui
-            missões e projetos. Nada aqui diminui por inatividade.
-          </p>
-        </div>{:else}<dl class="evolution-progress-grid">
-          <div>
-            <dt>Esforço</dt>
-            <dd>
-              <strong
-                >{plural(view.progress.missions, 'missão', 'missões')}{view
-                  .progress.minutes
-                  ? ` · ${hours(view.progress.minutes)} medidas`
-                  : ''}</strong
-              ><span>Tempo só onde houve cronômetro ou execução.</span>
-            </dd>
-          </div>
-          <div>
-            <dt>Progresso</dt>
-            <dd>
-              <strong
-                >{plural(
-                  view.progress.projectMissions,
-                  'missão de projeto',
-                  'missões de projeto',
-                )}</strong
-              ><span
-                >{view.projects.length
-                  ? `Concluídas em ${view.progress.projectsTouched} dos ${view.projects.length} projetos ativos.`
-                  : 'Nenhum projeto ativo agora.'}</span
-              >
-            </dd>
-          </div>
-          <div>
-            <dt>Resultado</dt>
-            <dd>
-              <strong
-                >{plural(
-                  view.progress.finished.length,
-                  'projeto concluído',
-                  'projetos concluídos',
-                )}</strong
-              ><span
-                >{view.progress.finished.length
-                  ? view.progress.finished.map((name) => `"${name}"`).join(', ')
-                  : 'Projeto concluído aparece aqui.'}</span
-              >
-            </dd>
-          </div>
-        </dl>
-        <p class="evolution-muted evolution-small">
-          Esforço: missões concluídas e tempo medido. Progresso: missões de
-          projeto. Resultado: projetos concluídos.
-        </p>{/if}
-    </section>
+    <div class="evolution-pair">
+      <WeeklyReviewCard state={data?.profile?.weeklyReview} {today} />
+      <section
+        class="evolution-surface evolution-progress"
+        aria-labelledby="evolution-progress"
+      >
+        <div class="evolution-section-head">
+          <h2 id="evolution-progress">Meu progresso</h2>
+          <span class="evolution-muted">últimos 30 dias</span>
+          <a href="/progresso">Ver extrato de XP →</a>
+        </div>
+        {#if !view.progress.missions && !view.progress.finished.length}<div>
+            <strong>Ainda pouco registrado</strong>
+            <p class="evolution-muted">
+              Esforço, progresso e resultado aparecem aqui conforme você conclui
+              missões e projetos. Nada aqui diminui por inatividade.
+            </p>
+          </div>{:else}<dl class="evolution-progress-grid">
+            <div>
+              <dt>Esforço</dt>
+              <dd>
+                <strong
+                  >{plural(view.progress.missions, 'missão', 'missões')}{view
+                    .progress.minutes
+                    ? ` · ${hours(view.progress.minutes)} medidas`
+                    : ''}</strong
+                ><span>Tempo só onde houve cronômetro ou execução.</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Progresso</dt>
+              <dd>
+                <strong
+                  >{plural(
+                    view.progress.projectMissions,
+                    'missão de projeto',
+                    'missões de projeto',
+                  )}</strong
+                ><span
+                  >{view.projects.length
+                    ? `Concluídas em ${view.progress.projectsTouched} dos ${view.projects.length} projetos ativos.`
+                    : 'Nenhum projeto ativo agora.'}</span
+                >
+              </dd>
+            </div>
+            <div>
+              <dt>Resultado</dt>
+              <dd>
+                <strong
+                  >{plural(
+                    view.progress.finished.length,
+                    'projeto concluído',
+                    'projetos concluídos',
+                  )}</strong
+                ><span
+                  >{view.progress.finished.length
+                    ? view.progress.finished
+                        .map((name) => `"${name}"`)
+                        .join(', ')
+                    : 'Projeto concluído aparece aqui.'}</span
+                >
+              </dd>
+            </div>
+          </dl>
+          <p class="evolution-muted evolution-small">
+            Esforço: missões concluídas e tempo medido. Progresso: missões de
+            projeto. Resultado: projetos concluídos.
+          </p>{/if}
+      </section>
+    </div>
   {/if}
 </div>
 <ProjectForm
@@ -607,6 +613,17 @@
   .evolution-progress {
     display: grid;
     gap: 12px;
+  }
+  .evolution-pair {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 60rem) {
+    .evolution-pair {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
   .evolution-progress h2 {
     font-size: 1.5rem;

@@ -42,6 +42,8 @@ export interface Profile {
   generalAreaDomain?: import('$lib/content/domains').DomainKey | null;
   /** Roda da Vida: optional self-ratings, focus and intentions. */
   lifeWheel?: import('./lifeWheelService').LifeWheelState;
+  /** Revisão semanal (lote 6a): histórico por semana revisada. */
+  weeklyReview?: import('./weeklyReview').WeeklyReviewState;
   /** Chosen investment pointer; never reserves or moves balances. */
   investmentGoal?: { id: string; chosenAt: string };
   /** Camada de jogo (lote 4b); ausente = 'completa'. Só muda a exibição. */
