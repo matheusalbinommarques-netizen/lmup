@@ -1,4 +1,5 @@
 import type { Occurrence } from '$services/productivityTypes';
+import { ensureOccurrence } from '$services/occurrenceService';
 import { staleDays } from '$services/dayRow';
 import { todayView } from './todayView';
 
@@ -6,9 +7,10 @@ import { todayView } from './todayView';
  * Queues of the single execution screen (lote 3). A queue never has its own
  * order: it is always a slice of the Dia, in the Dia's order.
  * - "dia": every row of the Dia except the stalled group;
- * - "bloco": consecutive rows of the same routine (2 or more) in the Dia.
+ * - "bloco": consecutive rows of the same routine (2 or more) in the Dia;
+ * - "selecao": the rows chosen in Missões (lote 5c, replaces new sessions).
  */
-export type QueueKind = 'dia' | 'bloco';
+export type QueueKind = 'dia' | 'bloco' | 'selecao';
 export type DayBlock = { routineId: string; ids: string[] };
 
 type Snapshot = Parameters<typeof todayView>[0] & {
@@ -55,7 +57,14 @@ export function executionQueue<T extends Row>(
   rows: T[],
   kind: QueueKind,
   currentId: string,
+  ids: string[] = [],
 ): T[] {
+  if (kind === 'selecao') {
+    const chosen = new Set(ids);
+    return chosen.has(currentId)
+      ? rows.filter((row) => chosen.has(row.id))
+      : [];
+  }
   if (kind === 'dia')
     return rows.some((row) => row.id === currentId) ? rows : [];
   const block = blockOf(rows, currentId);
@@ -94,6 +103,41 @@ export function dayStartLabel(
     : 'Iniciar dia';
 }
 
-export function executionHref(id: string, kind?: QueueKind) {
-  return `/executar/${encodeURIComponent(id)}${kind ? `?fila=${kind}` : ''}`;
+export function executionHref(id: string, kind?: QueueKind, ids?: string[]) {
+  const query = !kind
+    ? ''
+    : kind === 'selecao'
+      ? `?fila=selecao&ids=${(ids ?? []).map(encodeURIComponent).join(',')}`
+      : `?fila=${kind}`;
+  return `/executar/${encodeURIComponent(id)}${query}`;
+}
+
+/**
+ * Opening a selection (Missões): the rows get their occurrence and the
+ * execution screen opens on the first pending one, with the others as its
+ * queue in the Dia's order. Nothing else is created.
+ */
+export async function selectionHref(
+  rows: Pick<
+    Occurrence,
+    | 'taskId'
+    | 'originDate'
+    | 'reconstructed'
+    | 'status'
+    | 'planningSuspended'
+    | 'skipped'
+  >[],
+): Promise<string | null> {
+  const ids: string[] = [];
+  let first: string | null = null;
+  for (const row of rows) {
+    const stored = await ensureOccurrence(
+      row.taskId,
+      row.originDate,
+      row.reconstructed,
+    );
+    ids.push(stored.id);
+    if (!first && isPending(stored)) first = stored.id;
+  }
+  return first ? executionHref(first, 'selecao', ids) : null;
 }

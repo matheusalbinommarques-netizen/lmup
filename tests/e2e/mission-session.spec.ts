@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { legacySession } from './legacy-session';
 
 async function storedData(page: Page) {
   return page.evaluate(async () => {
@@ -50,17 +51,8 @@ async function createSession(page: Page) {
       .click();
     await expect(form).not.toBeVisible();
   }
-  await page
-    .getByRole('button', { name: 'Selecionar para sessão', exact: true })
-    .click();
-  for (const title of ['Primeira', 'Intermediária', 'Última']) {
-    await page
-      .getByRole('checkbox', { name: `Incluir ${title} na sessão` })
-      .check();
-  }
-  await page
-    .getByRole('button', { name: 'Iniciar sessão', exact: true })
-    .click();
+  // Lote 5c: a session saved before (selections no longer create one).
+  await legacySession(page, ['Primeira', 'Intermediária', 'Última']);
   await expect(
     page.getByRole('heading', { name: 'Primeira', exact: true }),
   ).toBeVisible();
@@ -361,19 +353,8 @@ test('sessão executa missões em sequência, persiste e não gera XP ao pular',
       .click();
     await expect(form).not.toBeVisible();
   }
-  await page
-    .getByRole('button', { name: 'Selecionar para sessão', exact: true })
-    .click();
-  await page
-    .getByRole('checkbox', { name: 'Incluir Lavar a louça na sessão' })
-    .check();
-  await page
-    .getByRole('checkbox', { name: 'Incluir Fazer mercado na sessão' })
-    .check();
-  await page
-    .getByRole('button', { name: 'Iniciar sessão', exact: true })
-    .click();
-  await expect(page).toHaveURL(/\/sessoes$/);
+  // Lote 5c: a session saved before (selections no longer create one).
+  await legacySession(page, ['Lavar a louça', 'Fazer mercado']);
   await detailed(page);
   await expect(page.getByText('0 de 2 concluídas')).toBeVisible();
   await page.reload();

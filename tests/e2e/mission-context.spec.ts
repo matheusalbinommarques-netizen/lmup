@@ -3,6 +3,7 @@ import { conclude, openReceipt, registerPart } from './execution';
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { confirmBackupImport } from './backup-ui';
+import { legacySession } from './legacy-session';
 
 async function create(page: Page, title = 'Missão pessoal') {
   await page.goto('/missoes');
@@ -297,14 +298,13 @@ test('rotina e sessão permanecem na atividade até o avanço explícito', async
   await page
     .getByRole('button', { name: 'Salvar rotina', exact: true })
     .click();
-  await page
-    .locator('.routine-card')
-    .getByText('Mais ações', { exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: 'Executar rotina', exact: true })
-    .click();
-  await expect(page).toHaveURL(/\/sessoes$/);
+  // Lote 5c: "Executar rotina" opens the selection queue; the session part
+  // runs on a session saved before.
+  await legacySession(
+    page,
+    ['Primeira atividade', 'Segunda atividade'],
+    'Minha sequência',
+  );
   const url = page.url();
   await page
     .getByRole('tab', { name: 'Execução detalhada', exact: true })

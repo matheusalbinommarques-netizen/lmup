@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { legacySession } from './legacy-session';
 import { registerPart } from './execution';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -359,30 +360,8 @@ test('virada de dia remove recorrência antiga da sessão sem encerrar a pontual
   page,
 }) => {
   await seed(page, true);
-  await page.goto('/missoes');
-  await page
-    .getByRole('button', { name: 'Selecionar para sessão', exact: true })
-    .click();
-  const dialog = page.getByRole('dialog', {
-    name: 'Montar sessão',
-    exact: true,
-  });
-  await dialog
-    .getByRole('checkbox', {
-      name: 'Incluir Objetivo pendente na sessão',
-      exact: true,
-    })
-    .check();
-  await dialog
-    .getByRole('checkbox', {
-      name: 'Incluir Rotina da origem na sessão',
-      exact: true,
-    })
-    .check();
-  await dialog
-    .getByRole('button', { name: 'Iniciar sessão', exact: true })
-    .click();
-  await expect(page).toHaveURL(/\/sessoes$/);
+  // Lote 5c: a session saved before (selections no longer create one).
+  await legacySession(page, ['Objetivo pendente', 'Rotina da origem']);
   const before = await state(page);
   await page.clock.fastForward(61_000);
   expect(

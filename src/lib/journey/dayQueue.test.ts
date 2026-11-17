@@ -80,3 +80,18 @@ it('rótulo do botão principal e endereço da tela única', () => {
     '/executar/t%3A1%3A2026-11-15?fila=bloco',
   );
 });
+
+describe('fila da seleção (lote 5c)', () => {
+  it('é o trecho escolhido, na ordem do Dia, e o endereço leva os ids', () => {
+    const rows = [row('x'), row('b'), row('a'), row('y')];
+    expect(
+      executionQueue(rows, 'selecao', 'a', ['a', 'y', 'b']).map((r) => r.id),
+    ).toEqual(['b', 'a', 'y']);
+    expect(executionQueue(rows, 'selecao', 'x', ['a', 'b'])).toEqual([]);
+    expect(
+      executionHref('t:1:2026-11-15', 'selecao', ['t:1:2026-11-15', 'o,2']),
+    ).toBe(
+      '/executar/t%3A1%3A2026-11-15?fila=selecao&ids=t%3A1%3A2026-11-15,o%2C2',
+    );
+  });
+});

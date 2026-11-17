@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { legacySession } from './legacy-session';
 import {
   conclude,
   concludeButton,
@@ -279,15 +280,8 @@ test('execução detalhada prioriza conclusão e recompensa, mantendo notas e a 
   const form = await mission(page, 'Ler no jardim');
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
   await expect(form).not.toBeVisible();
-  await page
-    .getByRole('button', { name: 'Selecionar para sessão', exact: true })
-    .click();
-  await page
-    .getByLabel('Incluir Ler no jardim na sessão', { exact: true })
-    .check();
-  await page
-    .getByRole('button', { name: 'Iniciar sessão', exact: true })
-    .click();
+  // Lote 5c: a session saved before (selections no longer create one).
+  await legacySession(page, ['Ler no jardim']);
   await page
     .getByRole('tab', { name: 'Execução detalhada', exact: true })
     .click();

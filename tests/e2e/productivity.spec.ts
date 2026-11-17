@@ -1,4 +1,5 @@
 import { fillMissionSteps, chooseTracking } from './mission-form';
+import { legacySession } from './legacy-session';
 import {
   conclude,
   concludeButton,
@@ -211,9 +212,10 @@ test('rotina semanal vira sessão persistente e aceita pausa, retomada e conclus
   await page
     .getByRole('button', { name: 'Executar rotina', exact: true })
     .click();
-  await expect(
-    page.getByRole('heading', { name: 'Noite produtiva', exact: true }),
-  ).toBeVisible();
+  // Lote 5c: the routine opens as a selection queue; the session part runs
+  // on a session saved before.
+  await expect(page).toHaveURL(/\/executar\/[^?]+\?fila=selecao&ids=/);
+  await legacySession(page, ['Lavar louça', 'Ler um livro'], 'Noite produtiva');
   await page.getByRole('button', { name: 'Visão geral', exact: true }).click();
   if (!(await page.locator('.queue-panel').getAttribute('open'))) {
     if (

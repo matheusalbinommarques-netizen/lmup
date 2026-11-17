@@ -1,6 +1,7 @@
 import { test, expect, type Page, type Locator } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { legacySession } from './legacy-session';
 
 async function capture(page: Page, name: string) {
   const folder = process.env.LMU_CONTROLS_CAPTURE_DIR;
@@ -282,14 +283,8 @@ test('editor aproveita o espaço e altera o horário da rotina pela Lista sem pe
     .getByRole('button', { name: 'Salvar rotina', exact: true })
     .click();
   await expect(routine).not.toBeVisible();
-  await page
-    .locator('.routine-card')
-    .getByText('Mais ações', { exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: 'Executar rotina', exact: true })
-    .click();
-  await expect(page).toHaveURL(/\/sessoes$/);
+  // Lote 5c: a session saved before keeps the execution's configuration.
+  await legacySession(page, ['Alongar'], 'Rotina diária');
   await page.goto('/missoes');
   await page.getByRole('tab', { name: 'Todas', exact: true }).click();
   await expect(

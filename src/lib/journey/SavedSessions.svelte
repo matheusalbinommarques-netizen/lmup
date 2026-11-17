@@ -306,6 +306,12 @@
             if (await update({ status: 'paused' }))
               await goto('/missoes?view=sessions');
           }}>Pausar sessão</Button
+        ><Button
+          variant="secondary"
+          onclick={() =>
+            goto(
+              `/missoes?view=routines&deSessao=${encodeURIComponent(session!.id)}`,
+            )}>Salvar como rotina</Button
         >
         <EndSessionButton
           {session}

@@ -1,6 +1,7 @@
 import { openMilestones, openCompanions } from '../e2e/camp-flow';
 import { chooseTracking } from '../e2e/mission-form';
 import { concludeFromDetail, registerPart } from '../e2e/execution';
+import { selectToExecute } from '../e2e/legacy-session';
 import { test, expect, type Page } from '@playwright/test';
 import { captureProtocolDiagnostics } from './protocol-diagnostics';
 import { readFile } from 'node:fs/promises';
@@ -101,28 +102,12 @@ test('agenda e progresso proporcional persistem offline e entram no backup', asy
     status: 'partial',
   });
   expect(copy.data.executionRecords).toHaveLength(1);
+  // Lote 5c: a selection opens the execution screen offline, no session.
   await page.goto('/missoes');
-  await page
-    .getByRole('button', { name: 'Selecionar para sessão', exact: true })
-    .click();
-  await page
-    .getByRole('checkbox', {
-      name: 'Incluir Prática offline na sessão',
-      exact: true,
-    })
-    .check();
-  await page
-    .getByRole('button', { name: 'Iniciar sessão', exact: true })
-    .click();
-  await expect(page).toHaveURL(/\/sessoes$/);
+  await selectToExecute(page, ['Prática offline']);
   await page.reload();
-  await page
-    .getByRole('tab', { name: 'Execução detalhada', exact: true })
-    .click();
-  await expect(
-    page.getByText('38% · Parcialmente realizada', { exact: true }),
-  ).toBeVisible();
-  expect((await backup(page)).data.savedMissionSessions).toHaveLength(1);
+  await expect(page.getByText(/38% registrado/)).toBeVisible();
+  expect((await backup(page)).data.savedMissionSessions).toHaveLength(0);
 });
 
 test('ao voltar ao app, encontra uma publicação nova sem aplicar durante o uso', async ({

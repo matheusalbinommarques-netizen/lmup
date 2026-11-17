@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { chooseTracking } from './mission-form';
+import { legacySession, selectToExecute } from './legacy-session';
 
 async function create(page: Page, title: string, partial = false) {
   await page.goto('/missoes');
@@ -19,32 +20,9 @@ async function create(page: Page, title: string, partial = false) {
   await form.getByRole('button', { name: 'Criar missão', exact: true }).click();
   await expect(form).not.toBeVisible();
 }
+// Lote 5c: sessions only exist from before; a selection opens the execution screen.
 async function start(page: Page, titles: string[]) {
-  await page
-    .getByRole('button', { name: 'Selecionar para sessão', exact: true })
-    .click();
-  const selector = page.getByRole('dialog', {
-    name: 'Montar sessão',
-    exact: true,
-  });
-  for (const title of titles)
-    await selector
-      .getByRole('checkbox', {
-        name: `Incluir ${title} na sessão`,
-        exact: true,
-      })
-      .check();
-  await selector
-    .getByRole('button', { name: 'Iniciar sessão', exact: true })
-    .click();
-  await expect(page).toHaveURL(/\/sessoes$/);
-  await expect(
-    page.getByRole('heading', {
-      level: 1,
-      name: 'Sessão de Missões',
-      exact: true,
-    }),
-  ).toBeVisible();
+  await legacySession(page, titles);
 }
 async function capture(page: Page, screen: string, project: string) {
   if (!process.env.LMU_SESSION_CAPTURE_DIR) return;
@@ -178,11 +156,12 @@ test('aba direta, inclusão no fim, pausa e encerramento liberam pendências sem
   expect(closed.activityEvents).toEqual(before.activityEvents);
   expect(closed.profile).toEqual(before.profile);
   await page.reload();
-  await start(page, ['Segunda', 'Nova atividade']);
+  // Selecting again opens the execution screen; no new session is created.
+  await selectToExecute(page, ['Segunda', 'Nova atividade']);
   const resumed = await state(page);
   expect(
-    resumed.savedMissionSessions.filter((s) => s.status === 'active')[0].id,
-  ).not.toBe(closed.savedMissionSessions[0].id);
+    resumed.savedMissionSessions.filter((s) => s.status !== 'ended'),
+  ).toEqual([]);
   await noOverflow(page);
 });
 

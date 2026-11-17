@@ -3,10 +3,8 @@
   import type { JourneySnapshot } from '$services/journeyQuery';
   import { makeOccurrence } from '$services/occurrenceService';
   import { occurrenceEligibility } from '$services/dailyPlanningService';
-  import {
-    startSelectedSession,
-    appendSessionOccurrences,
-  } from '$services/savedSessionService';
+  import { appendSessionOccurrences } from '$services/savedSessionService';
+  import { selectionHref } from './dayQueue';
   import { isOpenSession } from '$services/sessionLifecycle';
   import type { SavedMissionSession } from '$services/productivityTypes';
   import { dateKey } from '$services/rewardService';
@@ -73,16 +71,22 @@
     error = '';
     try {
       const selection = candidates.filter((row) => selected.includes(row.id));
-      if (targetSession)
+      if (targetSession) {
         await appendSessionOccurrences(
           targetSession.id,
           targetSession.revision,
           selection,
         );
-      else await startSelectedSession(selection);
+        open = false;
+        onadded?.();
+        return;
+      }
+      // Lote 5c: a new selection opens the execution screen with its own
+      // queue; it no longer creates a saved session.
+      const href = await selectionHref(selection);
+      if (!href) throw new Error('Nada pendente nesta seleção.');
       open = false;
-      if (targetSession) onadded?.();
-      else await goto('/sessoes');
+      await goto(href);
     } catch (cause) {
       error =
         cause instanceof Error ? cause.message : 'Não foi possível iniciar.';
@@ -94,10 +98,10 @@
 
 <Dialog
   bind:open
-  title={targetSession ? 'Adicionar missões à sessão' : 'Montar sessão'}
+  title={targetSession ? 'Adicionar missões à sessão' : 'Executar uma seleção'}
   description={targetSession
     ? 'As atividades entram no fim da fila. A atividade atual e seu progresso continuam preservados.'
-    : 'Selecione ocorrências disponíveis hoje. Nenhuma data será alterada automaticamente.'}
+    : 'Selecione ocorrências disponíveis hoje. Elas abrem na tela de execução, na ordem do Dia; nenhuma data muda.'}
   dismissible={!busy}
 >
   <label class="journey-label lmu-field"
@@ -125,7 +129,7 @@
         class:unavailable={!!reason}
         ><input
           type="checkbox"
-          aria-label={`Incluir ${row.title} na sessão${candidates.filter((item) => item.taskId === row.taskId).length > 1 ? ` · ${row.originDate}` : ''}`}
+          aria-label={`Incluir ${row.title} na ${targetSession ? 'sessão' : 'seleção'}${candidates.filter((item) => item.taskId === row.taskId).length > 1 ? ` · ${row.originDate}` : ''}`}
           disabled={busy || !!reason}
           checked={selected.includes(row.id)}
           onchange={(event) =>
@@ -152,7 +156,7 @@
     <Button disabled={busy || !selected.length} onclick={start}
       >{targetSession
         ? `Adicionar ${selected.length} ${selected.length === 1 ? 'missão' : 'missões'}`
-        : 'Iniciar sessão'}</Button
+        : 'Executar seleção'}</Button
     ><Button variant="quiet" disabled={busy} onclick={() => (open = false)}
       >Cancelar seleção</Button
     >

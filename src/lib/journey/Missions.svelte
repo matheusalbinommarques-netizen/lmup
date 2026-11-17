@@ -21,7 +21,7 @@
   import TaskRemovalDialog from './TaskRemovalDialog.svelte';
   import '$lib/rpg-theme.css';
   import { onMount, tick } from 'svelte';
-  import { executionHref } from './dayQueue';
+  import { executionHref, selectionHref } from './dayQueue';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { journeyQuery, type JourneySnapshot } from '$services/journeyQuery';
@@ -58,7 +58,6 @@
   import RpgTrim from '$lib/ui/RpgTrim.svelte';
   import ProductivityWorkspace from './ProductivityWorkspace.svelte';
   import { ensureOccurrence } from '$services/occurrenceService';
-  import { startOrResumeSession } from '$services/savedSessionService';
   import { fraction } from '$services/productivityRules';
   let todayRemovalOpen = $state(false),
     removalRows = $state<Occurrence[]>([]);
@@ -546,21 +545,19 @@
           (id) => !data?.tasks.find((task) => task.id === id)?.reviewEnabled,
         )
       ) {
-        const ids = [];
-        for (const id of eligibleSelection) {
-          const planned = data.plannedToday.filter(
-            (row) =>
-              row.taskId === id &&
-              !['completed', 'excused', 'discarded'].includes(row.status),
-          );
-          for (const row of planned)
-            ids.push((await ensureOccurrence(id, row.originDate)).id);
-        }
-        await startOrResumeSession('Sessão de Missões', ids);
+        // Lote 5c: the selection opens the execution screen with its own
+        // queue; no new saved session is created.
+        const rows = data.plannedToday.filter(
+          (row) =>
+            eligibleSelection.includes(row.taskId) &&
+            !['completed', 'excused', 'discarded'].includes(row.status),
+        );
+        const href = await selectionHref(rows);
+        if (!href) throw new Error('Nada pendente nesta seleção.');
         selecting = false;
         selected = [];
         error = '';
-        await goto('/sessoes');
+        await goto(href);
         return;
       }
       const session = newMissionSession(eligibleSelection, today);
@@ -721,7 +718,7 @@
               <Button
                 size="s"
                 disabled={!eligibleSelection.length}
-                onclick={beginSession}>Iniciar sessão</Button
+                onclick={beginSession}>Executar seleção</Button
               >
               <Button
                 variant="quiet"
@@ -739,7 +736,7 @@
                   selectionOpen = true;
                 }}
               >
-                <Icon name="missions" size={18} />Selecionar para sessão
+                <Icon name="missions" size={18} />Selecionar para executar
               </Button>
               {#if storedSession}<a
                   class="lmu-button lmu-button--secondary lmu-button--s"

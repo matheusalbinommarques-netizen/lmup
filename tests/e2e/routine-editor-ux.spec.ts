@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { legacySession } from './legacy-session';
 
 async function prepare(page: Page) {
   await page.goto('/missoes?view=areas');
@@ -142,14 +143,9 @@ test('edição de missão vinculada preserva a configuração da sessão iniciad
   await routine
     .getByRole('button', { name: 'Salvar rotina', exact: true })
     .click();
-  await page
-    .locator('.routine-card')
-    .getByText('Mais ações', { exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: 'Executar rotina', exact: true })
-    .click();
-  await expect(page).toHaveURL(/\/sessoes$/);
+  await expect(routine).not.toBeVisible();
+  // Lote 5c: a session saved before (selections no longer create one).
+  await legacySession(page, ['Beber água']);
   await page
     .getByRole('button', { name: 'Pausar sessão', exact: true })
     .click();
@@ -333,9 +329,7 @@ test('a recorrência é definida na rotina e herdada por todas as missões', asy
   ).toBe(true);
 });
 
-test('rotina agendada para outro dia não cria sessão vazia', async ({
-  page,
-}) => {
+test('rotina agendada para outro dia não abre fila vazia', async ({ page }) => {
   const routine = await prepare(page);
   await add(page, 'Beber água');
   await routine.getByLabel('Recorrência da rotina').selectOption('weekly');
@@ -360,7 +354,7 @@ test('rotina agendada para outro dia não cria sessão vazia', async ({
 
   await expect(page).toHaveURL(/\/missoes\?view=routines$/);
   await expect(page.getByRole('alert')).toContainText(
-    'Selecione ocorrências disponíveis hoje.',
+    'Nada desta rotina para hoje.',
   );
 });
 
