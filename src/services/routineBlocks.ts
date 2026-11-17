@@ -62,6 +62,12 @@ async function blocked(
  * are, and no progress, reward or event changes. `at` is the position in
  * `rows` (the Dia's order) where the block goes; `time`, when given, fixes
  * only today's time of the first inserted mission. Idempotent by request.
+ *
+ * The block and its audit are written in one transaction; the position in
+ * the Dia is saved right after (a legacy row of the Dia must not undo the
+ * insertion). If that second step fails, repeating the same request finds
+ * the audit and finishes it: the block goes to the recorded position among
+ * the other rows. Once placed, a repetition leaves the order alone.
  */
 export async function insertBlock(input: {
   routineId: string;
@@ -94,7 +100,14 @@ export async function insertBlock(input: {
         prior.entityId !== input.routineId
       )
         throw new Error('Identificador já utilizado.');
-      return { ...(prior.after as InsertResult), repeated: true };
+      const stored = prior.after as InsertResult & { day: string; at: number };
+      return {
+        inserted: stored.inserted,
+        skipped: stored.skipped,
+        day: stored.day,
+        at: stored.at,
+        repeated: true,
+      };
     }
     if (input.day !== dateKey())
       throw new Error('O dia mudou. Atualize o planejamento.');
@@ -165,19 +178,24 @@ export async function insertBlock(input: {
       before: null,
       after: { ...after, day: input.day, at: input.at, time },
     });
-    return { ...after, repeated: false };
+    return { ...after, day: input.day, at: input.at, repeated: false };
   });
-  // The order is saved after the block exists: a row that cannot be stored
-  // (legacy completion) must not undo the insertion.
-  if (!result.repeated && result.inserted.length) {
+  if (result.inserted.length && result.day === dateKey()) {
     const added = (await db.occurrences.bulkGet(result.inserted)).filter(
       (row): row is Occurrence => !!row,
     );
-    await saveDayOrder(input.day, [
-      ...input.rows.slice(0, input.at),
-      ...added,
-      ...input.rows.slice(input.at),
-    ]);
+    const placed = added.every((row) => row.dayOrder?.day === result.day);
+    if (!result.repeated || !placed) {
+      // On a retry the Dia already lists the block: place it among the others.
+      const ids = new Set(result.inserted);
+      const others = input.rows.filter((row) => !ids.has(row.id));
+      const at = Math.min(result.at, others.length);
+      await saveDayOrder(result.day, [
+        ...others.slice(0, at),
+        ...added,
+        ...others.slice(at),
+      ]);
+    }
   }
   return { inserted: result.inserted, skipped: result.skipped };
 }

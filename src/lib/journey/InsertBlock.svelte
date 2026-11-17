@@ -70,8 +70,12 @@
     if (!open) return;
     untrack(reset);
   });
+  // A failed attempt keeps its request: "Tentar de novo" repeats it, so a
+  // block already written is placed in the Dia instead of being lost.
+  let retry = $state<Parameters<typeof insertBlock>[0] | null>(null);
   function reset() {
     error = '';
+    retry = null;
     const first =
       routines.find((row) =>
         row.entries.some((entry) => !inDay.has(entry.taskId)),
@@ -161,31 +165,39 @@
       error = 'Escolha a hora do bloco.';
       return;
     }
+    await send({
+      routineId: routine.id,
+      taskIds: chosen.map((item) => item.taskId),
+      day: today,
+      rows: dayList,
+      at,
+      time: where === 'time' ? time : null,
+      requestId: crypto.randomUUID(),
+    });
+  }
+  async function send(input: Parameters<typeof insertBlock>[0]) {
+    if (busy) return;
+    const name = routines.find((row) => row.id === input.routineId)?.name ?? '';
     busy = true;
     error = '';
     try {
-      const result = await insertBlock({
-        routineId: routine.id,
-        taskIds: chosen.map((item) => item.taskId),
-        day: today,
-        rows: dayList,
-        at,
-        time: where === 'time' ? time : null,
-        requestId: crypto.randomUUID(),
-      });
+      // On a retry the Dia may already list the block; the service places it.
+      const result = await insertBlock({ ...input, rows: dayList });
+      retry = null;
       const left = result.skipped.map(
         (item) => `${item.title} ficou de fora (${item.reason})`,
       );
       oninserted?.(
         [
           result.inserted.length
-            ? `${routine.name} entrou no Dia: ${countLabel(result.inserted.length, 'item', 'itens')}, só hoje.`
-            : `Nada de ${routine.name} entrou no Dia.`,
+            ? `${name} entrou no Dia: ${countLabel(result.inserted.length, 'item', 'itens')}, só hoje.`
+            : `Nada de ${name} entrou no Dia.`,
           ...left.map((line) => `${line}.`),
         ].join(' '),
       );
       open = false;
     } catch (cause) {
+      retry = input;
       error =
         cause instanceof Error
           ? cause.message
@@ -285,7 +297,14 @@
         >
       </fieldset>
       {#if preview}<p class="preview" role="status">{preview}</p>{/if}
-      {#if error}<p class="error" role="alert">{error}</p>{/if}
+      {#if error}<p class="error" role="alert">
+          {error}{#if retry}&nbsp;<Button
+              variant="secondary"
+              size="s"
+              disabled={busy}
+              onclick={() => retry && send(retry)}>Tentar de novo</Button
+            >{/if}
+        </p>{/if}
       <p class="lmu-hint">
         Vale só para hoje. A rotina e os dias dela continuam como estão.
       </p>

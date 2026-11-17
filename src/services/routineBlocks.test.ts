@@ -11,6 +11,22 @@ import { todayView } from '$lib/journey/todayView';
 import { orderDay } from './dayOrder';
 import { insertBlock, routineDraftFromSession } from './routineBlocks';
 
+// Lets a test make the second step (saving the Dia's order) fail once.
+const orderFailure = vi.hoisted(() => ({ next: false }));
+vi.mock('./dayOrder', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./dayOrder')>();
+  return {
+    ...actual,
+    saveDayOrder: async (...args: Parameters<typeof actual.saveDayOrder>) => {
+      if (orderFailure.next) {
+        orderFailure.next = false;
+        throw new Error('Falha simulada ao guardar a ordem.');
+      }
+      return actual.saveDayOrder(...args);
+    },
+  };
+});
+
 // Sábado, 14 de novembro de 2026 (dia do design P3); a rotina é de dias úteis.
 const TODAY = '2026-11-14';
 beforeEach(async () => {
@@ -163,6 +179,64 @@ describe('insertBlock', () => {
     await expect(insertBlock({ ...input, routineId: 'outra' })).rejects.toThrow(
       'Identificador já utilizado.',
     );
+  });
+
+  it('finishes the order when the same request is repeated after a failure between the steps', async () => {
+    await create('Pagar conta de luz', { plannedDate: TODAY });
+    await create('Ler 20 páginas', { plannedDate: TODAY });
+    await create('Buscar Ana na escola', {
+      plannedDate: TODAY,
+      plannedTime: '13:30',
+    });
+    const ids = await faxina();
+    const before = await titles();
+    const at = before.indexOf('Pagar conta de luz') + 1;
+    const input = {
+      routineId: 'faxina',
+      taskIds: ids,
+      day: TODAY,
+      rows: await day(),
+      at,
+      requestId: 'insert-falha',
+    };
+    orderFailure.next = true;
+    await expect(insertBlock(input)).rejects.toThrow('Falha simulada');
+    // The block exists (one transaction) but has no place in the Dia yet.
+    const stored = await db.occurrences
+      .where('routineId')
+      .equals('faxina')
+      .toArray();
+    expect(stored).toHaveLength(3);
+    expect(stored.every((row) => row.dayOrder?.day !== TODAY)).toBe(true);
+    // Repeating the request, with the Dia as it is now (block included),
+    // places the block where it was asked, without a second insertion.
+    const again = await insertBlock({ ...input, rows: await day() });
+    expect([...again.inserted].sort()).toEqual(
+      stored.map((row) => row.id).sort(),
+    );
+    const expected = [
+      ...before.slice(0, at),
+      'Varrer a casa',
+      'Limpar o banheiro',
+      'Trocar a roupa de cama',
+      ...before.slice(at),
+    ];
+    expect(await titles()).toEqual(expected);
+    expect(
+      await db.occurrences.where('routineId').equals('faxina').count(),
+    ).toBe(3);
+    expect(
+      await db.productivityAudit
+        .filter((entry) => entry.action === 'routine-insert')
+        .count(),
+    ).toBe(1);
+    // Once placed, repeating it again keeps a later move by the user.
+    const [first, ...rest] = await day();
+    const moved = [...rest, first];
+    const { saveDayOrder } = await import('./dayOrder');
+    await saveDayOrder(TODAY, moved);
+    await insertBlock({ ...input, rows: await day() });
+    expect(await titles()).toEqual(moved.map((row) => row.title));
   });
 
   it('leaves rows already in the Dia where they are and skips resolved ones', async () => {
