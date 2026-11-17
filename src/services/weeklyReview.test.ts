@@ -192,8 +192,10 @@ describe('a semana', () => {
     expect(summary.effort).toEqual([
       { key: 'micro', label: 'Microação', count: 1 },
     ]);
+    // Casa teve só progresso (10/11), nenhuma conclusão: aparece mesmo assim.
     expect(summary.byArea).toEqual([
       { areaId: 0, name: 'Geral', completed: 1, activeDays: 1 },
+      { areaId: 2, name: 'Casa', completed: 0, activeDays: 1 },
     ]);
   });
 
@@ -469,9 +471,14 @@ describe('ações aceitas', () => {
         .map((r) => new Date(`${r.plannedDate}T12:00:00`).getDay());
     expect(days(walk)).toEqual([1, 2, 3, 4, 5]);
     expect(days(market)).toEqual([1, 2, 3, 4, 5]);
-    // Repetir não muda nada além da revisão da rotina.
+    // Repetir não grava nada: sem nova revisão da rotina nem versão de plano.
+    const revision = routine.revision;
+    const versions = await db.planVersions.count();
+    const tasksBefore = await db.tasks.toArray();
     await routineToWeekdays('manha');
-    expect((await db.routines.get('manha'))!.days).toEqual([1, 2, 3, 4, 5]);
+    expect((await db.routines.get('manha'))!.revision).toBe(revision);
+    expect(await db.planVersions.count()).toBe(versions);
+    expect(await db.tasks.toArray()).toEqual(tasksBefore);
     await expect(routineToWeekdays('sumiu')).rejects.toThrow('não está mais');
   });
 });

@@ -180,25 +180,32 @@ export function weekSummary(input: WeekInput, week: string, today: string) {
     if (row.plannedDate >= from && row.plannedDate <= to && planned(row, tasks))
       keys.add(row.id);
   // Dia com ação: uma conclusão ou um progresso registrado, não um plano.
-  const actions = (filter: (taskId: number) => boolean) => {
-    const days = new Set<string>();
-    for (const event of done.values())
-      if (filter(event.taskId!)) days.add(event.date);
-    const rowTask = new Map(input.occurrences.map((r) => [r.id, r.taskId]));
-    for (const record of input.executionRecords) {
-      const taskId = rowTask.get(record.occurrenceId);
-      if (
-        !record.correction &&
-        record.after > record.before &&
-        record.localDate >= from &&
-        record.localDate <= to &&
-        taskId !== undefined &&
-        filter(taskId)
-      )
-        days.add(record.localDate);
-    }
-    return days;
-  };
+  // A área é a da conclusão (ou a atual da missão, no progresso).
+  const areaOf = (taskId: number) => tasks.get(taskId)?.areaId ?? 0;
+  const actions: { date: string; areaId: number }[] = [...done.values()].map(
+    (event) => ({
+      date: event.date,
+      areaId: event.areaId ?? areaOf(event.taskId!),
+    }),
+  );
+  const rowTask = new Map(input.occurrences.map((r) => [r.id, r.taskId]));
+  for (const record of input.executionRecords) {
+    const taskId = rowTask.get(record.occurrenceId);
+    if (
+      !record.correction &&
+      record.after > record.before &&
+      record.localDate >= from &&
+      record.localDate <= to &&
+      taskId !== undefined
+    )
+      actions.push({ date: record.localDate, areaId: areaOf(taskId) });
+  }
+  const daysWith = (areaId?: number) =>
+    new Set(
+      actions
+        .filter((item) => areaId === undefined || item.areaId === areaId)
+        .map((item) => item.date),
+    ).size;
   const effort = new Map<Effort, number>();
   for (const event of done.values()) {
     const key = (tasks.get(event.taskId)?.effort ?? 'small') as Effort;
@@ -218,10 +225,8 @@ export function weekSummary(input: WeekInput, week: string, today: string) {
     );
     if (stale !== null) unlocked++;
   }
-  const areaOf = (taskId: number) => tasks.get(taskId)?.areaId ?? 0;
-  const areaIds = new Set(
-    [...done.values()].map((event) => event.areaId ?? areaOf(event.taskId!)),
-  );
+  // Áreas com ação na semana, mesmo sem conclusão.
+  const areaIds = new Set(actions.map((item) => item.areaId));
   const byArea = [...areaIds]
     .map((areaId) => ({
       areaId,
@@ -232,16 +237,21 @@ export function weekSummary(input: WeekInput, week: string, today: string) {
       completed: [...done.values()].filter(
         (event) => (event.areaId ?? areaOf(event.taskId!)) === areaId,
       ).length,
-      activeDays: actions((taskId) => areaOf(taskId) === areaId).size,
+      activeDays: daysWith(areaId),
     }))
-    .sort((a, b) => b.completed - a.completed || a.name.localeCompare(b.name));
+    .sort(
+      (a, b) =>
+        b.completed - a.completed ||
+        b.activeDays - a.activeDays ||
+        a.name.localeCompare(b.name),
+    );
   return {
     from,
     to,
     days: Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000) + 1,
     completed: done.size,
     planned: keys.size,
-    activeDays: actions(() => true).size,
+    activeDays: daysWith(),
     unlocked,
     effort: EFFORTS.filter(({ key }) => effort.get(key)).map(
       ({ key, label }) => ({ key, label, count: effort.get(key)! }),
@@ -554,15 +564,27 @@ const weekdaysOnly = (days: number[]) =>
 export async function routineToWeekdays(routineId: string) {
   const current = await db.routines.get(routineId);
   if (!current) throw new Error('A rotina não está mais disponível.');
-  const days = weekdaysOnly(current.days);
+  const kept = weekdaysOnly(current.days);
+  const days = kept.length ? kept : [1, 2, 3, 4, 5];
+  const entries = current.entries.map(({ taskId, time, days: own }) => ({
+    taskId,
+    time,
+    days: own && weekdaysOnly(own).length ? weekdaysOnly(own) : null,
+  }));
+  // Já só em dias úteis: nada a gravar (sem nova revisão nem versão de plano).
+  const same = (a?: number[] | null, b?: number[] | null) =>
+    (a ?? null) === null
+      ? (b ?? null) === null
+      : !!b && a!.length === b.length && a!.every((day, i) => day === b[i]);
+  if (
+    same(current.days, days) &&
+    current.entries.every((entry, i) => same(entry.days, entries[i].days))
+  )
+    return current.id;
   return saveRoutine({
     ...current,
-    days: days.length ? days : [1, 2, 3, 4, 5],
-    entries: current.entries.map(({ taskId, time, days: own }) => ({
-      taskId,
-      time,
-      days: own && weekdaysOnly(own).length ? weekdaysOnly(own) : null,
-    })),
+    days,
+    entries,
     expectedRevision: current.revision,
   });
 }
