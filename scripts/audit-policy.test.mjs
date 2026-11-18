@@ -99,20 +99,13 @@ const rejects = (value, pattern) =>
     },
   );
 
-test('o arquivo versionado tem só a exceção aprovada, até 17/12/2026', () => {
+// GHSA-fc5q-39xc-vjpf foi retirado em 18/11/2026 e saiu do npm audit; a
+// exceção foi removida. Os testes abaixo seguem usando-a como dado sintético.
+test('o arquivo versionado não tem exceções vigentes', () => {
   const list = JSON.parse(
     readFileSync(new URL('./audit-exceptions.json', import.meta.url), 'utf8'),
   );
-  validateExceptions(list);
-  assert.deepEqual(
-    list.map(({ id, package: name, range, expires }) => ({
-      id,
-      name,
-      range,
-      expires,
-    })),
-    [{ id: ID, name: 'picomatch', range: '<=4.0.7', expires: '2026-12-17' }],
-  );
+  assert.deepEqual(validateExceptions(list), []);
 });
 
 test('aprova só o advisory da exceção, com a cadeia transitiva, e diz isso no log', () => {
