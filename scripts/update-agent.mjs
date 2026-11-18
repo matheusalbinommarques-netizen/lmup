@@ -1,10 +1,10 @@
 // Atualiza o agente da sincronização local (.local-app/agent) sem nunca o
 // deixar sem uma versão utilizável, mesmo que o processo seja interrompido:
 //
-// 1. prepara a nova versão completa ao lado e valida (arquivos, sintaxe,
-//    importações);
-// 2. com as travas do ciclo e da publicação, renomeia a pasta preparada para
-//    agent/versions/<id> (a versão ativa não é tocada);
+// 1. com as travas do ciclo e da publicação, prepara a nova versão completa
+//    ao lado e valida (arquivos, sintaxe, importações);
+// 2. renomeia a pasta preparada para agent/versions/<id> (a versão ativa não
+//    é tocada);
 // 3. troca agent/current.json de uma vez ({ version, previous });
 // 4. na primeira vez, troca agent/scripts/sync-local.mjs (o caminho que a
 //    tarefa agendada executa) pelo carregador fixo (agent-bootstrap.mjs),
@@ -102,6 +102,12 @@ export async function updateAgent({
   const loaderNext = join(scripts, `.sync-local.next-${id}.mjs`);
   let unlockSync, unlockPublish;
   try {
+    // Tudo o que é compartilhado (restos .next-*, ponteiro, ativação) fica sob
+    // as mesmas travas do ciclo e da publicação: uma segunda atualização, um
+    // ciclo ou uma publicação simultâneos esperam ou são recusados.
+    unlockSync = await acquireLocalLock(join(storage, 'sync-daemon.lock'));
+    unlockPublish = await acquireLocalLock(join(storage, 'publish.lock'));
+    checkpoint('locked');
     await mkdir(versions, { recursive: true });
     // Restos de uma atualização interrompida não contam como versão.
     for (const name of await readdir(versions))
@@ -117,9 +123,6 @@ export async function updateAgent({
     await checkSyntax(loaderNext, 'agent-bootstrap.mjs');
     const pointer = await readPointer(agent);
     checkpoint('staged');
-    // Mesmas travas do ciclo e da publicação: nada troca durante o uso.
-    unlockSync = await acquireLocalLock(join(storage, 'sync-daemon.lock'));
-    unlockPublish = await acquireLocalLock(join(storage, 'publish.lock'));
     await rename(staged, target);
     checkpoint('version');
     const previous =
@@ -142,11 +145,14 @@ export async function updateAgent({
     checkpoint('loader');
     return { agent, version: id, previous };
   } finally {
+    // Só quem tem as travas limpou ou criou estes arquivos temporários.
+    if (unlockSync && unlockPublish) {
+      await rm(staged, { recursive: true, force: true });
+      await rm(pointerNext, { force: true });
+      await rm(loaderNext, { force: true });
+    }
     if (unlockPublish) await unlockPublish();
     if (unlockSync) await unlockSync();
-    await rm(staged, { recursive: true, force: true });
-    await rm(pointerNext, { force: true });
-    await rm(loaderNext, { force: true });
   }
 }
 

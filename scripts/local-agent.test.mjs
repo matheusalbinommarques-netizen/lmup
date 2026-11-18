@@ -152,12 +152,19 @@ test('interrompido em qualquer passo, o caminho normal continua com um agente ut
   // Primeira atualização (formato antigo) e uma seguinte (já com ponteiro).
   const expected = {
     first: {
+      locked: 'antigo',
       staged: 'antigo',
       version: 'antigo',
       pointer: 'antigo',
       loader: 'v1!',
     },
-    next: { staged: 'v1!', version: 'v1!', pointer: 'v2!', loader: 'v2!' },
+    next: {
+      locked: 'v1!',
+      staged: 'v1!',
+      version: 'v1!',
+      pointer: 'v2!',
+      loader: 'v2!',
+    },
   };
   for (const [phase, steps] of Object.entries(expected))
     for (const [step, ran] of Object.entries(steps))
@@ -186,6 +193,88 @@ test('interrompido em qualquer passo, o caminho normal continua com um agente ut
         await untouched(storage);
       });
 });
+
+test('duas atualizações simultâneas: a segunda é recusada sem perder a versão ativa nem a anterior', () =>
+  installation(async ({ root, storage }) => {
+    const v1 = await updateAgent({
+      storage,
+      source: await source(root, 'v1'),
+      files: FILES,
+      now: NOW,
+    });
+    const ready = join(root, 'pronto'),
+      go = join(root, 'seguir');
+    // A atualização A pega as travas e espera; B começa nesse intervalo.
+    const script = `
+      import { existsSync, writeFileSync } from 'node:fs';
+      import { updateAgent } from ${JSON.stringify(pathToFileURL(join(here, 'update-agent.mjs')).href)};
+      const wait = new Int32Array(new SharedArrayBuffer(4));
+      await updateAgent({ ...JSON.parse(process.env.OPTIONS), checkpoint: (step) => {
+        if (step !== 'locked') return;
+        writeFileSync(process.env.READY, '1');
+        for (let i = 0; i < 400 && !existsSync(process.env.GO); i++) Atomics.wait(wait, 0, 0, 50);
+      } });`;
+    const a = execute(process.execPath, ['--input-type=module', '-e', script], {
+      env: {
+        ...process.env,
+        READY: ready,
+        GO: go,
+        OPTIONS: JSON.stringify({
+          storage,
+          source: await source(root, 'v2'),
+          files: FILES,
+          now: NOW + 5000,
+        }),
+      },
+      timeout: 60_000,
+    });
+    for (let i = 0; i < 400; i++) {
+      if (
+        await readFile(ready).then(
+          () => true,
+          () => false,
+        )
+      )
+        break;
+      await new Promise((done) => setTimeout(done, 50));
+    }
+    await assert.rejects(
+      updateAgent({
+        storage,
+        source: await source(root, 'v3'),
+        files: FILES,
+        now: NOW + 6000,
+      }),
+      /Outra publicação ou sincronização/,
+    );
+    // Enquanto A não ativa, segue a versão anterior.
+    assert.deepEqual(await runAgent(root, storage), { ran: 'v1!' });
+    await writeFile(go, '1');
+    await a;
+    assert.deepEqual(await runAgent(root, storage), { ran: 'v2!' });
+    const pointer = JSON.parse(
+      await readFile(join(storage, 'agent', 'current.json'), 'utf8'),
+    );
+    assert.equal(pointer.previous, v1.version);
+    const versions = await readdir(join(storage, 'agent', 'versions'));
+    assert.ok(
+      versions.includes(v1.version) && versions.includes(pointer.version),
+    );
+    assert.deepEqual(
+      versions.filter((name) => name.startsWith('.next-')),
+      [],
+    );
+    // Depois, a outra atualização completa e guarda A como anterior.
+    const c = await updateAgent({
+      storage,
+      source: await source(root, 'v3'),
+      files: FILES,
+      now: NOW + 7000,
+    });
+    assert.equal(c.previous, pointer.version);
+    assert.deepEqual(await runAgent(root, storage), { ran: 'v3!' });
+    await untouched(storage);
+  }));
 
 test('carregador usa a versão anterior se a atual sumir; sem nenhuma, sai sem rodar nada', () =>
   installation(async ({ root, storage }) => {

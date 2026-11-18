@@ -274,6 +274,30 @@ test('exceções da versão candidata são lidas só como dado e validadas', asy
       JSON.stringify([picomatchException({ expires: '2026-02-30' })]),
     );
     await assert.rejects(readCandidateExceptions(project), /inválidas/);
+    // Além do limite do agente: recusada já na leitura, antes das consultas.
+    await writeFile(
+      file,
+      JSON.stringify([picomatchException({ expires: '2027-01-31' })]),
+    );
+    await assert.rejects(
+      readCandidateExceptions(project),
+      /não está autorizada/,
+    );
+    await writeFile(
+      file,
+      JSON.stringify([
+        picomatchException(),
+        {
+          ...picomatchException(),
+          id: 'GHSA-2222-3333-5555',
+          package: 'cookie',
+        },
+      ]),
+    );
+    await assert.rejects(
+      readCandidateExceptions(project),
+      /não está autorizada/,
+    );
     await writeFile(file, JSON.stringify([picomatchException()]));
     assert.deepEqual(await readCandidateExceptions(project), [
       picomatchException(),

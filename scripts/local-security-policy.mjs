@@ -162,7 +162,7 @@ export function evaluateAudit({
 /**
  * Exceções aprovadas lidas do checkout que vai ser publicado, só como dado:
  * nenhum código da versão candidata é carregado. Sem o arquivo, não há
- * exceção; arquivo ilegível ou inválido bloqueia.
+ * exceção; arquivo ilegível, inválido ou além do limite do agente bloqueia.
  */
 export async function readCandidateExceptions(project) {
   let text;
@@ -177,14 +177,17 @@ export async function readCandidateExceptions(project) {
       cause: error,
     });
   }
+  let exceptions;
   try {
-    return validateExceptions(JSON.parse(text));
+    exceptions = validateExceptions(JSON.parse(text));
   } catch (error) {
     throw Error(
       `Exceções da auditoria inválidas; publicação bloqueada. ${error.message}`,
       { cause: error },
     );
   }
+  // Recusa logo o que o agente não autoriza, antes de qualquer consulta externa.
+  return limitCandidateExceptions(exceptions);
 }
 
 export async function auditLocalRelease({ project, storage, npmCli, logPath }) {
