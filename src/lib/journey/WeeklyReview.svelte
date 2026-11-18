@@ -24,6 +24,12 @@
     type ReviewStep,
   } from '$services/weeklyReview';
   import { rangeLabel, moveToDay } from '$services/week';
+  import {
+    acceptSuggestion,
+    declineSuggestion,
+    suggestions as suggestionsFor,
+    type Suggestion,
+  } from '$services/suggestions';
   import { inboxView, setTaskDay, ageLabel } from '$services/inbox';
   import { previewTaskRemoval, removeTask } from '$services/taskRemoval';
   import { saveCheckin, setFocus, wheelView } from '$services/lifeWheelService';
@@ -101,6 +107,78 @@
   const rescheduleIdeas = $derived(
     input ? rescheduleSuggestions(input, week, today) : [],
   );
+  // Sugestões de horário e duração (lote 6b): uma por vez. "Agora não" só
+  // vale nesta visita; a mesma pode voltar ao reabrir a revisão.
+  const ideas = $derived(
+    data
+      ? suggestionsFor(
+          {
+            tasks: data.tasks,
+            occurrences: data.occurrences,
+            executionRecords: data.executionRecords,
+            weeklyReview: data.profile?.weeklyReview,
+          },
+          week,
+          today,
+        )
+      : [],
+  );
+  let later = $state<string[]>([]);
+  const pending = $derived(
+    ideas.filter((idea) => !decided.has(idea.id) && !later.includes(idea.id)),
+  );
+  const idea = $derived(pending[0]);
+  /** Sugestões já decididas nesta semana (aparecem ao refazer). */
+  const handled = $derived(
+    (entry?.decisions ?? []).flatMap((item) => {
+      const match = /^(time|duration):(\d+)$/.exec(item.id);
+      const task = match && data?.tasks.find((t) => t.id === Number(match[2]));
+      return match && task
+        ? [{ item, task, kind: match[1] as Suggestion['kind'] }]
+        : [];
+    }),
+  );
+  const minutesText = (values: number[]) =>
+    values.length > 1
+      ? `${values.slice(0, -1).join(', ')} e ${values.at(-1)} min`
+      : `${values[0]} min`;
+  const valueText = (idea: Suggestion) =>
+    idea.kind === 'time' ? idea.suggested : `${idea.suggested} min`;
+  function useSuggestion(idea: Suggestion) {
+    const title = idea.task.title;
+    confirming = {
+      id: idea.id,
+      text:
+        idea.kind === 'time'
+          ? idea.current
+            ? `“${title}” passa de ${idea.current} para ${idea.suggested} de hoje em diante. Os dias passados ficam como estão.`
+            : `“${title}” passa a ter hora fixa às ${idea.suggested} de hoje em diante. Os dias passados ficam como estão.`
+          : `“${title}” passa a ter duração de ${idea.suggested} min de hoje em diante, para planejar o dia. XP e histórico não mudam.`,
+      run: () =>
+        run(
+          () =>
+            acceptSuggestion(
+              week,
+              idea.kind === 'time'
+                ? {
+                    id: idea.id,
+                    kind: 'time',
+                    taskId: idea.task.id!,
+                    value: idea.suggested,
+                  }
+                : {
+                    id: idea.id,
+                    kind: 'duration',
+                    taskId: idea.task.id!,
+                    value: idea.suggested,
+                  },
+            ).then(() => {}),
+          idea.kind === 'time'
+            ? `“${title}” agora fica às ${idea.suggested}`
+            : `“${title}” agora tem ${idea.suggested} min`,
+        ),
+    };
+  }
   const triage = $derived(
     data
       ? inboxView(
@@ -399,11 +477,96 @@
         >
       </div>
     {:else if step === 'next'}
+      {#snippet confirmPanel()}{#if confirming}<div
+            class="confirm"
+            role="alertdialog"
+            aria-label="Confirmar"
+          >
+            <p>{confirming.text}</p>
+            <Button disabled={busy} onclick={() => confirming?.run()}
+              >Confirmar</Button
+            ><Button variant="quiet" onclick={() => (confirming = undefined)}
+              >Cancelar</Button
+            >
+          </div>{/if}{/snippet}
       <h1>Ajustes para a próxima semana</h1>
       <p class="muted">
         Sugestões a partir do que aconteceu. Aceite, recuse ou ignore; nada muda
         sem você.
       </p>
+      {#if idea}<section class="card" aria-labelledby="suggestion-title">
+          <span class="kind" id="suggestion-title"
+            >{idea.kind === 'time' ? 'Horário' : 'Duração'} · observação do cronômetro</span
+          >
+          {#if idea.kind === 'time'}<p>
+              {idea.current
+                ? `“${idea.task.title}” está marcada para ${idea.current}, e nos últimos 21 dias você começou por volta de ${idea.suggested}.`
+                : `“${idea.task.title}” não tem hora fixa, e nos últimos 21 dias você começou por volta de ${idea.suggested}.`}
+            </p>
+            <p class="muted small">
+              Base: {idea.samples.length} dias com início medido pelo cronômetro{idea
+                .close.count === idea.samples.length
+                ? `, todos entre ${idea.close.from} e ${idea.close.to}.`
+                : `; ${idea.close.count} deles entre ${idea.close.from} e ${idea.close.to}.`}
+            </p>{:else}<p>
+              {idea.current
+                ? `“${idea.task.title}” está com ${idea.current} min, e as últimas ${idea.samples.length} conclusões medidas levaram ${minutesText(idea.samples)}.`
+                : `“${idea.task.title}” não tem duração (conta 15 min*), e as últimas ${idea.samples.length} conclusões medidas levaram ${minutesText(idea.samples)}.`}
+            </p>
+            <p class="muted small">
+              É uma estimativa para planejar o dia, não uma meta: levar mais ou
+              menos tempo não muda XP.
+            </p>{/if}
+          <div class="choices">
+            <Button
+              variant="secondary"
+              disabled={busy}
+              onclick={() => useSuggestion(idea)}>Usar {valueText(idea)}</Button
+            >
+            <Button
+              variant="quiet"
+              disabled={busy}
+              onclick={() => {
+                confirming = undefined;
+                later = [...later, idea.id];
+              }}>Agora não</Button
+            >
+            <Button
+              variant="quiet"
+              disabled={busy}
+              onclick={() =>
+                run(
+                  () => declineSuggestion(week, idea.id).then(() => {}),
+                  idea.kind === 'time'
+                    ? `Sem sugestões de horário para “${idea.task.title}”`
+                    : `Sem sugestões de duração para “${idea.task.title}”`,
+                )}>Não sugerir mais</Button
+            >
+          </div>
+          {#if confirming?.id === idea.id}{@render confirmPanel()}{/if}
+          {#if pending.length > 1}<p class="muted small">
+              {pending.length - 1 === 1
+                ? 'Mais 1 observação depois desta.'
+                : `Mais ${pending.length - 1} observações depois desta.`}
+            </p>{/if}
+        </section>{/if}
+      {#if handled.length}<section class="card">
+          <span class="kind">Observações do cronômetro decididas</span>
+          <ul class="list">
+            {#each handled as { item, task, kind } (item.id)}<li>
+                <strong>{task.title}</strong>
+                <span class="decided"
+                  >{item.outcome === 'declined'
+                    ? kind === 'time'
+                      ? 'Não sugerir mais horário.'
+                      : 'Não sugerir mais duração.'
+                    : kind === 'time'
+                      ? `Feito: ${item.action?.slice(5)} de hoje em diante.`
+                      : `Feito: ${item.action?.slice(9)} min de hoje em diante.`}</span
+                >
+              </li>{/each}
+          </ul>
+        </section>{/if}
       {#each routineIdeas as idea (idea.id)}<section class="card">
           <span class="kind">Rotina</span>
           <p>
@@ -604,23 +767,12 @@
             {/each}
           </ul>
         </section>{/if}
-      {#if !routineIdeas.length && !rescheduleIdeas.length && !triage.length && !stalled.length}<p
+      {#if !idea && !handled.length && !routineIdeas.length && !rescheduleIdeas.length && !triage.length && !stalled.length}<p
           class="muted"
         >
           Nada pede ajuste nesta semana. Pode concluir.
         </p>{/if}
-      {#if confirming}<div
-          class="confirm"
-          role="alertdialog"
-          aria-label="Confirmar"
-        >
-          <p>{confirming.text}</p>
-          <Button disabled={busy} onclick={() => confirming?.run()}
-            >Confirmar</Button
-          ><Button variant="quiet" onclick={() => (confirming = undefined)}
-            >Cancelar</Button
-          >
-        </div>{/if}
+      {#if confirming?.id !== idea?.id}{@render confirmPanel()}{/if}
       <div class="actions">
         <Button
           size="l"

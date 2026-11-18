@@ -1,17 +1,38 @@
 <script lang="ts">
-  import { reviewStatus, type WeeklyReviewState } from '$services/weeklyReview';
+  import {
+    reviewStatus,
+    setSundayBlock,
+    type WeeklyReviewState,
+  } from '$services/weeklyReview';
   import { sentence } from '$services/capture';
+  import Button from '$lib/ui/Button.svelte';
 
   // Cartão da revisão semanal na Evolução (design E3): disponível, em dia
   // ou nunca feita. Não conta dias de atraso nem acumula semanas.
-  let { state, today }: { state?: WeeklyReviewState; today: string } = $props();
-  const status = $derived(reviewStatus(state, today));
+  let { state: review, today }: { state?: WeeklyReviewState; today: string } =
+    $props();
+  const status = $derived(reviewStatus(review, today));
   const day = (date: string, weekday = false) =>
     new Date(`${date.slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR', {
       ...(weekday ? { weekday: 'long' as const } : {}),
       day: 'numeric',
       month: 'short',
     });
+  // "Pôr no Dia aos domingos" (lote 6b): só a preferência; nada é criado.
+  let busy = $state(false),
+    error = $state('');
+  async function toggleSundays(on: boolean) {
+    busy = true;
+    error = '';
+    try {
+      await setSundayBlock(on);
+    } catch (cause) {
+      error =
+        cause instanceof Error ? cause.message : 'Não foi possível salvar.';
+    } finally {
+      busy = false;
+    }
+  }
   const localDay = (iso: string) => {
     const date = new Date(iso);
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -50,10 +71,32 @@
       Uma vez por semana, cerca de 5 min: olhar a semana, a Roda e ajustar a
       próxima. Tudo opcional.
     </p>
-    <a class="lmu-button lmu-button--secondary" href="/revisao-semanal"
-      >Experimentar agora</a
-    >
+    <span class="row">
+      <a class="lmu-button lmu-button--secondary" href="/revisao-semanal"
+        >Experimentar agora</a
+      >
+      {#if !review?.sundays}<Button
+          variant="quiet"
+          disabled={busy}
+          onclick={() => toggleSundays(true)}>Pôr no Dia aos domingos</Button
+        >{/if}
+    </span>
   {/if}
+  {#if review?.sundays}<p class="hint sundays">
+      No Dia aos domingos, sem notificação.
+      <Button
+        variant="quiet"
+        size="s"
+        disabled={busy}
+        onclick={() => toggleSundays(false)}>Tirar</Button
+      >
+    </p>{:else if status.kind !== 'never'}<Button
+      variant="quiet"
+      size="s"
+      disabled={busy}
+      onclick={() => toggleSundays(true)}>Pôr no Dia aos domingos</Button
+    >{/if}
+  {#if error}<p class="error" role="alert">{error}</p>{/if}
 </section>
 
 <style>
@@ -100,5 +143,23 @@
   .hint {
     font-size: 0.75rem;
     color: var(--lmu-muted);
+  }
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .sundays {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+  }
+  .review-card > :global(.lmu-button--quiet) {
+    justify-self: start;
+  }
+  .error {
+    color: var(--lmu-danger);
   }
 </style>
