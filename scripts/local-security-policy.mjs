@@ -4,11 +4,20 @@ import { readFile, appendFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { gitCommand } from './local-sync-core.mjs';
+import { classifyAudit, validateExceptions } from './audit-policy.mjs';
+import { fetchUpstream } from './audit-upstream.mjs';
 
 const execute = promisify(execFile);
-const blocking = new Set(['moderate', 'high', 'critical']);
 export const hashLockfile = (contents) =>
   createHash('sha256').update(contents.replace(/\r\n/g, '\n')).digest('hex');
+/**
+ * Decisão da publicação local. Primeiro a classificação compartilhada com a
+ * CI (scripts/audit-policy.mjs) separa o que a exceção temporária aprovada
+ * cobre, sem alterar o relatório e reprovando em qualquer dúvida (exceção
+ * vencida, correção publicada, consulta indisponível, relatório inválido).
+ * O que sobra passa pelas regras locais de sempre: alto ou crítico bloqueia;
+ * moderado exige concessão local para este commit e lockfile, por até 7 dias.
+ */
 export function evaluateAudit({
   report,
   exitCode,
@@ -16,6 +25,8 @@ export function evaluateAudit({
   commit,
   lockHash,
   now = Date.now(),
+  exceptions = [],
+  upstream = {},
 }) {
   if (
     ![0, 1].includes(exitCode) ||
@@ -27,17 +38,47 @@ export function evaluateAudit({
     throw Error(
       'A auditoria não terminou com um relatório válido. Publicação bloqueada.',
     );
-  const entries = Object.entries(report.vulnerabilities).filter(([, item]) =>
-    blocking.has(item.severity),
-  );
+  let shared;
+  try {
+    shared = classifyAudit({
+      report,
+      exitCode,
+      exceptions,
+      today: new Date(now).toISOString().slice(0, 10),
+      upstream,
+    });
+  } catch (error) {
+    throw Error(`Auditoria bloqueada: ${error.message}`, { cause: error });
+  }
+  const ciException = { sharedExceptions: shared.used, lines: shared.lines };
   if (
-    report.metadata.vulnerabilities.high > 0 ||
-    report.metadata.vulnerabilities.critical > 0
+    shared.remaining.some((entry) =>
+      ['high', 'critical'].includes(entry.severity),
+    )
   )
     throw Error(
       'Alertas altos ou críticos bloqueiam a publicação mesmo com exceção local.',
     );
-  if (!entries.length) return { decision: 'pass', exception: false };
+  const reviewed = new Set([
+    'https://github.com/advisories/GHSA-g3hv-75wg-m249',
+    'https://github.com/advisories/GHSA-3g3m-2fjr-6pw4',
+  ]);
+  const reviewedAll = new Set([
+    ...reviewed,
+    'https://github.com/advisories/GHSA-gcqx-w48m-w2h4',
+    'https://github.com/advisories/GHSA-pfhg-q3qv-9q6r',
+    'https://github.com/advisories/GHSA-27mw-82g8-phjj',
+  ]);
+  for (const item of Object.values(report.vulnerabilities))
+    for (const via of item.via)
+      if (
+        typeof via !== 'string' &&
+        !shared.isCovered(via) &&
+        !reviewedAll.has(via.url)
+      )
+        throw Error('A auditoria contém um alerta novo, fora desta revisão.');
+  if (!shared.remaining.length)
+    return { decision: 'pass', exception: false, ...ciException };
   const created = Date.parse(grant?.approvedAt),
     expires = Date.parse(grant?.expiresAt);
   if (
@@ -58,52 +99,52 @@ export function evaluateAudit({
       'Auditoria bloqueada: alertas moderados exigem aprovação local explícita, válida para este commit e lockfile, por até 7 dias.',
     );
   const allowed = new Set(grant.advisories);
-  const reviewed = new Set([
-    'https://github.com/advisories/GHSA-g3hv-75wg-m249',
-    'https://github.com/advisories/GHSA-3g3m-2fjr-6pw4',
-  ]);
   if ([...allowed].some((url) => !reviewed.has(url)))
     throw Error('A exceção contém um alerta sem análise de risco.');
-  const reviewedAll = new Set([
-    ...reviewed,
-    'https://github.com/advisories/GHSA-gcqx-w48m-w2h4',
-    'https://github.com/advisories/GHSA-pfhg-q3qv-9q6r',
-    'https://github.com/advisories/GHSA-27mw-82g8-phjj',
-  ]);
-  for (const item of Object.values(report.vulnerabilities))
-    for (const via of item.via)
-      if (typeof via !== 'string' && !reviewedAll.has(via.url))
-        throw Error('A auditoria contém um alerta novo, fora desta revisão.');
-  function sources(name, seen = new Set()) {
-    if (seen.has(name)) return [];
-    const item = report.vulnerabilities[name];
-    if (!item || !blocking.has(item.severity)) return [];
-    const next = new Set([...seen, name]);
-    return item.via.flatMap((via) =>
-      typeof via === 'string'
-        ? sources(via, next)
-        : blocking.has(via.severity)
-          ? [via.url]
-          : [],
-    );
-  }
-  for (const [name, item] of entries) {
-    const ids = sources(name);
+  for (const entry of shared.remaining)
     if (
-      item.severity !== 'moderate' ||
-      !ids.length ||
-      ids.some((id) => !allowed.has(id))
+      entry.severity !== 'moderate' ||
+      !entry.advisories.length ||
+      entry.advisories.some((id) => !allowed.has(id))
     )
       throw Error(
-        `Alerta novo ou não aprovado em ${name}. Publicação bloqueada.`,
+        `Alerta novo ou não aprovado em ${entry.name}. Publicação bloqueada.`,
       );
-  }
   return {
     decision: 'pass',
     exception: true,
     commit,
     expiresAt: grant.expiresAt,
+    ...ciException,
   };
+}
+
+/**
+ * Exceções aprovadas lidas do checkout que vai ser publicado, só como dado:
+ * nenhum código da versão candidata é carregado. Sem o arquivo, não há
+ * exceção; arquivo ilegível ou inválido bloqueia.
+ */
+export async function readCandidateExceptions(project) {
+  let text;
+  try {
+    text = await readFile(
+      join(project, 'scripts', 'audit-exceptions.json'),
+      'utf8',
+    );
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw Error('Não foi possível ler as exceções da auditoria.', {
+      cause: error,
+    });
+  }
+  try {
+    return validateExceptions(JSON.parse(text));
+  } catch (error) {
+    throw Error(
+      `Exceções da auditoria inválidas; publicação bloqueada. ${error.message}`,
+      { cause: error },
+    );
+  }
 }
 
 export async function auditLocalRelease({ project, storage, npmCli, logPath }) {
@@ -141,9 +182,17 @@ export async function auditLocalRelease({ project, storage, npmCli, logPath }) {
       },
     ),
   );
+  const exceptions = await readCandidateExceptions(project);
+  const upstream = await fetchUpstream(exceptions, {
+    npmCli,
+    token: process.env.GITHUB_TOKEN || process.env.GH_TOKEN,
+    options: { cwd: project },
+  });
   const result = evaluateAudit({
     report,
     exitCode,
+    exceptions,
+    upstream,
     grant,
     commit: await gitCommand(project, ['rev-parse', 'HEAD']),
     lockHash: hashLockfile(
