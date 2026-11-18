@@ -165,7 +165,7 @@ test('aceitar o horário confirma no cartão e passa à duração', async ({
     '6 dias com início medido pelo cronômetro, todos entre 07:05 e 07:25.',
   );
   await expect(timeCard(page)).toContainText('Mais 1 observação');
-  await expectNoPageOverflow(page);
+  await expectNoPageOverflow(page, 'sugestão de horário');
   await timeCard(page).getByRole('button', { name: 'Usar 07:15' }).click();
   await expect(timeCard(page).getByRole('alertdialog')).toContainText(
     '“Treino” passa de 06:30 para 07:15 de hoje em diante.',
@@ -231,7 +231,7 @@ test('Pôr no Dia aos domingos: linha só no domingo, fora da contagem, e revers
   await expect(page.locator('.day-list')).not.toContainText(
     'Revisão da semana',
   );
-  await expectNoPageOverflow(page);
+  await expectNoPageOverflow(page, 'linha de domingo');
   await expect(line.getByRole('link', { name: 'Abrir' })).toHaveAttribute(
     'href',
     '/revisao-semanal',
