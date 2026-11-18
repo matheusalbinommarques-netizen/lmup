@@ -46,6 +46,12 @@ export type WeeklyReviewEntry = {
 export type WeeklyReviewState = {
   version: 1;
   reviews: WeeklyReviewEntry[];
+  /**
+   * "Pôr no Dia aos domingos" (lote 6b): no domingo, enquanto a revisão da
+   * vez não foi feita, o Hoje mostra uma linha que a abre. Não é missão.
+   * Ausente = desligado.
+   */
+  sundays?: boolean;
 };
 
 const EMPTY: WeeklyReviewState = { version: 1, reviews: [] };
@@ -432,8 +438,9 @@ export function validateWeeklyReview(
   const ok =
     !!state &&
     typeof state === 'object' &&
-    keysOk(state, ['version', 'reviews']) &&
+    keysOk(state, ['version', 'reviews', 'sundays']) &&
     state.version === 1 &&
+    (state.sundays === undefined || typeof state.sundays === 'boolean') &&
     Array.isArray(state.reviews) &&
     state.reviews.length <= MAX_REVIEWS &&
     new Set(state.reviews.map((row) => (row as WeeklyReviewEntry)?.week))
@@ -587,4 +594,40 @@ export async function routineToWeekdays(routineId: string) {
     entries,
     expectedRevision: current.revision,
   });
+}
+
+// --- Pôr no Dia aos domingos (lote 6b) --------------------------------------
+
+/**
+ * Liga ou desliga a linha de domingo. Grava só a preferência: nenhuma
+ * missão é criada, e repetir não muda nada.
+ */
+export async function setSundayBlock(on: boolean) {
+  return db.transaction('rw', db.profile, async () => {
+    const profile = await db.profile.get(1);
+    if (!profile) throw new Error('Abra sua jornada primeiro.');
+    const state = structuredClone(profile.weeklyReview ?? EMPTY);
+    if (!!state.sundays === on) return false;
+    if (on) state.sundays = true;
+    else delete state.sundays;
+    validateWeeklyReview(state);
+    await db.profile.update(1, { weeklyReview: state });
+    return true;
+  });
+}
+
+/**
+ * A linha aparece só com a preferência ligada, no domingo, e enquanto a
+ * revisão da vez (a semana encerrada no sábado) não foi concluída. Feita no
+ * sábado, a mesma semana já está concluída no domingo.
+ */
+export function showSundayBlock(
+  state: WeeklyReviewState | undefined,
+  today: string,
+) {
+  return (
+    !!state?.sundays &&
+    weekday(today) === 0 &&
+    reviewStatus(state, today).kind !== 'done'
+  );
 }

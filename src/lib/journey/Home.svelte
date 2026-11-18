@@ -25,6 +25,7 @@
   import QuickCreate from './QuickCreate.svelte';
   import CaptureField from './CaptureField.svelte';
   import InsertBlock from './InsertBlock.svelte';
+  import SundayReviewLine from './SundayReviewLine.svelte';
   import { gameLayer } from '$services/gameLayer';
   import { getLevelStateFromTotalXp } from '$services/progression';
   import { guardUpdates } from './guardUpdates';
@@ -748,6 +749,7 @@
                 >{/if}
             </div>{/if}
           <p class="sr-only" role="status" aria-live="polite">{moved}</p>
+          <SundayReviewLine state={data?.profile?.weeklyReview} {today} />
           {#snippet planRow(row: Occurrence, ordered = false)}
             {@const info = rowInfos.get(row.id)}
             {@const slot = ordered ? slots.get(row.id) : undefined}
