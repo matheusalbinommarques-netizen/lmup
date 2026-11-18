@@ -1,11 +1,1 @@
-[
-  {
-    "id": "GHSA-fc5q-39xc-vjpf",
-    "package": "picomatch",
-    "range": "<=4.0.7",
-    "expires": "2026-12-17",
-    "approvedBy": "autor do projeto",
-    "approvedAt": "2026-11-17",
-    "reason": "ReDoS em padrões glob construídos (alta, sem versão corrigida publicada). Só ferramentas de build e desenvolvimento usam picomatch (vite, vitest, tailwindcss, typescript-eslint, svelte-check, lint-staged); o app publicado é estático, não contém picomatch e não processa glob de terceiros. Ver docs/AUDITORIA-SEGURANCA.md."
-  }
-]
+[]
