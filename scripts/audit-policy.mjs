@@ -192,12 +192,17 @@ function sources(report, name, seen = new Set()) {
   );
 }
 
+const RANK = { info: 0, low: 1, moderate: 2, high: 3, critical: 4 };
+
 /**
- * Decide a auditoria. Lança AuditError com o motivo quando reprova; quando
- * aprova, devolve as linhas de log, sempre citando a exceção em uso.
- * `upstream[id]` traz a consulta ao GitHub e ao registro de cada exceção.
+ * Classificação compartilhada pela CI e pela publicação local. Valida o
+ * relatório, as exceções (validade e situação publicada de todas) e separa,
+ * sem alterar o relatório, as entradas cobertas pelas exceções das que
+ * sobram. Uma entrada só é coberta quando todos os advisories na origem dela
+ * têm exceção; se a cadeia tiver também outro advisory, ela sobra com a
+ * severidade dos advisories sem exceção. Lança AuditError em qualquer dúvida.
  */
-export function evaluateCiAudit({
+export function classifyAudit({
   report,
   exitCode,
   exceptions,
@@ -212,8 +217,16 @@ export function evaluateCiAudit({
       fail(
         `A exceção de ${item.id} venceu em ${item.expires}. Revise: atualize a dependência ou peça nova decisão do autor.`,
       );
+  // Toda exceção cadastrada passa pela verificação externa, mesmo sem uso:
+  // correção publicada ou consulta falha reprova e força a revisão.
+  const latest = new Map(
+    exceptions.map((item) => [
+      item.id,
+      checkUpstream(item, upstream[item.id]).latest,
+    ]),
+  );
   const byId = new Map(exceptions.map((item) => [item.id, item]));
-  const covered = (via) => {
+  const isCovered = (via) => {
     const item = byId.get(advisoryId(via.url));
     return (
       !!item &&
@@ -224,40 +237,49 @@ export function evaluateCiAudit({
   };
   const problems = [];
   const used = new Map();
+  /** Entradas moderadas ou acima que não ficam inteiramente cobertas. */
+  const remaining = [];
   for (const [name, item] of Object.entries(report.vulnerabilities)) {
     for (const via of item.via)
       if (
         typeof via !== 'string' &&
         BLOCKING.has(via.severity) &&
-        !covered(via)
+        !isCovered(via)
       )
         problems.push(
           `${name}: ${via.severity} ${advisoryId(via.url) ?? via.url} (${via.name ?? '?'} ${via.range ?? ''}) não tem exceção.`,
         );
     if (!BLOCKING.has(item.severity)) continue;
     const roots = sources(report, name);
-    if (!roots.length)
+    if (!roots.length) {
       problems.push(
         `${name}: ${item.severity} sem advisory de origem identificável.`,
       );
+      remaining.push({ name, severity: item.severity, advisories: [] });
+      continue;
+    }
+    const open = roots.filter((via) => !isCovered(via));
     for (const via of roots)
-      if (covered(via)) {
+      if (isCovered(via)) {
         const id = advisoryId(via.url);
         used.set(id, [...(used.get(id) ?? []), name]);
-      } else
-        problems.push(
-          `${name}: ${item.severity} por ${advisoryId(via.url) ?? via.url} (${via.name ?? '?'}), sem exceção.`,
-        );
+      }
+    for (const via of open)
+      problems.push(
+        `${name}: ${item.severity} por ${advisoryId(via.url) ?? via.url} (${via.name ?? '?'}), sem exceção.`,
+      );
+    if (open.length)
+      remaining.push({
+        name,
+        severity: open.reduce(
+          (top, via) => (RANK[via.severity] > RANK[top] ? via.severity : top),
+          'moderate',
+        ),
+        advisories: [...new Set(open.map((via) => via.url))],
+      });
   }
-  if (problems.length)
-    fail(
-      `Alertas moderados ou acima sem exceção:\n- ${[...new Set(problems)].join('\n- ')}`,
-    );
-  // Toda exceção cadastrada passa pela verificação externa, mesmo sem uso:
-  // correção publicada ou consulta falha reprova e força a revisão.
   const lines = [];
   for (const item of exceptions) {
-    const { latest } = checkUpstream(item, upstream[item.id]);
     const names = used.get(item.id);
     if (names) {
       const unique = [...new Set(names)].sort();
@@ -269,9 +291,32 @@ export function evaluateCiAudit({
         `Exceção sem uso: ${item.id} não aparece mais no relatório; remova-a de scripts/audit-exceptions.json.`,
       );
     lines.push(
-      `Correção publicada para ${item.id}: nenhuma (GitHub sem first_patched_version; última ${item.package} no npm: ${latest}).`,
+      `Correção publicada para ${item.id}: nenhuma (GitHub sem first_patched_version; última ${item.package} no npm: ${latest.get(item.id)}).`,
     );
   }
-  lines.push('Nenhum outro alerta moderado, alto ou crítico.');
-  return { ok: true, used: [...used.keys()], lines };
+  return {
+    used: [...used.keys()],
+    remaining,
+    problems: [...new Set(problems)],
+    isCovered,
+    lines,
+  };
+}
+
+/**
+ * Decide a auditoria da CI: qualquer moderado ou acima sem exceção reprova.
+ * Lança AuditError com o motivo; quando aprova, devolve as linhas de log,
+ * sempre citando a exceção em uso.
+ */
+export function evaluateCiAudit(input) {
+  const result = classifyAudit(input);
+  if (result.problems.length)
+    fail(
+      `Alertas moderados ou acima sem exceção:\n- ${result.problems.join('\n- ')}`,
+    );
+  return {
+    ok: true,
+    used: result.used,
+    lines: [...result.lines, 'Nenhum outro alerta moderado, alto ou crítico.'],
+  };
 }

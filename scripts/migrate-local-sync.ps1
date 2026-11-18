@@ -10,7 +10,7 @@ $configPath = Join-Path $store 'sync-config.json'
 $preparedPath = Join-Path $store 'migration-main-prepared.json'
 $backup = Join-Path $store 'migration-main-backup'
 $agent = Join-Path $store 'agent/scripts'
-$scripts = @('sync-local.mjs', 'local-sync-config.mjs', 'local-sync-core.mjs', 'local-security-policy.mjs', 'local-process-lock.mjs', 'publish-local.mjs', 'local-release-store.mjs', 'verify-package.mjs', 'serve-static.mjs', 'static-server.mjs')
+$scripts = @('sync-local.mjs', 'local-sync-config.mjs', 'local-sync-core.mjs', 'local-security-policy.mjs', 'audit-policy.mjs', 'audit-upstream.mjs', 'local-process-lock.mjs', 'publish-local.mjs', 'local-release-store.mjs', 'verify-package.mjs', 'serve-static.mjs', 'static-server.mjs')
 $digest = [BitConverter]::ToString(([Security.Cryptography.SHA256]::Create()).ComputeHash([Text.Encoding]::UTF8.GetBytes($project))).Replace('-', '').Substring(0, 10)
 $taskName = 'LMUP GitHub Sync ' + $digest
 

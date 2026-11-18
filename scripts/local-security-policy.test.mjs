@@ -1,6 +1,23 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluateAudit, hashLockfile } from './local-security-policy.mjs';
+import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import {
+  evaluateAudit,
+  hashLockfile,
+  readCandidateExceptions,
+} from './local-security-policy.mjs';
+import {
+  PICOMATCH,
+  REVIEWED_MODERATE,
+  addEntry,
+  advisory,
+  picomatchException,
+  picomatchReport,
+  upstreamOk,
+  upstreamPatched,
+} from './audit-test-fixtures.mjs';
 const id = 'https://github.com/advisories/GHSA-g3hv-75wg-m249';
 const now = Date.parse('2026-10-31T12:00:00Z');
 test('hash de aprovação preserva conteúdo e normaliza apenas finais de linha do Git no Windows', () => {
@@ -89,4 +106,246 @@ test('aprovação ausente, duração excessiva e alertas novos ou graves são re
     };
     assert.throws(() => evaluateAudit(input));
   }
+});
+
+// Exceção compartilhada com a CI (scripts/audit-exceptions.json, #115).
+const nov = Date.parse('2026-11-18T12:00:00Z');
+const shared = (extra = {}) => ({
+  report: picomatchReport(),
+  exitCode: 1,
+  exceptions: [picomatchException()],
+  upstream: upstreamOk(),
+  commit: 'chosen',
+  lockHash: 'lock',
+  now: nov,
+  ...extra,
+});
+const localGrant = () => ({
+  approved: true,
+  approvedBy: 'test-user',
+  approvedAt: new Date(nov - 1000).toISOString(),
+  expiresAt: new Date(nov + 86400000).toISOString(),
+  commit: 'chosen',
+  lockHash: 'lock',
+  advisories: [REVIEWED_MODERATE],
+});
+const OTHER_HIGH = 'https://github.com/advisories/GHSA-pxg6-pf52-xh8x';
+
+test('só o picomatch autorizado: publicação permitida, com a exceção no registro', () => {
+  const result = evaluateAudit(shared());
+  assert.equal(result.decision, 'pass');
+  assert.equal(result.exception, false);
+  assert.deepEqual(result.sharedExceptions, [PICOMATCH]);
+  assert.match(
+    result.lines[0],
+    /EXCEÇÃO TEMPORÁRIA EM USO: GHSA-fc5q-39xc-vjpf/,
+  );
+  // Sem a exceção cadastrada, o mesmo relatório continua bloqueado.
+  assert.throws(
+    () => evaluateAudit(shared({ exceptions: [] })),
+    /altos ou críticos/,
+  );
+});
+
+test('picomatch autorizado + outro alerta alto: publicação bloqueada', () => {
+  const other = addEntry(picomatchReport(), 'cookie', 'high', [
+    advisory(OTHER_HIGH, 'high', 'cookie'),
+  ]);
+  assert.throws(
+    () => evaluateAudit(shared({ report: other })),
+    /altos ou críticos/,
+  );
+  // Outro advisory alto na mesma cadeia do picomatch também bloqueia.
+  const chain = picomatchReport();
+  chain.vulnerabilities.vite.via.push(advisory(OTHER_HIGH, 'high', 'vite'));
+  assert.throws(
+    () => evaluateAudit(shared({ report: chain })),
+    /altos ou críticos/,
+  );
+  // Concessão local não libera alto.
+  assert.throws(
+    () => evaluateAudit(shared({ report: other, grant: localGrant() })),
+    /altos ou críticos/,
+  );
+});
+
+test('picomatch autorizado + moderado: só passa com concessão local válida, como antes', () => {
+  const moderate = () =>
+    addEntry(picomatchReport(), 'minimatch', 'moderate', [
+      advisory(REVIEWED_MODERATE, 'moderate', 'minimatch'),
+    ]);
+  assert.throws(
+    () => evaluateAudit(shared({ report: moderate() })),
+    /aprovação local explícita/,
+  );
+  for (const change of [
+    { commit: 'outro' },
+    { lockHash: 'outro' },
+    { expiresAt: new Date(nov - 1).toISOString() },
+    { approved: false },
+  ])
+    assert.throws(() =>
+      evaluateAudit(
+        shared({ report: moderate(), grant: { ...localGrant(), ...change } }),
+      ),
+    );
+  const ok = evaluateAudit(shared({ report: moderate(), grant: localGrant() }));
+  assert.equal(ok.exception, true);
+  assert.deepEqual(ok.sharedExceptions, [PICOMATCH]);
+  // Cadeia com os dois: vite via picomatch (coberto) e um moderado próprio.
+  const mixed = picomatchReport();
+  mixed.vulnerabilities.vite.via.push(
+    advisory(REVIEWED_MODERATE, 'moderate', 'vite'),
+  );
+  assert.throws(
+    () => evaluateAudit(shared({ report: mixed })),
+    /aprovação local explícita/,
+  );
+  assert.equal(
+    evaluateAudit(shared({ report: mixed, grant: localGrant() })).exception,
+    true,
+  );
+  // Moderado que a política local nunca revisou continua bloqueado.
+  const unknown = addEntry(picomatchReport(), 'other', 'moderate', [
+    advisory(
+      'https://github.com/advisories/GHSA-2222-3333-5555',
+      'moderate',
+      'other',
+    ),
+  ]);
+  assert.throws(
+    () => evaluateAudit(shared({ report: unknown, grant: localGrant() })),
+    /fora desta revisão/,
+  );
+});
+
+test('exceção vencida, correção publicada ou consulta indisponível: publicação bloqueada', () => {
+  assert.throws(
+    () => evaluateAudit(shared({ now: Date.parse('2026-12-18T00:00:01Z') })),
+    /venceu em 2026-12-17/,
+  );
+  assert.equal(
+    evaluateAudit(shared({ now: Date.parse('2026-12-17T23:59:59Z') })).decision,
+    'pass',
+  );
+  assert.throws(
+    () => evaluateAudit(shared({ upstream: upstreamPatched() })),
+    /informa correção/,
+  );
+  assert.throws(
+    () =>
+      evaluateAudit(shared({ upstream: upstreamOk({}, ['4.0.7', '4.0.8']) })),
+    /4\.0\.8 foi publicado/,
+  );
+  assert.throws(
+    () => evaluateAudit(shared({ upstream: {} })),
+    /Não foi possível consultar/,
+  );
+  assert.throws(
+    () =>
+      evaluateAudit(
+        shared({
+          upstream: {
+            [PICOMATCH]: { github: { error: 'HTTP 503' }, versions: ['4.0.7'] },
+          },
+        }),
+      ),
+    /HTTP 503/,
+  );
+  // Relatório incompleto também bloqueia.
+  const broken = picomatchReport();
+  delete broken.vulnerabilities.tinyglobby;
+  assert.throws(
+    () => evaluateAudit(shared({ report: broken })),
+    /Auditoria bloqueada/,
+  );
+});
+
+test('exceções da versão candidata são lidas só como dado e validadas', async () => {
+  const project = await mkdtemp(join(tmpdir(), 'lmup-audit-'));
+  try {
+    assert.deepEqual(await readCandidateExceptions(project), []);
+    await mkdir(join(project, 'scripts'));
+    const file = join(project, 'scripts', 'audit-exceptions.json');
+    await writeFile(file, '{ não é json');
+    await assert.rejects(readCandidateExceptions(project), /inválidas/);
+    await writeFile(
+      file,
+      JSON.stringify([picomatchException({ expires: '2026-02-30' })]),
+    );
+    await assert.rejects(readCandidateExceptions(project), /inválidas/);
+    // Além do limite do agente: recusada já na leitura, antes das consultas.
+    await writeFile(
+      file,
+      JSON.stringify([picomatchException({ expires: '2027-01-31' })]),
+    );
+    await assert.rejects(
+      readCandidateExceptions(project),
+      /não está autorizada/,
+    );
+    await writeFile(
+      file,
+      JSON.stringify([
+        picomatchException(),
+        {
+          ...picomatchException(),
+          id: 'GHSA-2222-3333-5555',
+          package: 'cookie',
+        },
+      ]),
+    );
+    await assert.rejects(
+      readCandidateExceptions(project),
+      /não está autorizada/,
+    );
+    await writeFile(file, JSON.stringify([picomatchException()]));
+    assert.deepEqual(await readCandidateExceptions(project), [
+      picomatchException(),
+    ]);
+  } finally {
+    await rm(project, { recursive: true, force: true });
+  }
+});
+
+test('o candidato pode pedir menos, nunca ampliar a exceção autorizada no agente', () => {
+  // Validade menor que a autorizada: aceita.
+  assert.equal(
+    evaluateAudit(
+      shared({ exceptions: [picomatchException({ expires: '2026-12-10' })] }),
+    ).decision,
+    'pass',
+  );
+  const second = {
+    ...picomatchException(),
+    id: 'GHSA-2222-3333-5555',
+    package: 'cookie',
+    range: '<0.7.0',
+  };
+  for (const [exceptions, label] of [
+    [[picomatchException(), second], 'segunda exceção'],
+    [[picomatchException({ expires: '2027-01-31' })], 'validade estendida'],
+    [[picomatchException({ package: 'micromatch' })], 'outro pacote'],
+    [[picomatchException({ range: '<=4.0.8' })], 'intervalo ampliado'],
+  ])
+    assert.throws(
+      () => evaluateAudit(shared({ exceptions })),
+      /não está autorizada para a publicação local/,
+      label,
+    );
+  // A segunda exceção não passa nem quando o relatório nem cita o advisory dela.
+  assert.throws(
+    () =>
+      evaluateAudit(
+        shared({
+          exceptions: [second],
+          report: {
+            auditReportVersion: 2,
+            vulnerabilities: {},
+            metadata: { vulnerabilities: { total: 0 } },
+          },
+          exitCode: 0,
+        }),
+      ),
+    /não está autorizada/,
+  );
 });

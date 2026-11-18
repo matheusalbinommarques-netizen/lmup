@@ -6,6 +6,16 @@ import { join, resolve, relative, isAbsolute } from 'node:path';
 import { gitCommand, synchronize } from './local-sync-core.mjs';
 import { publishBuild, activeRelease } from './local-release-store.mjs';
 import { acquireLocalLock } from './local-process-lock.mjs';
+import { evaluateAudit } from './local-security-policy.mjs';
+import {
+  REVIEWED_MODERATE,
+  addEntry,
+  advisory,
+  picomatchException,
+  picomatchReport,
+  upstreamOk,
+  upstreamPatched,
+} from './audit-test-fixtures.mjs';
 
 async function fixture(work) {
   const temporary = await mkdtemp(join(tmpdir(), 'lmup-sync-'));
@@ -184,4 +194,86 @@ test('trava compartilhada impede publicar simultaneamente ao hook', () =>
     } finally {
       await unlock();
     }
+  }));
+
+// Auditoria com a exceção compartilhada da CI (#115) dentro do ciclo real:
+// aprovada publica a versão inteira; reprovada não troca nem altera a ativa.
+const nov = Date.parse('2026-11-18T12:00:00Z');
+const audited = (options, scenario) => ({
+  ...options,
+  verify: async () => {
+    evaluateAudit({
+      report: picomatchReport(),
+      exitCode: 1,
+      exceptions: [picomatchException()],
+      upstream: upstreamOk(),
+      commit: 'candidate',
+      lockHash: 'lock',
+      now: nov,
+      ...scenario,
+    });
+    await options.verify();
+  },
+});
+const servedFiles = async (release) =>
+  Object.fromEntries(
+    await Promise.all(
+      ['release.json', '200.html', 'sw.js', 'manifest.webmanifest'].map(
+        async (name) => [
+          name,
+          await readFile(join(release.build, name), 'utf8'),
+        ],
+      ),
+    ),
+  );
+
+test('auditoria só com o picomatch autorizado publica a versão inteira', () =>
+  fixture(async ({ options, advance, storage, calls }) => {
+    const target = await advance();
+    assert.equal((await synchronize(audited(options, {}))).state, 'published');
+    const active = await activeRelease(storage);
+    assert.equal(active.source.commit, target);
+    assert.deepEqual(await servedFiles(active), {
+      'release.json': JSON.stringify({
+        version: '2222222222222222',
+        schema: 5,
+        protocol: 1,
+      }),
+      '200.html': '2222222222222222',
+      'sw.js': '2222222222222222',
+      'manifest.webmanifest': '{}',
+    });
+    assert.equal(calls(), 1);
+  }));
+
+test('auditoria reprovada não substitui nem altera a versão instalada', () =>
+  fixture(async ({ options, advance, storage, calls }) => {
+    await advance();
+    const before = await activeRelease(storage);
+    const files = await servedFiles(before);
+    const moderate = addEntry(picomatchReport(), 'minimatch', 'moderate', [
+      advisory(REVIEWED_MODERATE, 'moderate', 'minimatch'),
+    ]);
+    const otherHigh = addEntry(picomatchReport(), 'cookie', 'high', [
+      advisory(
+        'https://github.com/advisories/GHSA-pxg6-pf52-xh8x',
+        'high',
+        'cookie',
+      ),
+    ]);
+    for (const [scenario, message] of [
+      [{ report: otherHigh }, /altos ou críticos/],
+      [{ report: moderate }, /aprovação local explícita/],
+      [{ now: Date.parse('2026-12-18T00:00:01Z') }, /venceu/],
+      [{ upstream: upstreamPatched() }, /informa correção/],
+      [{ upstream: {} }, /Não foi possível consultar/],
+      [{ exceptions: [] }, /altos ou críticos/],
+    ]) {
+      await assert.rejects(synchronize(audited(options, scenario)), message);
+      const after = await activeRelease(storage);
+      assert.equal(after.id, before.id);
+      assert.deepEqual(await servedFiles(after), files);
+    }
+    // A auditoria barra antes da compilação: nada foi construído.
+    assert.equal(calls(), 0);
   }));
