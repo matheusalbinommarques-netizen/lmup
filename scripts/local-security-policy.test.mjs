@@ -282,3 +282,46 @@ test('exceções da versão candidata são lidas só como dado e validadas', asy
     await rm(project, { recursive: true, force: true });
   }
 });
+
+test('o candidato pode pedir menos, nunca ampliar a exceção autorizada no agente', () => {
+  // Validade menor que a autorizada: aceita.
+  assert.equal(
+    evaluateAudit(
+      shared({ exceptions: [picomatchException({ expires: '2026-12-10' })] }),
+    ).decision,
+    'pass',
+  );
+  const second = {
+    ...picomatchException(),
+    id: 'GHSA-2222-3333-5555',
+    package: 'cookie',
+    range: '<0.7.0',
+  };
+  for (const [exceptions, label] of [
+    [[picomatchException(), second], 'segunda exceção'],
+    [[picomatchException({ expires: '2027-01-31' })], 'validade estendida'],
+    [[picomatchException({ package: 'micromatch' })], 'outro pacote'],
+    [[picomatchException({ range: '<=4.0.8' })], 'intervalo ampliado'],
+  ])
+    assert.throws(
+      () => evaluateAudit(shared({ exceptions })),
+      /não está autorizada para a publicação local/,
+      label,
+    );
+  // A segunda exceção não passa nem quando o relatório nem cita o advisory dela.
+  assert.throws(
+    () =>
+      evaluateAudit(
+        shared({
+          exceptions: [second],
+          report: {
+            auditReportVersion: 2,
+            vulnerabilities: {},
+            metadata: { vulnerabilities: { total: 0 } },
+          },
+          exitCode: 0,
+        }),
+      ),
+    /não está autorizada/,
+  );
+});

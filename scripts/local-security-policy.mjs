@@ -4,12 +4,51 @@ import { readFile, appendFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { gitCommand } from './local-sync-core.mjs';
-import { classifyAudit, validateExceptions } from './audit-policy.mjs';
+import {
+  classifyAudit,
+  normalizeRange,
+  validateExceptions,
+} from './audit-policy.mjs';
 import { fetchUpstream } from './audit-upstream.mjs';
 
 const execute = promisify(execFile);
 export const hashLockfile = (contents) =>
   createHash('sha256').update(contents.replace(/\r\n/g, '\n')).digest('hex');
+/**
+ * Limite próprio do agente para as exceções da publicação local. O arquivo de
+ * exceções vem da versão candidata e só pode pedir menos do que isto: mesmo
+ * advisory, pacote e intervalo, e validade até a data máxima. Qualquer outra
+ * exceção ou ampliação exige nova decisão do autor e atualização do agente.
+ * Decisão de 17/11/2026: GHSA-fc5q-39xc-vjpf, até 17/12/2026.
+ */
+export const LOCAL_AUTHORIZED_EXCEPTIONS = Object.freeze([
+  Object.freeze({
+    id: 'GHSA-fc5q-39xc-vjpf',
+    package: 'picomatch',
+    range: '<=4.0.7',
+    maxExpires: '2026-12-17',
+  }),
+]);
+
+export function limitCandidateExceptions(
+  exceptions,
+  authorized = LOCAL_AUTHORIZED_EXCEPTIONS,
+) {
+  for (const item of exceptions) {
+    const allowed = authorized.find((entry) => entry.id === item.id);
+    if (
+      !allowed ||
+      item.package !== allowed.package ||
+      normalizeRange(item.range) !== normalizeRange(allowed.range) ||
+      !(item.expires <= allowed.maxExpires)
+    )
+      throw Error(
+        `Exceção ${item.id} (${item.package} ${item.range}, até ${item.expires}) não está autorizada para a publicação local. Exige nova decisão e atualização do agente.`,
+      );
+  }
+  return exceptions;
+}
+
 /**
  * Decisão da publicação local. Primeiro a classificação compartilhada com a
  * CI (scripts/audit-policy.mjs) separa o que a exceção temporária aprovada
@@ -40,6 +79,7 @@ export function evaluateAudit({
     );
   let shared;
   try {
+    limitCandidateExceptions(exceptions);
     shared = classifyAudit({
       report,
       exitCode,

@@ -33,7 +33,7 @@ Isso não prova ausência de risco nas ferramentas de build; justifica aceitar o
 
 ## Publicação local
 
-A sincronização da instalação (`scripts/local-security-policy.mjs`) usa a mesma classificação (`classifyAudit` em `scripts/audit-policy.mjs`) e as mesmas exceções: lê o `scripts/audit-exceptions.json` do commit candidato só como dado, com o código da política vindo da cópia do próprio agente. Exceção vencida, correção publicada, consulta indisponível ou relatório inválido bloqueiam a publicação e mantêm a versão instalada.
+A sincronização da instalação (`scripts/local-security-policy.mjs`) usa a mesma classificação (`classifyAudit` em `scripts/audit-policy.mjs`) e as mesmas exceções: lê o `scripts/audit-exceptions.json` do commit candidato só como dado, com o código da política vindo da cópia do próprio agente. O candidato pode pedir menos, nunca mais: o agente tem um limite próprio (`LOCAL_AUTHORIZED_EXCEPTIONS`: GHSA-fc5q-39xc-vjpf, `picomatch`, `<=4.0.7`, até 17/12/2026), e qualquer outra exceção, outro pacote ou intervalo, ou validade maior bloqueia a publicação até uma nova decisão do autor e a atualização do agente. Exceção vencida, correção publicada, consulta indisponível ou relatório inválido bloqueiam a publicação e mantêm a versão instalada.
 
 O que a exceção não cobre segue as regras locais de antes: alto ou crítico bloqueia; moderado exige a exceção local de `.local-app/security-exception.json`, presa ao commit e ao lockfile, por até 7 dias, e só para advisories já revisados. Numa cadeia com dois advisories, o que não tem exceção continua valendo com a sua severidade.
 

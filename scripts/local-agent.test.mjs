@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
 import {
   mkdtemp,
   mkdir,
@@ -10,11 +11,13 @@ import {
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { promisify } from 'node:util';
 import { AGENT_FILES, agentClosure } from './local-agent-files.mjs';
 import { updateAgent } from './update-agent.mjs';
 import { acquireLocalLock } from './local-process-lock.mjs';
 
+const execute = promisify(execFile);
 const here = fileURLToPath(new URL('./', import.meta.url));
 const psList = async (file) => {
   const text = await readFile(join(here, file), 'utf8');
@@ -33,89 +36,214 @@ test('a lista do agente cobre tudo o que a sincronização importa e bate com os
   );
   for (const file of ['install-local-sync.ps1', 'migrate-local-sync.ps1'])
     assert.deepEqual(await psList(file), AGENT_FILES, file);
+  // O carregador fixo não depende de nenhum arquivo da pasta.
+  assert.deepEqual(await agentClosure(here, 'agent-bootstrap.mjs'), [
+    'agent-bootstrap.mjs',
+  ]);
 });
 
+// Agentes de teste: escrevem quem rodou em LMUP_TEST_MARK, nada mais.
+const stub = (tag) =>
+  `import { writeFileSync } from 'node:fs';\nimport { dep } from './dep.mjs';\nwriteFileSync(process.env.LMUP_TEST_MARK, ${JSON.stringify(tag)} + dep);\n`;
+const FILES = ['sync-local.mjs', 'dep.mjs'];
+async function source(root, tag) {
+  const directory = join(root, `fonte-${tag}`);
+  await mkdir(directory, { recursive: true });
+  await writeFile(join(directory, 'sync-local.mjs'), stub(tag));
+  await writeFile(join(directory, 'dep.mjs'), "export const dep = '!';\n");
+  return directory;
+}
 async function installation(work) {
-  const storage = await mkdtemp(join(tmpdir(), 'lmup-agent-'));
+  const root = await mkdtemp(join(tmpdir(), 'lmup-agent-'));
+  const storage = join(root, '.local-app');
   try {
-    const agent = join(storage, 'agent', 'scripts');
-    await mkdir(agent, { recursive: true });
-    await writeFile(join(agent, 'sync-local.mjs'), '// agente antigo\n');
+    const scripts = join(storage, 'agent', 'scripts');
+    await mkdir(scripts, { recursive: true });
+    // Formato antigo: os scripts direto em agent/scripts.
+    await writeFile(
+      join(scripts, 'sync-local.mjs'),
+      `import { writeFileSync } from 'node:fs';\nwriteFileSync(process.env.LMUP_TEST_MARK, 'antigo');\n`,
+    );
     await writeFile(join(storage, 'sync-config.json'), '{"enabled":false}');
     await mkdir(join(storage, 'publication-main'));
     await writeFile(join(storage, 'publication-main', 'marca.txt'), 'intacta');
-    await work({ storage, agent });
+    await work({ root, storage, scripts });
   } finally {
-    await rm(storage, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true });
   }
 }
-const leftovers = async (storage) =>
-  (await readdir(join(storage, 'agent'))).filter((name) =>
-    name.startsWith('scripts.next-'),
+/** O caminho normal: o que a tarefa agendada executa. */
+async function runAgent(root, storage) {
+  const mark = join(root, `marca-${Math.random()}.txt`);
+  try {
+    await execute(
+      process.execPath,
+      [join(storage, 'agent', 'scripts', 'sync-local.mjs')],
+      { env: { ...process.env, LMUP_TEST_MARK: mark }, timeout: 30_000 },
+    );
+  } catch (error) {
+    return { failed: true, stderr: error.stderr };
+  }
+  return { ran: await readFile(mark, 'utf8') };
+}
+/** Interrompe o update-agent num passo, como se o processo morresse ali. */
+async function killedAt(step, options) {
+  const script = `
+    import { updateAgent } from ${JSON.stringify(pathToFileURL(join(here, 'update-agent.mjs')).href)};
+    await updateAgent({ ...JSON.parse(process.env.OPTIONS), checkpoint: (s) => { if (s === process.env.STEP) process.exit(9); } });
+    process.exit(0);`;
+  await assert.rejects(
+    execute(process.execPath, ['--input-type=module', '-e', script], {
+      env: { ...process.env, STEP: step, OPTIONS: JSON.stringify(options) },
+      timeout: 60_000,
+    }),
+    (error) => error.code === 9,
   );
+}
+const untouched = async (storage) => {
+  assert.equal(
+    await readFile(join(storage, 'sync-config.json'), 'utf8'),
+    '{"enabled":false}',
+  );
+  assert.equal(
+    await readFile(join(storage, 'publication-main', 'marca.txt'), 'utf8'),
+    'intacta',
+  );
+  // Nada foi publicado.
+  const names = await readdir(storage);
+  assert.ok(!names.includes('active.json') && !names.includes('releases'));
+};
+const NOW = Date.UTC(2026, 10, 18, 1);
 
-test('update-agent troca a cópia inteira e guarda a anterior, sem tocar no resto', () =>
-  installation(async ({ storage, agent }) => {
-    const result = await updateAgent({ storage, now: Date.UTC(2026, 10, 18) });
-    for (const name of AGENT_FILES)
-      assert.equal(
-        await readFile(join(agent, name), 'utf8'),
-        await readFile(join(here, name), 'utf8'),
-        name,
-      );
+test('update-agent instala a versão nova com ponteiro e carregador, guardando a anterior', () =>
+  installation(async ({ root, storage, scripts }) => {
+    const first = await updateAgent({
+      storage,
+      source: await source(root, 'v1'),
+      files: FILES,
+      now: NOW,
+    });
+    assert.deepEqual(await runAgent(root, storage), { ran: 'v1!' });
+    assert.equal(first.previous, undefined);
     assert.equal(
-      await readFile(join(result.previous, 'sync-local.mjs'), 'utf8'),
-      '// agente antigo\n',
+      await readFile(join(scripts, 'sync-local.legacy.mjs'), 'utf8'),
+      `import { writeFileSync } from 'node:fs';\nwriteFileSync(process.env.LMUP_TEST_MARK, 'antigo');\n`,
     );
-    assert.equal(
-      await readFile(join(storage, 'sync-config.json'), 'utf8'),
-      '{"enabled":false}',
+    const second = await updateAgent({
+      storage,
+      source: await source(root, 'v2'),
+      files: FILES,
+      now: NOW + 1000,
+    });
+    assert.equal(second.previous, first.version);
+    assert.deepEqual(await runAgent(root, storage), { ran: 'v2!' });
+    await untouched(storage);
+    for (const lock of ['sync-daemon.lock', 'publish.lock'])
+      await assert.rejects(readFile(join(storage, lock)));
+    // O agente real inteiro também passa pela validação.
+    const real = await updateAgent({ storage, now: NOW + 2000 });
+    assert.deepEqual(
+      (await readdir(join(storage, 'agent', 'versions', real.version))).sort(),
+      [...AGENT_FILES].sort(),
     );
-    assert.equal(
-      await readFile(join(storage, 'publication-main', 'marca.txt'), 'utf8'),
-      'intacta',
-    );
-    assert.deepEqual(await leftovers(storage), []);
-    await assert.rejects(readFile(join(storage, 'sync-daemon.lock')));
+  }));
+
+test('interrompido em qualquer passo, o caminho normal continua com um agente utilizável e nada é publicado', async () => {
+  // Primeira atualização (formato antigo) e uma seguinte (já com ponteiro).
+  const expected = {
+    first: {
+      staged: 'antigo',
+      version: 'antigo',
+      pointer: 'antigo',
+      loader: 'v1!',
+    },
+    next: { staged: 'v1!', version: 'v1!', pointer: 'v2!', loader: 'v2!' },
+  };
+  for (const [phase, steps] of Object.entries(expected))
+    for (const [step, ran] of Object.entries(steps))
+      await installation(async ({ root, storage }) => {
+        const v1 = await source(root, 'v1');
+        const v2 = await source(root, 'v2');
+        if (phase === 'next')
+          await updateAgent({ storage, source: v1, files: FILES, now: NOW });
+        const options = {
+          storage,
+          source: phase === 'first' ? v1 : v2,
+          files: FILES,
+          now: NOW + 5000,
+        };
+        await killedAt(step, options);
+        assert.deepEqual(
+          await runAgent(root, storage),
+          { ran },
+          `${phase} interrompida em ${step}`,
+        );
+        // A próxima atualização completa normalmente, mesmo com travas órfãs.
+        await updateAgent({ ...options, now: NOW + 9000 });
+        assert.deepEqual(await runAgent(root, storage), {
+          ran: phase === 'first' ? 'v1!' : 'v2!',
+        });
+        await untouched(storage);
+      });
+});
+
+test('carregador usa a versão anterior se a atual sumir; sem nenhuma, sai sem rodar nada', () =>
+  installation(async ({ root, storage }) => {
+    const v1 = await updateAgent({
+      storage,
+      source: await source(root, 'v1'),
+      files: FILES,
+      now: NOW,
+    });
+    const v2 = await updateAgent({
+      storage,
+      source: await source(root, 'v2'),
+      files: FILES,
+      now: NOW + 1000,
+    });
+    const versions = join(storage, 'agent', 'versions');
+    await rm(join(versions, v2.version), { recursive: true });
+    assert.deepEqual(await runAgent(root, storage), { ran: 'v1!' });
+    await rm(join(versions, v1.version), { recursive: true });
+    const none = await runAgent(root, storage);
+    assert.equal(none.failed, true);
+    assert.match(none.stderr, /sem versão utilizável/);
+    await untouched(storage);
   }));
 
 test('com um ciclo ou publicação em andamento, nada é trocado', () =>
-  installation(async ({ storage, agent }) => {
+  installation(async ({ root, storage }) => {
+    const v1 = await source(root, 'v1');
     for (const lock of ['sync-daemon.lock', 'publish.lock']) {
       const unlock = await acquireLocalLock(join(storage, lock));
       try {
         await assert.rejects(
-          updateAgent({ storage }),
+          updateAgent({ storage, source: v1, files: FILES, now: NOW }),
           /Outra publicação ou sincronização/,
         );
       } finally {
         await unlock();
       }
-      assert.equal(
-        await readFile(join(agent, 'sync-local.mjs'), 'utf8'),
-        '// agente antigo\n',
-      );
-      assert.deepEqual(await leftovers(storage), []);
+      assert.deepEqual(await runAgent(root, storage), { ran: 'antigo' });
     }
   }));
 
 test('cópia nova incompleta, com erro de sintaxe ou importação faltando não substitui o agente', () =>
-  installation(async ({ storage, agent }) => {
-    const source = join(storage, 'fonte');
-    await mkdir(source);
-    await writeFile(join(source, 'sync-local.mjs'), "import './falta.mjs';\n");
-    await writeFile(join(source, 'outro.mjs'), 'export const x = (;\n');
+  installation(async ({ root, storage }) => {
+    const broken = join(root, 'quebrada');
+    await mkdir(broken);
+    await writeFile(join(broken, 'sync-local.mjs'), "import './falta.mjs';\n");
+    await writeFile(join(broken, 'outro.mjs'), 'export const x = (;\n');
     for (const files of [
       ['sync-local.mjs', 'nao-existe.mjs'],
       ['sync-local.mjs', 'outro.mjs'],
       ['sync-local.mjs'],
     ])
-      await assert.rejects(updateAgent({ storage, source, files }));
-    assert.equal(
-      await readFile(join(agent, 'sync-local.mjs'), 'utf8'),
-      '// agente antigo\n',
-    );
-    assert.deepEqual(await leftovers(storage), []);
+      await assert.rejects(
+        updateAgent({ storage, source: broken, files, now: NOW }),
+      );
+    assert.deepEqual(await runAgent(root, storage), { ran: 'antigo' });
+    assert.deepEqual(await readdir(join(storage, 'agent', 'versions')), []);
   }));
 
 test('sem agente instalado, recusa e orienta a instalação completa', async () => {
