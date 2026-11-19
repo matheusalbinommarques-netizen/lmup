@@ -4,6 +4,11 @@ import { access, open } from 'node:fs/promises';
 import { join } from 'node:path';
 import { acquireLocalLock } from './local-process-lock.mjs';
 import { activeRelease, publishBuild } from './local-release-store.mjs';
+import {
+  consumeApproval,
+  markApprovalFailed,
+  readApproval,
+} from './local-sync-approval.mjs';
 
 const execute = promisify(execFile);
 const environment = () => {
@@ -162,19 +167,53 @@ export async function synchronize({
     reason = await guard(target);
     if (reason) return waiting(reason);
     const active = await activeRelease(storage);
-    if (active?.source?.commit === target && !active.source.dirty)
+    const approval = await readApproval(storage);
+    if (active?.source?.commit === target && !active.source.dirty) {
+      // Publicação confirmada, inclusive quando interrompida antes de consumir.
+      if (approval?.commit === target)
+        await consumeApproval(storage, approval, active);
       return { state: 'current', commit: target, version: active.version };
-    await verify();
-    reason = await guard(target);
-    if (reason) return waiting(reason);
-    const release = await publish(join(project, 'build'), storage, {
+    }
+    // Receber a main não autoriza publicá-la: só o commit exato aprovado.
+    if (approval?.commit !== target)
+      return {
+        state: 'awaiting-approval',
+        commit: target,
+        approved: approval?.commit ?? null,
+      };
+    if (approval.failure)
+      return {
+        state: 'approval-failed',
+        commit: target,
+        message: approval.failure.message,
+      };
+    if ((await git('rev-parse', `${target}^{tree}`)) !== approval.tree)
+      return waiting('approval-tree-mismatch');
+    let release;
+    try {
+      await verify();
+      reason = await guard(target);
+      if (reason) return waiting(reason);
+      release = await publish(join(project, 'build'), storage, {
+        commit: target,
+        dirty: false,
+        channel: 'github-sync',
+        remote: config.remote,
+        branch: config.branch,
+        pr: approval.pr.number,
+      });
+    } catch (error) {
+      // Para no erro: nada de nova tentativa até uma nova autorização.
+      await markApprovalFailed(storage, approval, error.message);
+      throw error;
+    }
+    await consumeApproval(storage, approval, release);
+    return {
+      state: 'published',
       commit: target,
-      dirty: false,
-      channel: 'github-sync',
-      remote: config.remote,
-      branch: config.branch,
-    });
-    return { state: 'published', commit: target, version: release.version };
+      version: release.version,
+      pr: approval.pr.number,
+    };
   } finally {
     await unlock();
   }

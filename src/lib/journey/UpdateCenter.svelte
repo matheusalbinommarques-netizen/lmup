@@ -32,6 +32,9 @@
     paused: 'Sincronização pausada',
     error: 'Erro na sincronização',
     validating: 'Verificando nova versão',
+    'awaiting-approval': 'Aguardando autorização para publicar',
+    'approval-failed':
+      'Publicação autorizada falhou; aguardando nova autorização',
     unknown: 'Estado desconhecido',
   };
   const stepNames: Record<string, string> = {
@@ -48,6 +51,8 @@
     'head-changed': 'O código mudou durante a validação.',
     'remote-changed': 'O remoto configurado foi alterado.',
     'diverged-or-local-ahead': 'O histórico da cópia local divergiu do remoto.',
+    'approval-tree-mismatch':
+      'O conteúdo do commit difere do que foi autorizado.',
     disabled: 'A tarefa de sincronização está desativada.',
   };
 
@@ -57,7 +62,9 @@
   function date(value: string | null | undefined) {
     if (!value) return 'Não registrada';
     const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? 'Não registrada' : parsed.toLocaleString('pt-BR');
+    return Number.isNaN(parsed.getTime())
+      ? 'Não registrada'
+      : parsed.toLocaleString('pt-BR');
   }
   async function refresh() {
     if (checking) return;
@@ -69,7 +76,8 @@
       });
       if (!response.ok) throw Error('Indisponível');
       const value = (await response.json()) as ServerStatus;
-      if (value.service !== 'lmup-local-publications') throw Error('Servidor desconhecido');
+      if (value.service !== 'lmup-local-publications')
+        throw Error('Servidor desconhecido');
       status = value;
       unavailable = false;
       lastConsulted = new Date().toISOString();
@@ -96,13 +104,21 @@
       <p class="lmu-eyebrow">GitHub · Publicação local</p>
       <h2>Central de Atualizações</h2>
       <p class="lmu-muted">
-        Acompanhe a publicação do GitHub e a versão instalada no Chrome em um só lugar. Verificar o Chrome não inicia uma sincronização com o GitHub.
+        Acompanhe a publicação do GitHub e a versão instalada no Chrome em um só
+        lugar. Verificar o Chrome não inicia uma sincronização com o GitHub.
       </p>
     </div>
-    <div><h3>Publicação no computador</h3><p class="lmu-hint">A sincronização é automática. A consulta abaixo apenas lê o estado da última verificação.</p></div>
+    <div>
+      <h3>Publicação no computador</h3>
+      <p class="lmu-hint">
+        A sincronização é automática; cada versão só é publicada com
+        autorização. A consulta abaixo apenas lê o estado da última verificação.
+      </p>
+    </div>
     {#if unavailable}
       <p role="status" class="lmu-hint">
-        Monitor local indisponível. Você pode continuar usando suas missões, inclusive offline.
+        Monitor local indisponível. Você pode continuar usando suas missões,
+        inclusive offline.
       </p>
     {:else if status}
       <dl>
@@ -111,23 +127,35 @@
         <dt>Commit publicado</dt>
         <dd>{short(status.commit)}</dd>
         <dt>Sincronizador</dt>
-        <dd>{status.sync ? stateNames[status.sync.state] ?? 'Estado desconhecido' : 'Sem diagnóstico disponível'}</dd>
+        <dd>
+          {status.sync
+            ? (stateNames[status.sync.state] ?? 'Estado desconhecido')
+            : 'Sem diagnóstico disponível'}
+        </dd>
         {#if status.sync?.state === 'validating'}
           <dt>Etapa atual</dt>
-          <dd role="status">{stepNames[status.sync.step ?? ''] ?? 'Validando nova versão'}</dd>
+          <dd role="status">
+            {stepNames[status.sync.step ?? ''] ?? 'Validando nova versão'}
+          </dd>
         {/if}
         {#if status.sync?.state === 'waiting' || status.sync?.state === 'paused'}
           <dt>Motivo</dt>
-          <dd>{reasonNames[status.sync.reason ?? ''] ?? 'Verifique o sincronizador no computador.'}</dd>
+          <dd>
+            {reasonNames[status.sync.reason ?? ''] ??
+              'Verifique o sincronizador no computador.'}
+          </dd>
         {/if}
         {#if status.sync?.state === 'error'}
-          <p role="alert">{status.sync.message ?? 'Houve um problema na sincronização.'}</p>
+          <p role="alert">
+            {status.sync.message ?? 'Houve um problema na sincronização.'}
+          </p>
         {/if}
         <dt>Última verificação</dt>
         <dd>{date(status.sync?.checkedAt)}</dd>
       </dl>
       <p class="lmu-hint">
-        A versão publicada no servidor pode ser diferente da versão ativa no Chrome até você confirmar a atualização do PWA.
+        A versão publicada no servidor pode ser diferente da versão ativa no
+        Chrome até você confirmar a atualização do PWA.
       </p>
     {:else}
       <p role="status" class="lmu-hint">Consultando o servidor local…</p>
@@ -137,7 +165,9 @@
         {checking ? 'Consultando…' : 'Consultar publicação'}
       </Button>
     </div>
-    {#if lastConsulted}<p role="status" class="lmu-hint">Informações consultadas em {date(lastConsulted)}.</p>{/if}
+    {#if lastConsulted}<p role="status" class="lmu-hint">
+        Informações consultadas em {date(lastConsulted)}.
+      </p>{/if}
     <hr />
     <PwaPanel />
   </div>

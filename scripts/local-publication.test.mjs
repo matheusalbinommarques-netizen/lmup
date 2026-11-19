@@ -162,6 +162,15 @@ test('servidor mantém a versão publicada durante uma nova compilação e ofere
       );
       const failure = await (await fetch(origin + '/__lmup/status')).json();
       assert.equal(failure.sync.state, 'error');
+      for (const state of ['awaiting-approval', 'approval-failed']) {
+        await writeFile(
+          join(storage, 'sync-status.json'),
+          JSON.stringify({ state, commit: 'a'.repeat(40) }),
+        );
+        const waiting = await (await fetch(origin + '/__lmup/status')).json();
+        assert.equal(waiting.sync.state, state);
+        assert.equal(waiting.sync.commit, 'a'.repeat(40));
+      }
       assert.equal(JSON.stringify(failure).includes('private'), false);
       const saved = await readFile(join(storage, 'active.json'));
       await writeFile(

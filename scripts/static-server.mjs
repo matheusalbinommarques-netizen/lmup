@@ -29,7 +29,7 @@ async function syncSummary(publicationRoot) {
     const status = JSON.parse(raw);
     const safe = (value, max = 160) =>
       typeof value === 'string' ? value.slice(0, max) : null;
-    const states = ['current', 'published', 'waiting', 'paused', 'error', 'validating'];
+    const states = ['current', 'published', 'waiting', 'paused', 'error', 'validating', 'awaiting-approval', 'approval-failed'];
     return {
       state: states.includes(status.state) ? status.state : 'unknown',
       step: ['dependencies', 'audit', 'verify', 'pwa', 'package'].includes(status.step) ? status.step : null,

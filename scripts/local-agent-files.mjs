@@ -9,6 +9,7 @@ export const AGENT_FILES = [
   'sync-local.mjs',
   'local-sync-config.mjs',
   'local-sync-core.mjs',
+  'local-sync-approval.mjs',
   'local-security-policy.mjs',
   'audit-policy.mjs',
   'audit-upstream.mjs',

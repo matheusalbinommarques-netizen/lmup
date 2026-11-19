@@ -6,6 +6,12 @@ import { join, resolve, relative, isAbsolute } from 'node:path';
 import { gitCommand, synchronize } from './local-sync-core.mjs';
 import { publishBuild, activeRelease } from './local-release-store.mjs';
 import { acquireLocalLock } from './local-process-lock.mjs';
+import {
+  APPROVAL_FILE,
+  APPROVAL_USED_FILE,
+  readApproval,
+  writeApproval,
+} from './local-sync-approval.mjs';
 import { evaluateAudit } from './local-security-policy.mjs';
 import {
   REVIEWED_MODERATE,
@@ -73,11 +79,21 @@ async function fixture(work) {
         await build('2222222222222222');
       },
     };
-    const advance = async () => {
-      const sha = await commit(seed, 'second');
+    const advance = async (value = 'second') => {
+      const sha = await commit(seed, value);
       await git(seed, 'push', 'github', 'main');
       return sha;
     };
+    // O que o app:aprovar grava depois de conferir PR, CI e merge.
+    const approve = async (sha, extra = {}) =>
+      writeApproval(storage, {
+        format: 1,
+        commit: sha,
+        tree: await git(seed, 'rev-parse', `${sha}^{tree}`),
+        pr: { number: 7, head: sha },
+        approvedAt: '2026-11-19T12:00:00.000Z',
+        ...extra,
+      });
     await work({
       options,
       project,
@@ -85,6 +101,7 @@ async function fixture(work) {
       git,
       commit,
       advance,
+      approve,
       first,
       calls: () => calls,
     });
@@ -95,14 +112,133 @@ async function fixture(work) {
   }
 }
 
-test('sem novidade não recompila; avanço direto testa e publica', () =>
-  fixture(async ({ options, advance, calls, project, git, storage }) => {
-    assert.equal((await synchronize(options)).state, 'current');
+test('recebe a main sem publicar; só o commit autorizado é testado, publicado e consome a autorização', () =>
+  fixture(
+    async ({
+      options,
+      advance,
+      approve,
+      calls,
+      project,
+      git,
+      storage,
+      first,
+    }) => {
+      assert.equal((await synchronize(options)).state, 'current');
+      assert.equal(calls(), 0);
+      const target = await advance();
+      for (let cycle = 0; cycle < 2; cycle++)
+        assert.deepEqual(await synchronize(options), {
+          state: 'awaiting-approval',
+          commit: target,
+          approved: null,
+        });
+      // A cópia recebeu a main, mas nada foi compilado nem publicado.
+      assert.equal(await git(project, 'rev-parse', 'HEAD'), target);
+      assert.equal((await activeRelease(storage)).source.commit, first);
+      assert.equal(calls(), 0);
+      await approve(target);
+      const result = await synchronize(options);
+      assert.equal(result.state, 'published');
+      assert.equal(result.pr, 7);
+      const active = await activeRelease(storage);
+      assert.equal(active.source.commit, target);
+      assert.equal(active.source.pr, 7);
+      assert.equal(calls(), 1);
+      assert.equal(await readApproval(storage), null);
+      const used = JSON.parse(
+        await readFile(join(storage, APPROVAL_USED_FILE), 'utf8'),
+      );
+      assert.equal(used.commit, target);
+      assert.equal(used.release.id, active.id);
+      assert.equal((await synchronize(options)).state, 'current');
+      assert.equal(calls(), 1);
+    },
+  ));
+
+test('autorização obsoleta ou de outro commit nunca é herdada', () =>
+  fixture(async ({ options, advance, approve, calls, storage, first }) => {
+    const second = await advance('second');
+    await approve(second);
+    const third = await advance('third');
+    assert.deepEqual(await synchronize(options), {
+      state: 'awaiting-approval',
+      commit: third,
+      approved: second,
+    });
     assert.equal(calls(), 0);
-    const target = await advance();
+    assert.equal((await activeRelease(storage)).source.commit, first);
+    // Aprovar um commit antigo, já publicado, também não libera a main.
+    await approve(first);
+    assert.equal((await synchronize(options)).state, 'awaiting-approval');
+    assert.equal(calls(), 0);
+    await approve(third);
     assert.equal((await synchronize(options)).state, 'published');
-    assert.equal(await git(project, 'rev-parse', 'HEAD'), target);
-    assert.equal((await activeRelease(storage)).source.commit, target);
+    // O segundo commit nunca foi publicado.
+    assert.equal((await activeRelease(storage)).source.commit, third);
+    assert.equal(calls(), 1);
+  }));
+
+test('árvore diferente da autorizada bloqueia mesmo com o commit certo', () =>
+  fixture(async ({ options, advance, approve, calls, storage, first }) => {
+    const target = await advance();
+    await approve(target, { tree: 'f'.repeat(40) });
+    assert.deepEqual(await synchronize(options), {
+      state: 'waiting',
+      reason: 'approval-tree-mismatch',
+    });
+    assert.equal(calls(), 0);
+    assert.equal((await activeRelease(storage)).source.commit, first);
+  }));
+
+test('autorização corrompida ou incompleta bloqueia sem publicar', () =>
+  fixture(async ({ options, advance, calls, storage, first }) => {
+    const target = await advance();
+    for (const content of [
+      'não é json',
+      JSON.stringify({ format: 1, commit: target }),
+      JSON.stringify({
+        format: 2,
+        commit: target,
+        tree: 'a'.repeat(40),
+        pr: { number: 1, head: target },
+        approvedAt: 'x',
+      }),
+    ]) {
+      await writeFile(join(storage, APPROVAL_FILE), content);
+      await assert.rejects(
+        synchronize(options),
+        /Autorização de publicação inválida/,
+      );
+      assert.equal((await activeRelease(storage)).source.commit, first);
+    }
+    assert.equal(calls(), 0);
+  }));
+
+test('interrompido depois de trocar o ponteiro: o ciclo seguinte reconhece e consome, sem recompilar', () =>
+  fixture(async ({ options, advance, approve, calls, storage }) => {
+    const target = await advance();
+    await approve(target);
+    // Simula a queda do processo entre a publicação e o consumo.
+    let interrupted;
+    await assert.rejects(
+      synchronize({
+        ...options,
+        publish: async (...args) => {
+          interrupted = await publishBuild(...args);
+          throw Error('processo interrompido');
+        },
+      }),
+      /interrompido/,
+    );
+    assert.equal((await activeRelease(storage)).id, interrupted.id);
+    assert.equal((await synchronize(options)).state, 'current');
+    assert.equal(await readApproval(storage), null);
+    assert.equal(
+      JSON.parse(await readFile(join(storage, APPROVAL_USED_FILE), 'utf8'))
+        .release.id,
+      interrupted.id,
+    );
     assert.equal(calls(), 1);
   }));
 
@@ -131,9 +267,10 @@ test('histórico divergente não faz merge nem remove commits locais', () =>
     assert.equal(calls(), 0);
   }));
 
-test('falha de testes mantém publicação e tenta novamente no próximo ciclo', () =>
-  fixture(async ({ options, advance, storage }) => {
-    await advance();
+test('falha de testes mantém a publicação e para até uma nova autorização', () =>
+  fixture(async ({ options, advance, approve, storage, calls }) => {
+    const target = await advance();
+    await approve(target);
     const previous = (await activeRelease(storage)).id;
     await assert.rejects(
       synchronize({
@@ -145,12 +282,22 @@ test('falha de testes mantém publicação e tenta novamente no próximo ciclo',
       /teste falhou/,
     );
     assert.equal((await activeRelease(storage)).id, previous);
+    assert.equal((await readApproval(storage)).failure.message, 'teste falhou');
+    // Sem nova autorização, não repete o ciclo nem recompila.
+    assert.deepEqual(await synchronize(options), {
+      state: 'approval-failed',
+      commit: target,
+      message: 'teste falhou',
+    });
+    assert.equal(calls(), 0);
+    await approve(target);
     assert.equal((await synchronize(options)).state, 'published');
+    assert.equal(calls(), 1);
   }));
 
 test('falha de publicação mantém o ponteiro anterior', () =>
-  fixture(async ({ options, advance, storage }) => {
-    await advance();
+  fixture(async ({ options, advance, approve, storage }) => {
+    await approve(await advance());
     const previous = (await activeRelease(storage)).id;
     await assert.rejects(
       synchronize({
@@ -162,11 +309,12 @@ test('falha de publicação mantém o ponteiro anterior', () =>
       /cópia falhou/,
     );
     assert.equal((await activeRelease(storage)).id, previous);
+    assert.equal((await synchronize(options)).state, 'approval-failed');
   }));
 
 test('edição durante os testes impede publicar o resultado', () =>
-  fixture(async ({ options, advance, project, storage }) => {
-    await advance();
+  fixture(async ({ options, advance, approve, project, storage }) => {
+    await approve(await advance());
     const previous = (await activeRelease(storage)).id;
     const result = await synchronize({
       ...options,
@@ -176,6 +324,8 @@ test('edição durante os testes impede publicar o resultado', () =>
     });
     assert.equal(result.reason, 'local-changes');
     assert.equal((await activeRelease(storage)).id, previous);
+    // Não é falha do commit: a autorização segue válida.
+    assert.equal((await readApproval(storage)).failure, undefined);
   }));
 
 test('branch diferente e remoto alterado bloqueiam sem trocar o código', () =>
@@ -228,8 +378,9 @@ const servedFiles = async (release) =>
   );
 
 test('auditoria só com o picomatch autorizado publica a versão inteira', () =>
-  fixture(async ({ options, advance, storage, calls }) => {
+  fixture(async ({ options, advance, approve, storage, calls }) => {
     const target = await advance();
+    await approve(target);
     assert.equal((await synchronize(audited(options, {}))).state, 'published');
     const active = await activeRelease(storage);
     assert.equal(active.source.commit, target);
@@ -247,8 +398,8 @@ test('auditoria só com o picomatch autorizado publica a versão inteira', () =>
   }));
 
 test('auditoria reprovada não substitui nem altera a versão instalada', () =>
-  fixture(async ({ options, advance, storage, calls }) => {
-    await advance();
+  fixture(async ({ options, advance, approve, storage, calls }) => {
+    const target = await advance();
     const before = await activeRelease(storage);
     const files = await servedFiles(before);
     const moderate = addEntry(picomatchReport(), 'minimatch', 'moderate', [
@@ -269,7 +420,9 @@ test('auditoria reprovada não substitui nem altera a versão instalada', () =>
       [{ upstream: {} }, /Não foi possível consultar/],
       [{ exceptions: [] }, /altos ou críticos/],
     ]) {
+      await approve(target);
       await assert.rejects(synchronize(audited(options, scenario)), message);
+      assert.ok((await readApproval(storage)).failure);
       const after = await activeRelease(storage);
       assert.equal(after.id, before.id);
       assert.deepEqual(await servedFiles(after), files);

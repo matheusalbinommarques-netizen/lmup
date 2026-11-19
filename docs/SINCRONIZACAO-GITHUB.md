@@ -10,9 +10,35 @@ A regra ativa de `main` exige Pull Request e esses dois jobs, impede exclusão e
 
 A tarefa do Windows roda a cada cinco minutos e no login, com as permissões normais do usuário. Ela usa a cópia isolada `.local-app/publication-main/`; alterações no diretório de desenvolvimento não são incorporadas. O controlador instalado em `.local-app/agent/scripts/` é uma cópia dos scripts validados e só muda durante instalação ou migração explícita.
 
-Em cada ciclo, o sincronizador verifica remoto, branch, ausência de alterações locais e operações Git pendentes; busca apenas `origin/main` e aceita somente avanço direto. Se não há commit novo e a publicação ativa já veio dele, não recompila. Para um commit novo, instala dependências pelo lockfile, executa a auditoria (a mesma exceção temporária por advisory aprovada para a CI, lida como dado do `scripts/audit-exceptions.json` do commit candidato; no que sobra, a regra local: alto ou crítico bloqueia, moderado exige exceção local válida para o commit e lockfile), `verify`, testes PWA e integridade do pacote. Antes de publicar, confere novamente commit e arquivos. O publicador copia e valida hashes e troca a publicação de uma vez. Falhas mantêm a última versão funcional. Não há stash, reset, force push, resolução automática de conflitos ou publicação direta de commits de desenvolvimento.
+Em cada ciclo, o sincronizador verifica remoto, branch, ausência de alterações locais e operações Git pendentes; busca apenas `origin/main` e aceita somente avanço direto. Se não há commit novo e a publicação ativa já veio dele, não recompila. Um commit novo só segue se tiver autorização de publicação para aquele commit exato (seção abaixo); sem ela, o ciclo para em `awaiting-approval`, sem compilar nem publicar. Para um commit autorizado, instala dependências pelo lockfile, executa a auditoria (a mesma exceção temporária por advisory aprovada para a CI, lida como dado do `scripts/audit-exceptions.json` do commit candidato; no que sobra, a regra local: alto ou crítico bloqueia, moderado exige exceção local válida para o commit e lockfile), `verify`, testes PWA e integridade do pacote. Antes de publicar, confere novamente commit e arquivos. O publicador copia e valida hashes e troca a publicação de uma vez. Falhas mantêm a última versão funcional. Não há stash, reset, force push, resolução automática de conflitos ou publicação direta de commits de desenvolvimento.
 
 O app permanece em `http://127.0.0.1:5174/`, no mesmo perfil do Chrome. A sincronização não acessa IndexedDB, localStorage, Cache Storage ou backups pessoais. O Service Worker continua exigindo a confirmação de atualização entre abas; a versão nova só é aplicada quando o aplicativo oferece **Atualizar agora**. Até três versões de arquivos são mantidas para sessões abertas e recuperação.
+
+## Autorização de publicação
+
+Receber a `main` não autoriza publicá-la. O autor autoriza "integrar e publicar" um PR num SHA exato do HEAD; depois do merge, a autorização é gravada na pasta da instalação (a que contém `.local-app/`):
+
+```powershell
+npm run app:aprovar -- --pr <número> --head <SHA completo do HEAD aprovado> --aguardar
+```
+
+Antes de gravar, o comando confere:
+
+- no GitHub (`gh`, no repositório do remoto da sincronização), que o PR foi integrado na `main` a partir desse HEAD;
+- que `verify (22)` e `verify (24)` passaram nesse HEAD e que nenhum outro check falhou;
+- no Git, que o commit do merge está na `main`, contém o HEAD e tem exatamente a mesma árvore que a CI verificou.
+
+Se algo não conferir, recusa sem gravar nada. Um commit novo no PR, um merge de branch desatualizada ou outro commit na `main` nunca herdam a autorização.
+
+A autorização fica em `.local-app/sync-approval.json`, com o commit, a árvore, o PR, o HEAD e os checks. É gravada de forma atômica (arquivo temporário e renomeação) sob a mesma trava da publicação: com um ciclo em andamento, o comando recusa e pode ser repetido depois.
+
+O sincronizador só compila e publica quando a `main` recebida é o commit autorizado e tem a árvore registrada. Depois da publicação confirmada, consome a autorização e guarda o registro em `sync-approval-used.json`. Se o processo cair depois de trocar a versão e antes de consumir, o ciclo seguinte reconhece a versão ativa e consome, sem recompilar.
+
+Uma falha na auditoria, nos testes ou na publicação mantém a versão anterior e marca a autorização como falhada (`approval-failed`). O sincronizador não repete o ciclo; tentar de novo exige uma nova execução de `app:aprovar`, decisão do autor. Com `--aguardar`, o comando espera o ciclo e para na falha. Na publicação, confere os hashes da versão ativa e a `release.json` servida na porta 5174 e relata o resultado. Com o sincronizador pausado, avisa e deixa a autorização aguardando.
+
+- `npm run app:aprovar -- --status` mostra a autorização vigente, a última consumida e o estado do ciclo.
+- `npm run app:aprovar -- --revogar` remove a autorização vigente. Não interrompe um ciclo já em andamento.
+- Se a `main` avançar antes do ciclo, o commit autorizado não é publicado: o estado mostra o commit recebido e o autorizado, e o novo commit precisa de nova autorização.
 
 ## Migração de uma instalação existente
 
@@ -25,13 +51,13 @@ Execute na raiz da instalação que contém `.local-app/`. O procedimento não r
    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/migrate-local-sync.ps1 -Mode prepare
    ```
 
-3. Atualize a pasta da instalação para o mesmo commit aprovado em `main`, com a árvore de trabalho limpa. Confira `-Mode status` e ative. O script recusa controlador fora desse commit, desativa temporariamente a tarefa, recusa migração com sincronização em andamento, salva a configuração, o controlador e o ponteiro da publicação, troca a fonte para `main`, executa um ciclo completo de validação e publicação e reativa a tarefa. Se o ciclo falhar, restaura a configuração anterior e a publicação funcional:
+3. Atualize a pasta da instalação para o mesmo commit aprovado em `main`, com a árvore de trabalho limpa. Confira `-Mode status` e ative. O script recusa controlador fora desse commit, desativa temporariamente a tarefa, recusa migração com sincronização em andamento, salva a configuração, o controlador e o ponteiro da publicação, troca a fonte para `main`, executa um ciclo completo de validação e publicação e reativa a tarefa. Se o ciclo falhar, restaura a configuração anterior e a publicação funcional. Como o ciclo só publica um commit autorizado, autorize antes o commit da `main` com `npm run app:aprovar` (seção [Autorização de publicação](#autorização-de-publicação)); sem isso, a ativação para em `awaiting-approval` e restaura o estado anterior:
 
    ```powershell
    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/migrate-local-sync.ps1 -Mode activate
    ```
 
-4. Confirme que `npm run app:sync-status` mostra `main` como origem e que `npm run app:versao` mostra a versão publicada. A versão no Chrome pode ser aplicada pelo fluxo seguro existente. Depois, uma alteração aprovada e integrada em `main` chegará automaticamente, após todas as verificações locais.
+4. Confirme que `npm run app:sync-status` mostra `main` como origem e que `npm run app:versao` mostra a versão publicada. A versão no Chrome pode ser aplicada pelo fluxo seguro existente. Depois, uma alteração integrada em `main` só é publicada com a autorização do commit exato (seção acima), após todas as verificações locais.
 
 Se uma validação falhar, a tarefa antiga e a publicação anterior são preservadas. Corrija a causa, execute `prepare` novamente e depois `activate`. Para voltar à fonte anterior, use:
 
@@ -59,4 +85,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-local-sync.p
 
 O modo `update-agent` prepara e valida a nova versão (arquivos da lista, sintaxe, importações), espera nenhum ciclo ou publicação estar em andamento e a grava completa em `agent/versions/<id>`. Depois troca `agent/current.json` (versão atual e anterior) numa única renomeação e, na primeira vez, põe em `agent/scripts/sync-local.mjs` (o caminho que a tarefa agendada executa) um carregador fixo (`scripts/agent-bootstrap.mjs`), guardando o original como `sync-local.legacy.mjs`. Interrompido em qualquer passo, o agente continua com a versão anterior ou já com a nova, nunca sem nenhuma; se a atual sumir, o carregador roda a anterior, e sem nenhuma sai sem publicar. Versões antigas não são apagadas automaticamente. Não altera a configuração, a tarefa agendada, o lançador `.local-app/start-local-sync.ps1`, a cópia `publication-main` nem o servidor da porta 5174. A lista de arquivos do agente fica em `scripts/local-agent-files.mjs` e é conferida por teste contra os dois instaladores.
 
-Consulte o estado com `npm run app:sync-status`, a versão servida com `npm run app:versao` e a tarefa com `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-local-sync.ps1 -Mode status`. `npm run app:sincronizar` executa um ciclo manual do mesmo controlador. O status informa `current`, `published`, `waiting`, `paused` ou `error`; logs e estado ficam em `.local-app/`. O serviço usa as credenciais já configuradas no Git, sem token na URL do remoto.
+Consulte o estado com `npm run app:sync-status`, a versão servida com `npm run app:versao` e a tarefa com `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-local-sync.ps1 -Mode status`. `npm run app:sincronizar` executa um ciclo manual do mesmo controlador. O status informa `current`, `published`, `awaiting-approval` (commit recebido sem autorização), `approval-failed` (commit autorizado que falhou; aguarda nova autorização), `waiting`, `paused` ou `error`; logs e estado ficam em `.local-app/`. O serviço usa as credenciais já configuradas no Git, sem token na URL do remoto.
