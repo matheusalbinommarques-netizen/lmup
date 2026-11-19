@@ -1,4 +1,6 @@
 import { test } from 'node:test';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import assert from 'node:assert/strict';
 import {
   mkdtemp,
@@ -7,6 +9,7 @@ import {
   readFile,
   readdir,
   rm,
+  utimes,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve, relative, isAbsolute } from 'node:path';
@@ -30,8 +33,10 @@ import {
   waitForPublication,
 } from './approve-local.mjs';
 
+const execute = promisify(execFile);
 const HEAD = 'b'.repeat(40);
 const MERGE = 'c'.repeat(40);
+const GITHUB = 'https://github.com/dono/lmup.git';
 const run = (name, conclusion = 'SUCCESS', status = 'COMPLETED') => ({
   __typename: 'CheckRun',
   name,
@@ -197,6 +202,9 @@ async function repository(work) {
       staleMerge,
       outside,
       git: (...args) => git(project, ...args),
+      // O remoto local responde no lugar do GitHub, em qualquer comando Git.
+      remoteGit: (...args) =>
+        git(project, ...args.map((arg) => (arg === GITHUB ? remote : arg))),
     });
   } finally {
     const inside = relative(resolve(tmpdir()), resolve(temporary));
@@ -207,7 +215,16 @@ async function repository(work) {
 
 test('merge na main com a árvore verificada é aceito; desatualizado ou fora da main é recusado', () =>
   repository(
-    async ({ git, remote, head, merge, staleHead, staleMerge, outside }) => {
+    async ({
+      project,
+      git,
+      remote,
+      head,
+      merge,
+      staleHead,
+      staleMerge,
+      outside,
+    }) => {
       const tree = await verifyMergeBinding(git, {
         commit: merge,
         head,
@@ -231,6 +248,8 @@ test('merge na main com a árvore verificada é aceito; desatualizado ou fora da
         /não faz parte do merge/,
       );
       await git('fetch', remote, 'fora-da-main');
+      const fetchHead = join(project, '.git', 'FETCH_HEAD');
+      const before = await readFile(fetchHead, 'utf8');
       await assert.rejects(
         verifyMergeBinding(git, {
           commit: outside,
@@ -239,6 +258,8 @@ test('merge na main com a árvore verificada é aceito; desatualizado ou fora da
         }),
         /não está na main/,
       );
+      // O FETCH_HEAD é compartilhado: a verificação não o usa nem o reescreve.
+      assert.equal(await readFile(fetchHead, 'utf8'), before);
     },
   ));
 
@@ -248,7 +269,8 @@ const view = (head, merge) => async (repository, number) => {
 };
 
 test('aprovação grava o commit exato e a árvore de forma atômica e registra no log', () =>
-  repository(async ({ project, storage, remote, head, merge, git }) => {
+  repository(async (fixture) => {
+    const { project, storage, remote, head, merge, git, remoteGit } = fixture;
     await writeFile(
       join(storage, 'sync-config.json'),
       JSON.stringify({ branch: 'main', url: remote }),
@@ -258,15 +280,10 @@ test('aprovação grava o commit exato e a árvore de forma atômica e registra 
       approve({ project, storage, pr: 9, head, view: view(head, merge) }),
       /GitHub/,
     );
-    const github = 'https://github.com/dono/lmup.git';
     await writeFile(
       join(storage, 'sync-config.json'),
-      JSON.stringify({ branch: 'main', url: github }),
+      JSON.stringify({ branch: 'main', url: GITHUB }),
     );
-    const remoteGit = async (...args) =>
-      args[0] === 'fetch'
-        ? git('fetch', '--no-tags', remote, 'refs/heads/main')
-        : git(...args);
     const result = await approve({
       project,
       storage,
@@ -315,18 +332,11 @@ test('argumentos incompletos ou HEAD abreviado são recusados antes de consultar
   }));
 
 test('com um ciclo ou publicação em andamento a aprovação é recusada sem gravar nada', () =>
-  repository(async ({ project, storage, remote, head, merge, git }) => {
+  repository(async ({ project, storage, head, merge, remoteGit }) => {
     await writeFile(
       join(storage, 'sync-config.json'),
-      JSON.stringify({
-        branch: 'main',
-        url: 'https://github.com/dono/lmup.git',
-      }),
+      JSON.stringify({ branch: 'main', url: GITHUB }),
     );
-    const remoteGit = async (...args) =>
-      args[0] === 'fetch'
-        ? git('fetch', '--no-tags', remote, 'refs/heads/main')
-        : git(...args);
     const unlock = await acquireLocalLock(join(storage, 'publish.lock'));
     try {
       await assert.rejects(
@@ -345,31 +355,82 @@ test('com um ciclo ou publicação em andamento a aprovação é recusada sem gr
       await unlock();
     }
     assert.equal(await readApproval(storage), null);
-    // Duas aprovações simultâneas: no máximo uma grava, e o arquivo fica íntegro.
-    const outcomes = await Promise.allSettled([
-      approve({
-        project,
-        storage,
-        pr: 9,
-        head,
-        view: view(head, merge),
-        git: remoteGit,
-      }),
-      approve({
-        project,
-        storage,
-        pr: 9,
-        head,
-        view: view(head, merge),
-        git: remoteGit,
-      }),
-    ]);
+    // Aprovações simultâneas: as validações correm em paralelo sem estado
+    // compartilhado; cada gravação é atômica e sob a trava, e o arquivo fica
+    // íntegro. Uma que encontra a trava ocupada recusa por isso, nunca por erro.
+    const outcomes = await Promise.allSettled(
+      Array.from({ length: 4 }, () =>
+        approve({
+          project,
+          storage,
+          pr: 9,
+          head,
+          view: view(head, merge),
+          git: remoteGit,
+        }),
+      ),
+    );
     assert.ok(outcomes.some((outcome) => outcome.status === 'fulfilled'));
     for (const outcome of outcomes)
       if (outcome.status === 'rejected')
         assert.match(outcome.reason.message, /andamento/);
     assert.equal((await readApproval(storage)).commit, merge);
   }));
+
+// Um processo que disputa a trava em laço e conta as recusas que não são
+// "em andamento" (liberação no meio da leitura, pid ainda não gravado).
+const CONTENDER = `
+const { acquireLocalLock } = await import(process.argv[1]);
+const failures = [];
+let acquired = 0;
+const end = Date.now() + Number(process.argv[3]);
+while (Date.now() < end) {
+  try {
+    const unlock = await acquireLocalLock(process.argv[2]);
+    acquired += 1;
+    await unlock();
+  } catch (error) {
+    if (!/andamento/.test(error.message)) failures.push(error.code ?? error.message);
+  }
+}
+console.log(JSON.stringify({ acquired, failures: failures.length, sample: failures.slice(0, 3) }));
+`;
+
+test('trava disputada entre processos: quem não a obtém recusa por andamento, mesmo se ela é liberada no meio', async () => {
+  const storage = await mkdtemp(join(tmpdir(), 'lmup-lock-'));
+  try {
+    const path = join(storage, 'publish.lock');
+    const lock = new URL('./local-process-lock.mjs', import.meta.url).href;
+    // Como app:aprovar e o ciclo do agente: processos distintos, mesma trava.
+    const results = await Promise.all(
+      Array.from({ length: 4 }, async () =>
+        JSON.parse(
+          (
+            await execute(
+              process.execPath,
+              ['--input-type=module', '-e', CONTENDER, lock, path, '1500'],
+              { windowsHide: true, timeout: 30_000 },
+            )
+          ).stdout,
+        ),
+      ),
+    );
+    for (const result of results) {
+      assert.ok(result.acquired > 0);
+      assert.equal(result.failures, 0, JSON.stringify(result.sample));
+    }
+    // Recém-criada e ainda sem pid: o dono está gravando, é disputa.
+    await writeFile(path, '');
+    await assert.rejects(acquireLocalLock(path), /andamento/);
+    // Sem pid há mais de um segundo: o dono caiu ao criar; segue inválida.
+    const past = new Date(Date.now() - 60_000);
+    await utimes(path, past, past);
+    await assert.rejects(acquireLocalLock(path), /Trava inválida/);
+    assert.equal(await readFile(path, 'utf8'), '');
+  } finally {
+    await rm(storage, { recursive: true, maxRetries: 3, retryDelay: 100 });
+  }
+});
 
 // Espera e validação depois da aprovação.
 async function installed(work) {

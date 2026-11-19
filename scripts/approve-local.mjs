@@ -85,8 +85,22 @@ export function evaluatePullRequest(pr, { head }) {
 
 /** O merge está na main e publica exatamente a árvore verificada no HEAD. */
 export async function verifyMergeBinding(git, { commit, head, url }) {
-  await git('fetch', '--no-tags', url, 'refs/heads/main');
-  const main = await git('rev-parse', 'FETCH_HEAD');
+  // A ponta da main vem do ls-remote, não do FETCH_HEAD: o FETCH_HEAD é
+  // compartilhado por qualquer fetch nesse repositório (outra aprovação, o
+  // autor no terminal) e pode ser lido truncado ou de outra busca. A busca
+  // vem depois e só traz objetos; como a main só avança, contém essa ponta.
+  const [main] = (
+    await git('ls-remote', '--exit-code', url, 'refs/heads/main')
+  ).split(/\s+/);
+  if (!SHA.test(main ?? ''))
+    throw Error('Autorização recusada: não foi possível ler a main do remoto.');
+  await git(
+    'fetch',
+    '--no-tags',
+    '--no-write-fetch-head',
+    url,
+    'refs/heads/main',
+  );
   const ancestor = async (older, newer, message) => {
     try {
       await git('merge-base', '--is-ancestor', older, newer);
@@ -169,6 +183,8 @@ export async function approve({
     await view(repositoryFromUrl(config.url), pr),
     { head },
   );
+  // A consulta à rede e ao Git fica fora da trava, para não segurar um ciclo
+  // do sincronizador; a trava cobre só a releitura da versão ativa e a gravação.
   const tree = await verifyMergeBinding(git, { commit, head, url: config.url });
   const approval = {
     format: 1,
