@@ -38,6 +38,12 @@ Suba de camada só quando a anterior passar. A CI completa não muda e continua 
 - Agrupe ajustes relacionados e peça avaliação em lote; não abra PR a cada detalhe de prototipagem.
 - Preencha o modelo de PR só com o que foi medido. Ao concluir, atualize `docs/ESTADO.md` se algo nele mudou.
 
+## Integração e publicação
+
+- O autor decide em três portões: escopo do lote, prévia (quando houver interface) e "integrar e publicar" o PR num SHA exato do HEAD. Exceções de segurança, migração de dados, mudanças no agente instalado, rollback e exclusões continuam exigindo aprovação específica.
+- Depois de "integrar e publicar #PR SHA", siga sem novas confirmações e pare em qualquer falha: espere a CI verde nesse SHA; `gh pr merge <PR> --merge --match-head-commit <SHA>`; na pasta da instalação, `npm run app:aprovar -- --pr <PR> --head <SHA> --aguardar`; relate a versão publicada ou a falha. Se o HEAD mudar (inclusive para atualizar a branch), o novo SHA volta ao autor.
+- O sincronizador recebe a `main` sozinho, mas só compila e publica o commit autorizado ([detalhes](docs/SINCRONIZACAO-GITHUB.md#autorização-de-publicação)). Pausá-lo é sempre permitido; reativá-lo, não.
+
 ## Melhoria contínua da velocidade
 
 - Enquanto implementa, identifique gargalos observáveis (leitura de código, testes, build, ferramentas, retrabalho). Priorize concluir o comportamento pedido.

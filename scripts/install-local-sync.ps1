@@ -71,7 +71,7 @@ try {
   [System.IO.File]::WriteAllText((Join-Path $syncStore 'config.json'), '{"enabled":false}', (New-Object System.Text.UTF8Encoding $false))
   $syncAgent = Join-Path $syncStore 'agent/scripts'
   New-Item -ItemType Directory -Path $syncAgent -Force | Out-Null
-  foreach ($syncScript in @('sync-local.mjs', 'local-sync-config.mjs', 'local-sync-core.mjs', 'local-security-policy.mjs', 'audit-policy.mjs', 'audit-upstream.mjs', 'local-process-lock.mjs', 'publish-local.mjs', 'local-release-store.mjs', 'verify-package.mjs', 'serve-static.mjs', 'static-server.mjs')) {
+  foreach ($syncScript in @('sync-local.mjs', 'local-sync-config.mjs', 'local-sync-core.mjs', 'local-sync-approval.mjs', 'local-security-policy.mjs', 'audit-policy.mjs', 'audit-upstream.mjs', 'local-process-lock.mjs', 'publish-local.mjs', 'local-release-store.mjs', 'verify-package.mjs', 'serve-static.mjs', 'static-server.mjs')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $syncScript) -Destination (Join-Path $syncAgent $syncScript)
   }
   $syncUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
