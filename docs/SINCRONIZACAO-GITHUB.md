@@ -4,7 +4,7 @@
 
 `main` é a única fonte de atualizações do aplicativo instalado. Desenvolva em uma branch própria, abra um Pull Request para `main` e aguarde os jobs obrigatórios `verify (22)` e `verify (24)` do workflow **Verificar LMU**. O mantenedor confere o diff e decide o merge. Não envie commits diretamente para `main`. A antiga `release/lmup-local` fica preservada para recuperação da instalação anterior; não recebe novas promoções.
 
-A regra ativa de `main` exige Pull Request e esses dois jobs, impede exclusão e force push e não permite bypass. Ela não exige uma aprovação formal de outro colaborador; o merge continua sendo uma decisão manual após os checks. O workflow executa lint, tipos, testes unitários e de publicação, build e auditoria em Node 22 e 24; em Node 24 também executa E2E, PWA e teste do pacote.
+A regra ativa de `main` exige Pull Request e esses dois jobs, impede exclusão e force push e não permite bypass. Ela não exige uma aprovação formal de outro colaborador; o merge continua sendo uma decisão manual após os checks. O workflow executa lint, tipos, testes unitários e de publicação, build e auditoria em Node 22 e 24; em Node 24 também executa E2E, PWA e teste do pacote. No Node 24, o job `build (24)` publica o build como artefato com manifesto SHA-256; `e2e (1/2)`, `e2e (2/2)` (shards nativos do Playwright) e `pwa` conferem o manifesto e testam esse mesmo build em paralelo. O check `verify (24)` só aprova quando os quatro jobs terminam com sucesso; falha, cancelamento ou job pulado o reprovam.
 
 ## Sincronização local
 
