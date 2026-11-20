@@ -109,6 +109,27 @@ function runningTree(rootPid, processes, since, known) {
 }
 
 /**
+ * An empty, malformed or partial listing proves nothing about the tree: it
+ * must have valid fields and include this very process to count.
+ */
+function usableProcessList(processes) {
+  if (!Array.isArray(processes) || !processes.length)
+    throw Error('listagem de processos vazia');
+  if (
+    processes.some(
+      (item) =>
+        !Number.isInteger(item?.pid) ||
+        !Number.isInteger(item?.ppid) ||
+        !Number.isFinite(item?.created),
+    )
+  )
+    throw Error('listagem de processos com dados inválidos');
+  if (!processes.some((item) => item.pid === process.pid))
+    throw Error('listagem de processos incompleta');
+  return processes;
+}
+
+/**
  * Ends the whole tree of a Git command on Windows (Git for Windows' git.exe
  * is a wrapper: killing only it leaves git.exe and its children running) and
  * confirms nothing of it is left. Elsewhere keeps execFile's behaviour.
@@ -130,7 +151,7 @@ async function terminateGitTree(child, since, platform, listProcesses) {
   for (let round = 0; ; round++) {
     let processes;
     try {
-      processes = await listProcesses();
+      processes = usableProcessList(await listProcesses());
     } catch (error) {
       // Best effort without the list; the end stays unconfirmed.
       await taskkill([child.pid, ...known.keys()]);
@@ -149,6 +170,8 @@ async function terminateGitTree(child, since, platform, listProcesses) {
   }
 }
 
+// Only the redacted stderr tail is kept, inside the message: the raw output
+// (or the spawn error, whose spawnargs may hold a URL) never rides along.
 function gitFailure(subcommand, detail, startedAt, stderr, fields) {
   const tail = redactGitText(stderr).replace(/\s+/g, ' ').trim().slice(-600);
   const error = Error(
@@ -162,7 +185,6 @@ function gitFailure(subcommand, detail, startedAt, stderr, fields) {
     exitCode: null,
     signal: null,
     cleanup: null,
-    stderr,
     ...fields,
   });
 }
@@ -262,16 +284,15 @@ export async function runGit(project, args, options = {}) {
           : confirmed
             ? 'confirmada'
             : 'falhou',
-      stdout: output,
     });
   }
   if (outcome.error)
     throw gitFailure(
       subcommand,
-      `não foi possível iniciar o executável (${outcome.error.code ?? outcome.error.message})`,
+      `não foi possível iniciar o executável (${outcome.error.code ?? 'erro desconhecido'})`,
       startedAt,
       errors,
-      { code: outcome.error.code, cause: outcome.error, stdout: output },
+      { code: outcome.error.code },
     );
   if (outcome.code === 0) return output.trim();
   throw gitFailure(
@@ -285,7 +306,6 @@ export async function runGit(project, args, options = {}) {
       code: outcome.code,
       exitCode: outcome.code,
       signal: outcome.signal,
-      stdout: output,
     },
   );
 }

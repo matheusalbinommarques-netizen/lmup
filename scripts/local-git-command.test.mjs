@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { inspect } from 'node:util';
 import {
   gitCommand,
   gitSubcommand,
@@ -11,6 +12,21 @@ import {
   runGit,
 } from './local-sync-core.mjs';
 import { fakeGit, windows } from './git-test-fixtures.mjs';
+
+const SECRETS = ['usuario', 'segredo', 'token=abc', 'ghp_'];
+
+/** Nothing a log could print from the error carries the fixture's secrets. */
+function assertNoSecrets(error, extra = []) {
+  for (const raw of ['stderr', 'stdout', 'cause'])
+    assert.ok(!(raw in error), `${raw} no erro`);
+  const serialized = [
+    JSON.stringify(error),
+    inspect(error, { depth: 10, showHidden: true }),
+    String(error.stack),
+  ].join('\n');
+  for (const secret of [...SECRETS, ...extra])
+    assert.ok(!serialized.includes(secret), `${secret} em ${serialized}`);
+}
 
 const onlyWindows = windows
   ? {}
@@ -69,8 +85,7 @@ test('erro do Git preserva o código de saída e não expõe credenciais', async
       assert.equal(error.timedOut, false);
       assert.match(error.message, /^git fetch falhou: código de saída 128 /);
       assert.match(error.message, /fatal: falhou em https:\/\/\*\*\*@/);
-      for (const secret of ['usuario', 'segredo', 'token=abc', 'ghp_'])
-        assert.ok(!error.message.includes(secret), error.message);
+      assertNoSecrets(error);
       return true;
     });
   });
@@ -102,16 +117,19 @@ test('erro do Git preserva o código de saída e não expõe credenciais', async
 test('falha ao iniciar o executável preserva o código do sistema', async () => {
   await withRepository(async (directory) => {
     await assert.rejects(
-      runGit(directory, ['status'], {
-        executable: join(directory, 'nao-existe-git.exe'),
-      }),
+      runGit(
+        directory,
+        ['fetch', 'https://usuario:segredo@example.com/repo.git'],
+        { executable: join(directory, 'nao-existe-git.exe') },
+      ),
       (error) => {
         assert.equal(error.code, 'ENOENT');
-        assert.equal(error.gitSubcommand, 'status');
+        assert.equal(error.gitSubcommand, 'fetch');
         assert.match(
           error.message,
-          /^git status falhou: não foi possível iniciar o executável \(ENOENT\)/,
+          /^git fetch falhou: não foi possível iniciar o executável \(ENOENT\)/,
         );
+        assertNoSecrets(error, ['example.com']);
         return true;
       },
     );
@@ -231,4 +249,37 @@ test('encerramento que não pode ser confirmado também falha', async () => {
       },
     );
   });
+});
+
+test('listagem vazia, inválida ou incompleta não confirma o encerramento', async () => {
+  for (const [name, list] of [
+    ['vazia', []],
+    ['com dados inválidos', [{ pid: process.pid, ppid: 'x', created: NaN }]],
+    ['incompleta', [{ pid: 4, ppid: 0, created: 0 }]],
+  ])
+    await withFake(async (fake) => {
+      // Encerra o comando antes de responder, para o teste não esperar.
+      const listProcesses = async () => {
+        for (const pid of await fake.recorded()) process.kill(pid);
+        return list;
+      };
+      await assert.rejects(
+        fake.run('hang', ['fetch'], {
+          timeout: 1500,
+          platform: 'win32',
+          listProcesses,
+        }),
+        (error) => {
+          assert.equal(error.code, 'ETIMEDOUT', name);
+          assert.equal(error.cleanup, 'falhou', name);
+          assert.ok(
+            error.message.includes(
+              `encerramento não confirmado (não foi possível listar os processos (listagem de processos ${name}); taskkill /T enviado ao processo raiz)`,
+            ),
+            error.message,
+          );
+          return true;
+        },
+      );
+    });
 });
