@@ -31,15 +31,287 @@ const exists = (path) =>
     () => false,
   );
 
-export async function gitCommand(project, args) {
-  const { stdout } = await execute('git', args, {
+export const GIT_TIMEOUT_MS = 120000;
+const GIT_MAX_BUFFER = 2 * 1024 * 1024;
+// After the tree is gone, how long to wait for the output pipes to close.
+const CLOSE_GRACE_MS = 10000;
+// Process creation times are compared with Date.now() of this process.
+const CLOCK_SLACK_MS = 1000;
+const TREE_KILL_ROUNDS = 3;
+
+/** Git subcommand for messages; never the URL or other arguments. */
+export function gitSubcommand(args) {
+  for (let index = 0; index < args.length; index++) {
+    const arg = String(args[index]);
+    if (arg === '-c' || arg === '-C') index++;
+    else if (!arg.startsWith('-'))
+      return /^[a-z][a-z0-9-]*$/.test(arg) ? arg : '(subcomando)';
+  }
+  return '(sem subcomando)';
+}
+
+/** Removes credentials, query strings and tokens from Git output. */
+export function redactGitText(text) {
+  return String(text)
+    .replace(/\b([a-z][a-z0-9+.-]*:\/\/)[^\s/@'"]*@/gi, '$1***@')
+    .replace(/(\b[a-z][a-z0-9+.-]*:\/\/[^\s'"?#]*)[?#][^\s'"]*/gi, '$1?***')
+    .replace(/\b(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]{16,}/g, '***')
+    .replace(/\b(authorization:\s*)\S+(?:\s+\S+)?/gi, '$1***');
+}
+
+/** Every process of the machine: pid, parent pid and creation time (ms). */
+export async function listWindowsProcesses() {
+  const { stdout } = await execute(
+    'powershell.exe',
+    [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      "Get-CimInstance Win32_Process | Where-Object CreationDate | ForEach-Object { '{0} {1} {2}' -f $_.ProcessId, $_.ParentProcessId, $_.CreationDate.ToUniversalTime().ToString('o') }",
+    ],
+    { windowsHide: true, timeout: 30000, maxBuffer: 16 * 1024 * 1024 },
+  );
+  return stdout
+    .split(/\r?\n/)
+    .map((line) => line.trim().split(' '))
+    .filter((parts) => parts.length === 3)
+    .map(([pid, ppid, created]) => ({
+      pid: Number(pid),
+      ppid: Number(ppid),
+      created: Date.parse(created),
+    }));
+}
+
+/**
+ * Processes of the command's tree still running. The tree is followed by
+ * parent pid from the root and from every member seen before, so children
+ * of an already finished wrapper (whose parent pid no longer exists) are
+ * still found. Only processes created after the command started count.
+ */
+function runningTree(rootPid, processes, since, known) {
+  const running = new Map();
+  const parents = new Set([rootPid, ...known.keys()]);
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const item of processes) {
+      if (running.has(item.pid) || !(item.created >= since - CLOCK_SLACK_MS))
+        continue;
+      if (item.pid === rootPid || parents.has(item.ppid)) {
+        running.set(item.pid, item);
+        if (!parents.has(item.pid)) {
+          parents.add(item.pid);
+          grew = true;
+        }
+      }
+    }
+  }
+  return running;
+}
+
+/**
+ * An empty, malformed or partial listing proves nothing about the tree: it
+ * must have valid fields and include this very process to count.
+ */
+function usableProcessList(processes) {
+  if (!Array.isArray(processes) || !processes.length)
+    throw Error('listagem de processos vazia');
+  if (
+    processes.some(
+      (item) =>
+        !Number.isInteger(item?.pid) ||
+        !Number.isInteger(item?.ppid) ||
+        !Number.isFinite(item?.created),
+    )
+  )
+    throw Error('listagem de processos com dados inválidos');
+  if (!processes.some((item) => item.pid === process.pid))
+    throw Error('listagem de processos incompleta');
+  return processes;
+}
+
+/**
+ * Ends the whole tree of a Git command on Windows (Git for Windows' git.exe
+ * is a wrapper: killing only it leaves git.exe and its children running) and
+ * confirms nothing of it is left. Elsewhere keeps execFile's behaviour.
+ * Throws when the end cannot be confirmed.
+ */
+async function terminateGitTree(child, since, platform, listProcesses) {
+  if (platform !== 'win32') {
+    child.kill('SIGTERM');
+    return 'sinal SIGTERM enviado';
+  }
+  if (!child.pid) return 'processo não iniciado';
+  const taskkill = (pids) =>
+    execute(
+      'taskkill.exe',
+      ['/F', '/T', ...pids.flatMap((pid) => ['/PID', `${pid}`])],
+      { windowsHide: true, timeout: 30000 },
+    ).catch(() => undefined);
+  const known = new Map();
+  for (let round = 0; ; round++) {
+    let processes;
+    try {
+      processes = usableProcessList(await listProcesses());
+    } catch (error) {
+      // Best effort without the list; the end stays unconfirmed.
+      await taskkill([child.pid, ...known.keys()]);
+      throw Error(
+        `não foi possível listar os processos (${error.message}); taskkill /T enviado ao processo raiz`,
+        { cause: error },
+      );
+    }
+    const running = runningTree(child.pid, processes, since, known);
+    if (!running.size) return 'árvore de processos encerrada';
+    if (round === TREE_KILL_ROUNDS)
+      throw Error(`processos ainda ativos: ${[...running.keys()].join(', ')}`);
+    for (const item of running.values()) known.set(item.pid, item);
+    await taskkill([...running.keys()]);
+    await new Promise((done) => setTimeout(done, 250));
+  }
+}
+
+// Only the redacted stderr tail is kept, inside the message: the raw output
+// (or the spawn error, whose spawnargs may hold a URL) never rides along.
+function gitFailure(subcommand, detail, startedAt, stderr, fields) {
+  const tail = redactGitText(stderr).replace(/\s+/g, ' ').trim().slice(-600);
+  const error = Error(
+    `git ${subcommand} falhou: ${detail} [${Date.now() - startedAt} ms]${tail ? `: ${tail}` : ''}`,
+  );
+  return Object.assign(error, {
+    gitSubcommand: subcommand,
+    durationMs: Date.now() - startedAt,
+    timedOut: false,
+    killed: false,
+    exitCode: null,
+    signal: null,
+    cleanup: null,
+    ...fields,
+  });
+}
+
+/**
+ * Runs Git with a time limit that ends the command's whole process tree.
+ * Same contract as before: resolves with trimmed stdout on exit 0; rejects
+ * otherwise, with `code` = exit code (callers read `code === 1`), the
+ * spawn error code (`ENOENT`), `ETIMEDOUT` or the maxBuffer code.
+ * The options exist for tests.
+ */
+export async function runGit(project, args, options = {}) {
+  const {
+    executable = 'git',
+    executableArgs = [],
+    timeout = GIT_TIMEOUT_MS,
+    maxBuffer = GIT_MAX_BUFFER,
+    platform = process.platform,
+    listProcesses = listWindowsProcesses,
+  } = options;
+  const subcommand = gitSubcommand(args);
+  const startedAt = Date.now();
+  const child = spawn(executable, [...executableArgs, ...args], {
     cwd: project,
     env: environment(),
     windowsHide: true,
-    timeout: 120000,
-    maxBuffer: 2 * 1024 * 1024,
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
-  return stdout.trim();
+  const stdout = [],
+    stderr = [];
+  let size = 0,
+    reason = null,
+    cleanup = null,
+    graceTimer;
+  let aborted;
+  const abortSignal = new Promise((done) => (aborted = done));
+  const abort = (why) => {
+    if (reason) return;
+    reason = why;
+    cleanup = terminateGitTree(child, startedAt, platform, listProcesses).then(
+      (detail) => ({ ok: true, detail }),
+      (error) => ({ ok: false, detail: error.message }),
+    );
+    aborted();
+  };
+  const collect = (chunks) => (chunk) => {
+    size += chunk.length;
+    if (size > maxBuffer) abort('maxBuffer');
+    else chunks.push(chunk);
+  };
+  child.stdout.on('data', collect(stdout));
+  child.stderr.on('data', collect(stderr));
+  const timer = setTimeout(() => abort('timeout'), timeout);
+  const ended = new Promise((done) => {
+    child.once('error', (error) => done({ error }));
+    child.once('close', (code, signal) => done({ code, signal }));
+  });
+  // The tree is gone but the pipes never closed: stop waiting.
+  const stuck = abortSignal
+    .then(() => cleanup)
+    .then(
+      () =>
+        new Promise((done) => {
+          graceTimer = setTimeout(() => done({ stuck: true }), CLOSE_GRACE_MS);
+        }),
+    );
+  const outcome = await Promise.race([ended, stuck]);
+  clearTimeout(timer);
+  clearTimeout(graceTimer);
+  if (outcome.stuck) {
+    child.stdout.destroy();
+    child.stderr.destroy();
+  }
+  const output = Buffer.concat(stdout).toString();
+  const errors = Buffer.concat(stderr).toString();
+  if (reason) {
+    const result = await cleanup;
+    const confirmed = result.ok && !outcome.stuck;
+    const what =
+      reason === 'timeout'
+        ? `tempo limite de ${timeout} ms excedido`
+        : `saída acima de ${maxBuffer} bytes`;
+    const how = result.ok
+      ? `${result.detail}${outcome.stuck ? '; a saída não fechou' : ''}`
+      : `encerramento não confirmado (${result.detail})`;
+    throw gitFailure(subcommand, `${what}; ${how}`, startedAt, errors, {
+      code:
+        reason === 'timeout'
+          ? 'ETIMEDOUT'
+          : 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER',
+      timedOut: reason === 'timeout',
+      killed: true,
+      signal: platform === 'win32' ? null : 'SIGTERM',
+      cleanup:
+        platform !== 'win32'
+          ? 'não verificada'
+          : confirmed
+            ? 'confirmada'
+            : 'falhou',
+    });
+  }
+  if (outcome.error)
+    throw gitFailure(
+      subcommand,
+      `não foi possível iniciar o executável (${outcome.error.code ?? 'erro desconhecido'})`,
+      startedAt,
+      errors,
+      { code: outcome.error.code },
+    );
+  if (outcome.code === 0) return output.trim();
+  throw gitFailure(
+    subcommand,
+    outcome.signal
+      ? `encerrado pelo sinal ${outcome.signal}`
+      : `código de saída ${outcome.code}`,
+    startedAt,
+    errors,
+    {
+      code: outcome.code,
+      exitCode: outcome.code,
+      signal: outcome.signal,
+    },
+  );
+}
+
+export async function gitCommand(project, args) {
+  return runGit(project, args);
 }
 
 export async function runNpm(project, npmCli, args, logPath) {
@@ -97,9 +369,11 @@ export async function synchronize({
   config,
   verify,
   publish = publishBuild,
+  // Tests only: replaces how Git is run.
+  runGitCommand = gitCommand,
 }) {
   const unlock = await acquireLocalLock(join(storage, 'publish.lock'));
-  const git = (...args) => gitCommand(project, args);
+  const git = (...args) => runGitCommand(project, args);
   const waiting = (reason) => ({ state: 'waiting', reason });
   async function guard(expected) {
     if ((await git('branch', '--show-current')) !== config.branch)
