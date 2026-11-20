@@ -190,6 +190,13 @@ test('bloco: fila do Dia, cronômetro que sobrevive à recarga, concluir e desfa
     page.getByRole('button', { name: 'Concluir', exact: true }),
   ).toBeDisabled();
   await page.getByRole('checkbox', { name: 'Assistir' }).check();
+  // The native checkbox flips at once, but the save is an async IndexedDB
+  // transaction; a reload before it commits discards it. The label is struck
+  // only when the stored task (liveQuery) has the step, i.e. after the commit.
+  await expect(page.getByText('Assistir', { exact: true })).toHaveCSS(
+    'text-decoration-line',
+    'line-through',
+  );
   await page.reload();
   await expect(page.getByRole('checkbox', { name: 'Assistir' })).toBeChecked();
   await page.getByRole('checkbox', { name: 'Anotar' }).check();
