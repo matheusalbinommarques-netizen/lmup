@@ -4,6 +4,15 @@ Ponto de partida para agentes e para quem retoma o projeto. Atualize no mesmo PR
 
 Execução e pendências do plano de 04/11: [reconciliação de 09/11](AUDITORIA-20261104-EXECUCAO.md). Não considerar um PR integrado como prova de que todos os critérios do lote foram atendidos.
 
+## Agora
+
+Só o estado atual, não um diário: substitua o conteúdo ao fechar ou abrir um lote.
+
+- Plano em execução: Dia único, 7 lotes (`docs/PLANO-DIA-UNICO.md`, que entra com o PR #103).
+- Lote atual: 1, linha de missão no Hoje. PR #103 aberto (`feat/lote1-linha-missao`), aguardando CI e autorização de merge.
+- Próximo: lote 2 (ordem única do dia e hora na linha), só com pedido do autor depois do merge do #103.
+- Pendente de decisão: nenhuma para o lote 2.
+
 ## Como consultar a versão
 
 - Código de referência: `origin/main`. A `main` local pode estar desatualizada.
