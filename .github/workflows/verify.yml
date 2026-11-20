@@ -13,45 +13,21 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('run-{0}', github.run_id) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Required checks: "verify (22)" and "verify (24)". Node 24 work is split into
+# build-24, e2e (1/2), e2e (2/2) and pwa, which run in parallel on one build;
+# the "verify (24)" job only passes when every one of them succeeded.
 jobs:
-  verify:
+  verify-22:
+    name: verify (22)
     runs-on: ubuntu-24.04
-    strategy:
-      # One Node version's known audit failure must not cancel browser checks.
-      fail-fast: false
-      matrix:
-        node: [22, 24]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run verify
-      - if: matrix.node == 24
-        run: npx playwright install --with-deps chromium
-      - name: Check cross-tab update stability
-        if: matrix.node == 24
-        run: npm run test:pwa -- --grep "outra aba com notas" --repeat-each 5 --retries 0 --max-failures 1
-        env:
-          LMU_PWA_DIAGNOSTICS: '1'
-      - if: matrix.node == 24
-        run: npm run test:e2e
-      - if: matrix.node == 24
-        run: npm run test:pwa
-      - name: Preserve browser failure evidence
-        if: failure() && matrix.node == 24
-        uses: actions/upload-artifact@v7
-        with:
-          name: browser-failures-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            test-results/
-            test-results-pwa/
-          retention-days: 14
-          if-no-files-found: ignore
-      - if: matrix.node == 24
-        run: npm run test:package
       # Keep the strict audit mandatory; run functional checks before it so
       # pre-existing advisories cannot hide unrelated regressions. Moderate or
       # higher advisories fail unless listed in scripts/audit-exceptions.json;
@@ -59,7 +35,6 @@ jobs:
       - run: npm run audit:security
         env:
           GITHUB_TOKEN: ${{ github.token }}
-      # Even after a failed test, detect accidental modifications to tracked files.
       - name: Ensure tests did not modify versioned files
         if: ${{ !cancelled() }}
         run: |
@@ -69,3 +44,151 @@ jobs:
             git diff --stat HEAD --
             exit 1
           fi
+
+  build-24:
+    name: build (24)
+    runs-on: ubuntu-24.04
+    outputs:
+      build-ready: ${{ steps.build-ready.outputs.ready }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # Lint, types, unit and publication tests, then the build reused below.
+      - run: npm run verify
+      - name: Record build checksums
+        run: find build -type f -print0 | sort -z | xargs -0 sha256sum > build.sha256
+      - name: Share the validated build
+        uses: actions/upload-artifact@v7
+        with:
+          # Artifacts belong to the run, so "re-run failed jobs" finds this one;
+          # a full re-run replaces it. Hidden files: build/.well-known/.
+          name: lmup-build
+          overwrite: true
+          path: |
+            build/
+            build.sha256
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 2
+      - id: build-ready
+        run: echo "ready=true" >> "$GITHUB_OUTPUT"
+      - run: npm run test:package
+      # Same audit policy as verify (22); browser jobs already have the build.
+      - run: npm run audit:security
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Ensure tests did not modify versioned files
+        if: ${{ !cancelled() }}
+        run: |
+          if ! git diff --quiet HEAD --; then
+            echo "::error::Tests or build changed tracked files. Review the changes before merging."
+            git status --short
+            git diff --stat HEAD --
+            exit 1
+          fi
+
+  e2e:
+    name: e2e (${{ matrix.shard }}/2)
+    needs: build-24
+    # A failed audit must not skip browser checks, but they need the build.
+    if: ${{ !cancelled() && needs.build-24.outputs.build-ready == 'true' }}
+    runs-on: ubuntu-24.04
+    strategy:
+      # A failure in one shard must not cancel the other's evidence.
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v8
+        with:
+          name: lmup-build
+      - name: Verify build integrity
+        run: |
+          sha256sum --check --strict --quiet build.sha256
+          diff <(cut -c67- build.sha256) <(find build -type f -print0 | sort -z | tr '\0' '\n')
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e -- --shard=${{ matrix.shard }}/2
+      - name: Preserve browser failure evidence
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser-failures-e2e-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/
+          retention-days: 14
+          if-no-files-found: ignore
+      - name: Ensure tests did not modify versioned files
+        if: ${{ !cancelled() }}
+        run: |
+          if ! git diff --quiet HEAD --; then
+            echo "::error::Tests changed tracked files. Review the changes before merging."
+            git status --short
+            git diff --stat HEAD --
+            exit 1
+          fi
+
+  pwa:
+    name: pwa
+    needs: build-24
+    if: ${{ !cancelled() && needs.build-24.outputs.build-ready == 'true' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v8
+        with:
+          name: lmup-build
+      - name: Verify build integrity
+        run: |
+          sha256sum --check --strict --quiet build.sha256
+          diff <(cut -c67- build.sha256) <(find build -type f -print0 | sort -z | tr '\0' '\n')
+      - run: npx playwright install --with-deps chromium
+      - name: Check cross-tab update stability
+        run: npm run test:pwa -- --grep "outra aba com notas" --repeat-each 5 --retries 0 --max-failures 1
+        env:
+          LMU_PWA_DIAGNOSTICS: '1'
+      - run: npm run test:pwa
+      - name: Preserve browser failure evidence
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser-failures-pwa-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results-pwa/
+          retention-days: 14
+          if-no-files-found: ignore
+      - name: Ensure tests did not modify versioned files
+        if: ${{ !cancelled() }}
+        run: |
+          if ! git diff --quiet HEAD --; then
+            echo "::error::Tests changed tracked files. Review the changes before merging."
+            git status --short
+            git diff --stat HEAD --
+            exit 1
+          fi
+
+  verify-24:
+    name: verify (24)
+    needs: [build-24, e2e, pwa]
+    # Always report: failure, cancellation or a skipped job must turn this red.
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require every Node 24 job to succeed
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$NEEDS" | jq -e 'length == 3 and all(.[]; .result == "success")' > /dev/null
