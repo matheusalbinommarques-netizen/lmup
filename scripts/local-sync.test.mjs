@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve, relative, isAbsolute } from 'node:path';
-import { gitCommand, synchronize } from './local-sync-core.mjs';
+import { gitCommand, runGit, synchronize } from './local-sync-core.mjs';
+import { fakeGit, windows } from './git-test-fixtures.mjs';
 import { publishBuild, activeRelease } from './local-release-store.mjs';
 import { acquireLocalLock } from './local-process-lock.mjs';
 import {
@@ -430,3 +431,57 @@ test('auditoria reprovada não substitui nem altera a versão instalada', () =>
     // A auditoria barra antes da compilação: nada foi construído.
     assert.equal(calls(), 0);
   }));
+
+test('fetch que estoura o tempo limite falha sem merge, verificação, publicação nem consumo da autorização', () =>
+  fixture(
+    async ({
+      options,
+      advance,
+      approve,
+      project,
+      git,
+      storage,
+      first,
+      calls,
+    }) => {
+      const fake = await fakeGit();
+      try {
+        const target = await advance();
+        await approve(target);
+        const before = await activeRelease(storage);
+        let published = 0;
+        await assert.rejects(
+          synchronize({
+            ...options,
+            publish: async () => {
+              published++;
+            },
+            // Só o fetch é trocado: um Git sintético que não termina e, no
+            // Windows, deixa filho e neto como o wrapper do Git for Windows.
+            runGitCommand: (cwd, args) =>
+              args[0] === 'fetch'
+                ? runGit(
+                    cwd,
+                    args,
+                    fake.options(windows ? 'tree' : 'hang', { timeout: 4000 }),
+                  )
+                : gitCommand(cwd, args),
+          }),
+          (error) =>
+            error.code === 'ETIMEDOUT' &&
+            error.gitSubcommand === 'fetch' &&
+            error.cleanup === (windows ? 'confirmada' : 'não verificada'),
+        );
+        assert.equal(await git(project, 'rev-parse', 'HEAD'), first);
+        assert.equal(calls(), 0);
+        assert.equal(published, 0);
+        assert.equal((await activeRelease(storage)).id, before.id);
+        const approval = await readApproval(storage);
+        assert.equal(approval.commit, target);
+        assert.equal(approval.failure, undefined);
+        assert.deepEqual(await fake.running(), []);
+      } finally {
+        await fake.dispose();
+      }
+    },
+  ));
