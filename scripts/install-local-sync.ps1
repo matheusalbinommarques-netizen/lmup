@@ -17,7 +17,11 @@ if ($Mode -eq 'status') {
   exit
 }
 $syncLauncher = Join-Path $PSScriptRoot 'start-local-sync.ps1'
-if ($syncTask -and $syncTask.Actions.Arguments -notlike ('*' + $syncLauncher + '*')) { throw 'Há uma tarefa diferente com esse nome; ela foi preservada.' }
+# A tarefa roda o iniciador oculto (wscript.exe, sem console); tarefas criadas
+# antes dele rodam o lançador direto pelo powershell.exe. As duas são desta
+# instalação.
+$syncHiddenLauncher = Join-Path $PSScriptRoot 'start-local-sync-hidden.js'
+if ($syncTask -and $syncTask.Actions.Arguments -notlike ('*"' + $syncLauncher + '"*') -and $syncTask.Actions.Arguments -notlike ('*"' + $syncHiddenLauncher + '"*')) { throw 'Há uma tarefa diferente com esse nome; ela foi preservada.' }
 if ($Mode -eq 'remove') {
   if ($syncTask) { Stop-ScheduledTask -TaskName $syncTaskName; Unregister-ScheduledTask -TaskName $syncTaskName -Confirm:$false }
   Write-Output 'Sincronização automática removida. A versão publicada e seus dados foram preservados.'
@@ -75,7 +79,9 @@ try {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $syncScript) -Destination (Join-Path $syncAgent $syncScript)
   }
   $syncUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-  $syncAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument ('-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $syncLauncher + '"') -WorkingDirectory $syncProject
+  # powershell.exe direto abriria um console visível a cada disparo, tomando o
+  # foco; o iniciador oculto roda o mesmo lançador sem janela.
+  $syncAction = New-ScheduledTaskAction -Execute (Join-Path $env:SystemRoot 'System32\wscript.exe') -Argument ('//B //NoLogo //E:jscript "' + $syncHiddenLauncher + '"') -WorkingDirectory $syncProject
   $syncTriggers = @(
     (New-ScheduledTaskTrigger -AtLogOn -User $syncUser),
     (New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 5))
