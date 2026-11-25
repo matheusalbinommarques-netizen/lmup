@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { dayHoursOf } from '$services/firstUse';
   /**
    * Uma tela de execução (lote 3, design "LMUP Fluxos" E1–E4). Serves a
    * mission on its own, the queue of the Dia ("Iniciar dia / Continuar o dia")
@@ -165,7 +166,9 @@
         ? nextInQueue(projected, id)
         : undefined,
   );
-  const timeline = $derived(dayTimeline(projected, now));
+  const timeline = $derived(
+    dayTimeline(projected, now, dayHoursOf(data?.profile)),
+  );
   const slots = $derived(new Map(timeline.slots.map((s) => [s.id, s])));
   const routine = $derived(
     row?.routineId

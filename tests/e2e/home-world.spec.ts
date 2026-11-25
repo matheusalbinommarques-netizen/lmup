@@ -3,6 +3,7 @@ import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { worldData } from './world-flow';
 import { conclude, openReceipt } from './execution';
+import { existingUser } from './existing-user';
 
 async function capture(page: Page, name: string) {
   if (!process.env.LMU_HOME_CAPTURE_DIR) return;
@@ -80,6 +81,8 @@ async function noOverflow(page: Page) {
 test('Home integra mundo real, personagem e conclusão sem inventar tarefas', async ({
   page,
 }, info) => {
+  // Perfil anterior ao lote 7 (camada Completa): o teste depende dela.
+  await existingUser({ page });
   await page.setViewportSize(
     info.project.name === 'desktop'
       ? { width: 1440, height: 900 }
@@ -158,6 +161,8 @@ test('Home integra mundo real, personagem e conclusão sem inventar tarefas', as
 test('Home mostra perfil, equipamento, ambiente e preserva dados históricos do piloto', async ({
   page,
 }, info) => {
+  // Perfil anterior ao lote 7 (camada Completa): o teste depende dela.
+  await existingUser({ page });
   await page.setViewportSize(
     info.project.name === 'desktop'
       ? { width: 1440, height: 900 }
@@ -260,6 +265,8 @@ test('Home mostra perfil, equipamento, ambiente e preserva dados históricos do 
 test('Home em 320px, tablet, texto 200%, teclado e arte ausente mantém ações', async ({
   page,
 }, info) => {
+  // Perfil anterior ao lote 7 (camada Completa): o teste depende dela.
+  await existingUser({ page });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.route('**/art/approved/**', (route) => route.abort());
   await page.route('**/fonts/**', (route) => route.abort());

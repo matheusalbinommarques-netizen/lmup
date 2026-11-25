@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { concludeFromDetail } from './execution';
+import { existingUser } from './existing-user';
 
 // Synthetic data in disposable contexts; never use the user's 5174 origin.
 async function seed(page: Page, total: number, xp = 50, project = false) {
@@ -120,6 +121,8 @@ for (const state of [
   test(`recompensa ${state.name}: recibo real, retorno e reabertura sem duplicação`, async ({
     page,
   }, info) => {
+    // Perfil anterior ao lote 7 (camada Completa): o teste depende dela.
+    await existingUser({ page });
     await seed(page, state.total);
     await concludeFromDetail(page);
     const summary = page.getByRole('region', { name: 'Resumo da recompensa' });

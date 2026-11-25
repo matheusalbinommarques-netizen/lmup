@@ -162,6 +162,121 @@ describe('horas do dia', () => {
   });
 });
 
+describe('início e fim do dia (lote 7)', () => {
+  const plan = () => [
+    row('a', { estimatedMinutes: 30 }),
+    row('fixa', { plannedTime: '09:00', estimatedMinutes: 60 }),
+    row('b'),
+  ];
+  it('sem horários o resultado é o mesmo de antes', () => {
+    const before = dayTimeline(plan(), at('06:12'));
+    expect(dayTimeline(plan(), at('06:12'), {})).toEqual(before);
+    expect(before.overrun).toBeNull();
+    expect(before.slots[0].time).toBe('06:15');
+  });
+  it('antes do início, as horas ≈ começam no início; a hora fixa não muda', () => {
+    const { slots } = dayTimeline(plan(), at('06:12'), { start: '07:30' });
+    expect(slots.map((slot) => [slot.id, slot.time, slot.kind])).toEqual([
+      ['a', '07:30', 'computed'],
+      ['fixa', '09:00', 'anchor'],
+      ['b', '10:00', 'computed'],
+    ]);
+  });
+  it('depois do início, segue calculando a partir de agora', () => {
+    const { slots } = dayTimeline(plan(), at('08:02'), { start: '07:30' });
+    expect(slots[0].time).toBe('08:05');
+  });
+  it('no minuto exato do início, começa no início', () => {
+    const { slots } = dayTimeline([row('a')], at('07:30'), { start: '07:30' });
+    expect(slots[0].time).toBe('07:30');
+  });
+  it('avisa quanto a estimativa passa do fim, sem mover nada', () => {
+    const rows = [
+      row('a', { estimatedMinutes: 90 }),
+      row('b', { estimatedMinutes: 30 }),
+    ];
+    const free = dayTimeline(rows, at('21:00'));
+    const result = dayTimeline(rows, at('21:00'), { end: '22:00' });
+    expect(result.slots).toEqual(free.slots);
+    expect(result.overrun).toEqual({
+      end: '23:00',
+      dayEnd: '22:00',
+      minutes: 60,
+      passed: false,
+    });
+  });
+  it('terminar exatamente no fim não é aviso', () => {
+    const result = dayTimeline(
+      [row('a', { estimatedMinutes: 60 })],
+      at('21:00'),
+      { end: '22:00' },
+    );
+    expect(result.overrun).toBeNull();
+  });
+  it('hora fixa depois do fim também conta para o aviso', () => {
+    const result = dayTimeline(
+      [row('fixa', { plannedTime: '22:30', estimatedMinutes: 30 })],
+      at('20:00'),
+      { end: '22:00' },
+    );
+    expect(result.slots[0]).toMatchObject({ time: '22:30', kind: 'anchor' });
+    expect(result.overrun).toEqual({
+      end: '23:00',
+      dayEnd: '22:00',
+      minutes: 60,
+      passed: false,
+    });
+  });
+  it('sem nada planejado restante, não há aviso', () => {
+    const done = row('feita', {
+      status: 'completed',
+      completedAt: `${DAY}T21:30:00`,
+    });
+    expect(
+      dayTimeline([done], at('21:40'), { end: '22:00' }).overrun,
+    ).toBeNull();
+    expect(
+      dayTimeline([done], at('22:40'), { end: '22:00' }).overrun,
+    ).toBeNull();
+    const missed = row('passou', { plannedTime: '20:00' });
+    expect(
+      dayTimeline([missed], at('22:40'), { end: '22:00' }).overrun,
+    ).toBeNull();
+    expect(dayTimeline([], at('21:00'), { end: '22:00' }).overrun).toBeNull();
+  });
+  it('depois do fim, segue informando até quando vai o que falta', () => {
+    const rows = [
+      row('a', { estimatedMinutes: 45 }),
+      row('b', { estimatedMinutes: 15 }),
+    ];
+    const free = dayTimeline(rows, at('22:13'));
+    const result = dayTimeline(rows, at('22:13'), { end: '22:00' });
+    expect(result.slots).toEqual(free.slots);
+    expect(result.overrun).toEqual({
+      end: '23:15',
+      dayEnd: '22:00',
+      minutes: 75,
+      passed: true,
+    });
+    expect(
+      dayTimeline(rows, at('22:00'), { end: '22:00' }).overrun?.passed,
+    ).toBe(true);
+  });
+  it('estimativa que passa da meia-noite mostra a hora do relógio', () => {
+    const result = dayTimeline(
+      [row('a', { estimatedMinutes: 120 })],
+      at('23:00'),
+      { end: '23:30' },
+    );
+    expect(result.overrun).toEqual({
+      end: '01:00',
+      dayEnd: '23:30',
+      minutes: 90,
+      passed: false,
+    });
+  });
+});
+
 describe('persistência da ordem e da hora', () => {
   beforeEach(async () => {
     vi.useFakeTimers({ toFake: ['Date'] });

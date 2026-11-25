@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { concludeFromDetail } from './execution';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { existingUser } from './existing-user';
 
 const states = [
   'novo',
@@ -142,6 +143,8 @@ async function seed(page: Page, state: HomeState) {
 
 for (const state of states)
   test(`acabamento da Home: ${state}`, async ({ page }, info) => {
+    // Perfil anterior ao lote 7 (camada Completa): o teste depende dela.
+    await existingUser({ page });
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.clock.setFixedTime(new Date(`${today}T10:00:00-03:00`));

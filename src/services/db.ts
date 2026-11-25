@@ -48,6 +48,10 @@ export interface Profile {
   investmentGoal?: { id: string; chosenAt: string };
   /** Camada de jogo (lote 4b); ausente = 'completa'. Só muda a exibição. */
   gameLayer?: import('./gameLayer').GameLayer;
+  /** Primeiro uso opcional (lote 7); ausente = perfil anterior ao lote. */
+  firstUse?: import('./firstUse').FirstUseState;
+  /** Início/fim do dia (lote 7): só referência para as horas ≈. */
+  dayHours?: import('./firstUse').DayHours;
   id?: number;
   name: string;
   title?: string;

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { existingUser } from './existing-user';
 
 const TODAY = '2026-11-15';
 
@@ -60,9 +61,11 @@ async function chooseLayer(page: Page, title: string) {
   ).toContainText('Nada do seu progresso mudou');
 }
 
-test('camada Completa é o padrão: Jornada na barra e um cartão de jogo no Hoje', async ({
+test('perfil anterior ao lote 7 segue na Completa: Jornada na barra e um cartão de jogo no Hoje', async ({
   page,
 }) => {
+  // Perfil anterior ao lote 7 (camada Completa): o teste depende dela.
+  await existingUser({ page });
   await seed(page);
   await page.goto('/');
   await expect(nav(page).getByRole('link')).toHaveText([
@@ -91,6 +94,8 @@ test('camada Completa é o padrão: Jornada na barra e um cartão de jogo no Hoj
 test('camada Discreta: Jornada sai da barra, Hoje mostra só a linha de XP', async ({
   page,
 }) => {
+  // Perfil anterior ao lote 7 (camada Completa): o teste depende dela.
+  await existingUser({ page });
   await seed(page);
   await chooseLayer(page, 'Discreta');
   await page.goto('/');

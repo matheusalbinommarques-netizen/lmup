@@ -1,6 +1,7 @@
 import { readable } from 'svelte/store';
 import { liveQuery } from 'dexie';
 import { db, type Profile } from './db';
+import { resolveFirstUseStep } from './firstUse';
 
 /**
  * Camada de jogo (lote 4b, design "LMUP Hoje" D1–D3). Só muda o que aparece
@@ -37,7 +38,10 @@ export const isGameLayer = (value: unknown): value is GameLayer =>
   typeof value === 'string' &&
   (GAME_LAYERS as readonly string[]).includes(value);
 
-/** Usuários atuais (sem preferência gravada) continuam na camada Completa. */
+/**
+ * Usuários atuais (sem preferência gravada) continuam na camada Completa.
+ * Perfis novos (lote 7) já nascem com 'discreta' gravada.
+ */
 export const gameLayerOf = (profile?: Pick<Profile, 'gameLayer'> | null) =>
   isGameLayer(profile?.gameLayer) ? profile.gameLayer : 'completa';
 
@@ -46,6 +50,9 @@ export async function setGameLayer(layer: GameLayer) {
   await db.transaction('rw', db.profile, async () => {
     const profile = await db.profile.get(1);
     if (!profile) throw new Error('Abra sua jornada primeiro.');
+    // Escolher a camada (aqui ou em Configurações) resolve o passo do
+    // primeiro uso, inclusive quando a camada já era a escolhida.
+    await resolveFirstUseStep('layer', 'done');
     if (profile.gameLayer === layer) return;
     await db.profile.update(1, { gameLayer: layer });
   });

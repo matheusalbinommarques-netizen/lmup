@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { existingUser } from './existing-user';
 
 async function seed(page: Page) {
   await page.goto('/');
@@ -82,6 +83,8 @@ test('sidebar permanece acessível ao rolar Hoje e Missões, com rolagem própri
   page,
   isMobile,
 }) => {
+  // Perfil anterior ao lote 7 (camada Completa): o teste depende dela.
+  await existingUser({ page });
   test.skip(isMobile, 'A navegação lateral é exclusiva do desktop.');
   await page.setViewportSize({ width: 1280, height: 800 });
   await seed(page);
@@ -141,6 +144,9 @@ test('banner aceita texto ampliado e mobile conserva Hoje, Missões, Evolução 
   page,
   isMobile,
 }) => {
+  // No mobile o teste confere a Jornada na barra (camada Completa); no
+  // desktop roda como perfil novo, com o painel do primeiro uso.
+  if (isMobile) await existingUser({ page });
   await seed(page);
   await page.evaluate(() => (document.documentElement.style.fontSize = '32px'));
   const hero = page.locator('.today-hero');
