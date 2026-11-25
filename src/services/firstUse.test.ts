@@ -23,6 +23,8 @@ import {
 } from './backupDataService';
 
 const profile = async () => (await db.profile.get(1))!;
+// Hora simulada em horário local; o ISO gravado depende do fuso da máquina.
+const NOW = new Date('2026-11-25T10:00:00').toISOString();
 const legacy = () =>
   db.profile.update(1, { gameLayer: undefined, firstUse: undefined });
 
@@ -43,7 +45,7 @@ describe('perfil novo e perfil antigo', () => {
     expect(created.firstUse).toEqual({
       status: 'pending',
       steps: {},
-      startedAt: '2026-11-25T13:00:00.000Z',
+      startedAt: NOW,
     });
     expect(nextFirstUseStep(created)).toBe('areas');
   });
@@ -131,8 +133,8 @@ describe('agora não, pular passo e pular tudo', () => {
     expect(after.firstUse).toEqual({
       status: 'skipped',
       steps: {},
-      startedAt: '2026-11-25T13:00:00.000Z',
-      finishedAt: '2026-11-25T13:00:00.000Z',
+      startedAt: NOW,
+      finishedAt: NOW,
     });
     expect(after.gameLayer).toBe('discreta');
     expect(nextFirstUseStep(after)).toBeNull();
@@ -153,7 +155,7 @@ describe('agora não, pular passo e pular tudo', () => {
     expect(after.firstUse).toMatchObject({
       status: 'done',
       steps: { areas: 'done', day: 'skipped', layer: 'done' },
-      finishedAt: '2026-11-25T13:00:00.000Z',
+      finishedAt: NOW,
     });
     expect(after.gameLayer).toBe('completa');
   });
@@ -310,7 +312,7 @@ describe('backup', () => {
       firstUse: {
         status: 'pending',
         steps: {},
-        startedAt: '2026-11-25T13:00:00.000Z',
+        startedAt: NOW,
       },
     });
     await restoreJourneyBackup(validateBackup(backup));
@@ -325,7 +327,7 @@ describe('backup', () => {
     (badState.data.profile as { firstUse: unknown }).firstUse = {
       status: 'pending',
       steps: { areas: 'talvez' },
-      startedAt: '2026-11-25T13:00:00.000Z',
+      startedAt: NOW,
     };
     expect(() => validateBackup(badState)).toThrow('primeiro uso inválido');
     const badHours = structuredClone(backup);
