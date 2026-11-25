@@ -4,6 +4,7 @@ import { repairEquipmentSlots } from './shopService';
 import { companionContent } from '$lib/content/world';
 import { db, type Profile, type Companion } from './db';
 import { getTitleForLevel, getXpForNextLevel } from './progression';
+import { newFirstUse } from './firstUse';
 
 export function createDefaultProfile(): Profile {
   return {
@@ -30,7 +31,13 @@ export async function ensureProfile(): Promise<Profile> {
   return db.transaction('rw', db.profile, async () => {
     const existing = await db.profile.get(1);
     if (!existing) {
-      const profile = createDefaultProfile();
+      // Perfil novo (lote 7): começa na camada Discreta com o primeiro uso
+      // opcional pendente. A Completa só vem por escolha explícita.
+      const profile: Profile = {
+        ...createDefaultProfile(),
+        gameLayer: 'discreta',
+        firstUse: newFirstUse(),
+      };
       await db.profile.add(profile);
       return profile;
     }

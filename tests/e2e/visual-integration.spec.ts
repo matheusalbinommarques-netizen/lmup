@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { existingUser } from './existing-user';
 
 async function readVisualData(page: Page) {
   return page.evaluate(
@@ -182,6 +183,8 @@ test('edição mantém ícone e navegação por data/aba funciona com Voltar e m
 test('dia vazio tem saudação neutra sem renomear o perfil e uma única criação principal', async ({
   page,
 }) => {
+  // Perfil anterior ao lote 7 (camada Completa): o teste depende dela.
+  await existingUser({ page });
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).not.toContainText(
     'Herói sem nome',

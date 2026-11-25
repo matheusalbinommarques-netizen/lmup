@@ -33,6 +33,13 @@
     type GameLayer,
   } from '$services/gameLayer';
   import Card from '$lib/ui/Card.svelte';
+  import DayHoursForm from './DayHoursForm.svelte';
+  import { goto } from '$app/navigation';
+  import {
+    dayHoursOf,
+    FIRST_USE_STEPS,
+    resumeFirstUse,
+  } from '$services/firstUse';
   import Button from '$lib/ui/Button.svelte';
   import Field from '$lib/ui/Field.svelte';
   import Dialog from '$lib/ui/Dialog.svelte';
@@ -51,6 +58,18 @@
           ? cause.message
           : 'Não foi possível mudar a camada de jogo.';
     }
+  }
+  let hoursNotice = $state('');
+  // Primeiro uso adiado (lote 7): continuar só quando a pessoa quiser.
+  const firstUse = $derived(data?.profile?.firstUse);
+  const stepsLeft = $derived(
+    firstUse?.status === 'pending'
+      ? FIRST_USE_STEPS.filter((step) => !firstUse.steps[step]).length
+      : 0,
+  );
+  async function continueFirstUse() {
+    await resumeFirstUse();
+    await goto('/');
   }
   let error = $state(''),
     notice = $state(''),
@@ -231,6 +250,24 @@
     {error}
   </p>{/if}
 <section class="journey-stack">
+  {#if stepsLeft && firstUse?.postponed}<Card
+      ><div class="journey-stack" id="primeiro-uso">
+        <div>
+          <h2>Ajustar o LMUP para você</h2>
+          <p class="lmu-muted">
+            Opcional. {stepsLeft === 1
+              ? 'Falta 1 passo'
+              : `Faltam ${stepsLeft} passos`} entre áreas, horários do dia e camada
+            de jogo. Tudo também pode ser ajustado aqui.
+          </p>
+        </div>
+        <div class="journey-actions">
+          <Button variant="secondary" onclick={continueFirstUse}
+            >Continuar a preparação</Button
+          >
+        </div>
+      </div></Card
+    >{/if}
   <Card
     ><div class="journey-stack" id="backup">
       <div>
@@ -328,6 +365,28 @@
         </p>{/if}
       <p role="status" class="journey-save-status">{layerNotice}</p>
     </fieldset></Card
+  >
+  <Card
+    ><div class="journey-stack" id="dia">
+      <div>
+        <h2>Início e fim do dia</h2>
+        <p class="lmu-muted">
+          Opcional. Antes do início, as horas ≈ do plano partem do início; se a
+          estimativa passar do fim, o Hoje avisa. São só referências: nada é
+          bloqueado e as horas fixas das missões não mudam.
+        </p>
+      </div>
+      {#if data}{#key data.profile?.dayHours?.start + '|' + data.profile?.dayHours?.end}<DayHoursForm
+            hours={dayHoursOf(data.profile)}
+            allowClear
+            onsaved={(saved) =>
+              (hoursNotice =
+                saved.start || saved.end
+                  ? 'Horários do dia salvos.'
+                  : 'Horários do dia removidos. As horas ≈ voltam a partir de agora.')}
+          />{/key}{/if}
+      <p role="status" class="journey-save-status">{hoursNotice}</p>
+    </div></Card
   >
   <Card
     ><div class="journey-stack">

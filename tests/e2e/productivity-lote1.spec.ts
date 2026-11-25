@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { existingUser } from './existing-user';
 
 const day = '2026-11-03';
 async function seed(page: Page) {
@@ -76,6 +77,8 @@ async function capture(page: Page, name: string) {
 test('Hoje preserva identidade e composição vertical nas larguras suportadas', async ({
   page,
 }, info) => {
+  // Perfil anterior ao lote 7 (camada Completa): o teste depende dela.
+  await existingUser({ page });
   await seed(page);
   // The hero describes the day instead of pushing (lote 1, Dia único).
   await expect(page.locator('.hero-copy p')).toContainText(/\d+ de \d+ feitos/);

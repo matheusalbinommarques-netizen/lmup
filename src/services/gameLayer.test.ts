@@ -15,6 +15,8 @@ beforeEach(async () => {
     for (const table of db.tables) await table.clear();
   });
   await initializeJourney();
+  // Perfil anterior ao lote 7: sem camada gravada nem primeiro uso.
+  await db.profile.update(1, { gameLayer: undefined, firstUse: undefined });
 });
 afterEach(() => vi.useRealTimers());
 

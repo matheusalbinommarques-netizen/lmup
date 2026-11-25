@@ -26,6 +26,8 @@
   import CaptureField from './CaptureField.svelte';
   import InsertBlock from './InsertBlock.svelte';
   import SundayReviewLine from './SundayReviewLine.svelte';
+  import FirstUsePanel from './FirstUsePanel.svelte';
+  import { dayHoursOf, firstUsePending } from '$services/firstUse';
   import { gameLayer } from '$services/gameLayer';
   import { getLevelStateFromTotalXp } from '$services/progression';
   import { guardUpdates } from './guardUpdates';
@@ -71,6 +73,17 @@
     pinned = $state<number | null>(null);
   const today = $derived(dateKey(now));
   guardUpdates(() => !data || busy || actionOpen);
+  // Primeiro uso: no mobile o painel fica logo abaixo da próxima missão; no
+  // desktop, no topo da coluna lateral. Renderizado em um lugar só, para a
+  // ordem do documento seguir a ordem visual.
+  let narrow = $state(false);
+  onMount(() => {
+    const media = window.matchMedia('(max-width: 760px)');
+    const sync = () => (narrow = media.matches);
+    sync();
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  });
   onMount(() => {
     pinned = readPriority();
     const sub = journeyQuery().subscribe({
@@ -299,7 +312,13 @@
   const visibleDay = $derived(
     hideDone ? dayList.filter((row) => row.status !== 'completed') : dayList,
   );
-  const timeline = $derived(dayTimeline(dayList, now));
+  const dayHours = $derived(dayHoursOf(data?.profile));
+  const timeline = $derived(dayTimeline(dayList, now, dayHours));
+  // Primeiro uso (lote 7): só perfis novos; "Agora não" recolhe até a
+  // pessoa continuar em Configurações.
+  const showFirstUse = $derived(
+    firstUsePending(data?.profile) && !data?.profile?.firstUse?.postponed,
+  );
   const slots = $derived(
     new Map(timeline.slots.map((slot) => [slot.id, slot])),
   );
@@ -640,6 +659,11 @@
         profile: data.profile,
       })}
     />
+    {#snippet firstUse()}{#if showFirstUse && data?.profile}<FirstUsePanel
+          profile={data.profile}
+          areas={data.areas}
+          onnotice={(message) => (notice = message)}
+        />{/if}{/snippet}
     <div class="today-main">
       <div class="today-plan">
         <section
@@ -715,6 +739,8 @@
             >
           </ContextMenu>
         </section>
+        <!-- Mobile: o painel vem depois da próxima missão também no documento. -->
+        {#if narrow}{@render firstUse()}{/if}
         <section class="day-plan rpg-frame" aria-labelledby="plan-title">
           <header>
             <h2 id="plan-title">
@@ -748,6 +774,11 @@
                   >{reorder ? 'Pronto' : 'Reordenar'}</Button
                 >{/if}
             </div>{/if}
+          {#if timeline.overrun}<p class="day-overrun" role="note">
+              {timeline.overrun.passed
+                ? `Seu fim do dia (${timeline.overrun.dayEnd}) já passou. Pela estimativa, o que falta vai até ${timeline.overrun.end}.`
+                : `Pela estimativa, o plano vai até ${timeline.overrun.end}, ${timeline.overrun.minutes} min depois do fim do dia (${timeline.overrun.dayEnd}).`}
+            </p>{/if}
           <p class="sr-only" role="status" aria-live="polite">{moved}</p>
           <SundayReviewLine state={data?.profile?.weeklyReview} {today} />
           {#snippet planRow(row: Occurrence, ordered = false)}
@@ -932,6 +963,7 @@
         </section>
       </div>
       <aside class="today-aside">
+        {#if !narrow}{@render firstUse()}{/if}
         <section class="daily-summary" aria-labelledby="summary-title">
           <h2 id="summary-title">Hoje</h2>
           <DayProgress {completed} total={planned.length} noun="missões" />
@@ -1252,6 +1284,11 @@
   }
   .today-plan {
     grid-template-rows: auto auto;
+  }
+  .day-overrun {
+    margin: 0 0 6px;
+    color: var(--lmu-muted);
+    font-size: 0.85rem;
   }
   .today-plan,
   .today-aside {

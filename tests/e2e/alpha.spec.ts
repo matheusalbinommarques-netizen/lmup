@@ -3,6 +3,7 @@ import { confirmBackupImport } from './backup-ui';
 import { conclude, concludeButton, startFromDetail } from './execution';
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { existingUser } from './existing-user';
 
 async function create(page: Page, title: string, steps = '', projectName = '') {
   await page.goto('/');
@@ -376,6 +377,8 @@ test('plano e fixação são explícitos; navegação secundária preserva acess
   page,
   isMobile,
 }) => {
+  // Perfil anterior ao lote 7 (camada Completa): o teste depende dela.
+  await existingUser({ page });
   const url = await create(page, 'Escolher meu dia');
   await page.goto('/missoes');
   await page.getByRole('tab', { name: 'Todas', exact: true }).click();

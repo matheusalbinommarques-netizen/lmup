@@ -69,6 +69,17 @@ export type DaySlot = {
   /** No estimate: counts {@link DEFAULT_MINUTES} for the times after it. */
   defaultDuration: boolean;
 };
+/**
+ * The estimated plan runs past the end of the day (lote 7). Only a
+ * reference: nothing is moved or blocked. `passed` = the end of the day is
+ * already behind "now" and there is still something planned.
+ */
+export type DayOverrun = {
+  end: string;
+  dayEnd: string;
+  minutes: number;
+  passed: boolean;
+};
 export type DayConflict = {
   /** Row whose calculated end runs into the fixed time. */
   id: string;
@@ -99,13 +110,25 @@ type TimelineRow = Ordered &
  * are calculated (≈) from "now" and the durations before them, counting
  * 15 min when there is no estimate. A conflict is only reported when every
  * row since the previous fixed time has a real duration (design F3).
+ *
+ * Day hours (lote 7) are planning references: before the start of the day
+ * the calculated times begin at the start instead of "now"; when the
+ * estimate goes past the end (before or after the end time), `overrun` says
+ * how far it goes. Fixed times never change, and
+ * without hours the result is the same as before.
  */
 export function dayTimeline(
   rows: TimelineRow[],
   now: Date,
-): { slots: DaySlot[]; conflicts: DayConflict[] } {
+  hours: { start?: string; end?: string } = {},
+): { slots: DaySlot[]; conflicts: DayConflict[]; overrun: DayOverrun | null } {
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  let cursor = Math.ceil(nowMinutes / 5) * 5;
+  const dayStart = hours.start ? toMinutes(hours.start) : null;
+  let cursor =
+    dayStart !== null && dayStart > nowMinutes
+      ? dayStart
+      : Math.ceil(nowMinutes / 5) * 5;
+  let planned = false;
   let stretch: { id: string; end: number }[] = [];
   let stretchReal = true;
   const slots: DaySlot[] = [];
@@ -136,6 +159,7 @@ export function dayTimeline(
         });
       slots.push({ ...base, time: row.plannedTime, kind: 'anchor' });
       cursor = Math.max(cursor, start + minutes);
+      planned = true;
       stretch = [];
       stretchReal = true;
       continue;
@@ -144,8 +168,19 @@ export function dayTimeline(
     cursor += minutes;
     stretch.push({ id: row.id, end: cursor });
     stretchReal &&= real;
+    planned = true;
   }
-  return { slots, conflicts };
+  const dayEnd = hours.end ? toMinutes(hours.end) : null;
+  const overrun =
+    planned && dayEnd !== null && cursor > dayEnd
+      ? {
+          end: clock(cursor),
+          dayEnd: hours.end!,
+          minutes: cursor - dayEnd,
+          passed: nowMinutes >= dayEnd,
+        }
+      : null;
+  return { slots, conflicts, overrun };
 }
 
 /**

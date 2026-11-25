@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { existingUser } from './existing-user';
 
 // All fixtures live only in the isolated browser context, never in runtime UI.
 async function setTasks(page: Page, completed: boolean | null) {
@@ -73,6 +74,8 @@ async function capture(page: Page, name: string, fullPage = false) {
 test('Home final mantém navegação inteira e estados claros nas cinco resoluções', async ({
   page,
 }, info) => {
+  // Perfil anterior ao lote 7 (camada Completa): o teste depende dela.
+  await existingUser({ page });
   const sizes =
     info.project.name === 'desktop'
       ? [
@@ -168,6 +171,8 @@ test('Home final mantém navegação inteira e estados claros nas cinco resoluç
 test('Home mantém identidade de todas as companhias e navegação acessível sem o antigo sprite sobreposto', async ({
   page,
 }, info) => {
+  // Perfil anterior ao lote 7 (camada Completa): o teste depende dela.
+  await existingUser({ page });
   await page.setViewportSize(
     info.project.name === 'desktop'
       ? { width: 1024, height: 768 }

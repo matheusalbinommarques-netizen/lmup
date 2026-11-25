@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { existingUser } from './existing-user';
 
 const TODAY = '2026-11-15';
 
@@ -236,6 +237,8 @@ test('projeto criado na Evolução guarda a área escolhida e a edição a prese
 test('Jornada reúne Herói, Acampamento, Mundo e Loja em abas', async ({
   page,
 }) => {
+  // Perfil anterior ao lote 7 (camada Completa): o teste depende dela.
+  await existingUser({ page });
   await open(page);
   await nav(page).getByRole('link', { name: 'Jornada', exact: true }).click();
   await expect(page).toHaveURL(/\/perfil$/);

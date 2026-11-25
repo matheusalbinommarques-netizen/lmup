@@ -3,6 +3,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { confirmBackupImport } from './backup-ui';
 import { concludeFromDetail } from './execution';
+import { existingUser } from './existing-user';
 async function backup(page: Page) {
   await page.goto('/config');
   const pending = page.waitForEvent('download');
@@ -232,6 +233,8 @@ test('preferências valem no acesso direto, recarga e outra aba sem ocultar íco
 test('importação permite conferir e cancelar, valida erro e atualiza sem recarga', async ({
   page,
 }) => {
+  // Perfil anterior ao lote 7 (camada Completa): o teste depende dela.
+  await existingUser({ page });
   await mission(page, 'Missão que será preservada');
   const original = await backup(page);
   const incoming = structuredClone(original);

@@ -5,11 +5,14 @@ import { selectToExecute } from '../e2e/legacy-session';
 import { test, expect, type Page } from '@playwright/test';
 import { captureProtocolDiagnostics } from './protocol-diagnostics';
 import { readFile } from 'node:fs/promises';
+import { existingUser } from '../e2e/existing-user';
 
 test('Home RPG mantém cena, cartão Jornada e Mundo disponíveis sem conexão', async ({
   page,
   context,
 }) => {
+  // Cartão Jornada = camada Completa (perfil anterior ao lote 7).
+  await existingUser({ page });
   await ready(page);
   await expect(
     page.getByRole('region', { name: 'Hoje', exact: true }),

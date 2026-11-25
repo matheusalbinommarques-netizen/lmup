@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { dayHoursOf } from '$services/firstUse';
   import Dialog from '$lib/ui/Dialog.svelte';
   import Button from '$lib/ui/Button.svelte';
   import type { JourneySnapshot } from '$services/journeyQuery';
@@ -87,7 +88,11 @@
     time = '';
   }
   const slots = $derived(
-    new Map(dayTimeline(dayList, now).slots.map((slot) => [slot.id, slot])),
+    new Map(
+      dayTimeline(dayList, now, dayHoursOf(snapshot.profile)).slots.map(
+        (slot) => [slot.id, slot],
+      ),
+    ),
   );
   // Position of the block in the Dia's order.
   const at = $derived.by(() => {
@@ -123,7 +128,7 @@
       estimatedMinutes: item.minutes || null,
     }));
     const rows = [...dayList.slice(0, at), ...draft, ...dayList.slice(at)];
-    const timeline = dayTimeline(rows, now);
+    const timeline = dayTimeline(rows, now, dayHoursOf(snapshot.profile));
     const first = timeline.slots.find((slot) => slot.id === draft[0].id);
     const last = timeline.slots.find((slot) => slot.id === draft.at(-1)!.id);
     if (!first?.time || !last?.time) return '';
