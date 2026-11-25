@@ -1,6 +1,6 @@
 # LMUP — Instruções para agentes de programação
 
-Este arquivo complementa o [README](README.md); não substitui as regras de segurança nele descritas. Comece pelo [estado atual](docs/ESTADO.md).
+Este arquivo complementa o [README](README.md); não substitui as regras de segurança nele descritas. Comece pela seção **Agora** do [estado atual](docs/ESTADO.md).
 
 ## Antes de implementar
 
@@ -60,6 +60,13 @@ Suba de camada só quando a anterior passar. A CI completa não muda e continua 
 - Use dados sintéticos nos testes. Não importe, reinicie ou manipule o banco pessoal do navegador.
 - Toda mudança em saldos, recompensa, persistência ou migração exige testes de consistência, duplicação, atualização e reversão relevantes.
 - Não enfraqueça CI, testes PWA, auditoria de segurança ou proteção de branch para acelerar uma entrega.
+
+## Memória entre sessões
+
+- O que vale para qualquer agente fica no repositório: seção **Agora** do `docs/ESTADO.md` (estado atual, curto), decisões em `docs/` e lições na coluna "Lição reutilizável" das entregas.
+- Procedimentos repetidos ficam em skills de `.claude/skills/` (`lote-lmup`, `claude-design-lmup`); só o nome e a descrição entram no contexto até a skill ser usada. Outros agentes podem ler os mesmos arquivos como guia.
+- Ao abrir, fechar ou mudar de lote, atualize a seção **Agora** no mesmo PR. Ao aprender algo reutilizável, registre uma linha; poda: se tirar a linha não causaria erro, ela sai.
+- Nada pessoal do autor nos arquivos versionados: o repositório é público.
 
 ## Relatório final enxuto
 
